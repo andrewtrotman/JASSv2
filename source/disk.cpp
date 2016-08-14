@@ -1,173 +1,264 @@
 /*
 	DISK.C
 	------
+	Copyright (c) 2016 Andrew Trotman
+	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
+
+	Originally from the ATIRE codebase, this code is a re-write using C++ STL classes.
 */
-#ifdef _MSC_VER
-	#include <windows.h>
-    #include <direct.h>
-#else
-	#include <string.h>
-#endif
-#include <new>
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <errno.h>
+#include <assert.h>
+#include <stdio.h>
+
 #include "disk.h"
-#include "file_internals.h"
-#include "bool.h"
 
-/*
-	ANT_DISK::READ_ENTIRE_FILE()
-	----------------------------
-*/
-char *ANT_disk::read_entire_file(char *filename, long long *file_length)
-{
-long long unused;
-char *block = NULL;
-#ifdef _MSC_VER
-	HANDLE fp;
-	LARGE_INTEGER details;
-	#if defined(UNICODE) || defined(_UNICODE)
-		LPCWSTR true_filename = (LPCWSTR)filename;					// If we're in UNICODE land then the filename is actually a wide-string
-	#else
-		char *true_filename = filename;									// else we're in ASCII land and so the filename is a c-string
-	#endif
-#else
-	FILE *fp;
-	struct stat details;
-#endif
-
-if (filename == NULL)
-	return NULL;
-
-if (file_length == NULL)
-	file_length = &unused;
-
-#ifdef _MSC_VER
-	fp = CreateFile(true_filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL);
-	if (fp == INVALID_HANDLE_VALUE)
-		{
-//		DWORD error_code = GetLastError();			// put a break point on this in the debugger to work out what went wrong.
-		return NULL;
-		}
-
-	if (GetFileSizeEx(fp, &details) != 0)
-		if ((*file_length = details.QuadPart) != 0)
-			if ((block = new (std::nothrow) char [(size_t)(details.QuadPart + 1)]) != NULL)		// +1 for the '\0' on the end
-				{
-				if (ANT_file_internals::read_file_64(fp, block, details.QuadPart) != 0)
-					block[details.QuadPart] = '\0';
-				else
-					{
-					delete [] block;
-					block = NULL;
-					}
-				}
-
-	CloseHandle(fp);
-#else
-	if ((fp = fopen(filename, "rb")) == NULL)
-		return NULL;
-
-	if (fstat(fileno(fp), &details) == 0)
-		if ((*file_length = details.st_size) != 0)
-			if ((block = new (std::nothrow) char [(size_t)(details.st_size + 1)]) != NULL)		// +1 for the '\0' on the end
-				if (ANT_file_internals::read_file_64(fp, block, details.st_size) != 0)
-					block[details.st_size] = '\0';
-				else
-					{
-					delete [] block;
-					block = NULL;
-					}
-	fclose(fp);
-#endif
-
-return block;
-}
-
-/*
-	ANT_DISK::WRITE_ENTIRE_FILE()
-	-----------------------------
-*/
-char *ANT_disk::write_entire_file(char *filename, char *buffer, long length)
-{
-FILE *fp;
-size_t success;
-
-if ((fp = fopen(filename, "wb")) == NULL)
-	return NULL;
-
-success = fwrite(buffer, length, 1, fp);
-
-fclose(fp);
-
-return success == 1 ? buffer : NULL;
-}
-
-/*
-	ANT_DISK::BUFFER_TO_LIST()
-	--------------------------
-*/
-char **ANT_disk::buffer_to_list(char *buffer, long long *lines)
-{
-char *pos, **line_list, **current_line;
-long n_frequency, r_frequency;
-
-n_frequency = r_frequency = 0;
-for (pos = buffer; *pos != '\0'; pos++)
-	if (*pos == '\n')
-		n_frequency++;
-	else if (*pos == '\r')
-		r_frequency++;
-
-*lines = r_frequency > n_frequency ? r_frequency : n_frequency;
-current_line = line_list = new (std::nothrow) char * [(size_t)(*lines + 2)]; 		// +1 in case the last line has no \n; +1 for a NULL at the end of the list
-
-if (line_list == NULL)		// out of memory!
-	return NULL;
-
-*current_line++ = pos = buffer;
-while (*pos != '\0')
+namespace JASS
 	{
-	if (*pos == '\n' || *pos == '\r')
+	/*
+		DISK::READ_ENTIRE_FILE()
+		------------------------
+		This uses a combination of "C" FILE I/O and C++ strings in order to copy the contents of a file into an internal buffer.
+		There are many different ways to do this, but this is the fastest according to this link: http://insanecoding.blogspot.co.nz/2011/11/how-to-read-in-file-in-c.html
+		Note that there does not appear to be a way in C++ to avoid the initialisation of the string buffer.
+		
+		Returns the length of the file in bytes - which is also the size of the string buffer once read.
+	*/
+	size_t								// [out] size of the file in bytes
+	disk::read_entire_file
+		(
+		std::string &filename,		// [in] path to the file to read.
+		std::string &into				// [out] string to write into.  This string will be re-sized to the size of the file
+		)
 		{
-		*pos++ = '\0';
-		while (*pos == '\n' || *pos == '\r')
-			pos++;
-		*current_line++ = pos;
+		FILE *fp;							// "C" pointer to the file
+		struct stat details;				// file system's details of the file
+		size_t file_length = 0;			// length of the file in bytes
+
+		/*
+			Fopen() the file then fstat() it.  The alternative is to stat() then fopen() - but that is wrong because the file might change between the two calls.
+		*/
+		if ((fp = fopen(filename.c_str(), "rb")) != NULL)
+			if (fstat(fileno(fp), &details) == 0)
+				if ((file_length = details.st_size) != 0)
+					{
+					into.resize(file_length);
+					if (fread(&into[0], details.st_size, 1, fp) != 1)
+						into.resize(0);
+					}
+		fclose(fp);
+
+		return file_length;
 		}
-	else
-		pos++;
-	}
-/*
-	We have a nasty case here.  If the last line has no CR/LF then we need to include it
-	but shove a NULL on the next line, but if the last line has a CR/LF then we need to avoid
-	adding a blank line to the end of the list.
-	NOTE: its 2012 and its a bit late to be finding this bug!!!
-*/
-if (**(current_line - 1) == '\0')
-	*(current_line - 1) = NULL;
-*current_line = NULL;
 
-*lines = current_line - line_list - 1;		// the true number of lines
+	/*
+		DISK::WRITE_ENTIRE_FILE()
+		-------------------------
+		Uses "C" file I/O to write the contents of buffer to the given names file.
+		
+		Returns true on success, else false.
+	*/
+	bool								// [out] true if successful, false if unsuccessful
+	disk::write_entire_file
+		(
+		std::string &filename,	// [in] name of the file to write to
+		std::string &buffer		// [in] buffer to write to the file
+		)
+		{
+		FILE *fp;						// "C" file to write to
 
-return line_list;
+		if ((fp = fopen(filename.c_str(), "wb")) == NULL)
+			return false;
+
+		size_t success = fwrite(&buffer[0], buffer.size(), 1, fp);
+
+		fclose(fp);
+
+		return success == 1 ? true : false;
+		}
+
+	/*
+		DISK::BUFFER_TO_LIST()
+		----------------------
+		Turn a single std::string into a vector of uint8_t * (i.e. "C" Strings). Note that these pointers are in-place.  That is,
+		they point into buffer so any change to the uint8_t or to buffer effect each other.
+		
+		Note: This method removes blank lines from the input file.
+	*/
+	void												// no return value
+	disk::buffer_to_list
+		(
+		std::vector<uint8_t *> &line_list,	// [out] the vector to write into
+		std::string &buffer						// [in] the string to decompose
+		)
+		{
+		uint8_t *pos;
+		size_t line_count = 0;
+
+		/*
+			Walk the buffer counting how many lines we think are in there.
+		*/
+		pos = (uint8_t *)&buffer[0];
+		while (*pos != '\0')
+			{
+			if (*pos == '\n' || *pos == '\r')
+				{
+				/*
+					a seperate line is a consequative set of '\n' or '\r' lines.  That is, it removes blank lines from the input file.
+				*/
+				while (*pos == '\n' || *pos == '\r')
+					pos++;
+				line_count++;
+				}
+			else
+				pos++;
+			}
+
+		/*
+			resize the vector to the right size, but first clear it.
+		*/
+		line_list.clear();
+		line_list.reserve(line_count);
+
+		/*
+			Now rewalk the buffer turning it into a vector of lines
+		*/
+		pos = (uint8_t *)&buffer[0];
+		if (*pos != '\n' && *pos != '\r' && *pos != '\0')
+			line_list.push_back(pos);
+		while (*pos != '\0')
+			{
+			if (*pos == '\n' || *pos == '\r')
+				{
+				*pos++ = '\0';
+				/*
+					a seperate line is a consequative set of '\n' or '\r' lines.  That is, it removes blank lines from the input file.
+				*/
+				while (*pos == '\n' || *pos == '\r')
+					pos++;
+				if (*pos != '\0')
+					line_list.push_back(pos);
+				}
+			else
+				pos++;
+			}
+		}
+
+	/*
+		DISK::IS_DIRECTORY()
+		--------------------
+		Determines whether the given file system object is a directoy or not.
+	
+		Returns true if filename is a directory, else returns false.
+	*/
+	bool								// [out] true if the given path is a directory, false if it is not (or does not exist)
+	disk::is_directory
+		(
+		std::string &filename	// [in] the path to the file system object to check
+		)
+		{
+		struct stat st;				// file system details
+
+		if(stat(filename.c_str(), &st) == 0)
+			return S_ISDIR(st.st_mode);		// simply check the S_ISDIR() flag
+		return false;
+		}
+
+	/*
+		DISK::UNITTEST()
+		----------------
+	*/
+	void										// no return value
+	disk::unittest
+		(
+		void									// no parameters
+		)
+		{
+		std::vector<uint8_t *> lines;
+		std::string example_file;
+		std::string reread;
+
+		/*
+			CHECK IS_DIRECTORY()
+		*/
+		/*
+			dot must be a directory
+		*/
+		assert(is_directory("."));
+		
+		/*
+			something we know is not a directory.  In this case we'll use this very file.  Yes, this assumes
+			the unit tests are not run when the source code is not available - but I think that's reasonable.
+		*/
+		assert(!is_directory(__FILE__));
+
+		/*
+			CHECK WRITE_ENTIRE_FILE() then READ_ENTIRE_FILE()
+		*/
+		example_file = "text for example file";			// sample to be written and read back
+		
+		/*
+			create a temporary filename.  There doesn't appear to be a clean way of doing this.
+		*/
+		char filename[11];
+		strcpy(filename, "jassXXXXXX");
+		mktemp(filename);
+
+		/*
+			write, read back, and check we didn't lose anything along the way.
+		*/
+		write_entire_file(filename, example_file);
+		read_entire_file(filename, reread);
+		assert(example_file == reread);
+		remove(filename);								// delete the file once we're done with it
+		
+		/*
+			CHECK BUFFER_TO_LIST()
+		*/
+		/*
+			Empty file is of length 0
+		*/
+		example_file = "";
+		buffer_to_list(lines, example_file);
+		assert(lines.size() == 0);
+
+		/*
+			File with only blank lines is of length 0
+		*/
+		example_file = "\r\n";
+		buffer_to_list(lines, example_file);
+		assert(lines.size() == 0);
+
+		/*
+			File without any new lines is of length 1
+		*/
+		example_file = "one";
+		buffer_to_list(lines, example_file);
+		assert(lines.size() == 1);
+		assert(std::string((char *)lines[0]) == example_file);
+		
+		/*
+			File with a single new line in the middle (none on the end) is of length 2
+		*/
+		example_file = "one\ntwo";
+		buffer_to_list(lines, example_file);
+		assert(lines.size() == 2);
+		assert(std::string((char *)lines[0]) == "one");
+		assert(std::string((char *)lines[1]) == "two");
+
+		/*
+			File with tons of blank lines, this one is of length 2
+		*/
+		example_file = "\n\n\none\r\n\n\rtwo\n\r\n\r\r\r\n\n\n";
+		buffer_to_list(lines, example_file);
+		assert(lines.size() == 2);
+		assert(std::string((char *)lines[0]) == "one");
+		assert(std::string((char *)lines[1]) == "two");
+
+		/*
+			Yay, we passed
+		*/
+		puts("disk::PASSED");
+		}
 }
-
-/*
-	ANT_DISK::IS_DIRECTORY()
-	--------------------------
-*/
-long ANT_disk::is_directory(char* filename) {
-#ifdef _MSC_VER
-	return (FILE_ATTRIBUTE_DIRECTORY & GetFileAttributes(filename)) ? TRUE : FALSE;
-#else
-	struct stat st;
-	if(stat(filename, &st) == 0)
-		return S_ISDIR(st.st_mode);
-	return FALSE;
-#endif
-}
-
-

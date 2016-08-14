@@ -2,26 +2,41 @@
 	DISK.H
 	------
 */
-#ifndef DISK_H_
-#define DISK_H_
+#pragma once
 
-class ANT_disk_internals;
-class ANT_disk_directory;
+#include <stddef.h>
+#include <string>
+#include <vector>
 
-/*
-	class ANT_DISK
-	--------------
-*/
-class ANT_disk
-{
-public:
-	ANT_disk() {}
-	virtual ~ANT_disk() {}
+namespace JASS
+	{
+	/*
+		CLASS DISK
+		----------
+	*/
+	class disk
+		{
+		private:
+			disk() {}
+			
+		public:
+			static size_t read_entire_file(std::string &filename, std::string &into);
+			static bool write_entire_file(std::string &filename, std::string &buffer);
+			static void buffer_to_list (std::vector<uint8_t *> &line_list, std::string &buffer);
+			static bool is_directory(std::string &filename);
 
-	static char *read_entire_file(char *filename, long long *len = 0);
-	static char **buffer_to_list(char *buffer, long long *lines);
-	static char *write_entire_file(char *filename, char *string, long length);
-	static long is_directory(char *filename);
-} ;
+			/*
+				rvalue reference versions
+			*/
+			static bool write_entire_file(std::string &&filename, std::string &buffer) { return write_entire_file(filename, buffer); }
+			static bool write_entire_file(std::string &&filename, std::string &&buffer) { return write_entire_file(filename, buffer); }
+			static size_t read_entire_file(std::string &&filename, std::string &into) { return read_entire_file(filename, into); }
+			static bool is_directory(std::string &&filename) { return is_directory(filename); }
+			
+			/*
+				unit tests
+			*/
+			static void unittest(void);
+		} ;
 
-#endif  /* DISK_H_ */
+	}

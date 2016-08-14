@@ -35,6 +35,7 @@ add_subdirectory(source)
 #
 # 
 #
+include_directories(source)
 add_executable(unittest tools/unittest.cpp)
 target_link_libraries(unittest JASSlib)
 
