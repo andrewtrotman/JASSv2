@@ -5,6 +5,8 @@
 # Build file for JASS, including all the tools
 # Copyright (c) 2016 Andrew Trotman
 #
+# Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
+#
 # Current supported build targets inclide:
 #    make refresh_externals
 #       This will re-download any external tools that are used as part of JASS.  This is usefule when,
@@ -13,11 +15,26 @@
 #       methods.
 
 cmake_minimum_required (VERSION 3.6.1)
-project (JASS)
+project(JASS)
 
-# Recurse into the "Hello" and "Demo" subdirectories. This does not actually
-# cause another cmake executable to run. The same process will walk through
-# the project's entire directory structure.
+#
+# Download any external dependencies
+#
+add_subdirectory(external)
 
-add_subdirectory (external)
+#
+# Build the toolset
+#
+add_subdirectory(tools)
+
+#
+# Build the JASS library and unittest
+#
+add_subdirectory(source)
+
+#
+# 
+#
+add_executable(unittest tools/unittest.cpp)
+target_link_libraries(unittest JASSlib)
 
