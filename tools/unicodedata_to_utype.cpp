@@ -9,6 +9,25 @@
 	
 	The latest version of UnicodeData.txt can be found here: http://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
 	The documentation on how to read it is here: http://www.unicode.org/reports/tr44/#UnicodeData.txt
+
+	The functions we wish to mirror are described here: http://www.cplusplus.com/reference/cctype/
+	They are:
+		isalnum			-- alpha + digit
+		isalpha			-- alpha
+		isblank
+		iscntrl			-- control
+		isdigit			-- digit
+		isgraph
+		islower			-- lowercase
+		isprint
+		ispunct			-- punc
+		isspace			-- space
+		isupper			-- uppercase
+		isxdigit			-- xdigit
+
+		tolower
+		toupper
+
 */
 
 #include <stdio.h>
@@ -28,6 +47,40 @@ std::vector<uint32_t>alpha;				// list of alphabetical characters
 std::vector<uint32_t>uppercase;			// list of uppercase characters
 std::vector<uint32_t>lowercase;			// list of lowercase characgers
 
+/*
+	Digits, or more accurately number characters including digit characters
+*/
+std::vector<uint32_t>digit;
+
+/*
+	Punctuaton
+*/
+std::vector<uint32_t>punc;
+
+/*
+	Space characters (including line break)
+*/
+std::vector<uint32_t>space;
+
+/*
+	Diacritic marks
+*/
+std::vector<uint32_t>mark;
+
+/*
+	Symbols
+*/
+std::vector<uint32_t>symbol;
+
+/*
+	Control characters
+*/
+std::vector<uint32_t>control;
+
+/*
+	Hexadecimal digits
+*/
+std::vector<uint32_t>xdigit;
 
 /*
 	USAGE()
@@ -41,6 +94,19 @@ usage
 	{
 	printf("Usage:%s <UnicodeData.txt>\n", filename);
 	exit(0);
+	}
+
+/*
+	SERIALISE()
+	-----------
+*/
+void							// no return value
+serialise
+	(
+	void						// no parameters
+	)
+	{
+	
 	}
 
 /*
@@ -64,9 +130,12 @@ process
 	char name[1024];				// Name of the codepoint
 	char category[5];				// Two letter catagory code for the codepoint
 	
+	/*
+		Work out what type of character we have, according the the "C" ctype.h conventions
+	*/
 	sscanf(line, "%x;%s;%s;", &codepoint, name, category);
 	
-	if (*category == 'L')
+	if (*category == 'L')									// Letter
 		alpha.push_back(codepoint);
 		
 	if (strcmp(category, "Lu") == 0)						// an uppercase letter
@@ -76,12 +145,29 @@ process
 	else if (strcmp(category, "Lt") == 0)				// a digraphic character, with first part uppercase
 		uppercase.push_back(codepoint);
 
-	/*
-		KEEP GOING HERE
-		then write out the vectors as bitstrings.
-	*/
+	if (*category == 'N')									// Number
+		digit.push_back(codepoint);
+
+	if (*category == 'P')									// Punctuation
+		punc.push_back(codepoint);
+
+	if (*category == 'Z')									// Separator
+		space.push_back(codepoint);
+	if (codepoint < 0x128 && isspace(codepoint))		/// add the "C" space characters too (TAB, LF, VT, FF, CR)
+		space.push_back(codepoint);
+
+	if (*category == 'M')									// Mark
+		mark.push_back(codepoint);
+
+	if (*category == 'S')									// Symbol
+		symbol.push_back(codepoint);
+
+	if (strcmp(category, "Cc") == 0)						// a C0 or C1 control code
+		control.push_back(codepoint);
 		
-	puts((char *)line);
+
+	if (codepoint < 0x128 && isxdigit(codepoint))		// if its a hex digit then make note of it
+		xdigit.push_back(codepoint);
 	}
 
 /*
@@ -122,9 +208,15 @@ main
 		Process each line.
 	*/
 	for (const auto &line : lines)
-		{
 		process((const char *)line);
-		}
 		
+	/*
+		Dump out each method
+	*/
+	serialise();
+		
+	/*
+		success
+	*/
 	return 0;
 	}
