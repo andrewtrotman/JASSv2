@@ -12,6 +12,7 @@
 
 	The functions we wish to mirror are described here: http://www.cplusplus.com/reference/cctype/
 	They are:
+		NAME               VARIABLE IN THIS PROGRAM
 		isalnum			-- alpha + digit
 		isalpha			-- alpha
 		isblank
@@ -27,7 +28,8 @@
 
 		tolower
 		toupper
-
+		
+	These are then dumped out as C++ methods.
 */
 
 #include <stdio.h>
@@ -85,6 +87,7 @@ std::vector<uint32_t>xdigit;
 /*
 	USAGE()
 	------
+	Tell the user how to use this program
 */
 void							// no return value
 usage
@@ -99,6 +102,7 @@ usage
 /*
 	SERIALISE()
 	-----------
+	serialise into the methods
 */
 void							// no return value
 serialise
@@ -119,6 +123,8 @@ serialise
 		name
 		general category (is it a number or a letter, etc)
 		...
+		
+	We're interested in the codepoint and the category only (nothing else)
 */
 void							// no return value
 process
@@ -173,6 +179,7 @@ process
 /*
 	MAIN()
 	------
+	read UnicodeData.txt, compute the set of is() routines and dump then out
 */
 int						// [out] return code to the OS, always 0
 main
