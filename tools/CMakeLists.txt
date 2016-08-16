@@ -12,5 +12,8 @@
 #        Tool to convert UnicodeData.txt into a set of ctype.h like methods that work on unicode
 #
 
+include_directories(../source)
 add_executable(unicodedata_to_utype 
 	unicodedata_to_utype.cpp)
+
+target_link_libraries (unicodedata_to_utype LINK_PUBLIC JASSlib)

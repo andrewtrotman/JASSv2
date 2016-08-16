@@ -1,5 +1,5 @@
 /*
-	DISK.H
+	FILE.H
 	------
 */
 #pragma once
@@ -11,13 +11,14 @@
 namespace JASS
 	{
 	/*
-		CLASS DISK
+		CLASS FILE
 		----------
 	*/
-	class disk
+	class file
 		{
 		private:
-			disk() {}
+			file() {}
+			~file() {}
 			
 		public:
 			static size_t read_entire_file(std::string &filename, std::string &into);

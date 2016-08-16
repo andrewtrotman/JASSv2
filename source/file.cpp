@@ -1,6 +1,6 @@
 /*
-	DISK.C
-	------
+	FILE.CPP
+	--------
 	Copyright (c) 2016 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 
@@ -12,12 +12,12 @@
 #include <assert.h>
 #include <stdio.h>
 
-#include "disk.h"
+#include "file.h"
 
 namespace JASS
 	{
 	/*
-		DISK::READ_ENTIRE_FILE()
+		FILE::READ_ENTIRE_FILE()
 		------------------------
 		This uses a combination of "C" FILE I/O and C++ strings in order to copy the contents of a file into an internal buffer.
 		There are many different ways to do this, but this is the fastest according to this link: http://insanecoding.blogspot.co.nz/2011/11/how-to-read-in-file-in-c.html
@@ -26,7 +26,7 @@ namespace JASS
 		Returns the length of the file in bytes - which is also the size of the string buffer once read.
 	*/
 	size_t								// [out] size of the file in bytes
-	disk::read_entire_file
+	file::read_entire_file
 		(
 		std::string &filename,		// [in] path to the file to read.
 		std::string &into				// [out] string to write into.  This string will be re-sized to the size of the file
@@ -53,14 +53,14 @@ namespace JASS
 		}
 
 	/*
-		DISK::WRITE_ENTIRE_FILE()
+		FILE::WRITE_ENTIRE_FILE()
 		-------------------------
 		Uses "C" file I/O to write the contents of buffer to the given names file.
 		
 		Returns true on success, else false.
 	*/
 	bool								// [out] true if successful, false if unsuccessful
-	disk::write_entire_file
+	file::write_entire_file
 		(
 		std::string &filename,	// [in] name of the file to write to
 		std::string &buffer		// [in] buffer to write to the file
@@ -79,7 +79,7 @@ namespace JASS
 		}
 
 	/*
-		DISK::BUFFER_TO_LIST()
+		FILE::BUFFER_TO_LIST()
 		----------------------
 		Turn a single std::string into a vector of uint8_t * (i.e. "C" Strings). Note that these pointers are in-place.  That is,
 		they point into buffer so any change to the uint8_t or to buffer effect each other.
@@ -87,7 +87,7 @@ namespace JASS
 		Note: This method removes blank lines from the input file.
 	*/
 	void												// no return value
-	disk::buffer_to_list
+	file::buffer_to_list
 		(
 		std::vector<uint8_t *> &line_list,	// [out] the vector to write into
 		std::string &buffer						// [in] the string to decompose
@@ -146,14 +146,14 @@ namespace JASS
 		}
 
 	/*
-		DISK::IS_DIRECTORY()
+		FILE::IS_DIRECTORY()
 		--------------------
 		Determines whether the given file system object is a directoy or not.
 	
 		Returns true if filename is a directory, else returns false.
 	*/
 	bool								// [out] true if the given path is a directory, false if it is not (or does not exist)
-	disk::is_directory
+	file::is_directory
 		(
 		std::string &filename	// [in] the path to the file system object to check
 		)
@@ -166,11 +166,11 @@ namespace JASS
 		}
 
 	/*
-		DISK::UNITTEST()
+		FILE::UNITTEST()
 		----------------
 	*/
 	void										// no return value
-	disk::unittest
+	file::unittest
 		(
 		void									// no parameters
 		)
@@ -259,6 +259,6 @@ namespace JASS
 		/*
 			Yay, we passed
 		*/
-		puts("disk::PASSED");
+		puts("file::PASSED");
 		}
 }

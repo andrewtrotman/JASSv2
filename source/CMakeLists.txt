@@ -13,8 +13,8 @@
 #
 
 add_library(JASSlib
-	disk.cpp
-	disk.h
+	file.cpp
+	file.h
 	)
 
 
