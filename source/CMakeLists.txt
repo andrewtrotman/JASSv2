@@ -13,8 +13,10 @@
 #
 
 add_library(JASSlib
-	file.cpp
+	bitstring.h
+	bitstring.cpp
 	file.h
+	file.cpp
 	)
 
 
