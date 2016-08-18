@@ -7,6 +7,11 @@
 	Originally from the ATIRE codebase, this code is a re-write using C++ STL classes.
 
 */
+/*!
+	@file file.h
+	@abstract file abstract
+	@discussion file discussion
+*/
 #pragma once
 
 #include <stddef.h>
@@ -19,6 +24,11 @@ namespace JASS
 	/*
 		CLASS FILE
 		----------
+	*/
+	/*!
+		@class file
+		@abstract something
+		@discussion something longer
 	*/
 	class file
 		{
@@ -40,13 +50,18 @@ namespace JASS
 				
 				Returns the length of the file in bytes - which is also the size of the string buffer once read.
 			*/
+			/*!
+				@discussion Something
+				@param filename filename
+				@param into something else
+				@return gotcha
+			*/
 			static size_t									// [out] size of the file in bytes
 			read_entire_file
 				(
 				const std::string &filename,	// [in] path to the file to read.
 				std::string &into					// [out] string to write into.  This string will be re-sized to the size of the file
 				);
-			
 			
 			/*
 				FILE::WRITE_ENTIRE_FILE()
