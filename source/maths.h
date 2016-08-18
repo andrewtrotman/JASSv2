@@ -25,7 +25,7 @@ namespace JASS
 				Return the maximum of two integers (order preserving)
 			*/
 			template <typename TYPE>
-			const TYPE &						// [out] The maximum of the parameters
+			static const TYPE &						// [out] The maximum of the parameters
 			max
 				(
 				const TYPE &first,			// [in] first of the two
@@ -41,7 +41,7 @@ namespace JASS
 				Return the maximum of three integers (order preserving)
 			*/
 			template <typename TYPE>
-			const TYPE &						// [out] The maximum of the parameters
+			static const TYPE &						// [out] The maximum of the parameters
 			max
 				(
 				const TYPE &first,			// [in] first of the three
@@ -58,7 +58,7 @@ namespace JASS
 				Return the minimum of two integers (order preserving)
 			*/
 			template <typename TYPE>
-			const TYPE &						// [out] The minimum of the parameters
+			static const TYPE &						// [out] The minimum of the parameters
 			min
 				(
 				const TYPE &first,			// [in] first of the two
@@ -74,7 +74,7 @@ namespace JASS
 				Return the minimum of three integers (order preserving)
 			*/
 			template <typename TYPE>
-			const TYPE &						// [out] The minimum of the parameters
+			static const TYPE &						// [out] The minimum of the parameters
 			min
 				(
 				const TYPE &first,			// first of the three
