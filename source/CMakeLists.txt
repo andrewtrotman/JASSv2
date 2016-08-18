@@ -17,6 +17,7 @@ add_library(JASSlib
 	bitstring.cpp
 	file.h
 	file.cpp
+	maths.h
 	)
 
 

@@ -8,190 +8,262 @@
 */
 #include <string.h>
 #include <stdlib.h>
+#include <assert.h>
+
+#include "maths.h"
 #include "bitstring.h"
 
 namespace JASS
 	{
-	#define BITS_PER_WORD 64		// 64 bits to a word
-	typedef uint64_t bitstring_word;
-
-	template <typename TYPE>
-	TYPE max(TYPE a, TYPE b)
-	{
-	return a <= b ? a : b;
-	}
-
-	/*
-		BITSTRING::BITSTRING()
-		----------------------
-	*/
-	bitstring::bitstring()
-		{
-		bits = NULL;
-		bits_long = bytes_long = chunks_long = 0;
-		}
-
-	/*
-		BITSTRING::~BITSTRING()
-		-----------------------
-	*/
-	bitstring::~bitstring()
-		{
-		free(bits);
-		}
-
-
 	/*
 		BITSTRING::POPCOUNT()
 		---------------------
-		Count the numner of bits set in the given buffer
+		Return the number of set bits in the bitstring
 	*/
-	size_t bitstring::popcount(uint8_t *ch, size_t bytes_long)
+	size_t								// [out] returns the number of set bits in the bitstring
+	bitstring::popcount
+		(
+		void								// no parameters
+		) const
 		{
-		size_t total, here;
-
-		total = 0;
-		for (here = 0; here < bytes_long; here++)
-			total += popcount(*ch++);
-
-		return total;
+		size_t count = 0;
+		size_t chunks_long = bits.size() / sizeof(bitstring_word);
+		bitstring_word *data = (bitstring_word *)&bits[0];
+	
+		for (size_t chunk = 0; chunk < chunks_long; chunk++)
+			count += popcount(*data++);
+			
+		return count;
 		}
 
 	/*
 		BITSTRING::SET_LENGTH()
 		-----------------------
+		Sets the length of the bitstring. Valid bits are in the range (0 .. new_length_in_bits-1)
 	*/
-	void bitstring::set_length(size_t len_in_bits)
-	{
-	size_t old_bytes_long, old_chunks_long;
-
-	old_bytes_long = bytes_long;
-	old_chunks_long = chunks_long;
-
-	unsafe_set_length(len_in_bits);
-
-	if (chunks_long != old_chunks_long)
+	void									// no return value
+	bitstring::set_length
+		(
+		size_t new_length_in_bits	// [in] the new length of the string
+		)
 		{
-		bits = (uint8_t *)realloc(bits, bytes_long);
-		if (bytes_long > old_bytes_long)
-			memset(bits + old_bytes_long, 0, (size_t)(bytes_long - old_bytes_long));
+		/*
+			Compute the new and old lengths in "chunks"
+		*/
+		size_t chunks_long = (new_length_in_bits + 8 * sizeof(bitstring_word)) / (8 * sizeof(bitstring_word));
+		size_t old_chunks_long = bits.size() / sizeof(bitstring_word);
+		
+		/*
+			resize the vector, but only if we need to
+		*/
+		if (chunks_long > old_chunks_long)
+			{
+			size_t bytes_long = chunks_long * sizeof(chunks_long);
+			bits.resize(bytes_long);
+			}
+			
+		/*
+			remember out length
+		*/
+		bits_long = new_length_in_bits;
 		}
-	}
-
-	/*
-		BITSTRING::UNSAFE_SET_LENGTH()
-		------------------------------
-		This resets the lengh of the bitstring but not the length of the underlying
-		buffer that holds the bits.  Its only useful if you're going to resize within
-		the bounds that the object was first created with.  It also doesn't zero the
-		new stuff (because there is no new stuff)
-	*/
-	void bitstring::unsafe_set_length(size_t len_in_bits)
-	{
-	size_t new_chunks_long;
-
-	new_chunks_long = (len_in_bits - 1) / BITS_PER_WORD + 1;
-	if (new_chunks_long != chunks_long)
-		{
-		chunks_long = new_chunks_long;
-		bytes_long = chunks_long * (BITS_PER_WORD / 8);
-		}
-
-	bits_long = len_in_bits;
-	}
 
 	/*
 		BITSTRING::ZERO()
 		-----------------
+		Set the bitstring to all zeros
 	*/
-	void bitstring::zero(void)
-	{
-	memset(bits, 0, (size_t)bytes_long);
-	}
+	void									// no return value
+		bitstring::zero
+		(
+		void								// no parameters
+		)
+		{
+		memset(&bits[0], 0, bits.size());
+		}
 
 	/*
 		ANT_BITSTRING::ONE()
 		--------------------
-		Set all bits to 1 (and pad end with zeros)
+		Set all valid bits to 1 (and pad to the end with zeros)
 	*/
-	void bitstring::one(void)
-	{
-	size_t clearing, last_bit;
-	memset(bits, 0xFF, (size_t)bytes_long);
+	void									// no return value
+		bitstring::one
+		(
+		void								// no parameters
+		)
+		{
+		/*
+			set the entire bitstring to all 1s
+		*/
+		memset(&bits[0], 0xFF, bits.size());
 
-	last_bit = bytes_long * 8;
-	for (clearing = bits_long; clearing < last_bit; clearing++)
-		unsafe_unsetbit(clearing);
-	}
+		/*
+			turn the over-shoot bits back to 0
+		*/
+		size_t last_bit = bits.size() * 8;
+		for (size_t clearing = bits_long; clearing < last_bit; clearing++)
+			unsafe_unsetbit(clearing);
+		}
 
 	/*
 		BITSTRING::OPERATION()
 		----------------------
+		Worker function to perform a binary operation a = b op c (e.g. a = b AND c)
+		Its done this way to avoid repitition of the setup code.
 	*/
-	void bitstring::operation(action op, bitstring &a, bitstring &b, bitstring &c)
-	{
-	bitstring_word *aa, *bb, *cc;
-	size_t longest, here;
-
-	longest = max(b.get_length(), c.get_length());
-	a.set_length(longest);
-	b.set_length(longest);
-	c.set_length(longest);
-
-	aa = (bitstring_word *)&a.bits;
-	bb = (bitstring_word *)&b.bits;
-	cc = (bitstring_word *)&c.bits;
-
-	switch (op)
+	void									// no return value
+	bitstring::operation
+		(
+		action op,							// [in] the operation we're going to perform
+		bitstring &a,						// [out] the answer (b op c)
+		bitstring &b,						// [in] the first parameter
+		bitstring &c						// [in] the second parameter
+		)
 		{
-		case OR:
-			for (here = 0; here < chunks_long; here++)
-				*aa++ = *bb++ | *cc++;
-			break;
-		case AND:
-			for (here = 0; here < chunks_long; here++)
-				*aa++ = *bb++ & *cc++;
-			break;
-		case XOR:
-			for (here = 0; here < chunks_long; here++)
-				*aa++ = *bb++ ^ *cc++;
-			break;
-		case AND_NOT:
-			for (here = 0; here < chunks_long; here++)
-				*aa++ = *bb++ & ~*cc++;
-			break;
+		/*
+			Make sure all the bitstrings are the same length
+		*/
+		size_t longest = max(b.size(), c.size());
+		a.set_length(longest);
+		b.set_length(longest);
+		c.set_length(longest);
+
+		/*
+			get pointers to each of the internal buffers (as bitstring_word pointers)
+		*/
+		bitstring_word *aa = (bitstring_word *)&a.bits[0];
+		bitstring_word *bb = (bitstring_word *)&b.bits[0];
+		bitstring_word *cc = (bitstring_word *)&c.bits[0];
+		
+		/*
+			work out when to stop
+		*/
+		bitstring_word *end = aa + (bits.size() / sizeof(bitstring_word));
+
+		/*
+			swith on op and run until we're done
+		*/
+		switch (op)
+			{
+			case OR:
+				while (aa < end)
+					*aa++ = *bb++ | *cc++;
+				break;
+			case AND:
+				while (aa < end)
+					*aa++ = *bb++ & *cc++;
+				break;
+			case XOR:
+				while (aa < end)
+					*aa++ = *bb++ ^ *cc++;
+				break;
+			case AND_NOT:
+				while (aa < end)
+					*aa++ = *bb++ & ~*cc++;
+				break;
+			}
 		}
-	}
+	
 
 	/*
 		BITSTRING::INDEX()
 		------------------
+		Return the bit position of the nth set bit (where n is called which)
 	*/
-	size_t bitstring::index(size_t which)
-	{
-	size_t old_total, total, here, my_bit, bit;
-	uint8_t *ch;
-
-	total = 0;
-	ch = bits;
-	for (here = 0; here < bytes_long; here++)
+	size_t						// [out] the bit positon of the given set bit
+	bitstring::index
+		(
+		size_t which			// [in] which set bit we're looking for
+		)
 		{
-		old_total = total;
-		total += popcount(*ch);
-		if (total >= which)
+		size_t total = 0;
+		uint8_t *ch = &bits[0];
+		size_t bytes_long = bits.size();
+		for (size_t here = 0; here < bytes_long; here++)
 			{
-			my_bit = which - old_total;
-			for (bit = 0; bit < 8; bit++)
-				if (*ch &  1 << bit)
-					{
-					my_bit--;
-					if (my_bit == 0)
-						return here * 8 + bit;
-					}
+			size_t old_total = total;
+			total += popcount(*ch);
+			if (total >= which)
+				{
+				size_t my_bit = which - old_total;
+				for (size_t bit = 0; bit < 8; bit++)
+					if (*ch &  1 << bit)
+						{
+						my_bit--;
+						if (my_bit == 0)
+							return here * 8 + bit;
+						}
+				}
+			ch++;
 			}
-		ch++;
-		}
 
-	return -1;		// no such bit set.
-	}
+		return -1;		// no such bit set.
+		}
+	
+	/*
+		BITSTRING::UNITTEST()
+		---------------------
+	*/
+	void bitstring::unittest(void)
+		{
+		bitstring b1;
+		bitstring b2;
+		bitstring b3;
+
+		/*
+			check that a bitstring is initialised to zero
+		*/
+		b1.set_length(100);
+		assert(b1.popcount() == 0);
+
+		b2.set_length(1000);
+		assert(b2.popcount() == 0);
+		
+		/*
+			check that setting a bit only sets one bit
+		*/
+		b1.unsafe_setbit(99);
+		assert(b1.unsafe_getbit(99));
+		
+		b2.unsafe_setbit(999);
+		assert(b2.unsafe_getbit(999));
+		
+		/*
+			Check that OR words
+		*/
+		b1.bit_or(b3, b2);
+		assert(b3.unsafe_getbit(99));
+		assert(b3.unsafe_getbit(999));
+		assert(b3.popcount() == 2);
+		
+		/*
+			make sure OR didn't trash the original strings
+		*/
+		assert(b1.popcount() == 1);
+		assert(b2.popcount() == 1);
+
+		/*
+			does index() work?
+		*/
+		assert(b3.index(1) == 99);
+		assert(b3.index(2) == 999);
+
+		/*
+			zero() should work
+		*/
+		b2.zero();
+		assert(b2.popcount() == 0);
+		
+		/*
+			one() is a bit more complex, the check is that it doesn't overshoot
+		*/
+		b1.one();
+		assert(b1.popcount() == b1.size());
+		
+		/*
+			Yay, we passed
+		*/
+		puts("bitstring::PASSED");
+		}
 }

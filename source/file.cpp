@@ -25,11 +25,11 @@ namespace JASS
 		
 		Returns the length of the file in bytes - which is also the size of the string buffer once read.
 	*/
-	size_t								// [out] size of the file in bytes
+	size_t									// [out] size of the file in bytes
 	file::read_entire_file
 		(
-		std::string &filename,		// [in] path to the file to read.
-		std::string &into				// [out] string to write into.  This string will be re-sized to the size of the file
+		const std::string &filename,	// [in] path to the file to read.
+		std::string &into					// [out] string to write into.  This string will be re-sized to the size of the file
 		)
 		{
 		FILE *fp;							// "C" pointer to the file
@@ -59,11 +59,11 @@ namespace JASS
 		
 		Returns true on success, else false.
 	*/
-	bool								// [out] true if successful, false if unsuccessful
+	bool										// [out] true if successful, false if unsuccessful
 	file::write_entire_file
 		(
-		std::string &filename,	// [in] name of the file to write to
-		std::string &buffer		// [in] buffer to write to the file
+		const std::string &filename,	// [in] name of the file to write to
+		const std::string &buffer		// [in] buffer to write to the file
 		)
 		{
 		FILE *fp;						// "C" file to write to
@@ -152,10 +152,10 @@ namespace JASS
 	
 		Returns true if filename is a directory, else returns false.
 	*/
-	bool								// [out] true if the given path is a directory, false if it is not (or does not exist)
+	bool										// [out] true if the given path is a directory, false if it is not (or does not exist)
 	file::is_directory
 		(
-		std::string &filename	// [in] the path to the file system object to check
+		const std::string &filename	// [in] the path to the file system object to check
 		)
 		{
 		struct stat st;				// file system details
