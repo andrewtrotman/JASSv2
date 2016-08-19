@@ -5,7 +5,6 @@
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 
 	Originally from the ATIRE codebase, this code is a re-write using C++ STL classes.
-
 */
 /*!
 	@header
@@ -95,7 +94,6 @@ namespace JASS
 			*/
 			/*!
 				Determines whether the given file system object is a directoy or not.
-			
 				@param filename [in] The path to the file system object to check.
 				@return True if the given path is a directory, false if it is not (or does not exist).
 			*/
