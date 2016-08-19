@@ -8,9 +8,10 @@
 
 */
 /*!
-	@file file.h
-	@abstract file abstract
-	@discussion file discussion
+	@header
+	file abstract
+
+	file discussion
 */
 #pragma once
 
@@ -26,9 +27,10 @@ namespace JASS
 		----------
 	*/
 	/*!
-		@class file
-		@abstract something
-		@discussion something longer
+		@class
+		@abstract class abstract
+
+		class description
 	*/
 	class file
 		{
