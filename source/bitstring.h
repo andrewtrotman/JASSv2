@@ -24,11 +24,16 @@ namespace JASS
 	/*
 		CLASS BITSTRING
 		---------------
-		Storage class for arbitrary length bitstrings.  The internal storage is in bytes, but they are manipulated
-		in chunks of bitstring::bitstring_word (which were intially uint64_t).
 	*/
 	/*!
 		@brief Long bitstrings
+		@details The internal storage is in bytes, but they are manipulated
+		in chunks of bitstring::bitstring_word (which were intially uint64_t).  The memory used to store the bits
+		is guaranteed to be contigious. The set, unset, and get methods are impemented as function calls because
+		an overloaded operator[] would need to return something that can be assigned to - which would be an inter
+		mediate object that needs to know which bit is being referred to, and that would result in an object creation
+		which is undesirable.
+
 	*/
 	class bitstring
 	{
@@ -57,6 +62,10 @@ namespace JASS
 		-----
 	*/
 	protected:
+		/*!
+			@typedef
+			@brief bitstring_word is used as the underlying type for Boolean operations and for popcount()
+		*/
 		typedef uint64_t bitstring_word;		// this is the size of word used for Boolean operatons (and so storage is rounded up to units of this)
 
 	/*
@@ -64,8 +73,11 @@ namespace JASS
 		-------
 	*/
 	protected:
-		std::vector<uint8_t> bits;				// stograge for the bits
-		size_t bits_long;							// the length of the bitstring in bits
+		/*!
+			@var
+		*/
+		std::vector<uint8_t> bits;				///< The underlying storage for the long bitstring
+		size_t bits_long;							///< The length of the bitstring in bits.
 
 	/*
 		METHODS
@@ -78,23 +90,33 @@ namespace JASS
 		*/
 		/*!
 			@brief operation
+			@param op [in] the operation we're going to perform.
+			@param a [out] the answer (b op c)
+			@param b [in] the first parameter
+			@param c in] the second parameter
 		*/
-		virtual void							// no return value
-		operation
-			(
-			action op,							// [in] the operation we're going to perform
-			bitstring &a,						// [out] the answer (b op c)
-			bitstring &b,						// [in] the first parameter
-			bitstring &c						// [in] the second parameter
-			);
+		virtual void operation(action op, bitstring &a, bitstring &b, bitstring &c);
 
 	public:
 		/*
 			BITSTRING::BITSTRING()
 			----------------------
-			Constructor
+		*/
+		/*!
+			@brief Constructor
 		*/
 		bitstring() : bits_long(0)
+			{
+			// nothing
+			}
+		/*
+			BITSTRING::~BITSTRING()
+			----------------------
+		*/
+		/*!
+			@brief Destructor
+		*/
+		virtual ~bitstring()
 			{
 			// nothing
 			}
@@ -102,13 +124,13 @@ namespace JASS
 		/*
 			BITSTRING::POPCOUNT()
 			---------------------
-			Count the number of bits set in parallel, see here: https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
 		*/
-		inline static size_t		// [out] number of set bits in the word
-		popcount
-			(
-			uint64_t value			// [in] the value we wish to count the bits within
-			)
+		/*!
+			@brief Count the number of bits set in value.  This uses the parallel algorithm from here: https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
+			@param [in] The value whose set bits are counted.
+			@return The number of set bits in the parameter.
+		*/
+		inline static size_t popcount(uint64_t value)
 			{
 			value = value - ((value >> 1) & 0x5555555555555555);
 			value = (value & 0x3333333333333333) + ((value >> 2) & 0x3333333333333333);
@@ -118,13 +140,11 @@ namespace JASS
 		/*
 			BITSTRING::POPCOUNT()
 			---------------------
-			Count the number of bits set in parallel, see here: https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
 		*/
-		inline static size_t		// [out] number of set bits in the word
-		popcount
-			(
-			uint32_t value			// [in] the value we wish to count the bits within
-			)
+		/*!
+			@overload
+		*/
+		inline static size_t popcount(uint32_t value)
 			{
 			value = value - ((value >> 1) & 0x55555555);
 			value = (value & 0x33333333) + ((value >> 2) & 0x33333333);
@@ -134,13 +154,11 @@ namespace JASS
 		/*
 			BITSTRING::POPCOUNT()
 			---------------------
-			Count the number of bits set in parallel, see here: https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
 		*/
-		inline static size_t		// [out] number of set bits in the word
-		popcount
-			(
-			uint16_t value			// [in] the value we wish to count the bits within
-			)
+		/*!
+			@overload
+		*/
+		inline static size_t popcount(uint16_t value)
 			{
 			value = value - ((value >> 1) & 0x5555);
 			value = (value & 0x3333) + ((value >> 2) & 0x3333);
@@ -150,13 +168,11 @@ namespace JASS
 		/*
 			BITSTRING::POPCOUNT()
 			---------------------
-			Count the number of bits set in parallel, see here: https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
 		*/
-		inline static size_t		// [out] number of set bits in the word
-		popcount
-			(
-			uint8_t value			// [in] the value we wish to count the bits within
-			)
+		/*!
+			@overload
+		*/
+		inline static size_t popcount(uint8_t value)
 			{
 			value = value - ((value >> 1) & 0x55);
 			value = (value & 0x3333) + ((value >> 2) & 0x33);
@@ -166,23 +182,22 @@ namespace JASS
 		/*
 			BITSTRING::SET_LENGTH()
 			-----------------------
-			Set the length of the bitstring to length_in_bits.  The new valid range is 0.. length_in_bits - 1
 		*/
-		void								// no return value
-		set_length
-			(
-			size_t length_in_bits	// [in] the new length of bitstring
-			);
+		/*!
+			@brief Set the length of the bitstring to length_in_bits.  The new valid range is 0.. length_in_bits - 1
+			@param length_in_bits [in] the new length of bitstring
+		*/
+		void set_length(size_t length_in_bits);
 
 		/*
 			BITSTRING::SIZE()
 			-----------------
 		*/
-		size_t			// [out] return the length of the bitstring measured in bits
-		size
-			(
-			void			// no paramters
-			) const
+		/*!
+			@brief Return the length (in bits) of the bitstring
+			@return The length of the bitstring measured in bits
+		*/
+		size_t size(void) const
 			{
 			return bits_long;
 			}
@@ -190,13 +205,13 @@ namespace JASS
 		/*
 			BITSTRING::UNSAFE_SETBIT()
 			--------------------------
-			Set the bit a position to 1.
 		*/
-		inline void								// no return value
-		unsafe_setbit
-			(
-			size_t position					// [in] which bit to set to 1
-			)
+		/*!
+			@brief Set the bit at position to 1.
+			@details This method does not check for overflow and may result in unpredictable behaviour if a position outside the range [0..size()-1] is passed.
+			@param position in] Which bit to set to 1.
+		*/
+		inline void unsafe_setbit(size_t position)
 			{
 			bits[position >> 3] |= 1 << (position & 7);
 			}
@@ -204,13 +219,13 @@ namespace JASS
 		/*
 			BITSTRING::UNSAFE_UNSETBIT()
 			----------------------------
-			Set the bit a position to 0.
 		*/
-		inline void								// no return value
-		unsafe_unsetbit
-			(
-			size_t position					// [in] which bit to set to 0
-			)
+		/*!
+			@brief Set the bit at position to 0.
+			@details This method does not check for overflow and may result in unpredictable behaviour if a position outside the range [0..size()-1] is passed.
+			@param position in] Which bit to set to 0.
+		*/
+		inline void unsafe_unsetbit(size_t position)
 			{
 			bits[position >> 3] &= ~(1 << (position & 7));
 			}
@@ -220,11 +235,13 @@ namespace JASS
 			--------------------------
 			Return the value of the bit at position (either 0 or 1)
 		*/
-		inline long					// [out] 0 or 1, the value of the bit at the given position
-		unsafe_getbit
-			(
-			size_t position		// [in] The bit position
-			) const
+		/*!
+			@brief Return the state (0 or 1) of the bit at the given position.
+			@details This method does not check for overflow and may result in unpredictable behaviour if a position outside the range [0..size()-1] is passed.
+			@param position in] Which bit to check.
+			@return true or false, the value of the bit at the given position
+		*/
+		bool unsafe_getbit(size_t position) const
 			{
 			return (bits[position >> 3] >> (position & 7)) & 0x01;
 			}
@@ -232,14 +249,15 @@ namespace JASS
 		/*
 			BITSTRING::BIT_OR()
 			-------------------
-			answer = this OR with. This can may the length of either the this or with bitstrings.
 		*/
-		inline void								// no return value
-		bit_or
-			(
-			bitstring &answer,		// [out] the answer or this OR with
-			bitstring &with			// [in] the bitstring to or this with
-			)
+		/*!
+			@brief answer = this | with
+			@details OR this and with, returning the result in answer.  This method is used to avoid object copies and allocation that would come from using operator overloading in C++.
+			With is [in, out] because this method sets the length of all three bitstrings to the length of the longest.
+			@param answer [out] The answer or this OR with
+			@param with [in, out] the bitstring to OR this with
+		*/
+		inline void bit_or(bitstring &answer, bitstring &with)
 			{
 			operation(OR, answer, *this, with);
 			}
@@ -247,14 +265,15 @@ namespace JASS
 		/*
 			BITSTRING::BIT_XOR()
 			--------------------
-			answer = this XOR with. This can may the length of either the this or with bitstrings.
 		*/
-		inline void								// no return value
-		bit_xor
-			(
-			bitstring &answer,		// [out] the answer or this XOR with
-			bitstring &with			// [in] the bitstring to or this with
-			)
+		/*!
+			@brief answer = this ^ with
+			@details OR this and with, returning the result in answer.  This method is used to avoid object copies and allocation that would come from using operator overloading in C++.
+			With is [in, out] because this method sets the length of all three bitstrings to the length of the longest.
+			@param answer [out] The answer or this XOR with
+			@param with [in, out] the bitstring to XOR this with
+		*/
+		inline void bit_xor(bitstring &answer, bitstring &with)
 			{
 			operation(XOR, answer, *this, with);
 			}
@@ -263,14 +282,15 @@ namespace JASS
 		/*
 			BITSTRING::BIT_AND()
 			--------------------
-			answer = this AND with. This can may the length of either the this or with bitstrings.
 		*/
-		inline void								// no return value
-		bit_and
-			(
-			bitstring &answer,		// [out] the answer or this AND with
-			bitstring &with			// [in] the bitstring to or this with
-			)
+		/*!
+			@brief answer = this & with
+			@details OR this and with, returning the result in answer.  This method is used to avoid object copies and allocation that would come from using operator overloading in C++.
+			With is [in, out] because this method sets the length of all three bitstrings to the length of the longest.
+			@param answer [out] The answer or this AND with
+			@param with [in, out] the bitstring to AND this with
+		*/
+		inline void bit_and(bitstring &answer, bitstring &with)
 			{
 			operation(AND, answer, *this, with);
 			}
@@ -279,14 +299,15 @@ namespace JASS
 		/*
 			BITSTRING::BIT_AND_NOT()
 			------------------------
-			answer = this AND NOT with. This can may the length of either the this or with bitstrings.
 		*/
-		inline void								// no return value
-		bit_and_not
-			(
-			bitstring &answer,		// [out] the answer or this AND NOT with
-			bitstring &with			// [in] the bitstring to or this with
-			)
+		/*!
+			@brief answer = this & ~with
+			@details OR this and with, returning the result in answer.  This method is used to avoid object copies and allocation that would come from using operator overloading in C++.
+			With is [in, out] because this method sets the length of all three bitstrings to the length of the longest.
+			@param answer [out] The answer or this AND NOT with
+			@param with [in, out] the bitstring to AND NOT this with
+		*/
+		inline void bit_and_not(bitstring &answer, bitstring &with)
 			{
 			operation(AND_NOT, answer, *this, with);
 			}
@@ -294,56 +315,51 @@ namespace JASS
 		/*
 			BITSTRING::POPCOUNT()
 			---------------------
-			Return the number of set bits in the bitstring
 		*/
-		size_t								// [out] returns the number of set bits in the bitstring
-		popcount
-			(
-			void								// no parameters
-			) const;
+		
+		/*!
+			@brief Return the number of set bits in the bitstring.  This uses popcount(bitstring_word) to do the count
+			@return The number of set bits in this bitstring.
+		*/
+		size_t popcount(void) const;
 
 		/*
 			BITSTRING::INDEX()
 			------------------
-			Return the bit position of the nth set bit (where n is called which)
 		*/
-		size_t						// [out] the bit positon of the given set bit
-		index
-			(
-			size_t which			// [in] which set bit we're looking for
-			);
+		/*!
+			@brief Returns the bit position of the whitch-th set bit.
+			@param [in] which set bit we're looking for.
+			@return The bit positon of the given set bit.
+		*/
+		size_t index(size_t which);
 
 		/*
 			BITSTRING::ZERO()
 			-----------------
-			Set the bitstring to all zeros
 		*/
-		void									// no return value
-		zero
-			(
-			void								// no parameters
-			);
+		/*!
+			@brief Set the bitstring to all zeros
+		*/
+		void zero(void);
 
 		/*
 			BITSTRING::ONE()
 			----------------
-			Set all valid bits to 1
-
 		*/
-		void									// no return value
-		one
-			(
-			void								// no parameters
-			);
+		/*!
+			@brief Set the bitstring to all ones
+		*/
+		void one(void);
 		
 		/*
 			BITSTRING::UNITTEST()
 			---------------------
 		*/
-		static void							// no return value
-		unittest
-			(
-			void								// no parameters
-			);
+		/*!
+			@brief Static method that performs a unittest.
+			@details .
+		*/
+		static void unittest(void);
 	} ;
 }

@@ -27,6 +27,8 @@ namespace JASS
 	*/
 	/*!
 		@brief File based I/O methods including whole file and partial files.
+		@details This class exists in order to abstract file I/O which has, in the past, been different on different platforms.  For example,
+		64-bit file I/O under Windows (using Win32) is awkward because the Win32 functions do not take 64-bit parameters.
 	*/
 	class file
 		{
