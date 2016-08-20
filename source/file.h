@@ -7,11 +7,10 @@
 	Originally from the ATIRE codebase, this code is a re-write using C++ STL classes.
 */
 /*!
-	@header
-	Partial file and whole file based I/O methods.
+	@file
+	@brief Partial file and whole file based I/O methods.
 	@author Andrew Trotman
 	@copyright 2016 Andrew Trotman
-	@language c++
 */
 #pragma once
 
@@ -27,7 +26,6 @@ namespace JASS
 		----------
 	*/
 	/*!
-		@class
 		@brief File based I/O methods including whole file and partial files.
 	*/
 	class file
@@ -38,7 +36,7 @@ namespace JASS
 				------------
 			*/
 			/*!
-				Constructor.
+				@brief Constructor.
 			*/
 			file() {}
 
@@ -47,7 +45,7 @@ namespace JASS
 				------------
 			*/
 			/*!
-				Destructor.
+				@brief Destructor.
 			*/
 			~file() {}
 			
@@ -56,7 +54,8 @@ namespace JASS
 				------------------------
 			*/
 			/*!
-				Read the contents of file filename into the std::string into.  Because into is a string it is natrally '\0' terminated by the C++ std::string class.
+				@brief Read the contents of file filename into the std::string into.
+				@details Because into is a string it is naturally '\0' terminated by the C++ std::string class.
 				@param filename [in] The path of the file to read.
 				@param into [out] The std::string to write into.  This string will be re-sized to the size of the file.
 				@return The size of the file in bytes
@@ -68,7 +67,8 @@ namespace JASS
 				-------------------------
 			*/
 			/*!
-				Write the contents of buffer to the file specified in filenane.  If the file does not exist it is created.  If it does already exist it is overwritten.
+				@brief Write the contents of buffer to the file specified in filenane.
+				@details If the file does not exist it is created.  If it does already exist it is overwritten.
 				@param filename [in] The path of the file to write to.
 				@param buffer [in] The data to write to the file.
 				@return True if successful, false if unsuccessful
@@ -80,7 +80,8 @@ namespace JASS
 				----------------------
 			*/
 			/*!
-				Turn a single std::string into a vector of uint8_t * (i.e. "C" strings). Note that these pointers are in-place.  That is,
+				@brief Turn a single std::string into a vector of uint8_t * (i.e. "C" strings).
+				@details Note that these pointers are in-place.  That is,
 				they point into buffer so any change to the uint8_t or to buffer effect each other.  This method removes blank lines from buffer and
 				changes buffer by inserting '\0' characters at the end of each line.
 				@param line_list [out] The vector to write into
@@ -93,7 +94,7 @@ namespace JASS
 				--------------------
 			*/
 			/*!
-				Determines whether the given file system object is a directoy or not.
+				@brief Determines whether the given file system object is a directoy or not.
 				@param filename [in] The path to the file system object to check.
 				@return True if the given path is a directory, false if it is not (or does not exist).
 			*/
@@ -104,7 +105,8 @@ namespace JASS
 				----------------
 			*/
 			/*!
-				Static method that performs a unittest
+				@brief Static method that performs a unittest.
+				@details .
 			*/
 			static void unittest(void);
 		} ;

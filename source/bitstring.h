@@ -6,6 +6,13 @@
 
 	Originally from the ATIRE codebase.
 */
+/*!
+	@file
+	@brief Long bitstrings.
+	@author Andrew Trotman
+	@copyright 2016 Andrew Trotman
+*/
+
 #pragma once
 
 #include <stdint.h>
@@ -20,6 +27,9 @@ namespace JASS
 		Storage class for arbitrary length bitstrings.  The internal storage is in bytes, but they are manipulated
 		in chunks of bitstring::bitstring_word (which were intially uint64_t).
 	*/
+	/*!
+		@brief Long bitstrings
+	*/
 	class bitstring
 	{
 	/*
@@ -31,12 +41,15 @@ namespace JASS
 			BITSTRING::ACTION
 			-----------------
 		*/
+		/*!
+			@brief The action enum is used to pass a Boolean operation to operation().
+		*/
 		enum action
 			{
-			OR,				// OR two bitstrings together
-			XOR,				// XOR two bitstrings together
-			AND,				// AND two bitstrings together
-			AND_NOT			// a AND ~ b
+			OR,				///< OR two bitstrings together
+			XOR,				///< XOR two bitstrings together
+			AND,				///< AND two bitstrings together
+			AND_NOT			///< a AND ~ b
 			};
 		
 	/*
@@ -63,6 +76,9 @@ namespace JASS
 			BITSTRING::OPERATION()
 			----------------------
 		*/
+		/*!
+			@brief operation
+		*/
 		virtual void							// no return value
 		operation
 			(
@@ -79,9 +95,9 @@ namespace JASS
 			Constructor
 		*/
 		bitstring() : bits_long(0)
-		{
-		// nothing
-		}
+			{
+			// nothing
+			}
 		
 		/*
 			BITSTRING::POPCOUNT()
