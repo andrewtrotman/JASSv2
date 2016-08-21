@@ -25,12 +25,7 @@ namespace JASS
 		
 		Returns the length of the file in bytes - which is also the size of the string buffer once read.
 	*/
-	size_t									// [out] size of the file in bytes
-	file::read_entire_file
-		(
-		const std::string &filename,	// [in] path to the file to read.
-		std::string &into					// [out] string to write into.  This string will be re-sized to the size of the file
-		)
+	size_t file::read_entire_file(const std::string &filename, std::string &into)
 		{
 		FILE *fp;							// "C" pointer to the file
 		struct stat details;				// file system's details of the file
@@ -59,12 +54,7 @@ namespace JASS
 		
 		Returns true on success, else false.
 	*/
-	bool										// [out] true if successful, false if unsuccessful
-	file::write_entire_file
-		(
-		const std::string &filename,	// [in] name of the file to write to
-		const std::string &buffer		// [in] buffer to write to the file
-		)
+	bool file::write_entire_file(const std::string &filename, const std::string &buffer)
 		{
 		FILE *fp;						// "C" file to write to
 
@@ -86,12 +76,7 @@ namespace JASS
 		
 		Note: This method removes blank lines from the input file.
 	*/
-	void												// no return value
-	file::buffer_to_list
-		(
-		std::vector<uint8_t *> &line_list,	// [out] the vector to write into
-		std::string &buffer						// [in] the string to decompose
-		)
+	void file::buffer_to_list(std::vector<uint8_t *> &line_list, std::string &buffer)
 		{
 		uint8_t *pos;
 		size_t line_count = 0;
@@ -152,11 +137,7 @@ namespace JASS
 	
 		Returns true if filename is a directory, else returns false.
 	*/
-	bool										// [out] true if the given path is a directory, false if it is not (or does not exist)
-	file::is_directory
-		(
-		const std::string &filename	// [in] the path to the file system object to check
-		)
+	bool file::is_directory(const std::string &filename)
 		{
 		struct stat st;				// file system details
 
@@ -169,11 +150,7 @@ namespace JASS
 		FILE::UNITTEST()
 		----------------
 	*/
-	void										// no return value
-	file::unittest
-		(
-		void									// no parameters
-		)
+	void file::unittest(void)
 		{
 		std::vector<uint8_t *> lines;
 		std::string example_file;

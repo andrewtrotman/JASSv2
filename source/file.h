@@ -108,7 +108,6 @@ namespace JASS
 			*/
 			/*!
 				@brief Static method that performs a unittest.
-				@details .
 			*/
 			static void unittest(void);
 		} ;

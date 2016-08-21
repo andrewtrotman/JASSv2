@@ -63,7 +63,7 @@ namespace JASS
 	*/
 	protected:
 		/*!
-			@typedef
+			@typedef bitstring_word
 			@brief bitstring_word is used as the underlying type for Boolean operations and for popcount()
 		*/
 		typedef uint64_t bitstring_word;		// this is the size of word used for Boolean operatons (and so storage is rounded up to units of this)
@@ -74,9 +74,13 @@ namespace JASS
 	*/
 	protected:
 		/*!
-			@var
+			@var bits
 		*/
 		std::vector<uint8_t> bits;				///< The underlying storage for the long bitstring
+		
+		/*!
+			@var bits_long
+		*/
 		size_t bits_long;							///< The length of the bitstring in bits.
 
 	/*
@@ -127,7 +131,7 @@ namespace JASS
 		*/
 		/*!
 			@brief Count the number of bits set in value.  This uses the parallel algorithm from here: https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
-			@param [in] The value whose set bits are counted.
+			@param value [in] The value whose set bits are counted.
 			@return The number of set bits in the parameter.
 		*/
 		inline static size_t popcount(uint64_t value)
@@ -246,6 +250,55 @@ namespace JASS
 			return (bits[position >> 3] >> (position & 7)) & 0x01;
 			}
 
+
+		/*
+			BITSTRING::SETBIT()
+			-------------------
+		*/
+		/*!
+			@brief Set the bit at position to 1.
+			@details This method checks for overflow and has no effect if overflow is detected.
+			@param position in] Which bit to set to 1.
+		*/
+		inline void setbit(size_t position)
+			{
+			if (position < bits_long)
+				unsafe_setbit(position);
+			}
+		
+		/*
+			BITSTRING::UNSETBIT()
+			---------------------
+		*/
+		/*!
+			@brief Set the bit at position to 0.
+			@details This method checks for overflow and has no effect if overflow is detected.
+			@param position in] Which bit to set to 0.
+		*/
+		inline void unsetbit(size_t position)
+			{
+			if (position < bits_long)
+				unsafe_unsetbit(position);
+			}
+		
+		/*
+			BITSTRING::GETBIT()
+			-------------------
+			Return the value of the bit at position (either 0 or 1)
+		*/
+		/*!
+			@brief Return the state (0 or 1) of the bit at the given position.
+			@details This method checks for overflow and returns false in the case of overflow.
+			@param position in] Which bit to check.
+			@return true or false, the value of the bit at the given position (or false is position is out of range)
+		*/
+		bool getbit(size_t position) const
+			{
+			return position < bits_long ? unsafe_getbit(position) : 0;
+			}
+
+
+
 		/*
 			BITSTRING::BIT_OR()
 			-------------------
@@ -358,7 +411,6 @@ namespace JASS
 		*/
 		/*!
 			@brief Static method that performs a unittest.
-			@details .
 		*/
 		static void unittest(void);
 	} ;

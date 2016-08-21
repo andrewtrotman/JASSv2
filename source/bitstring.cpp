@@ -20,11 +20,7 @@ namespace JASS
 		---------------------
 		Return the number of set bits in the bitstring
 	*/
-	size_t								// [out] returns the number of set bits in the bitstring
-	bitstring::popcount
-		(
-		void								// no parameters
-		) const
+	size_t bitstring::popcount(void) const
 		{
 		size_t count = 0;
 		size_t chunks_long = bits.size() / sizeof(bitstring_word);
@@ -41,11 +37,7 @@ namespace JASS
 		-----------------------
 		Sets the length of the bitstring. Valid bits are in the range (0 .. new_length_in_bits-1)
 	*/
-	void									// no return value
-	bitstring::set_length
-		(
-		size_t new_length_in_bits	// [in] the new length of the string
-		)
+	void bitstring::set_length(size_t new_length_in_bits)
 		{
 		/*
 			Compute the new and old lengths in "chunks"
@@ -73,11 +65,7 @@ namespace JASS
 		-----------------
 		Set the bitstring to all zeros
 	*/
-	void									// no return value
-		bitstring::zero
-		(
-		void								// no parameters
-		)
+	void bitstring::zero(void)
 		{
 		memset(&bits[0], 0, bits.size());
 		}
@@ -87,11 +75,7 @@ namespace JASS
 		--------------------
 		Set all valid bits to 1 (and pad to the end with zeros)
 	*/
-	void									// no return value
-		bitstring::one
-		(
-		void								// no parameters
-		)
+	void bitstring::one(void)
 		{
 		/*
 			set the entire bitstring to all 1s
@@ -112,14 +96,7 @@ namespace JASS
 		Worker function to perform a binary operation a = b op c (e.g. a = b AND c)
 		Its done this way to avoid repitition of the setup code.
 	*/
-	void									// no return value
-	bitstring::operation
-		(
-		action op,							// [in] the operation we're going to perform
-		bitstring &a,						// [out] the answer (b op c)
-		bitstring &b,						// [in] the first parameter
-		bitstring &c						// [in] the second parameter
-		)
+	void bitstring::operation(action op, bitstring &a, bitstring &b, bitstring &c)
 		{
 		/*
 			Make sure all the bitstrings are the same length
@@ -171,11 +148,7 @@ namespace JASS
 		------------------
 		Return the bit position of the nth set bit (where n is called which)
 	*/
-	size_t						// [out] the bit positon of the given set bit
-	bitstring::index
-		(
-		size_t which			// [in] which set bit we're looking for
-		)
+	size_t bitstring::index(size_t which)
 		{
 		size_t total = 0;
 		uint8_t *ch = &bits[0];
