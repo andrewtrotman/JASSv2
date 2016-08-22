@@ -184,14 +184,14 @@ namespace JASS
 			}
 
 		/*
-			BITSTRING::SET_LENGTH()
-			-----------------------
+			BITSTRING::RESIZE()
+			-------------------
 		*/
 		/*!
 			@brief Set the length of the bitstring to length_in_bits.  The new valid range is 0.. length_in_bits - 1
 			@param length_in_bits [in] the new length of bitstring
 		*/
-		void set_length(size_t length_in_bits);
+		void resize(size_t length_in_bits);
 
 		/*
 			BITSTRING::SIZE()
@@ -296,8 +296,6 @@ namespace JASS
 			{
 			return position < bits_long ? unsafe_getbit(position) : 0;
 			}
-
-
 
 		/*
 			BITSTRING::BIT_OR()
@@ -404,6 +402,24 @@ namespace JASS
 			@brief Set the bitstring to all ones
 		*/
 		void one(void);
+		
+		/*
+			BITSTRING::SERIALISE()
+			----------------------
+		*/
+		/*!
+			@brief Return a serialised version of this object as an array of uint8_t.
+			@detials  One frequent (and the initial use) of this class is to convert a bit-string into a byte-string.
+			This method does exactly that.  It returns a pointer to the internal byte-string and a length.  The returned
+			string is contigious.  It is valid until the length of the bitstring changes.
+			@param length [out] The length of the bytestring (measured in bytes).
+			@return The bitstring as a byte string (passed with 0s at the end).
+		*/
+		uint8_t *serialise(size_t &length)
+			{
+			length = bits.size();
+			return &bits[0];
+			}
 		
 		/*
 			BITSTRING::UNITTEST()

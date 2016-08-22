@@ -33,11 +33,11 @@ namespace JASS
 		}
 
 	/*
-		BITSTRING::SET_LENGTH()
-		-----------------------
+		BITSTRING::RESIZE()
+		-------------------
 		Sets the length of the bitstring. Valid bits are in the range (0 .. new_length_in_bits-1)
 	*/
-	void bitstring::set_length(size_t new_length_in_bits)
+	void bitstring::resize(size_t new_length_in_bits)
 		{
 		/*
 			Compute the new and old lengths in "chunks"
@@ -102,9 +102,9 @@ namespace JASS
 			Make sure all the bitstrings are the same length
 		*/
 		size_t longest = maths::max(b.size(), c.size());
-		a.set_length(longest);
-		b.set_length(longest);
-		c.set_length(longest);
+		a.resize(longest);
+		b.resize(longest);
+		c.resize(longest);
 
 		/*
 			get pointers to each of the internal buffers (as bitstring_word pointers)
@@ -187,10 +187,10 @@ namespace JASS
 		/*
 			check that a bitstring is initialised to zero
 		*/
-		b1.set_length(100);
+		b1.resize(100);
 		assert(b1.popcount() == 0);
 
-		b2.set_length(1000);
+		b2.resize(1000);
 		assert(b2.popcount() == 0);
 		
 		/*

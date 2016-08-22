@@ -12,26 +12,26 @@
 
 	The functions we wish to mirror are described here: http://www.cplusplus.com/reference/cctype/
 	They are:
-		NAME               VARIABLE IN THIS PROGRAM
-		isalnum			-- alpha + digit
-		isalpha			-- alpha
+		NAME           VARIABLE IN THIS PROGRAM		D'S DEFINITION
+		isalnum			++ alpha + digit					-
+		isalpha			++ alpha								"general Unicode category: Alphabetic" - isAlpha)(
 		isblank
-		iscntrl			-- control
-		isdigit			-- digit
-		isgraph
-		islower			-- lowercase
+		iscntrl			++ control							"general Unicode category: Cc" - isControl()
+		isdigit			++ digit								"general Unicode category: Nd, Nl, No" - isNumber()
+		isgraph			++ graphical						"general Unicode category: L, M, N, P, S, Zs" - isGraphical()
+		islower			++ lowercase						"Unicode lowercase" - isLower()
 		isprint
-		ispunct			-- punc
-		isspace			-- space
-		isupper			-- uppercase
-		isxdigit			-- xdigit
+		ispunct			++ punc								"general Unicode category: Pd, Ps, Pe, Pc, Po, Pi, Pf" - IsPunctuation()
+		isspace			++ space								"general Unicode category: Zs" ('\n', '\r', \t') - isSpace()
+		isupper			++ uppercase						"Unicode uppercase" - isUpper()
+		isxdigit			++ xdigit
+		-					-										"Part of C0(tab, vertical tab, form feed, carriage return, and linefeed characters), Zs, Zl, Zp, and NEL(U+0085)" - isWhite()
 
 		tolower
 		toupper
 		
 	These are then dumped out as C++ methods.
 */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -39,7 +39,12 @@
 #include <vector>
 
 #include "file.h"
+#include "bitstring.h"
 
+/*
+	The highest possible Unicode codepoint.
+*/
+static const size_t MAX_CODEPOINT = 0x10FFFF;
 
 /*
 	alphabetic characters.  Note that alpha != lowercase + uppercase because there are many
@@ -80,6 +85,11 @@ std::vector<uint32_t>symbol;
 std::vector<uint32_t>control;
 
 /*
+	Graphical characters
+*/
+std::vector<uint32_t>graphical;
+
+/*
 	Hexadecimal digits
 */
 std::vector<uint32_t>xdigit;
@@ -87,15 +97,14 @@ std::vector<uint32_t>xdigit;
 /*
 	USAGE()
 	------
-	Tell the user how to use this program
 */
-void							// no return value
-usage
-	(
-	char *filename			// [in] the name of this executable
-	)
+/*!
+	@brief Tell the user how to use this program.
+	@param filename [in] the name of this executable (normally argv[0]).
+*/
+void usage(char *filename)
 	{
-	printf("Usage:%s <UnicodeData.txt>\n", filename);
+	printf("Usage:%s <UnicodeData.txt> <PropList.txt>\n", filename);
 	exit(0);
 	}
 
@@ -104,13 +113,51 @@ usage
 	-----------
 	serialise into the methods
 */
-void							// no return value
-serialise
-	(
-	void						// no parameters
-	)
+/*!
+	@brief Walk through each of the lists turning it into C code.
+	@param operation [in] The name of the "is" operation.
+	@param list [in] The list of which codepoints are valid for this "is" condition.
+*/
+void serialise(const std::string &operation, const std::vector<uint32_t> &list)
 	{
+	JASS::bitstring bits;
 	
+	/*
+		Make sure the bitstring is long enough (the highest Codepoint is MAX_CODEPOINT, so the bitstring is one bit longer (to store the 0)
+	*/
+	bits.resize(MAX_CODEPOINT + 1);
+
+	/*
+		Turn the vector into a bitstring
+	*/
+	for (const auto &codepoint : list)
+		bits.unsafe_setbit(codepoint);
+		
+	/*
+		Turn the bitstring into a bytestring
+	*/
+	size_t length;
+	auto bytes = bits.serialise(length);
+	
+	/*
+		Write out the name of the operation
+	*/
+	printf("static unsigned char unicode_%s_data[] = {", operation.c_str());
+	
+	/*
+		Write out the bytestring as C
+	*/
+	for (size_t byte = 0; byte < length; byte++)
+		{
+		if (byte % 16 == 0)
+			puts("");
+		printf("0x%02X,", bytes[byte]);
+		}
+
+	/*
+		Correctly terminate the string
+	*/
+	printf("};");
 	}
 
 /*
@@ -124,78 +171,215 @@ serialise
 		general category (is it a number or a letter, etc)
 		...
 		
-	We're interested in the codepoint and the category only (nothing else)
+	We're interested in the codepoint and the category only (nothing else), but sometimes we see ranges:
+	
+		20000;<CJK Ideograph Extension B, First>;Lo;0;L;;;;;N;;;;;
+		2A6D6;<CJK Ideograph Extension B, Last>;Lo;0;L;;;;;N;;;;;
+	
+	In which case we *are* interested in the range.
+
 */
-void							// no return value
-process
-	(
-	const char *line	// [in] the line to process
-	)
+/*!
+	@brief Given a line form the UnicodeData.txt file, work out which functions should know about this codepoint
+	@param line [in] The line to process.
+	@param last_codepoint [in] The start of the current unicode range
+	@return The last Unicode codepoint we've seen (which must be passed back next call for ranges).
+*/
+int process(const char *line, int last_codepoint)
 	{
-	uint32_t codepoint;					// unicode number of the codepoint
-	char name[1024];				// Name of the codepoint
-	char category[5];				// Two letter catagory code for the codepoint
+	int codepoint;			// unicode number of the codepoint
+	int range_start;		// start of the range for this line in the Unicode database
+	int range_end;			// end of the range for this line in the Unicode database
+	char category[3];		// Two letter catagory code for the codepoint
+	
+	/*
+		the first parmeter is the codepoint
+	*/
+	if (strstr(line, ", Last>") != NULL)
+		{
+		range_start = last_codepoint;
+		sscanf(line, "%x", &range_end);
+		}
+	else
+		{
+		sscanf(line, "%x", &range_start);
+		range_end = range_start;
+		}
+
+	/*
+		step over the second parameter
+	*/
+	char *semicolon;
+	if ((semicolon = strchr(line, ';')) == NULL)
+		exit(printf("Badly formed line:%s\n", line));
+	if ((semicolon = strchr(semicolon + 1, ';')) == NULL)
+		exit(printf("Badly formed line:%s\n", line));
+		
+	/*
+		The third parameter is the type
+	*/
+	strncpy(&category[0], semicolon + 1, 2);
+	category[2] = '\0';
 	
 	/*
 		Work out what type of character we have, according the the "C" ctype.h conventions
+		
+		Alphabetic is defined as: Lowercase + Uppercase + Lt + Lm + Lo + Nl + Other_Alphabetic
+		where
+			Lowercase is defined as:Ll + Other_Lowercase
+			Uppercase is defined as:Lu + Other_Uppercase
+		and
+			Other_Alphabetic, Other_Lowercase, and  Other_Uppercase ae defined in PropList.txt
+		
 	*/
-	sscanf(line, "%x;%s;%s;", &codepoint, name, category);
+	for (codepoint = range_start; codepoint <= range_end; codepoint++)
+		{
+		if (*category == 'L')
+			graphical.push_back(codepoint);
+		if (*category == 'M')
+			graphical.push_back(codepoint);
+		if (*category == 'N')
+			graphical.push_back(codepoint);
+		if (*category == 'P')
+			graphical.push_back(codepoint);
+		if (*category == 'S')
+			graphical.push_back(codepoint);
+		if (strcmp(category, "Zs") == 0)
+			graphical.push_back(codepoint);
+			
+			
+		if (strcmp(category, "Lu") == 0)				// an uppercase letter
+			{
+			uppercase.push_back(codepoint);
+			alpha.push_back(codepoint);
+			}
+		if (strcmp(category, "Ll") == 0)				// a lowercase letter
+			{
+			lowercase.push_back(codepoint);
+			alpha.push_back(codepoint);
+			}
+		if (strcmp(category, "Lt") == 0)				// a digraphic character, with first part uppercase
+			{
+			uppercase.push_back(codepoint);
+			alpha.push_back(codepoint);
+			}
+		if (strcmp(category, "Lm") == 0)				// a modifier letter
+			{
+			alpha.push_back(codepoint);
+			}
+		if (strcmp(category, "Lo") == 0)				// other letters, including sylables and ideographs
+			{
+			alpha.push_back(codepoint);
+			}
+		if (strcmp(category, "Nl") == 0)				// a letterlike numeric character
+			{
+			alpha.push_back(codepoint);
+			}
+
+		if (*category == 'N')									// Number
+			digit.push_back(codepoint);
+
+		if (*category == 'P')									// Punctuation
+			punc.push_back(codepoint);
+
+		if (*category == 'Z')									// Separator
+			space.push_back(codepoint);
+		if (codepoint < 0x128 && isspace(codepoint))		/// add the "C" space characters too (TAB, LF, VT, FF, CR)
+			space.push_back(codepoint);
+
+		if (*category == 'M')									// Mark
+			mark.push_back(codepoint);
+
+		if (*category == 'S')									// Symbol
+			symbol.push_back(codepoint);
+
+		if (strcmp(category, "Cc") == 0)						// a C0 or C1 control code
+			control.push_back(codepoint);
+		}
+		
+	return range_end;
+	}
+/*
+	PROCESS_PROPLIST()
+	------------------
+	Format:
+		0009..000D    ; White_Space # Cc   [5] <control-0009>..<control-000D>
+		0020          ; White_Space # Zs       SPACE
+*/
+/*!
+	@brief Given a line form the PropList.txt file, work out which functions should know about this codepoint
+	@param line [in] The line to process.
+*/
+void process_proplist(const char *line)
+{
+/*
+	Ignore comments
+*/
+if (*line == '#')
+	return;
+
+int range_start;
+int range_end;
+
+if (sscanf(line, "%x..%x", &range_start, &range_end) == 1)
+	range_end = range_start;
 	
-	if (*category == 'L')									// Letter
+char *semicolon;
+
+if ((semicolon = strchr(line, ';')) == NULL)
+	exit(printf("badly formed line:%s\n", line));
+	
+char *hash;
+
+if ((hash = strchr(line, '#')) == NULL)
+	exit(printf("badly formed line:%s\n", line));
+
+for (int codepoint = range_start; codepoint <= range_end; codepoint++)
+	{
+	if (strncmp(semicolon, "; Other_Alphabetic #", hash - semicolon) == 0)
 		alpha.push_back(codepoint);
 		
-	if (strcmp(category, "Lu") == 0)						// an uppercase letter
-		uppercase.push_back(codepoint);
-	else if (strcmp(category, "Ll") == 0)				// a lowercase letter
+	if (strncmp(semicolon, "; Other_Lowercase #", hash - semicolon) == 0)
+		{
+		alpha.push_back(codepoint);
 		lowercase.push_back(codepoint);
-	else if (strcmp(category, "Lt") == 0)				// a digraphic character, with first part uppercase
+		}
+
+	if (strncmp(semicolon, "; Other_Uppercase #", hash - semicolon) == 0)
+		{
+		alpha.push_back(codepoint);
 		uppercase.push_back(codepoint);
-
-	if (*category == 'N')									// Number
-		digit.push_back(codepoint);
-
-	if (*category == 'P')									// Punctuation
-		punc.push_back(codepoint);
-
-	if (*category == 'Z')									// Separator
-		space.push_back(codepoint);
-	if (codepoint < 0x128 && isspace(codepoint))		/// add the "C" space characters too (TAB, LF, VT, FF, CR)
-		space.push_back(codepoint);
-
-	if (*category == 'M')									// Mark
-		mark.push_back(codepoint);
-
-	if (*category == 'S')									// Symbol
-		symbol.push_back(codepoint);
-
-	if (strcmp(category, "Cc") == 0)						// a C0 or C1 control code
-		control.push_back(codepoint);
+		}
 		
-
-	if (codepoint < 0x128 && isxdigit(codepoint))		// if its a hex digit then make note of it
+	if (strncmp(semicolon, "; Hex_Digit #", hash - semicolon) == 0)
 		xdigit.push_back(codepoint);
+	if (strncmp(semicolon, "; ASCII_Hex_Digit #", hash - semicolon) == 0)
+		xdigit.push_back(codepoint);
+		
+		
+	if (strncmp(semicolon, "; Dash #", hash - semicolon) == 0)
+					punc.push_back(codepoint);
+	if (strncmp(semicolon, "; Terminal_Punctuation #", hash - semicolon) == 0)
+					punc.push_back(codepoint);
+
 	}
+}
 
 /*
 	MAIN()
 	------
 	read UnicodeData.txt, compute the set of is() routines and dump then out
 */
-int						// [out] return code to the OS, always 0
-main
-	(
-	int argc,			// [in] number of command line parameters
-	char *argv[]		// [in] array of pointers to command line parameters
-	)
+int main(int argc, char *argv[])
 	{
 	/*
 		Check we have the right number of parameters
 	*/
-	if (argc != 2)
+	if (argc != 3)
 		usage(argv[0]);
 		
 	/*
-		get the name of the file to parse
+		get the name of the UnicodeData.txt file
 	*/
 	char *filename = argv[1];
 
@@ -214,13 +398,28 @@ main
 	/*
 		Process each line.
 	*/
+	int codepoint = 0;
 	for (const auto &line : lines)
-		process((const char *)line);
+		codepoint = process((const char *)line, codepoint);
 		
+	/*
+		get the name of the Properties file
+	*/
+	filename = argv[2];
+	
+	/*
+		read the file and turn it into a bunch of lines
+		the process each line
+	*/
+	JASS::file::read_entire_file(filename, file);
+	JASS::file::buffer_to_list(lines, file);
+	for (const auto &line : lines)
+		process_proplist((const char *)line);
+
 	/*
 		Dump out each method
 	*/
-	serialise();
+	serialise("isalpha", alpha);
 		
 	/*
 		success
