@@ -39,3 +39,15 @@ include_directories(source)
 add_executable(unittest tools/unittest.cpp)
 target_link_libraries(unittest JASSlib)
 
+#
+# Build the documentation with Doxygen (but Apple's HeaderDoc also works)
+#
+find_package(Doxygen)
+if(DOXYGEN_FOUND)
+	add_custom_target(
+		docs ${DOXYGEN_EXECUTABLE}
+		${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
+		WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/dox
+		VERBATIM
+		)
+endif(DOXYGEN_FOUND)
