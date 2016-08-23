@@ -475,7 +475,20 @@ int main(int argc, char *argv[])
 		Dump out each method
 	*/
 	serialise("isalpha", alpha);
-		
+#ifdef NEVER
+	serialise("isupper", uppercase);
+	serialise("islower", lowercase);
+	serialise("isdigit", digit);
+	serialise("ispunc", punc);
+	serialise("isspace", space);
+	serialise("iswhitespace", whitespace);
+	serialise("ismark", mark);
+	serialise("issymbol", symbol);
+	serialise("iscontrol", control);
+	serialise("isgraph", graphical);
+	serialise("isxdigit", xdigit);
+#endif
+
 	/*
 		success
 	*/
