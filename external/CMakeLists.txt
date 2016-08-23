@@ -28,4 +28,3 @@ add_custom_command(
 	COMMAND curl http://www.unicode.org/Public/UCD/latest/ucd/PropList.txt > PropList.txt
 	WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/Unicode
 	)
-
