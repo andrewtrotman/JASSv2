@@ -18,6 +18,7 @@ add_library(JASSlib
 	file.h
 	file.cpp
 	maths.h
+	unicode_ctype.h
 	)
 
 

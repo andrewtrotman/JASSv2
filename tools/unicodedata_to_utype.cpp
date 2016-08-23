@@ -163,7 +163,7 @@ void serialise(const std::string &operation, const std::vector<uint32_t> &list)
 	/*
 		Correctly terminate the string
 	*/
-	printf("};");
+	printf("};\n\n");
 	}
 
 /*
@@ -475,7 +475,6 @@ int main(int argc, char *argv[])
 		Dump out each method
 	*/
 	serialise("isalpha", alpha);
-#ifdef NEVER
 	serialise("isupper", uppercase);
 	serialise("islower", lowercase);
 	serialise("isdigit", digit);
@@ -487,7 +486,6 @@ int main(int argc, char *argv[])
 	serialise("iscontrol", control);
 	serialise("isgraph", graphical);
 	serialise("isxdigit", xdigit);
-#endif
 
 	/*
 		success
