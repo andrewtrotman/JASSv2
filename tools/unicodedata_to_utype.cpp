@@ -14,18 +14,18 @@
 	They are:
 		NAME           VARIABLE IN THIS PROGRAM		D'S DEFINITION
 		isalnum			++ alpha + digit					-
-		isalpha			++ alpha								"general Unicode category: Alphabetic" - isAlpha)(
+		isalpha			++ alpha								Agree: "general Unicode category: Alphabetic" - isAlpha()
 		isblank
-		iscntrl			++ control							"general Unicode category: Cc" - isControl()
-		isdigit			++ digit								"general Unicode category: Nd, Nl, No" - isNumber()
-		isgraph			++ graphical						"general Unicode category: L, M, N, P, S, Zs" - isGraphical()
-		islower			++ lowercase						"Unicode lowercase" - isLower()
+		iscntrl			++ control							Agree: "general Unicode category: Cc" - isControl()
+		isdigit			++ digit								Agree: "general Unicode category: Nd, Nl, No" - isNumber()
+		isgraph			++ graphical						Agree: "general Unicode category: L, M, N, P, S, Zs" - isGraphical()
+		islower			++ lowercase						Agree: "Unicode lowercase" - isLower()
 		isprint
-		ispunct			++ punc								"general Unicode category: Pd, Ps, Pe, Pc, Po, Pi, Pf" - IsPunctuation()
-		isspace			++ space								"general Unicode category: Zs" ('\n', '\r', \t') - isSpace()
-		isupper			++ uppercase						"Unicode uppercase" - isUpper()
+		ispunct			++ punc								Agree: "general Unicode category: Pd, Ps, Pe, Pc, Po, Pi, Pf" - IsPunctuation()
+		isspace			++ space								Agree: "general Unicode category: Zs" - isSpace()
+		isupper			++ uppercase						Agree: "Unicode uppercase" - isUpper()
 		isxdigit			++ xdigit
-		-					-										"Part of C0(tab, vertical tab, form feed, carriage return, and linefeed characters), Zs, Zl, Zp, and NEL(U+0085)" - isWhite()
+		-					++ white								Agree: "Part of C0(tab, vertical tab, form feed, carriage return, and linefeed characters), Zs, Zl, Zp, and NEL(U+0085)" - isWhite()
 
 		tolower
 		toupper
@@ -65,9 +65,15 @@ std::vector<uint32_t>digit;
 std::vector<uint32_t>punc;
 
 /*
-	Space characters (including line break)
+	Space characters (by the unicode definition of space)
 */
 std::vector<uint32_t>space;
+
+/*
+	White Space characters (by the 'D' Phobos definition of whitespace) which is:
+	"general Unicode category: Part of C0(tab, vertical tab, form feed, carriage return, and linefeed characters), Zs, Zl, Zp, and NEL(U+0085))"
+*/
+std::vector<uint32_t>whitespace;
 
 /*
 	Diacritic marks
@@ -234,20 +240,25 @@ int process(const char *line, int last_codepoint)
 	*/
 	for (codepoint = range_start; codepoint <= range_end; codepoint++)
 		{
-		if (*category == 'L')
+		/*
+			Graphical characters
+		*/
+		if (*category == 'L')							// Letter
 			graphical.push_back(codepoint);
-		if (*category == 'M')
+		if (*category == 'M')							// Mark
 			graphical.push_back(codepoint);
-		if (*category == 'N')
+		if (*category == 'N')							// Number
 			graphical.push_back(codepoint);
-		if (*category == 'P')
+		if (*category == 'P')							// Punctuation
 			graphical.push_back(codepoint);
-		if (*category == 'S')
+		if (*category == 'S')							// Symbol
 			graphical.push_back(codepoint);
-		if (strcmp(category, "Zs") == 0)
+		if (strcmp(category, "Zs") == 0)				// Space_Separator
 			graphical.push_back(codepoint);
 			
-			
+		/*
+			Alphabetical, upppercase, and lowercase characters
+		*/
 		if (strcmp(category, "Lu") == 0)				// an uppercase letter
 			{
 			uppercase.push_back(codepoint);
@@ -264,35 +275,75 @@ int process(const char *line, int last_codepoint)
 			alpha.push_back(codepoint);
 			}
 		if (strcmp(category, "Lm") == 0)				// a modifier letter
-			{
 			alpha.push_back(codepoint);
-			}
 		if (strcmp(category, "Lo") == 0)				// other letters, including sylables and ideographs
-			{
 			alpha.push_back(codepoint);
-			}
 		if (strcmp(category, "Nl") == 0)				// a letterlike numeric character
-			{
 			alpha.push_back(codepoint);
-			}
 
-		if (*category == 'N')									// Number
+		/*
+			Numeric characters
+		*/
+		if (strcmp(category, "Nd") == 0)				// Decimal_Number
+			digit.push_back(codepoint);
+		if (strcmp(category, "Nl") == 0)				// Letter_Number
+			digit.push_back(codepoint);
+		if (strcmp(category, "No") == 0)				// Other_Number
 			digit.push_back(codepoint);
 
-		if (*category == 'P')									// Punctuation
+		/*
+			Punctuation characters
+		*/
+		if (strcmp(category, "Pc") == 0)				// Connector_Punctuation
+			punc.push_back(codepoint);
+		if (strcmp(category, "Pd") == 0)				// Dash_Punctuation
+			punc.push_back(codepoint);
+		if (strcmp(category, "Ps") == 0)				// Open_Punctuation
+			punc.push_back(codepoint);
+		if (strcmp(category, "Pe") == 0)				// Close_Punctuation
+			punc.push_back(codepoint);
+		if (strcmp(category, "Pi") == 0)				// Initial_Punctuation
+			punc.push_back(codepoint);
+		if (strcmp(category, "Pf") == 0)				// Final_Punctuation
+			punc.push_back(codepoint);
+		if (strcmp(category, "Po") == 0)				// Other_Punctuation
 			punc.push_back(codepoint);
 
-		if (*category == 'Z')									// Separator
-			space.push_back(codepoint);
-		if (codepoint < 0x128 && isspace(codepoint))		/// add the "C" space characters too (TAB, LF, VT, FF, CR)
+		/*
+			Space characters
+		*/
+		if (strcmp(category, "Zs") == 0)				// Space_Separator
 			space.push_back(codepoint);
 
+		/*
+			Whitespace characters (a more useful version of space characters)
+		*/
+		if (strcmp(category, "Zs") == 0)				// Space_Separator
+			whitespace.push_back(codepoint);
+		if (strcmp(category, "Zl") == 0)				// Line_Separator
+			whitespace.push_back(codepoint);
+		if (strcmp(category, "Zp") == 0)				// Paragraph_Separator
+			whitespace.push_back(codepoint);
+		if (codepoint <= 0xFF && isspace(codepoint))		// space, tab, vertical tab, form feed, carriage return, and linefeed characters
+			whitespace.push_back(codepoint);
+		if (codepoint == 0x85)								// NEL character (the Next Line character)
+			whitespace.push_back(codepoint);
+
+		/*
+			Mark characters
+		*/
 		if (*category == 'M')									// Mark
 			mark.push_back(codepoint);
 
+		/*
+			Symbol characters
+		*/
 		if (*category == 'S')									// Symbol
 			symbol.push_back(codepoint);
 
+		/*
+			Control characters
+		*/
 		if (strcmp(category, "Cc") == 0)						// a C0 or C1 control code
 			control.push_back(codepoint);
 		}
@@ -336,32 +387,36 @@ if ((hash = strchr(line, '#')) == NULL)
 
 for (int codepoint = range_start; codepoint <= range_end; codepoint++)
 	{
-	if (strncmp(semicolon, "; Other_Alphabetic #", hash - semicolon) == 0)
+	if (strncmp(semicolon, "; Other_Alphabetic #", hash - semicolon) == 0)				// Other_Alphabetic
 		alpha.push_back(codepoint);
 		
-	if (strncmp(semicolon, "; Other_Lowercase #", hash - semicolon) == 0)
+	if (strncmp(semicolon, "; Other_Lowercase #", hash - semicolon) == 0)				// Other_Lowercase
 		{
 		alpha.push_back(codepoint);
 		lowercase.push_back(codepoint);
 		}
 
-	if (strncmp(semicolon, "; Other_Uppercase #", hash - semicolon) == 0)
+	if (strncmp(semicolon, "; Other_Uppercase #", hash - semicolon) == 0)				// Other_Uppercase
 		{
 		alpha.push_back(codepoint);
 		uppercase.push_back(codepoint);
 		}
 		
-	if (strncmp(semicolon, "; Hex_Digit #", hash - semicolon) == 0)
+	if (strncmp(semicolon, "; Hex_Digit #", hash - semicolon) == 0)						// Hex_Digit
 		xdigit.push_back(codepoint);
-	if (strncmp(semicolon, "; ASCII_Hex_Digit #", hash - semicolon) == 0)
+	if (strncmp(semicolon, "; ASCII_Hex_Digit #", hash - semicolon) == 0)				// ASCII_Hex_Digit
 		xdigit.push_back(codepoint);
 		
-		
-	if (strncmp(semicolon, "; Dash #", hash - semicolon) == 0)
+/*
+	D doesn't use this definition for punctuation, but it isn't yet clear that it
+	adds anything that isn't already there.
+*/
+/*
+	if (strncmp(semicolon, "; Dash #", hash - semicolon) == 0)								// Dash
 					punc.push_back(codepoint);
-	if (strncmp(semicolon, "; Terminal_Punctuation #", hash - semicolon) == 0)
+	if (strncmp(semicolon, "; Terminal_Punctuation #", hash - semicolon) == 0)			// Terminal_Punctuation
 					punc.push_back(codepoint);
-
+*/
 	}
 }
 
