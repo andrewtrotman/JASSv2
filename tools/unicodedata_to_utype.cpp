@@ -4,28 +4,30 @@
 	Copyright (c) 2016 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 
-	Convert the Unicode Standard UnicodeData.txt into a bunch of methods similar to the
+	Convert the Unicode Standard UnicodeData.txt and PropList.txt into a bunch of methods similar to the
 	"C" standard library ctype routines.
 	
 	The latest version of UnicodeData.txt can be found here: http://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
-	The documentation on how to read it is here: http://www.unicode.org/reports/tr44/#UnicodeData.txt
+	The latest version of PropList.txt can be found here: http://www.unicode.org/Public/UCD/latest/ucd/PropList.txt
+	The documentation on how to read them is here: http://www.unicode.org/reports/tr44/#UnicodeData.txt
 
 	The functions we wish to mirror are described here: http://www.cplusplus.com/reference/cctype/
+	
 	They are:
 		NAME           VARIABLE IN THIS PROGRAM		D'S DEFINITION
 		isalnum			++ alpha + digit					-
-		isalpha			++ alpha								Agree: "general Unicode category: Alphabetic" - isAlpha()
+		isalpha			++ alpha								"general Unicode category: Alphabetic" - isAlpha()
 		isblank
-		iscntrl			++ control							Agree: "general Unicode category: Cc" - isControl()
-		isdigit			++ digit								Agree: "general Unicode category: Nd, Nl, No" - isNumber()
-		isgraph			++ graphical						Agree: "general Unicode category: L, M, N, P, S, Zs" - isGraphical()
-		islower			++ lowercase						Agree: "Unicode lowercase" - isLower()
+		iscntrl			++ control							"general Unicode category: Cc" - isControl()
+		isdigit			++ digit								"general Unicode category: Nd, Nl, No" - isNumber()
+		isgraph			++ graphical						"general Unicode category: L, M, N, P, S, Zs" - isGraphical()
+		islower			++ lowercase						"Unicode lowercase" - isLower()
 		isprint
-		ispunct			++ punc								Agree: "general Unicode category: Pd, Ps, Pe, Pc, Po, Pi, Pf" - IsPunctuation()
-		isspace			++ space								Agree: "general Unicode category: Zs" - isSpace()
-		isupper			++ uppercase						Agree: "Unicode uppercase" - isUpper()
+		ispunct			++ punc								"general Unicode category: Pd, Ps, Pe, Pc, Po, Pi, Pf" - IsPunctuation()
+		-					++ space								"general Unicode category: Zs" - isSpace()
+		isupper			++ uppercase						"Unicode uppercase" - isUpper()
 		isxdigit			++ xdigit
-		-					++ white								Agree: "Part of C0(tab, vertical tab, form feed, carriage return, and linefeed characters), Zs, Zl, Zp, and NEL(U+0085)" - isWhite()
+		isspace			++ white								"Part of C0(tab, vertical tab, form feed, carriage return, and linefeed characters), Zs, Zl, Zp, and NEL(U+0085)" - isWhite()
 
 		tolower
 		toupper

@@ -7,10 +7,6 @@
 #
 # Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 #
-# Current supported build targets inclide:
-#    make unittests
-#       This will build the JASS library alongside the unittest executable designed to test each class
-#
 
 add_library(JASSlib
 	bitstring.h
@@ -19,6 +15,8 @@ add_library(JASSlib
 	file.cpp
 	maths.h
 	unicode_ctype.h
+	unicode_ctype.cpp
 	)
 
+set_source_files_properties(unicode_ctype.cpp PROPERTIES GENERATED 1)
 
