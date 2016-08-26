@@ -128,7 +128,15 @@ void usage(char *filename)
 */
 void serialise(const std::string &operation, const std::vector<uint32_t> &list)
 	{
+	static bool first_time = true;
 	JASS::bitstring bits;
+	
+	/*
+		If this is the first time we're called then output any header files we need
+	*/
+	if (first_time)
+		puts("#include <stdint.h>");
+	first_time = false;
 	
 	/*
 		Make sure the bitstring is long enough (the highest Codepoint is MAX_CODEPOINT, so the bitstring is one bit longer (to store the 0)
@@ -150,7 +158,7 @@ void serialise(const std::string &operation, const std::vector<uint32_t> &list)
 	/*
 		Write out the name of the operation
 	*/
-	printf("static unsigned char unicode_%s_data[] = {", operation.c_str());
+	printf("unsigned char JASS_unicode_%s_data[] = {", operation.c_str());
 	
 	/*
 		Write out the bytestring as C
@@ -166,6 +174,17 @@ void serialise(const std::string &operation, const std::vector<uint32_t> &list)
 		Correctly terminate the string
 	*/
 	printf("};\n\n");
+
+	/*
+		Add "C" Methods.  There are several reasons for doing this, but it basically boils down to the
+		unit tests doing a comparison to the "D" methods and the need to link against a non-inline method.
+	*/
+	printf("bool JASS_unicode_%s(uint32_t codepoint)\n", operation.c_str());
+	puts("{");
+	puts("uint32_t byte = codepoint >> 3;");
+	puts("uint32_t bit = 1 << (codepoint & 0x07);");
+	printf("return JASS_unicode_%s_data[byte] & bit;", operation.c_str());
+	puts("}\n");
 	}
 
 /*
@@ -480,12 +499,12 @@ int main(int argc, char *argv[])
 	serialise("isupper", uppercase);
 	serialise("islower", lowercase);
 	serialise("isdigit", digit);
-	serialise("ispunc", punc);
-	serialise("isspace", space);
-	serialise("iswhitespace", whitespace);
+	serialise("ispunct", punc);
+	serialise("isuspace", space);
+	serialise("isspace", whitespace);
 	serialise("ismark", mark);
 	serialise("issymbol", symbol);
-	serialise("iscontrol", control);
+	serialise("iscntrl", control);
 	serialise("isgraph", graphical);
 	serialise("isxdigit", xdigit);
 
