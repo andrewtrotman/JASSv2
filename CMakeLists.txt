@@ -14,8 +14,10 @@
 #       data file that describes all the Unicode characters - which is used for the isalpha() and similar
 #       methods.
 
-cmake_minimum_required (VERSION 3.0.0)
+cmake_minimum_required (VERSION 3.1.0)
 project(JASS)
+
+add_definitions("-Wall")
 
 #
 # Download any external dependencies
