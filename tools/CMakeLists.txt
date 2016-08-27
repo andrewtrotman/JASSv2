@@ -8,29 +8,30 @@
 # Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 #
 # Current tools include:
-#    unicodedata_to_utype
-#        Tool to convert UnicodeData.txt into a set of utype.h like methods that work on unicode
+#    unicode_database_to_c
+#        Tool to convert UnicodeData.txt into a set of ctype.h like methods that work on Unicode
 #
 
 include_directories(../source)
 
 add_custom_command(
-	OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/../source/unicode_utype.cpp
-	COMMAND unicodedata_to_utype  ${CMAKE_CURRENT_SOURCE_DIR}/../external/Unicode/UnicodeData.txt ${CMAKE_CURRENT_SOURCE_DIR}/../external/Unicode/PropList.txt > ${CMAKE_CURRENT_SOURCE_DIR}/../source/unicode_utype.cpp
-	DEPENDS unicodedata_to_utype
+	OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/../source/unicode.cpp
+	COMMAND unicode_database_to_c  ${CMAKE_CURRENT_SOURCE_DIR}/../external/Unicode/UnicodeData.txt ${CMAKE_CURRENT_SOURCE_DIR}/../external/Unicode/PropList.txt > ${CMAKE_CURRENT_BINARY_DIR}/../source/unicode.cpp
+	DEPENDS unicode_database_to_c
 	)
 
-add_custom_target(generate_unicode_utype_cpp DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../source/unicode_utype.cpp)
+add_custom_target(generate_unicode_cpp DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/../source/unicode.cpp)
 
 #
-# The tool that builds the unicode_utype cannot link against JASSlib because
-# JASSlib contains the unicode_utype methods and this is a circular dependency.
-# So we have to name the individual files we need rather than the library.
+# The tool that builds the unicode methods from the unicode database cannot link
+# against JASSlib because JASSlib contains the unicode methods and this is a
+# circular dependency.  So we have to name the individual files we need rather than
+# the library.
 #
-add_executable(unicodedata_to_utype
-	unicodedata_to_utype.cpp
+add_executable(unicode_database_to_c
+	unicode_database_to_c.cpp
 	../source/file.cpp
 	../source/bitstring.cpp)
 
-set_property(TARGET unicodedata_to_utype PROPERTY CXX_STANDARD 11)
+set_property(TARGET unicode_database_to_c PROPERTY CXX_STANDARD 11)
 

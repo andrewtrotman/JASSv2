@@ -14,8 +14,9 @@ add_library(JASSlib
 	file.h
 	file.cpp
 	maths.h
-	unicode_utype.h
+	unicode.h
+	unicode.cpp
 	)
 
-set_source_files_properties(unicode_utype.cpp PROPERTIES GENERATED 1)
-add_dependencies(JASSlib generate_unicode_utype_cpp)
+set_source_files_properties(unicode.cpp PROPERTIES GENERATED 1)
+add_dependencies(JASSlib generate_unicode_cpp)

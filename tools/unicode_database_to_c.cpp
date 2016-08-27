@@ -1,11 +1,11 @@
 /*
-	UNICODEDATA_TO_UTYPE.C
-	----------------------
+	UNICODE_DATABASE_TO_C.CPP
+	-------------------------
 	Copyright (c) 2016 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 
 	Convert the Unicode Standard UnicodeData.txt and PropList.txt into a bunch of methods similar to the
-	"C" standard library ctype routines.
+	C standard library ctype routines.
 	
 	The latest version of UnicodeData.txt can be found here: http://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
 	The latest version of PropList.txt can be found here: http://www.unicode.org/Public/UCD/latest/ucd/PropList.txt
@@ -15,25 +15,27 @@
 	
 	They are:
 		NAME           VARIABLE IN THIS PROGRAM		D'S DEFINITION
-		isalnum			++ alpha + digit					-
-		isalpha			++ alpha								"general Unicode category: Alphabetic" - isAlpha()
+		isalnum			alpha + digit						-
+		isalpha			alpha									"general Unicode category: Alphabetic" - isAlpha()
 		isblank
-		iscntrl			++ control							"general Unicode category: Cc" - isControl()
-		isdigit			++ digit								"general Unicode category: Nd, Nl, No" - isNumber()
-		isgraph			++ graphical						"general Unicode category: L, M, N, P, S, Zs" - isGraphical()
-		islower			++ lowercase						"Unicode lowercase" - isLower()
+		iscntrl			control								"general Unicode category: Cc" - isControl()
+		isdigit			digit									"general Unicode category: Nd, Nl, No" - isNumber()
+		isgraph			graphical							"general Unicode category: L, M, N, P, S, Zs" - isGraphical()
+		islower			lowercase							"Unicode lowercase" - isLower()
 		isprint
-		ispunct			++ punc								"general Unicode category: Pd, Ps, Pe, Pc, Po, Pi, Pf" - IsPunctuation()
-		-					++ space								"general Unicode category: Zs" - isSpace()
-		isupper			++ uppercase						"Unicode uppercase" - isUpper()
-		isxdigit			++ xdigit
-		isspace			++ white								"Part of C0(tab, vertical tab, form feed, carriage return, and linefeed characters), Zs, Zl, Zp, and NEL(U+0085)" - isWhite()
-
+		ispunct			punc									"general Unicode category: Pd, Ps, Pe, Pc, Po, Pi, Pf" - IsPunctuation()
+		-					space									"general Unicode category: Zs" - isSpace()
+		isupper			uppercase							"Unicode uppercase" - isUpper()
+		isxdigit			xdigit
+		isspace			white									"Part of C0(tab, vertical tab, form feed, carriage return, and linefeed characters), Zs, Zl, Zp, and NEL(U+0085)" - isWhite()
+		-					mark									"general Unicode category: Mn, Me, Mc"
+		-					symbol								"general Unicode category: Sm, Sc, Sk, So"
 		tolower
 		toupper
 		
-	These are then dumped out as C++ methods.
+	These are then dumped out as C routines.
 */
+#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -52,55 +54,55 @@ static const size_t MAX_CODEPOINT = 0x10FFFF;
 	alphabetic characters.  Note that alpha != lowercase + uppercase because there are many
 	characters that are caseless (such as the phonetic characters).
 */
-std::vector<uint32_t>alpha;				// list of alphabetical characters
-std::vector<uint32_t>uppercase;			// list of uppercase characters
-std::vector<uint32_t>lowercase;			// list of lowercase characgers
+std::vector<uint32_t>alpha;				///< list of alphabetical characters
+std::vector<uint32_t>uppercase;			///< list of uppercase characters
+std::vector<uint32_t>lowercase;			///< list of lowercase characgers
 
 /*
 	Digits, or more accurately number characters including digit characters
 */
-std::vector<uint32_t>digit;
+std::vector<uint32_t>digit;				///< list of digits
 
 /*
 	Punctuaton
 */
-std::vector<uint32_t>punc;
+std::vector<uint32_t>punc;					///< list of punctuation symbols
 
 /*
 	Space characters (by the unicode definition of space)
 */
-std::vector<uint32_t>space;
+std::vector<uint32_t>space;				///< list of Unicode space characters (not a superset C's isspace())
 
 /*
-	White Space characters (by the 'D' Phobos definition of whitespace) which is:
+	White Space characters (by the D Phobos definition of whitespace) which is:
 	"general Unicode category: Part of C0(tab, vertical tab, form feed, carriage return, and linefeed characters), Zs, Zl, Zp, and NEL(U+0085))"
 */
-std::vector<uint32_t>whitespace;
+std::vector<uint32_t>whitespace;			///< list of space characters (is a superset C's isspace())
 
 /*
 	Diacritic marks
 */
-std::vector<uint32_t>mark;
+std::vector<uint32_t>mark;					///< list of diacritic marks
 
 /*
 	Symbols
 */
-std::vector<uint32_t>symbol;
+std::vector<uint32_t>symbol;				///< list of symbols
 
 /*
 	Control characters
 */
-std::vector<uint32_t>control;
+std::vector<uint32_t>control;				///< list of control characters
 
 /*
 	Graphical characters
 */
-std::vector<uint32_t>graphical;
+std::vector<uint32_t>graphical;			///< list of graphical (printable) characters
 
 /*
 	Hexadecimal digits
 */
-std::vector<uint32_t>xdigit;
+std::vector<uint32_t>xdigit;				///< list of Unicode defined hexadecimal characters
 
 /*
 	USAGE()
@@ -128,14 +130,23 @@ void usage(char *filename)
 */
 void serialise(const std::string &operation, const std::vector<uint32_t> &list)
 	{
-	static bool first_time = true;
-	JASS::bitstring bits;
+	static bool first_time = true;		// used to make sure includes are only included once
+	JASS::bitstring bits;					// the list is converted into this bitstring
 	
 	/*
 		If this is the first time we're called then output any header files we need
 	*/
 	if (first_time)
+		{
+	   time_t ltime;
+	   time(&ltime);
+
+		puts("/*");
+		printf("\tThis file was generated on %s", ctime(&ltime));
+		printf("\tIt was generated by unicode_database_to_c as part of the JASS build process\n", ctime(&ltime));
+		puts("*/");
 		puts("#include <stdint.h>");
+		}
 	first_time = false;
 	
 	/*
@@ -176,7 +187,7 @@ void serialise(const std::string &operation, const std::vector<uint32_t> &list)
 	printf("};\n\n");
 
 	/*
-		Add "C" Methods.  There are several reasons for doing this, but it basically boils down to the
+		Add a C Method.  There are several reasons for doing this, but it basically boils down to the
 		unit tests doing a comparison to the "D" methods and the need to link against a non-inline method.
 	*/
 	printf("bool JASS_unicode_%s(uint32_t codepoint)\n", operation.c_str());
@@ -188,8 +199,8 @@ void serialise(const std::string &operation, const std::vector<uint32_t> &list)
 	}
 
 /*
-	PROCESS()
-	---------
+	PROCESS_UNICODEDATA()
+	---------------------
 	0000;<control>;Cc;0;BN;;;;;N;NULL;;;;
 	
 	The order of the parameters is:
@@ -212,7 +223,7 @@ void serialise(const std::string &operation, const std::vector<uint32_t> &list)
 	@param last_codepoint [in] The start of the current unicode range
 	@return The last Unicode codepoint we've seen (which must be passed back next call for ranges).
 */
-int process(const char *line, int last_codepoint)
+int process_unicodedata(const char *line, int last_codepoint)
 	{
 	int codepoint;			// unicode number of the codepoint
 	int range_start;		// start of the range for this line in the Unicode database
@@ -249,7 +260,7 @@ int process(const char *line, int last_codepoint)
 	category[2] = '\0';
 	
 	/*
-		Work out what type of character we have, according the the "C" ctype.h conventions
+		Work out what type of character we have, according the the C ctype.h conventions
 		
 		Alphabetic is defined as: Lowercase + Uppercase + Lt + Lm + Lo + Nl + Other_Alphabetic
 		where
@@ -291,10 +302,7 @@ int process(const char *line, int last_codepoint)
 			alpha.push_back(codepoint);
 			}
 		if (strcmp(category, "Lt") == 0)				// a digraphic character, with first part uppercase
-			{
-			uppercase.push_back(codepoint);
 			alpha.push_back(codepoint);
-			}
 		if (strcmp(category, "Lm") == 0)				// a modifier letter
 			alpha.push_back(codepoint);
 		if (strcmp(category, "Lo") == 0)				// other letters, including sylables and ideographs
@@ -428,16 +436,10 @@ for (int codepoint = range_start; codepoint <= range_end; codepoint++)
 	if (strncmp(semicolon, "; ASCII_Hex_Digit #", hash - semicolon) == 0)				// ASCII_Hex_Digit
 		xdigit.push_back(codepoint);
 		
-/*
-	D doesn't use this definition for punctuation, but it isn't yet clear that it
-	adds anything that isn't already there.
-*/
-/*
 	if (strncmp(semicolon, "; Dash #", hash - semicolon) == 0)								// Dash
 					punc.push_back(codepoint);
 	if (strncmp(semicolon, "; Terminal_Punctuation #", hash - semicolon) == 0)			// Terminal_Punctuation
 					punc.push_back(codepoint);
-*/
 	}
 }
 
@@ -476,7 +478,7 @@ int main(int argc, char *argv[])
 	*/
 	int codepoint = 0;
 	for (const auto &line : lines)
-		codepoint = process((const char *)line, codepoint);
+		codepoint = process_unicodedata((const char *)line, codepoint);
 		
 	/*
 		get the name of the Properties file

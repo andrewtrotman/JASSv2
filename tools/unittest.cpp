@@ -6,6 +6,7 @@
 */
 #include "file.h"
 #include "bitstring.h"
+#include "unicode.h"
 
 int					// [out] returns 0 to the OS on success, else it will assert
 main
@@ -18,6 +19,7 @@ main
 	*/
 	JASS::file::unittest();
 	JASS::bitstring::unittest();
+	JASS::unicode::unittest();
 
 	return 0;
 	}

@@ -30,12 +30,12 @@ add_subdirectory(external)
 add_subdirectory(tools)
 
 #
-# Build the JASS library and unittest
+# Build the JASS library
 #
 add_subdirectory(source)
 
 #
-# 
+#  build the unit tests
 #
 include_directories(source)
 add_executable(unittest tools/unittest.cpp)
