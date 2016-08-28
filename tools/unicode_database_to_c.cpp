@@ -41,6 +41,7 @@
 #include <stdint.h>
 
 #include <vector>
+#include <map>
 
 #include "file.h"
 #include "bitstring.h"
@@ -103,6 +104,12 @@ std::vector<uint32_t>graphical;			///< list of graphical (printable) characters
 	Hexadecimal digits
 */
 std::vector<uint32_t>xdigit;				///< list of Unicode defined hexadecimal characters
+
+
+/*
+	JASS normalisation
+*/
+std::map<int, std::vector<int>> JASS_normalisation;		///< JASS normalisation rules (one codepoint can become more than one codepoint)
 
 /*
 	USAGE()
@@ -194,7 +201,7 @@ void serialise(const std::string &operation, const std::vector<uint32_t> &list)
 	puts("{");
 	puts("uint32_t byte = codepoint >> 3;");
 	puts("uint32_t bit = 1 << (codepoint & 0x07);");
-	printf("return JASS_unicode_%s_data[byte] & bit;", operation.c_str());
+	printf("return JASS_unicode_%s_data[byte] & bit;\n", operation.c_str());
 	puts("}\n");
 	}
 
@@ -444,6 +451,66 @@ for (int codepoint = range_start; codepoint <= range_end; codepoint++)
 }
 
 /*
+	PROCESS_JASS_NORMALIZATION()
+	----------------------------
+	Now for normalisation.  In JASS we're interested in a unique normalisation:
+		Unicode NFKD normalization
+			Normal Form Kompatibility Decomposition
+			This seperates ligatures into individual characters (e.g. ff -> f f)
+		remove all combining marks
+		case file everything
+	This can be done one a codepoint by codepoint basis - so we simply create a table of the answers.
+*/
+void process_JASS_normalization(const char *line)
+{
+/*
+	get the codepoint for this line
+*/
+int codepoint;
+sscanf(line, "%x", &codepoint);
+
+/*
+	Look for field 5 in UnicodeData.txt
+*/
+const char *semicolon = line;
+for (uint32_t which_semicolon = 0; which_semicolon < 5; which_semicolon++)
+	if ((semicolon = strchr(semicolon + 1, ';')) == NULL)
+		return;
+
+/*
+	Get the normalisation rules
+*/
+uint32_t normalisation = codepoint;
+const char *digit = semicolon + 1;
+while ((digit = strpbrk(digit, ";0123456789")) != NULL)
+	{
+	if (*digit == ';')
+		{
+		if (normalisation == codepoint)
+			JASS_normalisation[codepoint].push_back(normalisation);
+		break;
+		}
+
+	sscanf(digit, "%x", &normalisation);
+	JASS_normalisation[codepoint].push_back(normalisation);
+	digit += 4;
+	}
+
+/*
+	TO DO:Apply the normalisation rules recursively
+*/
+for (const auto &rule : JASS_normalisation)
+	{
+	for (const auto &codepoint : rule.second)
+		{
+		/*
+			TO DO:look it up and then generate a new string
+		*/
+		}
+	}
+}
+
+/*
 	MAIN()
 	------
 	read UnicodeData.txt, compute the set of is() routines and dump then out
@@ -489,9 +556,11 @@ int main(int argc, char *argv[])
 		read the file and turn it into a bunch of lines
 		the process each line
 	*/
-	JASS::file::read_entire_file(filename, file);
-	JASS::file::buffer_to_list(lines, file);
-	for (const auto &line : lines)
+	std::string proplist_file;
+	std::vector<uint8_t *>proplist_lines;
+	JASS::file::read_entire_file(filename, proplist_file);
+	JASS::file::buffer_to_list(proplist_lines, proplist_file);
+	for (const auto &line : proplist_lines)
 		process_proplist((const char *)line);
 
 	/*
@@ -509,6 +578,12 @@ int main(int argc, char *argv[])
 	serialise("iscntrl", control);
 	serialise("isgraph", graphical);
 	serialise("isxdigit", xdigit);
+	
+	/*
+		Now for case folded normalisation.
+	*/
+	for (const auto &line : lines)
+		process_JASS_normalization((const char *)line);
 
 	/*
 		success
