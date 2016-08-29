@@ -40,6 +40,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#include <iostream>
 #include <vector>
 #include <map>
 
@@ -451,15 +452,42 @@ for (int codepoint = range_start; codepoint <= range_end; codepoint++)
 }
 
 /*
+	PROCESS_NORMALISATION_RECURSIVELY()
+	-----------------------------------
+*/
+void process_normalisation_recursively(std::vector<int> &answer, int head_codepoint, int depth = 0)
+{
+if (JASS_normalisation[head_codepoint].size() == 0)
+	answer.push_back(head_codepoint);			// this happens for HAN normalisations (such as U+2E9F)
+else
+	for (const auto &codepoint : JASS_normalisation[head_codepoint])
+		{
+		if (JASS_normalisation[codepoint].size() == 1 && JASS_normalisation[codepoint][0] == head_codepoint)
+			{
+			answer.push_back(codepoint);
+			if (depth != 0)
+				printf("Depth:%d\n", depth);
+			}
+		else
+			process_normalisation_recursively(answer, codepoint, depth + 1);
+		}
+}
+
+/*
 	PROCESS_JASS_NORMALIZATION()
 	----------------------------
 	Now for normalisation.  In JASS we're interested in a unique normalisation:
 		Unicode NFKD normalization
 			Normal Form Kompatibility Decomposition
 			This seperates ligatures into individual characters (e.g. ff -> f f)
-		remove all combining marks
-		case file everything
+		remove all combining marks, punctuation, and spaces
+		case fold everything
 	This can be done one a codepoint by codepoint basis - so we simply create a table of the answers.
+	NOTE: the worst case is:U+FDFA (see here:http://unicode.org/faq/normalization.html (Question "What are 
+			the maximum expansion factors for the different normalization forms?").  It is turned into 18
+			codepoints! That is:
+				U+FDFA -> U+0635 U+0644 U+0649 U+0020 U+0627 U+0644 U+0644 U+0647 U+0020 U+0639 U+0644 U+064A U+0647 U+0020 U+0648 U+0633 U+0644 U+0645
+			According to this program, which is verified against the online calculator here: http://minaret.info/test/normalize.msp
 */
 void process_JASS_normalization(const char *line)
 {
@@ -494,19 +522,6 @@ while ((digit = strpbrk(digit, ";0123456789")) != NULL)
 	sscanf(digit, "%x", &normalisation);
 	JASS_normalisation[codepoint].push_back(normalisation);
 	digit += 4;
-	}
-
-/*
-	TO DO:Apply the normalisation rules recursively
-*/
-for (const auto &rule : JASS_normalisation)
-	{
-	for (const auto &codepoint : rule.second)
-		{
-		/*
-			TO DO:look it up and then generate a new string
-		*/
-		}
 	}
 }
 
@@ -578,12 +593,28 @@ int main(int argc, char *argv[])
 	serialise("iscntrl", control);
 	serialise("isgraph", graphical);
 	serialise("isxdigit", xdigit);
-	
+
 	/*
 		Now for case folded normalisation.
 	*/
 	for (const auto &line : lines)
 		process_JASS_normalization((const char *)line);
+
+	/*
+		Apply the normalisation rules recursively
+	*/
+#ifdef NEVER
+	for (const auto &rule : JASS_normalisation)
+		{
+		std::vector<int> answer;
+		
+		process_normalisation_recursively(answer, rule.first);
+		printf("U+%04X->", rule.first);
+		for (const auto &cp : answer)
+			printf("U+%04X ", cp);
+		puts("");
+		}
+#endif
 
 	/*
 		success
