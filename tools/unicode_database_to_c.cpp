@@ -66,6 +66,11 @@ std::vector<uint32_t>lowercase;			///< list of lowercase characgers
 std::vector<uint32_t>digit;				///< list of digits
 
 /*
+	Alphanumerics
+*/
+std::vector<uint32_t>alphanumeric;		///< list of alphanumeric characters
+
+/*
 	Punctuaton
 */
 std::vector<uint32_t>punc;					///< list of punctuation symbols
@@ -106,7 +111,6 @@ std::vector<uint32_t>graphical;			///< list of graphical (printable) characters
 */
 std::vector<uint32_t>xdigit;				///< list of Unicode defined hexadecimal characters
 
-
 /*
 	JASS normalisation
 */
@@ -116,6 +120,12 @@ std::map<int, std::vector<int>> JASS_normalisation;		///< JASS normalisation rul
 	Unicode Casefolding
 */
 std::map<int, std::vector<int>> casefold;		///< The casefolded version of the codepoint
+
+/*
+	Fast alphanumeric lookup (used as part of JASS normalisation)
+*/
+std::map<int, bool> codepoint_isalnum;
+
 /*
 	USAGE()
 	------
@@ -307,30 +317,53 @@ int process_unicodedata(const char *line, int last_codepoint)
 			{
 			uppercase.push_back(codepoint);
 			alpha.push_back(codepoint);
+			alphanumeric.push_back(codepoint);
 			}
 		if (strcmp(category, "Ll") == 0)				// a lowercase letter
 			{
 			lowercase.push_back(codepoint);
 			alpha.push_back(codepoint);
+			alphanumeric.push_back(codepoint);
 			}
 		if (strcmp(category, "Lt") == 0)				// a digraphic character, with first part uppercase
+			{
 			alpha.push_back(codepoint);
+			alphanumeric.push_back(codepoint);
+			}
 		if (strcmp(category, "Lm") == 0)				// a modifier letter
+			{
 			alpha.push_back(codepoint);
+			alphanumeric.push_back(codepoint);
+			}
 		if (strcmp(category, "Lo") == 0)				// other letters, including sylables and ideographs
+			{
 			alpha.push_back(codepoint);
+			alphanumeric.push_back(codepoint);
+			}
 		if (strcmp(category, "Nl") == 0)				// a letterlike numeric character
+			{
 			alpha.push_back(codepoint);
+			alphanumeric.push_back(codepoint);
+			}
 
 		/*
 			Numeric characters
 		*/
 		if (strcmp(category, "Nd") == 0)				// Decimal_Number
+			{
 			digit.push_back(codepoint);
+			alphanumeric.push_back(codepoint);
+			}
 		if (strcmp(category, "Nl") == 0)				// Letter_Number
+			{
 			digit.push_back(codepoint);
+			alphanumeric.push_back(codepoint);
+			}
 		if (strcmp(category, "No") == 0)				// Other_Number
+			{
 			digit.push_back(codepoint);
+			alphanumeric.push_back(codepoint);
+			}
 
 		/*
 			Punctuation characters
@@ -429,17 +462,22 @@ if ((hash = strchr(line, '#')) == NULL)
 for (int codepoint = range_start; codepoint <= range_end; codepoint++)
 	{
 	if (strncmp(semicolon, "; Other_Alphabetic #", hash - semicolon) == 0)				// Other_Alphabetic
+		{
 		alpha.push_back(codepoint);
+		alphanumeric.push_back(codepoint);
+		}
 		
 	if (strncmp(semicolon, "; Other_Lowercase #", hash - semicolon) == 0)				// Other_Lowercase
 		{
 		alpha.push_back(codepoint);
+		alphanumeric.push_back(codepoint);
 		lowercase.push_back(codepoint);
 		}
 
 	if (strncmp(semicolon, "; Other_Uppercase #", hash - semicolon) == 0)				// Other_Uppercase
 		{
 		alpha.push_back(codepoint);
+		alphanumeric.push_back(codepoint);
 		uppercase.push_back(codepoint);
 		}
 		
@@ -449,11 +487,24 @@ for (int codepoint = range_start; codepoint <= range_end; codepoint++)
 		xdigit.push_back(codepoint);
 		
 	if (strncmp(semicolon, "; Dash #", hash - semicolon) == 0)								// Dash
-					punc.push_back(codepoint);
+		punc.push_back(codepoint);
 	if (strncmp(semicolon, "; Terminal_Punctuation #", hash - semicolon) == 0)			// Terminal_Punctuation
-					punc.push_back(codepoint);
+		punc.push_back(codepoint);
 	}
 }
+
+/*
+	MAKE_CODEPOINT_ISALNUM()
+	------------------------
+*/
+/*!
+	@brief Construct the codepoint_isalnum[] map for determining whether or not a given codepoint is alphanumeric.
+*/
+void make_codepoint_isalnum(void)
+	{
+	for (const auto &codepoint : alphanumeric)
+		codepoint_isalnum[codepoint] = true;
+	}
 
 /*
 	FOLDCASE()
@@ -465,9 +516,14 @@ for (int codepoint = range_start; codepoint <= range_end; codepoint++)
 void foldcase(std::vector<int> &destination, int codepoint)
 	{
 	if (casefold[codepoint].size() == 0)
-		destination.push_back(codepoint);
+		{
+		if (codepoint_isalnum[codepoint] || codepoint == 0x20)
+			destination.push_back(codepoint);
+		}
 	else
-		destination.insert(destination.end(), casefold[codepoint].begin(), casefold[codepoint].end());
+		for (const auto &point : casefold[codepoint])
+			if (codepoint_isalnum[point] ||codepoint == 0x20)
+				destination.push_back(point);
 	}
 
 /*
@@ -566,6 +622,15 @@ void normalize(void)
 		std::vector<int> answer;
 		
 		process_normalisation_recursively(answer, codepoint);
+
+		/*
+			remove all preceeding and ending spaces
+		*/
+		while (answer.size() >= 1 && answer[0] == 0x20)
+			answer.erase(answer.begin());
+		while (answer.size() >= 1 && answer[answer.size() - 1] == 0x20)
+			answer.pop_back();
+
 		printf("U+%04X -> ", codepoint);
 		for (const auto &cp : answer)
 			printf("U+%04X ", cp);
@@ -680,11 +745,11 @@ int main(int argc, char *argv[])
 	for (const auto &line : proplist_lines)
 		process_proplist((const char *)line);
 
-#ifdef NEVER
 	/*
 		Dump out each method
 	*/
 	serialise("isalpha", alpha);
+	serialise("isalnum", alphanumeric);
 	serialise("isupper", uppercase);
 	serialise("islower", lowercase);
 	serialise("isdigit", digit);
@@ -696,15 +761,17 @@ int main(int argc, char *argv[])
 	serialise("iscntrl", control);
 	serialise("isgraph", graphical);
 	serialise("isxdigit", xdigit);
-#endif
+
+#ifdef NEVER
 	/*
 		Now for case folded normalisation.
 	*/
+	make_codepoint_isalnum();
 	for (const auto &line : lines)
 		process_JASS_normalization((const char *)line);
 
 	normalize();
-
+#endif
 	/*
 		success
 	*/
