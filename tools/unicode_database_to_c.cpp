@@ -113,6 +113,10 @@ std::vector<uint32_t>xdigit;				///< list of Unicode defined hexadecimal charact
 std::map<int, std::vector<int>> JASS_normalisation;		///< JASS normalisation rules (one codepoint can become more than one codepoint)
 
 /*
+	Unicode Casefolding
+*/
+std::map<int, std::vector<int>> casefold;		///< The casefolded version of the codepoint
+/*
 	USAGE()
 	------
 */
@@ -122,7 +126,7 @@ std::map<int, std::vector<int>> JASS_normalisation;		///< JASS normalisation rul
 */
 void usage(char *filename)
 	{
-	printf("Usage:%s <UnicodeData.txt> <PropList.txt>\n", filename);
+	printf("Usage:%s <UnicodeData.txt> <PropList.txt> <CaseFolding.txt>\n", filename);
 	exit(0);
 	}
 
@@ -452,24 +456,40 @@ for (int codepoint = range_start; codepoint <= range_end; codepoint++)
 }
 
 /*
+	FOLDCASE()
+	----------
+	@brief Casefold a sequence of codepoints (a string).  Note, some casefolded codepoints are longer than one codepoint (e.g. Latin Small Sharp S)
+	@param destination [out] the casefolded codepoints.
+	@param codepoint [in] The codepoint to casefold.
+*/
+void foldcase(std::vector<int> &destination, int codepoint)
+	{
+	if (casefold[codepoint].size() == 0)
+		destination.push_back(codepoint);
+	else
+		destination.insert(destination.end(), casefold[codepoint].begin(), casefold[codepoint].end());
+	}
+
+/*
 	PROCESS_NORMALISATION_RECURSIVELY()
 	-----------------------------------
 */
-void process_normalisation_recursively(std::vector<int> &answer, int head_codepoint, int depth = 0)
+/*!
+	@brief Given a codepoint apply the normalisation rules recursively to get an expansion
+	@param answer [out] The recursively expanded (but not re-ordered) answer to the expanstion.
+	@param head_codepoin [in] The codepoint to compute the expansion for.
+*/
+void process_normalisation_recursively(std::vector<int> &answer, int head_codepoint)
 {
 if (JASS_normalisation[head_codepoint].size() == 0)
-	answer.push_back(head_codepoint);			// this happens for HAN normalisations (such as U+2E9F)
+	foldcase(answer, head_codepoint);			// this happens for HAN normalisations (such as U+2E9F)
 else
 	for (const auto &codepoint : JASS_normalisation[head_codepoint])
 		{
 		if (JASS_normalisation[codepoint].size() == 1 && JASS_normalisation[codepoint][0] == head_codepoint)
-			{
-			answer.push_back(codepoint);
-			if (depth != 0)
-				printf("Depth:%d\n", depth);
-			}
+			foldcase(answer, codepoint);
 		else
-			process_normalisation_recursively(answer, codepoint, depth + 1);
+			process_normalisation_recursively(answer, codepoint);
 		}
 }
 
@@ -488,6 +508,10 @@ else
 			codepoints! That is:
 				U+FDFA -> U+0635 U+0644 U+0649 U+0020 U+0627 U+0644 U+0644 U+0647 U+0020 U+0639 U+0644 U+064A U+0647 U+0020 U+0648 U+0633 U+0644 U+0645
 			According to this program, which is verified against the online calculator here: http://minaret.info/test/normalize.msp
+*/
+/*!
+	@brief Process a single line of UnicodeData.txt and extract the normaliation of that codepoint.
+	@param line [in] a single line from UnicodeData.txt.
 */
 void process_JASS_normalization(const char *line)
 {
@@ -521,21 +545,91 @@ while ((digit = strpbrk(digit, ";0123456789")) != NULL)
 
 	sscanf(digit, "%x", &normalisation);
 	JASS_normalisation[codepoint].push_back(normalisation);
-	digit += 4;
+	digit = strpbrk(digit, " ;");
 	}
 }
 
 /*
+	NORMALIZE()
+	-----------
+*/
+/*!
+	@Brief compute the normalisation for the entire Unicode database.
+*/
+void normalize(void)
+	{
+	/*
+		Apply the normalisation rules recursively
+	*/
+	for (int codepoint = 0; codepoint <= 0x10FFFF; codepoint++)
+		{
+		std::vector<int> answer;
+		
+		process_normalisation_recursively(answer, codepoint);
+		printf("U+%04X -> ", codepoint);
+		for (const auto &cp : answer)
+			printf("U+%04X ", cp);
+		puts("");
+		}
+	}
+
+/*
+	PROCESS_CASEFOLDING()
+	---------------------
+*/
+/*!
+	@brief process a single line of CaseFolding.txt and extract the full case folding data (that is, the "C+F" subset)
+	@param line [in] A single line from CaseFolding.txt
+*/
+void process_casefolding(const char *line)
+	{
+	if (*line == '#')
+		return;
+		
+	/*
+		get the codepoint
+	*/
+	int codepoint;
+	char type;
+	sscanf(line, "%X; %c;", &codepoint, &type);
+	if (type != 'C' && type != 'F')
+		return;									// we only want 'C' = "common case folding" and 'F' = "full case folding"
+	
+	/*
+		extract the sequence it becomes
+	*/
+	const char *semicolon = line;
+	semicolon = strchr(semicolon + 1, ';');
+	semicolon = strchr(semicolon + 1, ';');
+	const char *digit = semicolon + 1;
+	std::vector<int> folded;						// the case folded translation
+	while ((digit = strpbrk(digit, ";0123456789")) != NULL)
+		{
+		if (*digit == ';')
+			break;
+
+		int fold;
+		sscanf(digit, "%x", &fold);
+		folded.push_back(fold);
+		digit = strpbrk(digit, " ;");
+		}
+	/*
+		Now add it to the translation table
+	*/
+	casefold[codepoint] = folded;
+	}
+
+/*
 	MAIN()
 	------
-	read UnicodeData.txt, compute the set of is() routines and dump then out
+	@brief Read the Unicode database files, compute the set of "C" routines and then dump them out
 */
 int main(int argc, char *argv[])
 	{
 	/*
 		Check we have the right number of parameters
 	*/
-	if (argc != 3)
+	if (argc != 4)
 		usage(argv[0]);
 		
 	/*
@@ -563,14 +657,22 @@ int main(int argc, char *argv[])
 		codepoint = process_unicodedata((const char *)line, codepoint);
 		
 	/*
-		get the name of the Properties file
+		get the case folding file
 	*/
-	filename = argv[2];
-	
+	filename = argv[3];
+	std::string casefold_file;
+	std::vector<uint8_t *>casefold_lines;
+	JASS::file::read_entire_file(filename, casefold_file);
+	JASS::file::buffer_to_list(casefold_lines, casefold_file);
+	for (const auto &line : casefold_lines)
+		process_casefolding((const char *)line);
+		
 	/*
+		get the name of the Properties file
 		read the file and turn it into a bunch of lines
 		the process each line
 	*/
+	filename = argv[2];
 	std::string proplist_file;
 	std::vector<uint8_t *>proplist_lines;
 	JASS::file::read_entire_file(filename, proplist_file);
@@ -578,6 +680,7 @@ int main(int argc, char *argv[])
 	for (const auto &line : proplist_lines)
 		process_proplist((const char *)line);
 
+#ifdef NEVER
 	/*
 		Dump out each method
 	*/
@@ -593,28 +696,14 @@ int main(int argc, char *argv[])
 	serialise("iscntrl", control);
 	serialise("isgraph", graphical);
 	serialise("isxdigit", xdigit);
-
+#endif
 	/*
 		Now for case folded normalisation.
 	*/
 	for (const auto &line : lines)
 		process_JASS_normalization((const char *)line);
 
-	/*
-		Apply the normalisation rules recursively
-	*/
-#ifdef NEVER
-	for (const auto &rule : JASS_normalisation)
-		{
-		std::vector<int> answer;
-		
-		process_normalisation_recursively(answer, rule.first);
-		printf("U+%04X->", rule.first);
-		for (const auto &cp : answer)
-			printf("U+%04X ", cp);
-		puts("");
-		}
-#endif
+	normalize();
 
 	/*
 		success
