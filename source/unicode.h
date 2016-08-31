@@ -337,11 +337,11 @@ namespace JASS
 					/*
 						The rules for ispunct() are very different betwen C and Unicode so we won't even bother to check
 					*/
-					if (character <= 0x1F && isalnum(character))
+					if (character <= 0x7F && isalnum(character))
 						{
 						std::vector<uint32_t> casefold;
 						tocasefold(casefold, character);
-						assert(casefold.size() == 1 && casefold[0] == toupper(character));
+						assert(casefold.size() == 1 && casefold[0] == ::tolower(character));
 						}
 					}
 				puts("unicode::PASSED");
