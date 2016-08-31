@@ -6,8 +6,10 @@
 */
 /*!
 	@file
-	@brief ctype methods that work on Unicode codepoints rather than on ASCII values.
-	@details As Unicode is a superset of ASCII, these methods should exactly match C's is() routines.
+	@brief Methods that work on Unicode codepoints.
+	@details These methods are (where possible) Unicode equivelants to C's ctype methods.  For the ASCII block
+	these methods should exactly match C's is() routines. The case changing methods toupper() an tolower() are
+	replaced with a tocasefold() method because uppercase and lowercase are meaningless for many languages.
 	@author Andrew Trotman
 	@copyright 2016 Andrew Trotman
 */
@@ -18,6 +20,7 @@
 #include <assert.h>
 
 extern unsigned char JASS_unicode_isalpha_data[];
+extern unsigned char JASS_unicode_isalnum_data[];
 extern unsigned char JASS_unicode_isupper_data[];
 extern unsigned char JASS_unicode_islower_data[];
 extern unsigned char JASS_unicode_iscntrl_data[];
@@ -30,6 +33,7 @@ extern unsigned char JASS_unicode_isxdigit_data[];
 extern unsigned char JASS_unicode_ismark_data[];
 extern unsigned char JASS_unicode_issymbol_data[];
 
+extern const uint32_t *JASS_normalisation[];
 
 namespace JASS
 	{
@@ -43,6 +47,26 @@ namespace JASS
 	class unicode
 		{
 		public:
+			/*
+				TOCASEFOLD()
+				------------
+			*/
+			/*!
+				@brief Strip all accents, non-alphanumerics, and then casefold.
+				@details This is the JASS character normalisation method.  It converts to Unicode "NFKD", strips all non-alpha-numerics, then
+				performs Unicode casefolding "C+F".  As unicode decomposition is involved (and casefolding) the resulting string can be considerably
+				larger than a single codepoint.  The worst case is the single codepoint U+FDFA becoming 18 codepoints once normalisd.  Two codepoints,
+				U+FDFA and U+FDFB expand into strings that contain spaces; it is the caller's responsibility to manage this should it need to be managed.
+				@param casefolded [out] The normalise Unicode codepoint string is appended to this parameter.
+				@param codepoint [in] The codepoint to normalise.
+			*/
+			static inline void tocasefold(std::vector<uint32_t> &casefolded, uint32_t codepoint)
+				{
+				const uint32_t *got = JASS_normalisation[codepoint];
+				while (*got != 0)
+					casefolded.push_back(*got++);
+				}
+			
 			/*
 				ISALPHA()
 				---------
@@ -60,7 +84,29 @@ namespace JASS
 
 				return JASS_unicode_isalpha_data[byte] & bit;
 				}
-				
+
+
+			/*
+				ISALNUM()
+				---------
+			*/
+			/*!
+				@brief Unicode version is isalnum().
+				@details Character is of the general Unicode category "Alphabetic" or of the general Unicode category "Nd, Nl, No".  That is,
+				the character is alphanumeric
+				@param codepoint [in] The Unicode codepoint to check.
+				@return true if alphabetic, else false.
+			*/
+			static inline bool isalum(uint32_t codepoint)
+				{
+				uint32_t byte = codepoint >> 3;
+				uint32_t bit = 1 << (codepoint & 0x07);
+
+				return JASS_unicode_isalnum_data[byte] & bit;
+				}
+
+
+			
 			/*
 				ISUPPER()
 				---------
@@ -273,6 +319,7 @@ namespace JASS
 				for (uint8_t character = 0; character <= 0x7F; character++)
 					{
 					assert(::isalpha(character) == isalpha(character));
+					assert(::isalnum(character) == isalnum(character));
 					assert(::isupper(character) == isupper(character));
 					assert(::islower(character) == islower(character));
 					assert(::isdigit(character) == isdigit(character));
@@ -290,6 +337,12 @@ namespace JASS
 					/*
 						The rules for ispunct() are very different betwen C and Unicode so we won't even bother to check
 					*/
+					if (character <= 0x1F && isalnum(character))
+						{
+						std::vector<uint32_t> casefold;
+						tocasefold(casefold, character);
+						assert(casefold.size() == 1 && casefold[0] == toupper(character));
+						}
 					}
 				puts("unicode::PASSED");
 				}

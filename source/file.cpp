@@ -180,7 +180,17 @@ namespace JASS
 		*/
 		char filename[11];
 		strcpy(filename, "jassXXXXXX");
-		mktemp(filename);
+		#ifndef __clang_analyzer__
+			/*
+				The Xcode code analysis tool correctly says:
+				"Call to function 'mktemp' is insecure as it always creates or uses insecure temporary file.  Use 'mkstemp' instead"
+				However, as we need a way to get the filename to read_entire_file, and you can't turn a file descriptor into filename
+				(because it might be a special file like a TCP/IP socket) I don't see a way around this.  The solution appears to be
+				to tell the Xcode analysis tool not to look at the line below.  Actually, this should continue to function file within
+				this function without this line, but you never know when someone has already taken your filename (so we call mktemp()).
+			*/
+			mktemp(filename);
+		#endif
 
 		/*
 			write, read back, and check we didn't lose anything along the way.

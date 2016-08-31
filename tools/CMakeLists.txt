@@ -16,7 +16,7 @@ include_directories(../source)
 
 add_custom_command(
 	OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/../source/unicode.cpp
-	COMMAND unicode_database_to_c  ${CMAKE_CURRENT_SOURCE_DIR}/../external/Unicode/UnicodeData.txt ${CMAKE_CURRENT_SOURCE_DIR}/../external/Unicode/PropList.txt > ${CMAKE_CURRENT_BINARY_DIR}/../source/unicode.cpp
+	COMMAND unicode_database_to_c  ${CMAKE_CURRENT_SOURCE_DIR}/../external/Unicode/UnicodeData.txt ${CMAKE_CURRENT_SOURCE_DIR}/../external/Unicode/PropList.txt ${CMAKE_CURRENT_SOURCE_DIR}/../external/Unicode/CaseFolding.txt > ${CMAKE_CURRENT_BINARY_DIR}/../source/unicode.cpp
 	DEPENDS unicode_database_to_c
 	)
 

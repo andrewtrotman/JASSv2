@@ -610,12 +610,12 @@ while ((digit = strpbrk(digit, ";0123456789")) != NULL)
 	-----------
 */
 /*!
-	@Brief compute the normalisation for the entire Unicode database.
+	@Brief Compute the normalisation for the entire Unicode database.
 */
 void normalize(void)
 	{
 	/*
-		Apply the normalisation rules recursively
+		Apply the normalisation rules recursively and write out the translation
 	*/
 	for (int codepoint = 0; codepoint <= 0x10FFFF; codepoint++)
 		{
@@ -631,11 +631,19 @@ void normalize(void)
 		while (answer.size() >= 1 && answer[answer.size() - 1] == 0x20)
 			answer.pop_back();
 
-		printf("U+%04X -> ", codepoint);
+		printf("static const uint32_t JASS_normalisation_%x[] = {", codepoint);
+
 		for (const auto &cp : answer)
-			printf("U+%04X ", cp);
-		puts("");
+			printf("0x%X, ", cp);
+		puts("0x00};");
 		}
+	/*
+		Write out the global lookup table
+	*/
+	printf("const uint32_t *JASS_normalisation[] = {\n");
+	for (int codepoint = 0; codepoint <= 0x10FFFF; codepoint++)
+		printf("JASS_normalisation_%x,\n", codepoint);
+	puts("};");
 	}
 
 /*
@@ -645,6 +653,8 @@ void normalize(void)
 /*!
 	@brief process a single line of CaseFolding.txt and extract the full case folding data (that is, the "C+F" subset)
 	@param line [in] A single line from CaseFolding.txt
+	@details The JASS normalisation process is: Unicode NFKD normalization, remove all non-alphanumerics, then case fold.
+
 */
 void process_casefolding(const char *line)
 	{
@@ -762,7 +772,6 @@ int main(int argc, char *argv[])
 	serialise("isgraph", graphical);
 	serialise("isxdigit", xdigit);
 
-#ifdef NEVER
 	/*
 		Now for case folded normalisation.
 	*/
@@ -771,7 +780,6 @@ int main(int argc, char *argv[])
 		process_JASS_normalization((const char *)line);
 
 	normalize();
-#endif
 	/*
 		success
 	*/

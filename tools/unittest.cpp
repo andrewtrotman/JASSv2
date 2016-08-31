@@ -20,6 +20,5 @@ main
 	JASS::file::unittest();
 	JASS::bitstring::unittest();
 	JASS::unicode::unittest();
-
 	return 0;
 	}

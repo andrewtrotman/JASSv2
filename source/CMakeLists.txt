@@ -8,7 +8,7 @@
 # Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 #
 
-add_library(JASSlib
+set(JASSlib_FILES
 	bitstring.h
 	bitstring.cpp
 	file.h
@@ -17,6 +17,8 @@ add_library(JASSlib
 	unicode.h
 	unicode.cpp
 	)
+add_library(JASSlib ${JASSlib_FILES})
 
 set_source_files_properties(unicode.cpp PROPERTIES GENERATED 1)
 add_dependencies(JASSlib generate_unicode_cpp)
+source_group ("Source Files" FILES ${JASSlib_FILES})
