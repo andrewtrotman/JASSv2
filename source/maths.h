@@ -41,8 +41,8 @@ namespace JASS
 			
 		public:
 			/*
-				MAX()
-				-----
+				MATHS::MAX()
+				------------
 			*/
 			/*!
 				@brief Return the maximum of the two parameters.
@@ -58,8 +58,8 @@ namespace JASS
 				}
 			
 			/*
-				MAX()
-				-----
+				MATHS::MAX()
+				------------
 			*/
 			/*!
 				@brief Return the maximum of the three parameters.
@@ -75,8 +75,8 @@ namespace JASS
 				}
 
 			/*
-				MIN()
-				-----
+				MATHS::MIN()
+				------------
 			*/
 			/*!
 				@brief Return the minimum of the two parameters.
@@ -92,8 +92,8 @@ namespace JASS
 				}
 				
 			/*
-				MIN()
-				-----
+				MATHS::MIN()
+				------------
 				Return the minimum of three integers (order preserving)
 			*/
 			/*!

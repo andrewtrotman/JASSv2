@@ -5,8 +5,9 @@
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 #include "file.h"
-#include "bitstring.h"
+#include "ascii.h"
 #include "unicode.h"
+#include "bitstring.h"
 
 int					// [out] returns 0 to the OS on success, else it will assert
 main
@@ -20,5 +21,7 @@ main
 	JASS::file::unittest();
 	JASS::bitstring::unittest();
 	JASS::unicode::unittest();
+	JASS::ascii::unittest();
+	
 	return 0;
 	}

@@ -9,11 +9,16 @@
 #
 # Current tools include:
 #    unicode_database_to_c
-#        Tool to convert UnicodeData.txt into a set of ctype.h like methods that work on Unicode
+#        Tool to convert UnicodeData.txt into a set of ctype like methods that work on Unicode
+#    ascii_database_to_c
+#        Tool to generate a set of ctype like methods that work on ASCII and are locale free
 #
 
 include_directories(../source)
 
+#
+#	Explain how to make unicode.cpp
+#
 add_custom_command(
 	OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/../source/unicode.cpp
 	COMMAND unicode_database_to_c  ${CMAKE_CURRENT_SOURCE_DIR}/../external/Unicode/UnicodeData.txt ${CMAKE_CURRENT_SOURCE_DIR}/../external/Unicode/PropList.txt ${CMAKE_CURRENT_SOURCE_DIR}/../external/Unicode/CaseFolding.txt > ${CMAKE_CURRENT_BINARY_DIR}/../source/unicode.cpp
@@ -35,3 +40,20 @@ add_executable(unicode_database_to_c
 
 set_property(TARGET unicode_database_to_c PROPERTY CXX_STANDARD 11)
 
+
+
+#
+# Explain how to make ascii.cpp
+#
+
+add_custom_command(
+	OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/../source/ascii.cpp
+	COMMAND ascii_database_to_c > ${CMAKE_CURRENT_BINARY_DIR}/../source/ascii.cpp
+	DEPENDS ascii_database_to_c
+	)
+
+add_custom_target(generate_ascii_cpp DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/../source/ascii.cpp)
+
+add_executable(ascii_database_to_c
+	ascii_database_to_c.cpp
+	)

@@ -10,6 +10,9 @@
 	@details These methods are (where possible) Unicode equivelants to C's ctype methods.  For the ASCII block
 	these methods should exactly match C's is() routines. The case changing methods toupper() an tolower() are
 	replaced with a tocasefold() method because uppercase and lowercase are meaningless for many languages.
+	
+	See unicode_database_to_c.cpp (in the tools directory) for how to generate the matching unicode.cpp file.
+	
 	@author Andrew Trotman
 	@copyright 2016 Andrew Trotman
 */
@@ -19,21 +22,21 @@
 #include <stdint.h>
 #include <assert.h>
 
-extern unsigned char JASS_unicode_isalpha_data[];
-extern unsigned char JASS_unicode_isalnum_data[];
-extern unsigned char JASS_unicode_isupper_data[];
-extern unsigned char JASS_unicode_islower_data[];
-extern unsigned char JASS_unicode_iscntrl_data[];
-extern unsigned char JASS_unicode_isdigit_data[];
-extern unsigned char JASS_unicode_isgraph_data[];
-extern unsigned char JASS_unicode_ispunct_data[];
-extern unsigned char JASS_unicode_isspace_data[];
-extern unsigned char JASS_unicode_isuspace_data[];
-extern unsigned char JASS_unicode_isxdigit_data[];
-extern unsigned char JASS_unicode_ismark_data[];
-extern unsigned char JASS_unicode_issymbol_data[];
+extern unsigned char JASS_unicode_isalpha_data[];	///< is the given codepoint alphabetic
+extern unsigned char JASS_unicode_isalnum_data[];	///< is the given codepoint alphanumeric
+extern unsigned char JASS_unicode_isupper_data[];	///< is the given codepoint uppercase
+extern unsigned char JASS_unicode_islower_data[];	///< is the given codepoint lowercase
+extern unsigned char JASS_unicode_iscntrl_data[];	///< is the given codepoint a control character
+extern unsigned char JASS_unicode_isdigit_data[];	///< is the given codepoint a numeric or digit character
+extern unsigned char JASS_unicode_isgraph_data[];	///< is the given codepoint a graphic character
+extern unsigned char JASS_unicode_ispunct_data[];	///< is the given codepoint punctuation
+extern unsigned char JASS_unicode_isspace_data[];	///< is the given codepoint whitespace
+extern unsigned char JASS_unicode_isuspace_data[];	///< is the given codepoint a space under the Unicode definition of space
+extern unsigned char JASS_unicode_isxdigit_data[];	///< is the given codepoint a hexadecimal digit
+extern unsigned char JASS_unicode_ismark_data[];	///< is the given codepoint a mark
+extern unsigned char JASS_unicode_issymbol_data[];	///< is the given codepoint a symbol
 
-extern const uint32_t *JASS_normalisation[];
+extern const uint32_t *JASS_normalisation[];		///< an array of pointers to JASS normalised codepoints for the given codepoint
 
 namespace JASS
 	{
@@ -48,8 +51,8 @@ namespace JASS
 		{
 		public:
 			/*
-				TOCASEFOLD()
-				------------
+				UNICODE::TOCASEFOLD()
+				---------------------
 			*/
 			/*!
 				@brief Strip all accents, non-alphanumerics, and then casefold.
@@ -68,8 +71,8 @@ namespace JASS
 				}
 			
 			/*
-				ISALPHA()
-				---------
+				UNICODE::ISALPHA()
+				------------------
 			*/
 			/*!
 				@brief Unicode version is isalpha().
@@ -87,8 +90,8 @@ namespace JASS
 
 
 			/*
-				ISALNUM()
-				---------
+				UNICODE::ISALNUM()
+				------------------
 			*/
 			/*!
 				@brief Unicode version is isalnum().
@@ -104,12 +107,10 @@ namespace JASS
 
 				return JASS_unicode_isalnum_data[byte] & bit;
 				}
-
-
 			
 			/*
-				ISUPPER()
-				---------
+				UNICODE::ISUPPER()
+				------------------
 			*/
 			/*!
 				@brief Unicode version is isupper().
@@ -126,8 +127,8 @@ namespace JASS
 				}
 				
 			/*
-				ISLOWER()
-				---------
+				UNICODE::ISLOWER()
+				------------------
 			*/
 			/*!
 				@brief Unicode version is islower().
@@ -144,8 +145,8 @@ namespace JASS
 				}
 				
 			/*
-				ISCNTRL()
-				---------
+				UNICODE::ISCNTRL()
+				------------------
 			*/
 			/*!
 				@brief Unicode version is iscntrl().
@@ -162,8 +163,8 @@ namespace JASS
 				}
 				
 			/*
-				ISDIGIT()
-				---------
+				UNICODE::ISDIGIT()
+				------------------
 			*/
 			/*!
 				@brief Unicode version is isdigit().
@@ -182,8 +183,8 @@ namespace JASS
 				}
 			
 			/*
-				ISGRAPH()
-				---------
+				UNICODE::ISGRAPH()
+				------------------
 			*/
 			/*!
 				@brief Unicode version is isgraph().
@@ -200,8 +201,8 @@ namespace JASS
 				}
 
 			/*
-				ISPUNCT()
-				---------
+				UNICODE::ISPUNCT()
+				------------------
 			*/
 			/*!
 				@brief Unicode version is ispunct().
@@ -218,8 +219,8 @@ namespace JASS
 				}
 
 			/*
-				ISSPACE()
-				---------
+				UNICODE::ISSPACE()
+				------------------
 			*/
 			/*!
 				@brief Unicode version is isspace(), by the "C" isspace() and Unicode definition.
@@ -236,8 +237,8 @@ namespace JASS
 				}
 
 			/*
-				ISUSPACE()
-				----------
+				UNICODE::ISUSPACE()
+				-------------------
 			*/
 			/*!
 				@brief Unicode version is isspace(), by the Unicode definition.
@@ -254,8 +255,8 @@ namespace JASS
 				}
 
 			/*
-				ISXDIGIT()
-				----------
+				UNICODE::ISXDIGIT()
+				-------------------
 			*/
 			/*!
 				@brief Unicode version is isxdigit().
@@ -272,8 +273,8 @@ namespace JASS
 				}
 
 			/*
-				ISMARK()
-				--------
+				UNICODE::ISMARK()
+				-----------------
 			*/
 			/*!
 				@brief Check to see if the codepoint is a mark.
@@ -290,8 +291,8 @@ namespace JASS
 				}
 
 			/*
-				ISSYMBOL()
-				----------
+				UNICODE::ISSYMBOL()
+				-------------------
 			*/
 			/*!
 				@brief Check to see if the codepoint is a symbol.
@@ -308,11 +309,14 @@ namespace JASS
 				}
 				
 			/*
-				UNITTEST()
-				----------
+				UNICODE::UNITTEST()
+				-------------------
 				The initial unit test was against the D language standard library (Phobos) but
 				that test fails because Phobos std.uni isn't against any particular version of the
 				standard and these methods are generated against Unicode version 9.0.
+			*/
+			/*!
+				@brief Unit test this class.
 			*/
 			static void unittest(void)
 				{

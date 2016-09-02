@@ -12,7 +12,6 @@
 	@author Andrew Trotman
 	@copyright 2016 Andrew Trotman
 */
-
 #pragma once
 
 #include <stdint.h>
@@ -409,7 +408,7 @@ namespace JASS
 		*/
 		/*!
 			@brief Return a serialised version of this object as an array of uint8_t.
-			@detials  One frequent (and the initial use) of this class is to convert a bit-string into a byte-string.
+			@details  One frequent (and the initial use) of this class is to convert a bit-string into a byte-string.
 			This method does exactly that.  It returns a pointer to the internal byte-string and a length.  The returned
 			string is contigious.  It is valid until the length of the bitstring changes.
 			@param length [out] The length of the bytestring (measured in bytes).

@@ -35,6 +35,11 @@
 		
 	These are then dumped out as C routines.
 */
+/*!
+	@file
+	@author Andrew Trotman
+	@copyright 2016 Andrew Trotman
+*/
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
