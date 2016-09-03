@@ -6,6 +6,7 @@
 */
 #include "file.h"
 #include "ascii.h"
+#include "maths.h"
 #include "unicode.h"
 #include "bitstring.h"
 
@@ -22,6 +23,7 @@ main
 	JASS::bitstring::unittest();
 	JASS::unicode::unittest();
 	JASS::ascii::unittest();
+	JASS::maths::unittest();
 	
 	return 0;
 	}
