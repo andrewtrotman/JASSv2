@@ -9,6 +9,7 @@
 	
 	The latest version of UnicodeData.txt can be found here: http://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
 	The latest version of PropList.txt can be found here: http://www.unicode.org/Public/UCD/latest/ucd/PropList.txt
+	The latest version of CaseFolding.txt can be found here: http://www.unicode.org/Public/UCD/latest/ucd/CaseFolding.txt
 	The documentation on how to read them is here: http://www.unicode.org/reports/tr44/#UnicodeData.txt
 
 	The functions we wish to mirror are described here: http://www.cplusplus.com/reference/cctype/

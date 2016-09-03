@@ -12,9 +12,9 @@
 #	g++ (the C++ compiler) is in the path
 #	dmd (the D compiler) is in the path
 #
-../build/tools/Debug/unicode_database_to_c ../external/Unicode/UnicodeData_v6_3.txt  ../external/Unicode/PropList_v6_3.txt  > unicode_v6_3.cpp
+../build/tools/Debug/unicode_database_to_c ../external/Unicode/UnicodeData_v6_3.txt  ../external/Unicode/PropList_v6_3.txt  ../external/Unicode/CaseFolding_v6_3.txt> unicode_v6_3.cpp
 g++ -c unicode_v6_3.cpp -o unicode_v6_3.o
-dmd cmp_d_to_utype.d unicode_v6_3.o
+dmd ../tools/cmp_d_to_utype.d unicode_v6_3.o
 ./cmp_d_to_utype > test_unicode_database_to_c_with_d.txt
 rm unicode_v6_3.cpp
 rm unicode_v6_3.o
