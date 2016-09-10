@@ -16,6 +16,8 @@ set(JASSlib_FILES
 	file.h
 	file.cpp
 	maths.h
+	memory.h
+	memory.cpp
 	unicode.h
 	unicode.cpp
 	)
