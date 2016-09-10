@@ -620,6 +620,8 @@ while ((digit = strpbrk(digit, ";0123456789")) != NULL)
 */
 void normalize(void)
 	{
+	std::map<int, std::vector<int>> table_of_normalisations;
+	
 	/*
 		Apply the normalisation rules recursively and write out the translation
 	*/
@@ -637,18 +639,34 @@ void normalize(void)
 		while (answer.size() >= 1 && answer[answer.size() - 1] == 0x20)
 			answer.pop_back();
 
-		printf("static const uint32_t JASS_normalisation_%x[] = {", codepoint);
+		/*
+			Only write it out if it isn't an empty string (as most are empty and we only need to store that once).
+		*/
+		if (answer.size() != 0)
+			{
+			printf("static const uint32_t JASS_normalisation_%x[] = {", codepoint);
 
-		for (const auto &cp : answer)
-			printf("0x%X, ", cp);
-		puts("0x00};");
+			for (const auto &cp : answer)
+				printf("0x%X, ", cp);
+			puts("0x00};");
+			}
+			
+		table_of_normalisations[codepoint] = answer;
 		}
+	/*
+		Write out the empty string
+	*/
+	printf("static const uint32_t JASS_normalisation_0[] = {0};\n");
+
 	/*
 		Write out the global lookup table
 	*/
 	printf("const uint32_t *JASS_normalisation[] = {\n");
 	for (int codepoint = 0; codepoint <= 0x10FFFF; codepoint++)
-		printf("JASS_normalisation_%x,\n", codepoint);
+		if (table_of_normalisations[codepoint].size() == 0)
+			printf("JASS_normalisation_0,\n");
+		else
+			printf("JASS_normalisation_%x,\n", codepoint);
 	puts("};");
 	}
 
