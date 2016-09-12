@@ -168,7 +168,7 @@ namespace JASS
 		FILE::SIZE()
 		------------
 	*/
-	size_t file::size(void)
+	size_t file::size(void) const
 		{
 		/*
 			Since we already have a handle to the file, we just remember where we are,

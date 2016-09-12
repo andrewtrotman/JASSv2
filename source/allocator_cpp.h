@@ -26,7 +26,7 @@ namespace JASS
 	class allocator_cpp
 	{
 	private:
-		allocator pool;							///< This is the memory pool from which this C++ allocator allocated.
+		allocator &pool;							///< This is the memory pool from which this C++ allocator allocated.
 		
 	public:
 		typedef TYPE value_type;				///< This is an allocator for objects of type allocator_cpp::value_type.

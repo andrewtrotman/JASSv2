@@ -77,6 +77,32 @@ namespace JASS
 
 	private:
 		/*
+			ALLOCATOR::ALLOCATOR()
+			----------------------
+		*/
+		/*!
+			@brief Private copy constructor prevents object copying
+		*/
+		allocator(allocator &)
+			{
+			/*
+				Nothing
+			*/
+			}
+
+		/*
+			ALLOCATOR::OPERATOR=()
+			----------------------
+		*/
+		/*!
+			@brief Private assignment operator prevents assigning to this object
+		*/
+		allocator &operator=(const allocator &)
+			{
+			return *this;
+			}
+		
+		/*
 			ALLOCATOR::ALLOC()
 			------------------
 		*/

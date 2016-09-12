@@ -36,7 +36,7 @@ namespace JASS
 	class file
 		{
 		private:
-			FILE *fp;
+			FILE *fp;				///< The underlying representation is a FILE *  from C (as they appear to be fast).
 			
 		private:
 			/*
@@ -99,7 +99,7 @@ namespace JASS
 				@brief Return the length of the file as it currently stands
 				@return File size in bytes.
 			*/
-			size_t size(void);
+			size_t size(void) const;
 
 			/*
 				FILE::READ_ENTIRE_FILE()
@@ -161,5 +161,4 @@ namespace JASS
 			*/
 			static void unittest(void);
 		} ;
-
 	}
