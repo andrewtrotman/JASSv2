@@ -9,6 +9,8 @@
 #
 
 set(JASSlib_FILES
+	allocator.h
+	allocator.cpp
 	ascii.h
 	ascii.cpp
 	bitstring.h
@@ -16,8 +18,6 @@ set(JASSlib_FILES
 	file.h
 	file.cpp
 	maths.h
-	memory.h
-	memory.cpp
 	unicode.h
 	unicode.cpp
 	)

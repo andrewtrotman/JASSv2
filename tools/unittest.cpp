@@ -9,6 +9,7 @@
 #include "maths.h"
 #include "unicode.h"
 #include "bitstring.h"
+#include "allocator.h"
 
 int					// [out] returns 0 to the OS on success, else it will assert
 main
@@ -24,6 +25,7 @@ main
 	JASS::unicode::unittest();
 	JASS::ascii::unittest();
 	JASS::maths::unittest();
+	JASS::allocator::unittest();
 	
 	return 0;
 	}

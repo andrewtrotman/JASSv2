@@ -1,6 +1,6 @@
 /*
-	MEMORY.H
-	--------
+	ALLOCATOR.H
+	-----------
 */
 /*!
 	@file
@@ -17,45 +17,45 @@
 namespace JASS
 	{
 	/*
-		CLASS MEMORY
-		------------
+		CLASS ALLOCATOR
+		---------------
 	*/
 	/*!
 		@brief Simple block-allocator that internally allocates a large chunk then allocates smaller blocks from this larger block
 		@details This is a simple block allocator that internally allocated a large single block from the C++ free-store (or operating system)
 		and then allows calls to allocate small blocks from that one block.  These small blocks cannot be individually deallocated, but rather
-		are all deallocated at once when rewind() is called.  C++ allocators can easily be defined that allocate from a single object of this
+		are all deallocated all at once when rewind() is called.  C++ allocators can easily be defined that allocate from a single object of this
 		type, but that is left for other classes to manage.
 		
 		If the large memory block "runs out" then a second (and subsequent) block are allocated from the C++ free-store and they
 		are chained together.  If the caller askes for a single piece of memory larger then that default_allocation_size then this
-		class will allocate a chunk of the required size and return that to the caller.  Note that there is wastage at the end of each
-		chunk as they callot be guaranteed to lie squentially in memory.
+		class will allocate a chunk of the required size and return that to the caller, and in doing so it sets the allocation size
+		to this new value.  Note that there is wastage at the end of each chunk as they callot be guaranteed to lay squentially in memory.
 		
 		By default allocatgions by this class are not aligned to any particular boundary.  That is, if 1 byte is allocated then the next memory
 		allocation is likely to be exactly one byte further on.  So allocation of a uint8_t followed by the allocation of a uint32_t is likely to
 		result in the uint32_t being at an odd-numbered memory location.  Call realign() to move the next allocation to a machine-word boundary -
-		which is probably 8 bytes.  On ARM, all memory allocations are aligned by default as unaligned reads usually cause a fault.
+		which is probably 8 bytes (on a 64-bit machine).  On ARM, all memory allocations are aligned by default because unaligned reads usually cause a fault.
 		
 		The use of new and delete in C++ (and malloc and free in C) is expensive as a substantial amount of work is necessary in order to maintain
 		the heap.  This class reduces that cost - it exists for efficiency reasons alone.
 	*/
-	class memory
+	class allocator
 	{
 	private:
 		static const size_t default_allocation_size = 1024 * 1024 * 1024;			///< Allocations from the C++ free-store are this size
 		
 	private:
 		/*
-			CLASS MEMORY::CHUNK
-			-------------------
+			CLASS ALLOCATOR::CHUNK
+			----------------------
 		*/
 		/*!
 			@brief Details of an individual large-allocation unit.
 			@details The large-allocations are kept in a linked list of chunks.  Each chunk stores a backwards pointer (of NULL if not backwards chunk) and
 			the size of the allocation.  The large block that is allocated is actually the size of the caller's request plus the size of this structure.  The
 			large-block is layed out as this object at the start and data[] being of the user's requested length.  That is, if the user asks for 1KB then the
-			actual request from the C++ free store (or the Operating System) is 1BK + sizeof(memory::chunk).
+			actual request from the C++ free store (or the Operating System) is 1BK + sizeof(allocator::chunk).
 		*/
 		class chunk
 			{
@@ -75,8 +75,8 @@ namespace JASS
 
 	private:
 		/*
-			MEMORY::ALLOC()
-			---------------
+			ALLOCATOR::ALLOC()
+			------------------
 		*/
 		/*!
 			@brief Allocate more memory from the C++ free-store
@@ -86,18 +86,18 @@ namespace JASS
 		void *alloc(size_t size);
 		
 		/*
-			MEMORY::DEALLOC()
-			-----------------
+			ALLOCATOR::DEALLOC()
+			--------------------
 		*/
 		/*!
-			@brief Hand back to the C++ free store (or Operating system) a chunk of memory that has previously been allocated with memory::alloc().
-			@param buffer [in] A pointer previously returned by memory::alloc()
+			@brief Hand back to the C++ free store (or Operating system) a chunk of memory that has previously been allocated with allocator::alloc().
+			@param buffer [in] A pointer previously returned by allocator::alloc()
 		*/
 		void dealloc(void *buffer);
 		
 		/*
-			MEMORY::ADD_CHUNK()
-			-------------------
+			ALLOCATOR::ADD_CHUNK()
+			----------------------
 		*/
 		/*!
 			@brief Get memory from the C++ free store (or the Operating System) and add it to the linked list of large-allocations.
@@ -112,27 +112,27 @@ namespace JASS
 		
 	public:
 		/*
-			MEMORY::MEMORY()
-			----------------
+			ALLOCATOR::ALLOCATOR()
+			----------------------
 		*/
 		/*!
 			@brief Constructor
 			@param block_size_for_allocation [in] This size of the large-chunk allocation from the C++ free store or the Operating System.
 		*/
-		memory(size_t block_size_for_allocation = default_allocation_size);
+		allocator(size_t block_size_for_allocation = default_allocation_size);
 
 		/*
-			MEMORY::~MEMORY()
-			----------------
+			ALLOCATOR::~ALLOCATOR()
+			-----------------------
 		*/
 		/*!
 			@brief Destructor.
 		*/
-		~memory();
+		~allocator();
 
 		/*
-			MEMORY::MALLOC()
-			----------------
+			ALLOCATOR::MALLOC()
+			-------------------
 		*/
 		/*!
 			@brief Allocate a small chunk of memory from the internal block and return a pointer to the caller
@@ -142,8 +142,8 @@ namespace JASS
 		void *malloc(size_t bytes);
 		
 		/*
-			MEMORY::CAPACITY()
-			------------------
+			ALLOCATOR::CAPACITY()
+			---------------------
 		*/
 		/*!
 			@brief Return the amount of memory that this object has allocated to it (i.e. the sum of the sizes of the large blocks in the large block chain)
@@ -155,21 +155,21 @@ namespace JASS
 			}
 		
 		/*
-			MEMORY::SIZE()
-			--------------
+			ALLOCATOR::SIZE()
+			-----------------
 		*/
 		/*!
 			@brief Return the number of bytes of memory this object has handed back to callers.
 			@return Bytes used from the capacity()
 		*/
-		size_t bytes_used(void)
+		size_t size(void)
 			{
 			return used;
 			}
 		
 		/*
-			MEMORY::REALIGN()
-			-----------------
+			ALLOCATOR::REALIGN()
+			--------------------
 		*/
 		/*!
 			@brief Signal that the next allocation should be on a machine-word boundary.
@@ -182,24 +182,29 @@ namespace JASS
 		void realign(void);
 		
 		/*
-			MEMORY::REWIND()
-			----------------
+			ALLOCATOR::REWIND()
+			-------------------
 		*/
 		/*!
 			@brief Throw away (without calling delete) all objects allocated in the memory space of this object.
-			@details This method rolls-back the memory that has been allocated, but maintains the large-block list.
-			delete is not called for any objects allocated in this space, the memory is simply re-claimed. If more than
-			one large-block has been allocated then this method will return all large-blocks except the initial large-block
-			back to the C++ free store (or the Operating System).
+			@details This method rolls-back the memory that has been allocated by handing it all back to the C++ free store
+			(or operating system).  delete is not called for any objects allocated in this space, the memory is simply re-claimed.
 		*/
 		void rewind(void);
+		
+		
+		/*
+			ALLOCATOR::UNITTEST()
+			---------------------
+		*/
+		static void unittest(void);
 	} ;
 
 	/*
-		MEMORY::MALLOC()
-		----------------
+		ALLOCATOR::MALLOC()
+		-------------------
 	*/
-	inline void *memory::malloc(size_t bytes)
+	inline void *allocator::malloc(size_t bytes)
 		{
 		void *answer;			// Pointer to the allocated space.
 
@@ -218,9 +223,9 @@ namespace JASS
 		if (chunk_at + bytes > chunk_end)
 			if (add_chunk(bytes) == NULL)
 				{
-				#ifdef NEVER
+//				#ifdef NEVER
 					exit(printf("Out of memory:%lld bytes requested %lld bytes used %lld bytes allocated\n", (long long)bytes, (long long)used, (long long)allocated));
-				#endif
+//				#endif
 				return NULL;		// out of memory
 				}
 
