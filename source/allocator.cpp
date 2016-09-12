@@ -34,25 +34,6 @@ namespace JASS
 		}
 
 	/*
-		ALLOCATOR::ALLOC()
-		------------------
-		Allocate memory from the operating system (in this case the C runtime library).
-	*/
-	void *allocator::alloc(size_t size)
-		{
-		return ::malloc((size_t)size);
-		}
-
-	/*
-		ALLOCATOR::DEALLOC()
-		--------------------
-	*/
-	void allocator::dealloc(void *buffer)
-		{
-		::free(buffer);
-		}
-
-	/*
 		ALLOCATOR::ADD_CHUNK()
 		----------------------
 		The bytes parameter is passed to this routine simply so that we can be sure to

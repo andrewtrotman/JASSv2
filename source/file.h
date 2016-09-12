@@ -29,28 +29,78 @@ namespace JASS
 		@brief File based I/O methods including whole file and partial files.
 		@details This class exists in order to abstract file I/O which has, in the past, been different on different platforms.  For example,
 		64-bit file I/O under Windows (using Win32) is awkward because the Win32 functions do not take 64-bit parameters.
+		
+		This file class is based on Resource Allocation Is Initialisation (RAII).  That is, the file is opened when the object is constructed
+		and closed when the object is destroyed.
 	*/
 	class file
 		{
+		private:
+			FILE *fp;
+			
+		private:
+			/*
+				FILE::FILE()
+				------------
+			*/
+			/*!
+				@brief Private constructor to prevent the construction of an object without opening a file.
+			*/
+			file()
+				{
+				/* Nothing */
+				}
+			
 		public:
 			/*
 				FILE::FILE()
 				------------
 			*/
 			/*!
-				@brief Constructor.
+				@brief Constructor used for opening files.
+				@param filename [in] the name of the file.
+				@param mode [in] The file open mode.  See C's fopen() for details on possible modes.
 			*/
-			file() {}
+			file(const char *filename, const char *mode)
+				{
+				/*
+					Open the given file in the given mode
+				*/
+				fp = fopen(filename, mode);
+				}
 
 			/*
-				FILE::FILE()
+				FILE::~FILE()
+				-------------
+			*/
+			/*!
+				@brief Destructor that closes any open file
+			*/
+			~file()
+				{
+				fclose(fp);
+				}
+			
+			/*
+				FILE::READ()
 				------------
 			*/
 			/*!
-				@brief Destructor.
+				@brief Read buffer.size() bytes from the give file into the buffer.  If at end of file then this method will resize buffer to the number of bytes read from the file.
+				@param buffer [in, out] Read buffer.size() bytes into buffer, calling buffer.resize() on failure.
 			*/
-			~file() {}
+			void read(std::vector<uint8_t> &buffer);
 			
+			/*
+				FILE::SIZE()
+				------------
+			*/
+			/*!
+				@brief Return the length of the file as it currently stands
+				@return File size in bytes.
+			*/
+			size_t size(void);
+
 			/*
 				FILE::READ_ENTIRE_FILE()
 				------------------------

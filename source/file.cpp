@@ -147,6 +147,49 @@ namespace JASS
 		}
 
 	/*
+		FILE::READ()
+		------------
+	*/
+	void file::read(std::vector<uint8_t> &buffer)
+		{
+		/*
+			Read from the file
+		*/
+		size_t bytes_read = ::fread(&buffer[0], 1, buffer.size(), fp);
+		
+		/*
+			If we got a short read then resize the buffer to signal back to the caller that we failed to read (probably EOF).
+		*/
+		if (bytes_read != buffer.size())
+			buffer.resize(bytes_read);
+		}
+	
+	/*
+		FILE::SIZE()
+		------------
+	*/
+	size_t file::size(void)
+		{
+		/*
+			Since we already have a handle to the file, we just remember where we are,
+			seek to the end and heck where we are now, and seek back.  This will probably
+			be very fast as it doesn't (normally) need to do and I/O to compute the answer
+		*/
+		off_t current_position = ftello(fp);
+		fseeko(fp, 0, SEEK_END);
+		off_t file_size = ftello(fp);
+		fseeko(fp, current_position, SEEK_SET);
+		
+		/*
+			This will fail in the case where off_t is larger than a size_t.  This is unlikely.
+			On the machines this is being developed on both size_t and off_t are 8-byte integers.
+		*/
+		return file_size;
+		}
+
+
+
+	/*
 		FILE::UNITTEST()
 		----------------
 	*/

@@ -17,6 +17,9 @@ set(JASSlib_FILES
 	bitstring.cpp
 	file.h
 	file.cpp
+	instream.h
+	instream_file.h
+	instream_file.cpp
 	maths.h
 	unicode.h
 	unicode.cpp

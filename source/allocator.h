@@ -1,6 +1,8 @@
 /*
 	ALLOCATOR.H
 	-----------
+	Copyright (c) 2016 Andrew Trotman
+	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 /*!
 	@file
@@ -83,7 +85,10 @@ namespace JASS
 			@param request_size [in] The size (in bytes) of the requested block.
 			@return A pointer to a block of memory of size size, or NULL on failure.
 		*/
-		void *alloc(size_t size);
+		void *alloc(size_t size) const
+			{
+			return ::malloc((size_t)size);
+			}
 		
 		/*
 			ALLOCATOR::DEALLOC()
@@ -93,7 +98,10 @@ namespace JASS
 			@brief Hand back to the C++ free store (or Operating system) a chunk of memory that has previously been allocated with allocator::alloc().
 			@param buffer [in] A pointer previously returned by allocator::alloc()
 		*/
-		void dealloc(void *buffer);
+		void dealloc(void *buffer) const
+			{
+			::free(buffer);
+			}
 		
 		/*
 			ALLOCATOR::ADD_CHUNK()
@@ -149,7 +157,7 @@ namespace JASS
 			@brief Return the amount of memory that this object has allocated to it (i.e. the sum of the sizes of the large blocks in the large block chain)
 			@return The number of bytes of memory allocated to this object.
 		*/
-		size_t capacity(void)
+		size_t capacity(void) const
 			{
 			return allocated;
 			}
@@ -162,7 +170,7 @@ namespace JASS
 			@brief Return the number of bytes of memory this object has handed back to callers.
 			@return Bytes used from the capacity()
 		*/
-		size_t size(void)
+		size_t size(void) const
 			{
 			return used;
 			}
