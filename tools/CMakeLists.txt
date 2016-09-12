@@ -38,9 +38,6 @@ add_executable(unicode_database_to_c
 	../source/file.cpp
 	../source/bitstring.cpp)
 
-set_property(TARGET unicode_database_to_c PROPERTY CXX_STANDARD 11)
-
-
 
 #
 # Explain how to make ascii.cpp

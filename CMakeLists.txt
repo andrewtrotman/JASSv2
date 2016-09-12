@@ -19,6 +19,8 @@ project(JASS)
 
 add_definitions("-Wall")
 
+set(CMAKE_CXX_STANDARD 11)
+
 #
 # Download any external dependencies
 #

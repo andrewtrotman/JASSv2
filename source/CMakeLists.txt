@@ -11,6 +11,7 @@
 set(JASSlib_FILES
 	allocator.h
 	allocator.cpp
+	allocator_cpp.h
 	ascii.h
 	ascii.cpp
 	bitstring.h
@@ -24,6 +25,7 @@ set(JASSlib_FILES
 	unicode.h
 	unicode.cpp
 	)
+
 add_library(JASSlib ${JASSlib_FILES})
 
 include_directories(.)
