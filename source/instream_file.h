@@ -1,7 +1,16 @@
 /*
 	INSTREAM_FILE.H
 	---------------
+	Copyright (c) 2016 Andrew Trotman
+	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
+/*!
+	@file
+	@brief Subclass of instream for reading data from a disk file.
+	@author Andrew Trotman
+	@copyright 2016 Andrew Trotman
+*/
+
 #pragma once
 
 #include "file.h"
@@ -13,18 +22,53 @@ namespace JASS
 		CLASS INSTREAM_FILE
 		-------------------
 	*/
+	/*!
+		@brief Subclass of the instream base class used for reading data from a disk file.
+	*/
 	class instream_file : public instream
-	{
-	private:
-		file file;
-		char *filename;
-		size_t file_length;
-		size_t bytes_read;
+		{
+		private:
+			file file;					///< The file to read from.
+			size_t file_length;		///< The length of the file.
+			size_t bytes_read;		///< The number of bytes that have been read from the file.
 
-	public:
-		instream_file(allocator &memory, char *filename);
-		virtual ~instream_file() {};
+		public:
+			/*
+				INSTREAM_FILE::INSTREAM_FILE()
+				------------------------------
+			*/
+			/*!
+				@brief Constructor
+				@param filename [in] The name of the file to use as the input stream
+			*/
+			instream_file(const std::string &filename);
 
-		virtual void read(std::vector<uint8_t> &buffer);
-	};
+			/*
+				INSTREAM_FILE::~INSTREAM_FILE()
+				-------------------------------
+			*/
+			/*!
+				@brief Destructor.
+			*/
+			virtual ~instream_file() {};
+
+			/*
+				INSTREAM_FILE::READ()
+				---------------------
+			*/
+			/*!
+				@brief Read buffer.size() bytes of data into buffer, resizing buffer on eof.
+				@param buffer [out] buffer.size() bytes of data are read from source into buffer which is resized to the number of bytes read on eof.
+			*/
+			virtual void read(document &buffer);
+			
+			/*
+				INSTREAM_FILE::UNITTEST()
+				-------------------------
+			*/
+			/*!
+				@brief Unit test this class
+			*/
+			static void unittest(void);
+		};
 }

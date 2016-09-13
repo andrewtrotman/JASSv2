@@ -19,7 +19,7 @@ namespace JASS
 	allocator::allocator(size_t block_size_for_allocation)
 		{
 		block_size = block_size_for_allocation;
-		current_chunk = NULL;
+		current_chunk = nullptr;
 
 		rewind();		// set up ready for the initial allocation
 		}
@@ -54,8 +54,8 @@ namespace JASS
 			Get a new block of memory for the C++ free store of the Operating System
 		*/
 		allocator::chunk *chain;
-		if ((chain = (allocator::chunk *)alloc(request)) == NULL)
-			return NULL;					// This can rarely happen because of delayed allocation strategies of Linux (etc.).
+		if ((chain = (allocator::chunk *)alloc(request)) == nullptr)
+			return nullptr;					// This can rarely happen because of delayed allocation strategies of Linux (etc.).
 
 
 		/*
@@ -121,7 +121,7 @@ namespace JASS
 			Free all memory blocks
 		*/
 		chunk *killer;
-		for (chunk *chain = current_chunk; chain != NULL; chain = killer)
+		for (chunk *chain = current_chunk; chain != nullptr; chain = killer)
 			{
 			killer = chain->next_chunk;
 			dealloc(chain);
@@ -130,8 +130,8 @@ namespace JASS
 		/*
 			zero the counters and pointers
 		*/
-		chunk_end = chunk_at = NULL;
-		current_chunk = NULL;
+		chunk_end = chunk_at = nullptr;
+		current_chunk = nullptr;
 		used = 0;
 		allocated = 0;
 		}

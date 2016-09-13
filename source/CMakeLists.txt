@@ -16,9 +16,12 @@ set(JASSlib_FILES
 	ascii.cpp
 	bitstring.h
 	bitstring.cpp
+	document.h
 	file.h
 	file.cpp
 	instream.h
+	instream_document_trec.h
+	instream_document_trec.cpp
 	instream_file.h
 	instream_file.cpp
 	maths.h

@@ -261,7 +261,7 @@ int process_unicodedata(const char *line, int last_codepoint)
 	/*
 		the first parmeter is the codepoint
 	*/
-	if (strstr(line, ", Last>") != NULL)
+	if (strstr(line, ", Last>") != nullptr)
 		{
 		range_start = last_codepoint;
 		sscanf(line, "%x", &range_end);
@@ -276,9 +276,9 @@ int process_unicodedata(const char *line, int last_codepoint)
 		step over the second parameter
 	*/
 	char *semicolon;
-	if ((semicolon = strchr(line, ';')) == NULL)
+	if ((semicolon = strchr(line, ';')) == nullptr)
 		exit(printf("Badly formed line:%s\n", line));
-	if ((semicolon = strchr(semicolon + 1, ';')) == NULL)
+	if ((semicolon = strchr(semicolon + 1, ';')) == nullptr)
 		exit(printf("Badly formed line:%s\n", line));
 		
 	/*
@@ -457,12 +457,12 @@ if (sscanf(line, "%x..%x", &range_start, &range_end) == 1)
 	
 char *semicolon;
 
-if ((semicolon = strchr(line, ';')) == NULL)
+if ((semicolon = strchr(line, ';')) == nullptr)
 	exit(printf("badly formed line:%s\n", line));
 	
 char *hash;
 
-if ((hash = strchr(line, '#')) == NULL)
+if ((hash = strchr(line, '#')) == nullptr)
 	exit(printf("badly formed line:%s\n", line));
 
 for (int codepoint = range_start; codepoint <= range_end; codepoint++)
@@ -588,7 +588,7 @@ sscanf(line, "%x", &codepoint);
 */
 const char *semicolon = line;
 for (uint32_t which_semicolon = 0; which_semicolon < 5; which_semicolon++)
-	if ((semicolon = strchr(semicolon + 1, ';')) == NULL)
+	if ((semicolon = strchr(semicolon + 1, ';')) == nullptr)
 		return;
 
 /*
@@ -596,7 +596,7 @@ for (uint32_t which_semicolon = 0; which_semicolon < 5; which_semicolon++)
 */
 uint32_t normalisation = codepoint;
 const char *digit = semicolon + 1;
-while ((digit = strpbrk(digit, ";0123456789")) != NULL)
+while ((digit = strpbrk(digit, ";0123456789")) != nullptr)
 	{
 	if (*digit == ';')
 		{
@@ -702,7 +702,7 @@ void process_casefolding(const char *line)
 	semicolon = strchr(semicolon + 1, ';');
 	const char *digit = semicolon + 1;
 	std::vector<int> folded;						// the case folded translation
-	while ((digit = strpbrk(digit, ";0123456789")) != NULL)
+	while ((digit = strpbrk(digit, ";0123456789")) != nullptr)
 		{
 		if (*digit == ';')
 			break;

@@ -109,7 +109,7 @@ namespace JASS
 				
 			TYPE *pointer = (TYPE *)pool.malloc(number * sizeof(TYPE));
 			
-			if (pointer == NULL)
+			if (pointer == nullptr)
 				throw std::bad_alloc();
 
 			return pointer;

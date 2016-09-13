@@ -255,12 +255,12 @@ namespace JASS
 			If we can allocate out of the current chunk then use it, otherwise allocate a new chunk, update the list, update pointers, and be ready to be used
 		*/
 		if (chunk_at + bytes > chunk_end)
-			if (add_chunk(bytes) == NULL)
+			if (add_chunk(bytes) == nullptr)
 				{
 //				#ifdef NEVER
 					exit(printf("Out of memory:%lld bytes requested %lld bytes used %lld bytes allocated\n", (long long)bytes, (long long)used, (long long)allocated));
 //				#endif
-				return NULL;		// out of memory
+				return nullptr;		// out of memory
 				}
 
 		/*

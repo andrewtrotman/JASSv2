@@ -34,7 +34,7 @@ namespace JASS
 		/*
 			Fopen() the file then fstat() it.  The alternative is to stat() then fopen() - but that is wrong because the file might change between the two calls.
 		*/
-		if ((fp = fopen(filename.c_str(), "rb")) != NULL)
+		if ((fp = fopen(filename.c_str(), "rb")) != nullptr)
 			if (fstat(fileno(fp), &details) == 0)
 				if ((file_length = details.st_size) != 0)
 					{
@@ -58,7 +58,7 @@ namespace JASS
 		{
 		FILE *fp;						// "C" file to write to
 
-		if ((fp = fopen(filename.c_str(), "wb")) == NULL)
+		if ((fp = fopen(filename.c_str(), "wb")) == nullptr)
 			return false;
 
 		size_t success = fwrite(&buffer[0], buffer.size(), 1, fp);

@@ -11,6 +11,7 @@
 #include "bitstring.h"
 #include "allocator.h"
 #include "allocator_cpp.h"
+#include "instream_file.h"
 
 int					// [out] returns 0 to the OS on success, else it will assert
 main
@@ -28,6 +29,7 @@ main
 	JASS::maths::unittest();
 	JASS::allocator::unittest();
 	JASS::allocator_cpp<size_t>::unittest();
+	JASS::instream_file::unittest();
 	
 	return 0;
 	}

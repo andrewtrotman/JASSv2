@@ -3,8 +3,6 @@
 	------
 	Copyright (c) 2016 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
-
-	Originally from the ATIRE codebase, this code is a re-write using C++ STL classes.
 */
 /*!
 	@file
@@ -91,6 +89,21 @@ namespace JASS
 			*/
 			void read(std::vector<uint8_t> &buffer);
 			
+			/*
+				FILE::READ()
+				------------
+			*/
+			/*!
+				@brief Read bytes number of bytes from the give file into the buffer.
+				@param buffer [out] Buffer large enough to hold bytes number of bytes of data which are written into the memory pointed to by buffer.
+				@param bytes [in] The number of bytes of data to read.
+				@return The number of bytes of data that were read and written into buffer.
+			*/
+			size_t read(void *buffer, size_t bytes)
+				{
+				return ::fread(buffer, 1, bytes, fp);
+				}
+
 			/*
 				FILE::SIZE()
 				------------
