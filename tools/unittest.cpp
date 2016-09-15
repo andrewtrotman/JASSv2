@@ -12,15 +12,16 @@
 #include "allocator.h"
 #include "allocator_cpp.h"
 #include "instream_file.h"
+#include "instream_document_trec.h"
 
-int					// [out] returns 0 to the OS on success, else it will assert
-main
-	(
-	void				// no parameters
-	)
+/*
+	MAIN()
+	------
+*/
+int main(void)
 	{
 	/*
-		Test the JASS file I/O methods
+		Test the JASS classes
 	*/
 	JASS::file::unittest();
 	JASS::bitstring::unittest();
@@ -30,6 +31,7 @@ main
 	JASS::allocator::unittest();
 	JASS::allocator_cpp<size_t>::unittest();
 	JASS::instream_file::unittest();
+	JASS::instream_document_trec::unittest();
 	
 	return 0;
 	}

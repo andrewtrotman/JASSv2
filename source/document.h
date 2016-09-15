@@ -33,10 +33,11 @@ namespace JASS
 			
 		public:
 			document() :
-				allocator(1024),
-				name(),
-				contents()
+				allocator(1024)
 				{
+				/*
+					Nothing
+				*/
 				}
 		};
 	}

@@ -24,10 +24,14 @@ set(JASSlib_FILES
 	instream_document_trec.cpp
 	instream_file.h
 	instream_file.cpp
+	instream_memory.h
+	instream_memory.cpp
 	maths.h
 	slice.h
 	unicode.h
 	unicode.cpp
+	unittest_data.h
+	unittest_data.cpp
 	)
 
 add_library(JASSlib ${JASSlib_FILES})

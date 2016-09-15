@@ -30,7 +30,7 @@ namespace JASS
 	{
 	if (bytes_read >= file_length)
 		{
-		document.contents.resize(0);
+		document.contents = slice();
 		return;		// at EOF so nothing to read
 		}
 
@@ -79,10 +79,10 @@ namespace JASS
 		*/
 		instream_file reader(filename);
 		document document;
-		document.contents.resize(15);
+		document.contents = slice(document.allocator, 15);
 		
 		/*
-			read twice for it making sure we got what we should have
+			read twice from it making sure we got what we should have
 		*/
 		reader.read(document);
 		assert(document.contents.size() == 15);

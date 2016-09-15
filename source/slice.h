@@ -23,7 +23,7 @@ namespace JASS
 	*/
 	class slice
 		{
-		public:
+		private:
 			void *pointer;			///< The start of the data.
 			size_t length;			///< The length of the data (in bytes).
 			
@@ -78,6 +78,56 @@ namespace JASS
 				}
 			
 			/*
+				SLICE::SLICE()
+				--------------
+			*/
+			/*!
+				@brief Construct a slice by copying and '\0' termainating a string, using the allocator's pool of memory.  This does NOT ever delete the memory, that is the allocator's task.
+				@param pool [in] An allocator to allocate the memory from.
+				@param start [in] The start address of the C string.
+				@param end [in] The end address of the C string.
+			*/
+			slice(allocator &pool, const char *start, const char *end)
+				{
+				length = end - start;
+				pointer = (void *)pool.malloc(length + 1);
+				memcpy(pointer, start, length);
+				((char *)pointer)[length] = '\0';
+				}
+			
+			/*
+				SLICE::SLICE()
+				--------------
+			*/
+			/*!
+				@brief Construct a slice by copying and '\0' termainating a string, using the allocator's pool of memory.  This does NOT ever delete the memory, that is the allocator's task.
+				@param pool [in] An allocator to allocate the memory from.
+				@param start [in] The start address of the C string.
+			*/
+			slice(allocator &pool, const char *start)
+				{
+				length = strlen(start);
+				pointer = (void *)pool.malloc(length + 1);
+				memcpy(pointer, start, length);
+				((char *)pointer)[length] = '\0';
+				}
+
+			/*
+				SLICE::SLICE()
+				--------------
+			*/
+			/*!
+				@brief Construct a slice by allocating bytes of memory from a pool allocagor
+				@param pool [in] An allocator to allocate from.
+				@param bytes [in] The number of bytes of memory to allocate from the pool.
+			*/
+			slice(allocator &pool, size_t bytes)
+				{
+				length = bytes;
+				pointer = (void *)pool.malloc(bytes);
+				}
+			
+			/*
 				SLICE::SIZE()
 				-------------
 			*/
@@ -88,6 +138,46 @@ namespace JASS
 			size_t size(void)
 				{
 				return length;
+				}
+			
+			/*
+				SLICE::ADDRESS()
+				----------------
+			*/
+			/*!
+				@brief Extract the pointer value from the slice
+				@return The slice's internal pointer
+			*/
+			void *address(void)
+				{
+				return pointer;
+				}
+			
+			/*
+				SLICE::RESIZE()
+				---------------
+			*/
+			/*!
+				@brief Change the length of the slice.
+				@param new_size[in] The new size (in bytes) of the slice.
+			*/
+			void resize(size_t new_size)
+				{
+				length = new_size;
+				}
+			
+			/*
+				SLICE::OPERATOR[]()
+				-------------------
+			*/
+			/*!
+				@brief Return a reference to the n'th byte past the start of the slice.
+				@param index [in] Which byte to return.
+				@return A reference to the byte at position specified in index.
+			*/
+			uint8_t &operator[](size_t index)
+				{
+				return ((uint8_t *)pointer)[index];
 				}
 		};
 	}

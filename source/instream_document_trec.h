@@ -20,16 +20,12 @@ namespace JASS
 	class instream_document_trec : public instream
 	{
 	private:
-		static const size_t buffer_size = (16 * 1024 * 1024);			///< Size of the disk read buffer
+		size_t buffer_size;			///< Size of the disk read buffer.
 
 	protected:
 		uint8_t *buffer;
 		uint8_t *buffer_end;
 		size_t buffer_used;
-
-		long long primary_buffer_used;
-
-		long auto_file_id;
 	
 		std::string document_start_tag;
 		std::string document_end_tag;
@@ -37,7 +33,9 @@ namespace JASS
 		std::string primary_key_end_tag;
 
 	private:
+		instream_document_trec(instream &source, size_t buffer_size, const std::string &document_tag = "DOC", const std::string &document_primary_key_tag = "DOCNO");
 		void set_tags(const std::string &document_tag, const std::string &primary_key_tag);
+		void fetch(void *buffer, size_t bytes);
 
 	public:
 		instream_document_trec(instream &source, const std::string &document_tag = "DOC", const std::string &document_primary_key_tag = "DOCNO");
@@ -45,6 +43,6 @@ namespace JASS
 
 		virtual void read(document &buffer);
 		
-
+		static void unittest(void);
 	} ;
 }
