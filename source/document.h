@@ -12,6 +12,7 @@
 */
 #pragma once
 
+#include "slice.h"
 #include "allocator_cpp.h"
 
 namespace JASS
@@ -26,17 +27,15 @@ namespace JASS
 	class document
 		{
 		public:
-			allocator c_allocator;
-			allocator_cpp<uint8_t> allocator;
-			std::vector<uint8_t, allocator_cpp<uint8_t>> name;			///< The name of the document (or empty if that is meaningless)
-			std::vector<uint8_t, allocator_cpp<uint8_t>> contents;	///< The contents of the document (or likewise)
+			allocator allocator;
+			slice primary_key;	///< The external primary key (e.g. TREC DOCID, or filename) of the document (or empty if that is meaningless)
+			slice contents;		///< The contents of the document (or likewise)
 			
 		public:
 			document() :
-				c_allocator(1024),
-				allocator(c_allocator),
-				name(allocator),
-				contents(allocator)
+				allocator(1024),
+				name(),
+				contents()
 				{
 				}
 		};

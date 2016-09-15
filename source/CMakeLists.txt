@@ -25,6 +25,7 @@ set(JASSlib_FILES
 	instream_file.h
 	instream_file.cpp
 	maths.h
+	slice.h
 	unicode.h
 	unicode.cpp
 	)
