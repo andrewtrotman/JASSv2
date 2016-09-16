@@ -57,8 +57,8 @@ namespace JASS
 				---------------------
 			*/
 			/*!
-				@brief Read buffer.size() bytes of data into buffer, resizing buffer on eof.
-				@param buffer [out] buffer.size() bytes of data are read from source into buffer which is resized to the number of bytes read on eof.
+				@brief Read buffer.contents.size() bytes of data into buffer.contents, resizing on eof.
+				@param buffer [out] buffer.contents.size() bytes of data are read from source into buffer which is resized to the number of bytes read on eof.
 			*/
 			virtual void read(document &buffer);
 			

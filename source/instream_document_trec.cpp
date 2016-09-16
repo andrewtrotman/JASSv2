@@ -22,11 +22,16 @@ namespace JASS
 		instream(nullptr, &source),
 		buffer_size(buffer_size)
 		{
+		/*
+			Allocate the internal buffer and keep a pointer to its end.
+		*/
 		buffer = new uint8_t[buffer_size + 1];
 		buffer_end = buffer;
 		buffer_used = 0;
-		*buffer = buffer[buffer_size] = '\0';
 
+		/*
+			Set up the internal housekeeping for the tags
+		*/
 		set_tags(document_tag, document_primary_key_tag);
 		}
 
@@ -38,6 +43,9 @@ namespace JASS
 	instream_document_trec::instream_document_trec(instream &source, const std::string &document_tag, const std::string &document_primary_key_tag) :
 		instream_document_trec(source, 16 * 1024 * 1024, document_tag, document_primary_key_tag)
 		{
+		/*
+			Nothing - all manages by the private constructor
+		*/
 		}
 
 	/*
@@ -55,25 +63,15 @@ namespace JASS
 	*/
 	void instream_document_trec::set_tags(const std::string &document_tag, const std::string &primary_key_tag)
 		{
+		/*
+			Generate the search patterns for the document seperator and the primary key
+		*/
 		document_start_tag = "<" + document_tag + ">";
 		document_end_tag = "</" + document_tag + ">";
 		primary_key_start_tag = "<" + primary_key_tag + ">";
 		primary_key_end_tag = "</" + primary_key_tag + ">";
 		}
 		
-	/*
-		INSTREAM_DOCUMENT_TREC::FETCH()
-		-------------------------------
-	*/
-	void instream_document_trec::fetch(void *buffer, size_t bytes)
-		{
-		document into;
-		
-		into.contents = slice(buffer, bytes);
-		source->read(into);
-		buffer_end = (uint8_t *)buffer + into.contents.size();
-		}
-
 	/*
 		INSTREAM_DOCUMENT_TREC::READ()
 		------------------------------
@@ -159,7 +157,7 @@ namespace JASS
 	void instream_document_trec::unittest(void)
 		{
 		instream_memory *buffer = new instream_memory((uint8_t *)unittest_data_ten_documents.c_str(), unittest_data_ten_documents.size());
-		instream_document_trec slicer(*buffer, 80);				// call the private constructor and tell it to use an unusually small buffer
+		instream_document_trec slicer(*buffer, 80, "DOC", "DOCNO");				// call the private constructor and tell it to use an unusually small buffer
 		document indexable_object;
 
 		slicer.read(indexable_object);

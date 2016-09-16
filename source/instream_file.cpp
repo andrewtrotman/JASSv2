@@ -16,8 +16,11 @@ namespace JASS
 		------------------------------
 	*/
 	instream_file::instream_file(const std::string &filename) :
-		file(filename.c_str(), "rb")
+		file(filename.c_str(), "rb")				// use RAII to open and close the file
 		{
+		/*
+			Get the file length and note that we've not read any of it yet
+		*/
 		file_length = file.size();
 		bytes_read = 0;
 		}
@@ -28,17 +31,29 @@ namespace JASS
 	*/
 	void instream_file::read(document &document)
 	{
+	/*
+		Make sure we're not past EOF.
+	*/
 	if (bytes_read >= file_length)
 		{
+		/*
+			At EOF so nothing to read
+		*/
 		document.contents = slice();
-		return;		// at EOF so nothing to read
+		return;
 		}
 
+	/*
+		Make sure we're not trying to read past EOF and if we are then only read to EOF
+	*/
 	if (bytes_read + document.contents.size() > file_length)
 		document.contents.resize(file_length - bytes_read);
 
-	bytes_read += document.contents.size();
+	/*
+		Do the read and note how many bytes we're read.
+	*/
 	file.read(&document.contents[0], document.contents.size());
+	bytes_read += document.contents.size();
 	}
 	
 	/*

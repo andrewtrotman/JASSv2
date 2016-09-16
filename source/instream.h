@@ -77,10 +77,30 @@ namespace JASS
 				----------------
 			*/
 			/*!
-				@brief Read buffer.size() bytes of data into buffer, resizing buffer on eof.
-				@param buffer [out] buffer.size() bytes of data are read from source into buffer which is resized to the number of bytes read on eof.
+				@brief Read at most buffer.contents.size() bytes of data into buffer, resizing on eof.
+				@param buffer [out] buffer.contents.size() bytes of data are read from source into buffer which is resized to the number of bytes read.
 			*/
 			virtual void read(document &buffer) = 0;
+			
+			/*
+				INSTREAM::FETCH()
+				-----------------
+			*/
+			/*!
+				@bried fetch() generates a document object, sets its contents to the passed buffer, calls read() and returns the number of bytes of data read
+				@param buffer [in] Buffer to read into.
+				@param bytes [in] The maximum number of bytes to read into the buffer.
+				@return The number of bytes that were read into the buffer.
+			*/
+			size_t fetch(void *buffer, size_t bytes)
+				{
+				document into;
+				
+				into.contents = slice(buffer, bytes);
+				read(into);
+				return into.contents.size();
+				}
+
 		} ;
 	}
 
