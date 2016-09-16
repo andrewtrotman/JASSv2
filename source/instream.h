@@ -16,7 +16,7 @@
 #include <vector>
 
 #include "document.h"
-#include "allocator.h"
+#include "allocator_memory.h"
 
 namespace JASS
 	{
@@ -94,7 +94,8 @@ namespace JASS
 			*/
 			size_t fetch(void *buffer, size_t bytes)
 				{
-				document into;
+				allocator_memory provider(buffer, bytes);
+				document into(provider);
 				
 				into.contents = slice(buffer, bytes);
 				read(into);

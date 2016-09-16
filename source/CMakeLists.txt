@@ -10,8 +10,11 @@
 
 set(JASSlib_FILES
 	allocator.h
-	allocator.cpp
 	allocator_cpp.h
+	allocator_memory.h
+	allocator_memory.cpp
+	allocator_pool.h
+	allocator_pool.cpp
 	ascii.h
 	ascii.cpp
 	bitstring.h

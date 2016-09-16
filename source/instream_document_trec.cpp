@@ -2,11 +2,12 @@
 	INSTREAM_DOCUMENT_TREC.CPP
 	--------------------------
 */
-#include <new>
-#include <algorithm>
-
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
+
+#include <new>
+#include <algorithm>
 
 #include "unittest_data.h"
 #include "instream_memory.h"
@@ -156,10 +157,17 @@ namespace JASS
 	*/
 	void instream_document_trec::unittest(void)
 		{
+		/*
+			Set up a pipeline that is an instream_document_trec reading from a instream_document_trec reading from a instream_memory reading from the unittest_data_ten_documents string.
+		*/
 		instream_memory *buffer = new instream_memory((uint8_t *)unittest_data_ten_documents.c_str(), unittest_data_ten_documents.size());
-		instream_document_trec slicer(*buffer, 80, "DOC", "DOCNO");				// call the private constructor and tell it to use an unusually small buffer
+		instream_document_trec *first_slice = new instream_document_trec(*buffer, 80, "DOC", "DOCNO");				// call the private constructor and tell it to use an unusually small buffer
+		instream_document_trec slicer(*first_slice, 80, "DOC", "DOCNO");				// call the private constructor and tell it to use an unusually small buffer
 		document indexable_object;
 
+		/*
+			Check each read to make sure it worked.
+		*/
 		slicer.read(indexable_object);
 		assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data_ten_document_1);
 		

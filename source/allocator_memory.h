@@ -1,60 +1,41 @@
 /*
-	ALLOCATOR.H
-	-----------
+	ALLOCATOR_MEMORY.H
+	------------------
 	Copyright (c) 2016 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 /*!
 	@file
-	@brief Base class for different allocators.
+	@brief Simple block-allocator that internally allocated a large chunk then allocates smaller blocks from this larger block.
 	@author Andrew Trotman
 	@copyright 2016 Andrew Trotman
 */
 #pragma once
-
-#include <stdint.h>
-#include <stdlib.h>
-#include <stdio.h>
 
 #include "allocator.h"
 
 namespace JASS
 	{
 	/*
-		CLASS ALLOCATOR
-		---------------
+		@brief Memory allocator out of a single non-growable fixed-sized buffer
 	*/
-	class allocator
+	class allocator_memory : public allocator
 		{
-		protected:
-			static constexpr size_t alignment_boundary = sizeof(void *);
-			
-		protected:
-			size_t used;						///< The number of bytes this object has passed back to the caller.
-			size_t allocated;					///< The number of bytes this object has allocated.
+		private:
+			uint8_t *buffer;		///< The buffer we're allocating from.
+			size_t buffer_size;	///< The size of the buffer (we fail past this point).
 
 		public:
 			/*
-				ALLOCATOR::ALLOCATOR()
-				----------------------
+				ALLOCATOR_MEMORY::ALLOCATOR_MEMORY()
+				------------------------------------
 			*/
 			/*!
 				@brief Constructor
 			*/
-			allocator() :
-				used(0),
-				allocated(0)
-				{
-				}
-
-			/*
-				ALLOCATOR::~ALLOCATOR()
-				-----------------------
-			*/
-			/*!
-				@brief Destructor.
-			*/
-			virtual ~allocator()
+			allocator_memory(void *buffer, size_t length) :
+				buffer((uint8_t *)buffer),
+				buffer_size(length)
 				{
 				/*
 					Nothing
@@ -62,45 +43,33 @@ namespace JASS
 				}
 
 			/*
-				ALLOCATOR::MALLOC()
-				-------------------
+				ALLOCATOR_MEMORY::~ALLOCATOR_MEMORY()
+				-------------------------------------
+			*/
+			/*!
+				@brief Destructor.
+			*/
+			virtual ~allocator_memory()
+				{
+				/*
+					Nothing
+				*/
+				}
+
+			/*
+				ALLOCATOR_MEMORY::MALLOC()
+				--------------------------
 			*/
 			/*!
 				@brief Allocate a small chunk of memory from the internal pool and return a pointer to the caller.
 				@param bytes [in] The size of the chunk of memory.
 				@return A pointer to a block of memory of size bytes, or NULL on failure.
 			*/
-			virtual void *malloc(size_t bytes) = 0;
+			virtual void *malloc(size_t bytes);
 			
 			/*
-				ALLOCATOR::CAPACITY()
-				---------------------
-			*/
-			/*!
-				@brief Return the amount of memory that this object has allocated to it (i.e. the sum of the sizes of the large blocks in the large block chain)
-				@return The number of bytes of memory allocated to this object.
-			*/
-			size_t capacity(void) const
-				{
-				return allocated;
-				}
-			
-			/*
-				ALLOCATOR::SIZE()
-				-----------------
-			*/
-			/*!
-				@brief Return the number of bytes of memory this object has handed back to callers.
-				@return Bytes used from the capacity()
-			*/
-			size_t size(void) const
-				{
-				return used;
-				}
-			
-			/*
-				ALLOCATOR::REALIGN()
-				--------------------
+				ALLOCATOR_MEMORY::REALIGN()
+				---------------------------
 			*/
 			/*!
 				@brief Signal that the next allocation should be on a machine-word boundary.
@@ -110,17 +79,16 @@ namespace JASS
 				assembly instructions require word-alignment.  This method wastes as little memory as possible to make sure that the
 				next allocation is word-aligned.
 			*/
-			virtual void realign(void) = 0;
+			virtual void realign(void);
 
-			
 			/*
-				ALLOCATOR::REWIND()
-				-------------------
+				ALLOCATOR_MEMORY::REWIND()
+				--------------------------
 			*/
 			/*!
 				@brief Throw away (without calling delete) all objects allocated in the memory space of this allocator  Delete is not called 
 				for any objects allocated in this space, the memory is simply re-claimed.
 			*/
-			virtual void rewind(void) = 0;
+			virtual void rewind(void);
 		};
-}
+	}

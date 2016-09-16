@@ -9,7 +9,7 @@
 #include "maths.h"
 #include "unicode.h"
 #include "bitstring.h"
-#include "allocator.h"
+#include "allocator_pool.h"
 #include "allocator_cpp.h"
 #include "instream_file.h"
 #include "instream_document_trec.h"
@@ -28,7 +28,7 @@ int main(void)
 	JASS::unicode::unittest();
 	JASS::ascii::unittest();
 	JASS::maths::unittest();
-	JASS::allocator::unittest();
+	JASS::allocator_pool::unittest();
 	JASS::allocator_cpp<size_t>::unittest();
 	JASS::instream_file::unittest();
 	JASS::instream_document_trec::unittest();

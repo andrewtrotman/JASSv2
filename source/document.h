@@ -13,7 +13,7 @@
 #pragma once
 
 #include "slice.h"
-#include "allocator_cpp.h"
+#include "allocator_pool.h"
 
 namespace JASS
 	{
@@ -26,14 +26,40 @@ namespace JASS
 	*/
 	class document
 		{
+		private:
+			allocator_pool default_allocator;		///< If a document is created without a specified allocator then use a pool allocator
+
 		public:
-			allocator allocator;
-			slice primary_key;	///< The external primary key (e.g. TREC DOCID, or filename) of the document (or empty if that is meaningless)
-			slice contents;		///< The contents of the document (or likewise)
+			allocator &allocator;	///< If memory is needed then allocate from here.
+			slice primary_key;		///< The external primary key (e.g. TREC DOCID, or filename) of the document (or empty if that is meaningless).
+			slice contents;			///< The contents of the document (or likewise).
 			
 		public:
+			/*
+				DOCUMENT::DOCUMENT()
+				--------------------
+			*/
+			/*!
+				@brief Constructor using an allocator local to this object (useful when the object needs to contain its own memory)
+			*/
 			document() :
-				allocator(1024)
+				default_allocator(1024),
+				allocator(default_allocator)
+				{
+				/*
+					Nothing
+				*/
+				}
+	
+			/*
+				DOCUMENT::DOCUMENT()
+				--------------------
+			*/
+			/*!
+				@brief Constructor using an allocator specified (useful when the object needs to allocate memory in a specific location)
+			*/
+			document(class allocator &memory_source) :
+				allocator(memory_source)
 				{
 				/*
 					Nothing

@@ -140,7 +140,7 @@ namespace JASS
 		*/
 		static void unittest(void)
 			{
-			allocator pool;
+			allocator_pool pool;
 			allocator_cpp<int> memory_1(pool);
 			std::vector<int, allocator_cpp<int>> collection_1(memory_1);
 			collection_1.push_back(32);

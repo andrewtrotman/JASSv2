@@ -1,6 +1,6 @@
 /*
-	MEMORY.C
-	--------
+	ALLOCATOR_POOL.CPP
+	------------------
 */
 #include <stdio.h>
 #include <assert.h>
@@ -8,15 +8,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "allocator.h"
+#include "allocator_pool.h"
 
 namespace JASS
 	{
 	/*
-		ALLOCATOR::ALLOCATOR()
-		----------------------
+		ALLOCATOR_POOL::ALLOCATOR_POOL()
+		--------------------------------
 	*/
-	allocator::allocator(size_t block_size_for_allocation)
+	allocator_pool::allocator_pool(size_t block_size_for_allocation)
 		{
 		block_size = block_size_for_allocation;
 		current_chunk = nullptr;
@@ -25,21 +25,21 @@ namespace JASS
 		}
 
 	/*
-		ALLOCATOR::~ALLOCATOR()
-		-----------------------
+		ALLOCATOR_POOL::~ALLOCATOR_POOL()
+		---------------------------------
 	*/
-	allocator::~allocator()
+	allocator_pool::~allocator_pool()
 		{
 		rewind();		// free the all in-use memory (if any)
 		}
 
 	/*
-		ALLOCATOR::ADD_CHUNK()
-		----------------------
+		ALLOCATOR_POOL::ADD_CHUNK()
+		---------------------------
 		The bytes parameter is passed to this routine simply so that we can be sure to
 		allocate at least that number of bytes.
 	*/
-	allocator::chunk *allocator::add_chunk(size_t bytes)
+	allocator_pool::chunk *allocator_pool::add_chunk(size_t bytes)
 		{
 		/*
 			If we get asked for a block larger than the current block_size then assume we're going to see more
@@ -48,13 +48,13 @@ namespace JASS
 		if (bytes > block_size)
 			block_size = bytes;			// Extend the largest allocate block size
 
-		size_t request = block_size + sizeof(allocator::chunk);
+		size_t request = block_size + sizeof(allocator_pool::chunk);
 
 		/*
 			Get a new block of memory for the C++ free store of the Operating System
 		*/
-		allocator::chunk *chain;
-		if ((chain = (allocator::chunk *)alloc(request)) == nullptr)
+		allocator_pool::chunk *chain;
+		if ((chain = (allocator_pool::chunk *)alloc(request)) == nullptr)
 			return nullptr;					// This can rarely happen because of delayed allocation strategies of Linux (etc.).
 
 
@@ -80,10 +80,10 @@ namespace JASS
 		}
 
 	/*
-		ALLOCATOR::REALIGN()
-		--------------------
+		ALLOCATOR_POOL::REALIGN()
+		-------------------------
 	*/
-	void allocator::realign(void)
+	void allocator_pool::realign(void)
 		{
 		/*
 			Get the current pointer as an integer
@@ -91,9 +91,9 @@ namespace JASS
 		uintptr_t current_pointer = (uintptr_t)chunk_at;
 		
 		/*
-			Compute the amountof padding that is needed to pad to a boundary of size sizeof(void *) (i.e. 4 bytes on a 32-bit machine of 8 bytes on a 64-bit machine)
+			Compute the amount of padding that is needed to pad to a boundary of size sizeof(void *) (i.e. 4 bytes on a 32-bit machine of 8 bytes on a 64-bit machine)
 		*/
-		size_t padding = (current_pointer % sizeof(void *) == 0) ? 0 : sizeof(void *) - current_pointer % sizeof(void *);
+		size_t padding = (current_pointer % alignment_boundary == 0) ? 0 : alignment_boundary - current_pointer % alignment_boundary;
 
 		/*
 			This might overflow if we're at the end of a block but that doesn't matter because the next call to malloc()
@@ -112,10 +112,52 @@ namespace JASS
 		}
 
 	/*
-		ALLOCATOR::REWIND()
-		-------------------
+		ALLOCATOR_POOL::MALLOC()
+		------------------------
 	*/
-	void allocator::rewind(void)
+	void *allocator_pool::malloc(size_t bytes)
+		{
+		void *answer;			// Pointer to the allocated space.
+
+		/*
+			ARM requires all memory reads to be word-aligned.  On some ARM there is a hardware flag to let the Operating System
+			catch the alignment fault and manage it, but that can take considerable time to execute.  So, on ARM all memory
+			allocations are automatically word-aligned.
+		*/
+		#ifdef __arm__
+			realign();
+		#endif
+
+		/*
+			If we can allocate out of the current chunk then use it, otherwise allocate a new chunk, update the list, update pointers, and be ready to be used
+		*/
+		if (chunk_at + bytes > chunk_end)
+			if (add_chunk(bytes) == nullptr)
+				{
+//				#ifdef NEVER
+					exit(printf("file:%s line:%d: Out of memory:%lld bytes requested %lld bytes used %lld bytes allocated.\n",  __FILE__, __LINE__, (long long)bytes, (long long)used, (long long)allocated));
+//				#endif
+				return nullptr;		// out of memory
+				}
+
+		/*
+			The current chunk is now guaranteed to be large enough to allocate from, so we do so.
+		*/
+		answer = chunk_at;
+		chunk_at += bytes;
+		used += bytes;
+
+		/*
+			Done
+		*/
+		return answer;
+		}
+		
+	/*
+		ALLOCATOR_POOL::REWIND()
+		------------------------
+	*/
+	void allocator_pool::rewind(void)
 		{
 		/*
 			Free all memory blocks
@@ -135,14 +177,14 @@ namespace JASS
 		used = 0;
 		allocated = 0;
 		}
-		
+
 	/*
-		ALLOCATOR::UNITTEST()
-		---------------------
+		ALLOCATOR_POOL::UNITTEST()
+		--------------------------
 	*/
-	 void allocator::unittest(void)
+	 void allocator_pool::unittest(void)
 		{
-		allocator memory;
+		allocator_pool memory;
 		
 		/*
 			Should be empty at the start
@@ -179,6 +221,6 @@ namespace JASS
 		/*
 			Yay, we passed
 		*/
-		puts("allocator::PASSED");
+		puts("allocator_pool::PASSED");
 		}
 }
