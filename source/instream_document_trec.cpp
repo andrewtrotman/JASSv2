@@ -91,10 +91,13 @@ namespace JASS
 				We might be at the end of a buffer and half-way through a tag so we copy the remainder of the file to the
 				start of the buffer and fill the remainder.
 			*/
-			memmove(buffer, buffer + buffer_used, buffer_size - buffer_used);
-			fetch(buffer + buffer_used, buffer_size - buffer_used);
-			buffer_used = document_start_tag.size();
-
+			memmove(buffer, unread_data, buffer_size - buffer_used);
+			buffer_end -= buffer_used;
+			buffer_used = 0;
+			
+			fetch(buffer_end, buffer + buffer_size - buffer_end);
+			unread_data = buffer;
+		
 			if ((document_start = std::search(unread_data, buffer_end, document_start_tag.c_str(), document_start_tag.c_str() + document_start_tag.size())) == buffer_end)
 				{
 				/*
@@ -103,6 +106,7 @@ namespace JASS
 				object.primary_key = object.contents = slice();
 				return;
 				}
+			buffer_used = document_start_tag.size();
 			}
 
 		/*
@@ -115,8 +119,9 @@ namespace JASS
 				This happens when we move find the start tag in the buffer, but the end tag is not in memory.  We play the 
 				same game as above and shift the start tag to the start of the buffer.
 			*/
-			memmove(buffer, document_start, buffer_size - (buffer - document_start));
-			fetch(buffer + buffer_size - buffer_used, document_start - buffer);
+			memmove(buffer, document_start, (buffer_end - buffer) - (document_start - buffer));
+			buffer_end -= document_start - buffer;
+			fetch(buffer_end, buffer_size - (buffer_end - buffer));
 			document_start = buffer;
 			if ((document_end = std::search(document_start, buffer_end, document_end_tag.c_str(), document_end_tag.c_str() + document_end_tag.size())) == buffer_end)
 				{

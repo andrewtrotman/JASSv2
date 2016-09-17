@@ -39,6 +39,7 @@ namespace JASS
 			Do the read and update the amount of data we're read.
 		*/
 		memmove(&buffer.contents[0], file + bytes_read, bytes_to_copy);
+		buffer.contents = slice(&buffer.contents[0], bytes_to_copy);
 		bytes_read += bytes_to_copy;
 		}
 	}
