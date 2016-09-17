@@ -7,11 +7,14 @@
 #include "file.h"
 #include "ascii.h"
 #include "maths.h"
+#include "slice.h"
 #include "unicode.h"
 #include "bitstring.h"
-#include "allocator_pool.h"
 #include "allocator_cpp.h"
 #include "instream_file.h"
+#include "allocator_pool.h"
+#include "instream_memory.h"
+#include "allocator_memory.h"
 #include "instream_document_trec.h"
 
 /*
@@ -28,9 +31,15 @@ int main(void)
 	JASS::unicode::unittest();
 	JASS::ascii::unittest();
 	JASS::maths::unittest();
+	// JASS::allocator does not have a unittest because it is a virtual base class
 	JASS::allocator_pool::unittest();
+	JASS::allocator_memory::unittest();
+	JASS::document::unittest();
 	JASS::allocator_cpp<size_t>::unittest();
+	JASS::slice::unittest();
+	// instream does not have a unittest because it is a virtual base class
 	JASS::instream_file::unittest();
+	JASS::instream_memory::unittest();
 	JASS::instream_document_trec::unittest();
 	
 	return 0;

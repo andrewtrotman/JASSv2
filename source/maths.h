@@ -111,12 +111,13 @@ namespace JASS
 				{
 				return min(min(first, second), third);
 				}
+			
 			/*
 				MATHS::UNITTEST()
 				-----------------
 			*/
 			/*!
-				@brief Perform the unittest
+				@brief Unit test this class
 			*/
 			static void unittest(void)
 				{

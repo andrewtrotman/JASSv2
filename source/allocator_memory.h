@@ -23,7 +23,6 @@ namespace JASS
 		{
 		private:
 			uint8_t *buffer;		///< The buffer we're allocating from.
-			size_t buffer_size;	///< The size of the buffer (we fail past this point).
 
 		public:
 			/*
@@ -34,9 +33,9 @@ namespace JASS
 				@brief Constructor
 			*/
 			allocator_memory(void *buffer, size_t length) :
-				buffer((uint8_t *)buffer),
-				buffer_size(length)
+				buffer((uint8_t *)buffer)
 				{
+				allocated = length;
 				/*
 					Nothing
 				*/
@@ -90,5 +89,14 @@ namespace JASS
 				for any objects allocated in this space, the memory is simply re-claimed.
 			*/
 			virtual void rewind(void);
+			
+			/*
+				ALLOCATOR_POOL::UNITTEST()
+				--------------------------
+			*/
+			/*!
+				@brief Unit test this class
+			*/
+			static void unittest(void);
 		};
 	}

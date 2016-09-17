@@ -65,5 +65,21 @@ namespace JASS
 					Nothing
 				*/
 				}
+			
+			/*
+				DOCUMENT::UNITTEST()
+				--------------------
+			*/
+			/*!
+				@brief Unit test this class
+			*/
+			static void unittest(void)
+				{
+				document document1;
+				allocator_pool pool;
+				document document2(pool);
+				
+				puts("document::PASSED");
+				}
 		};
 	}

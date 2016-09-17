@@ -170,7 +170,7 @@ namespace JASS
 				----------------
 			*/
 			/*!
-				@brief Static method that performs a unittest.
+				@brief Unit test this class
 			*/
 			static void unittest(void);
 		} ;

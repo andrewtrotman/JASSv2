@@ -119,7 +119,7 @@ namespace JASS
 				----------------------------------
 			*/
 			/*!
-				@brief Perform the unittest
+				@brief Unit test this class
 			*/
 			static void unittest(void);
 		} ;

@@ -248,7 +248,7 @@ namespace JASS
 				-----------------
 			*/
 			/*!
-				@brief Static method that performs a unittest.
+				@brief Unit test this class
 				@details This simply compares this class's method with the C runtime library versions.  The test is exhaustive
 			*/
 			static void unittest(void)

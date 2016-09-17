@@ -24,10 +24,13 @@ namespace JASS
 		CLASS ALLOCATOR
 		---------------
 	*/
+	/*!
+		@brief Virtual base class for C style allocators.
+	*/
 	class allocator
 		{
 		protected:
-			static constexpr size_t alignment_boundary = sizeof(void *);
+			static constexpr size_t alignment_boundary = sizeof(void *);		///< When align() is called to re-align data to a word-boundary, this is the word-size used to determine the boindary
 			
 		protected:
 			size_t used;						///< The number of bytes this object has passed back to the caller.

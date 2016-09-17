@@ -40,9 +40,9 @@ namespace JASS
 				@param memory [in] A pointer to the start of the buffer
 				@param length [in] The length of the buffer
 			*/
-			instream_memory(const uint8_t *memory, size_t length):
+			instream_memory(const void *memory, size_t length):
 				bytes_read(0),
-				file(memory),
+				file((uint8_t *)memory),
 				file_length(length)
 				{
 				/*
@@ -58,5 +58,14 @@ namespace JASS
 				@param buffer [out] buffer.contents.size() bytes of data are read from source into buffer which is resized to the number of bytes read on eof.
 			*/
 			virtual void read(document &buffer);
+			
+			/*
+				INSTREAM_MEMORY::UNITTEST()
+				---------------------------
+			*/
+			/*!
+				@brief Unit test this class
+			*/
+			static void unittest(void);
 		};
 	}

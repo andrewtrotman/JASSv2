@@ -14,7 +14,7 @@
 
 #include <string.h>
 
-#include "allocator.h"
+#include "allocator_pool.h"
 
 namespace JASS
 	{
@@ -117,7 +117,7 @@ namespace JASS
 				--------------
 			*/
 			/*!
-				@brief Construct a slice by allocating bytes of memory from a pool allocagor
+				@brief Construct a slice by allocating bytes of memory from a pool allocator
 				@param pool [in] An allocator to allocate from.
 				@param bytes [in] The number of bytes of memory to allocate from the pool.
 			*/
@@ -179,5 +179,42 @@ namespace JASS
 				{
 				return ((uint8_t *)pointer)[index];
 				}
+			/*
+				SLICE::UNITTEST()
+				-----------------
+			*/
+			/*!
+				@brief Unit test this class
+			*/
+			static void unittest(void)
+				{
+				slice chunk1;
+				assert(chunk1.address() == nullptr && chunk1.size() == 0);
+				
+				slice chunk2((char *)unittest, (char *)unittest + 5);
+				assert(chunk2.address() == unittest && chunk2.size() == 5);
+				
+				allocator_pool pool;
+				slice chunk3(pool, (void *)unittest, (void *)((uint8_t *)unittest + 5));
+				assert(pool.size() == 5 && chunk3.size() == 5);
+				
+				const char *message = "here there and everywhere";
+				slice chunk4(pool, message, message + 4);
+				assert(pool.size() == 10 && chunk4.size() == 4);
+				
+				assert(chunk4[1] == 'e' && &chunk4[1] == (unsigned char *)chunk4.address() + 1);
+
+				slice chunk5(pool, message);
+				assert(pool.size() == 36 && strcmp((char *)chunk5.address(), message) == 0);
+
+				slice chunk6(pool, 10);
+				assert(pool.size() == 46 && chunk6.size() == 10);
+				
+				chunk6.resize(5);
+				assert(chunk6.size() == 5);
+			
+				puts("slice::PASSED");
+				}
+			
 		};
 	}
