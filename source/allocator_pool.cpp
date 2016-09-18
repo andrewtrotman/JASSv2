@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "maths.h"
 #include "allocator_pool.h"
 
 namespace JASS
@@ -41,116 +42,101 @@ namespace JASS
 	*/
 	allocator_pool::chunk *allocator_pool::add_chunk(size_t bytes)
 		{
+		bool success;
+		size_t request;
+		
 		/*
-			If we get asked for a block larger than the current block_size then assume we're going to see more
-			such requests so make the block_size larger from now on.
+			work out the size of the request to the C++ free store or Operating System.
 		*/
-		if (bytes > block_size)
-			block_size = bytes;			// Extend the largest allocate block size
-
-		size_t request = block_size + sizeof(allocator_pool::chunk);
+		request = maths::max(block_size, bytes) + sizeof(allocator_pool::chunk);
 
 		/*
-			Get a new block of memory for the C++ free store of the Operating System
+			Get a new block of memory for the C++ free store or the Operating System
 		*/
-		allocator_pool::chunk *chain;
+		chunk *chain;
 		if ((chain = (allocator_pool::chunk *)alloc(request)) == nullptr)
-			return nullptr;					// This can rarely happen because of delayed allocation strategies of Linux (etc.).
-
+			return nullptr;					// This can rarely happen because of delayed allocation strategies of Linux and other Operating Systems.
 
 		/*
-			Create the linked list of large blocks of memory.
+			Initialise the chunk
 		*/
 		chain->next_chunk = current_chunk;
 		chain->chunk_size = request;
-		
-		/*
-			Make thia chunk the top of the linked list and set it up ready for use
-		*/
-		current_chunk = chain;
-		chunk_at = current_chunk->data;								// this is the start of the data part of the chunk.
-		chunk_end = ((uint8_t *)current_chunk) + request;		// this is the end of the allocation unit so we can ignore padding the chunk objects.
+		chain->chunk_at = chain->data;										// this is the start of the data part of the chunk.
+		chain->chunk_end = ((uint8_t *)chain) + request;		// this is the end of the allocation unit so we can ignore padding the chunk objects.
 
 		/*
-			Update global statistics
+			Place this chunk at the top of the list (if it hasn't been updated by a different thread in the mean time)
 		*/
-		allocated += request;
-
-		return current_chunk;
-		}
-
-	/*
-		ALLOCATOR_POOL::REALIGN()
-		-------------------------
-	*/
-	void allocator_pool::realign(void)
-		{
-		/*
-			Get the current pointer as an integer
-		*/
-		uintptr_t current_pointer = (uintptr_t)chunk_at;
-		
-		/*
-			Compute the amount of padding that is needed to pad to a boundary of size sizeof(void *) (i.e. 4 bytes on a 32-bit machine of 8 bytes on a 64-bit machine)
-		*/
-		size_t padding = (current_pointer % alignment_boundary == 0) ? 0 : alignment_boundary - current_pointer % alignment_boundary;
-
-		/*
-			This might overflow if we're at the end of a block but that doesn't matter because the next call to malloc()
-			will notice that the overflow and allocate a new block.
-		*/
-		chunk_at += padding;
-		
-		/*
-			In the case of overflow its necessary to avoid having more "used" than "allocated" so a check is needed here to
-			keep the two in sync
-		*/
-		if (chunk_at < chunk_end)
-			used += padding;
+		success = current_chunk.compare_exchange_strong(chain->next_chunk, chain);
+		if (success)
+			allocated += request;		// update the global statistics
 		else
-			used += padding - (chunk_end - chunk_at);
+			dealloc(chain);				// failed to add to the list because someone else already did!
+
+		return current_chunk;			// some non-nullptr value
 		}
 
 	/*
 		ALLOCATOR_POOL::MALLOC()
 		------------------------
 	*/
-	void *allocator_pool::malloc(size_t bytes)
+	void *allocator_pool::malloc(size_t bytes, size_t alignment)
 		{
-		void *answer;			// Pointer to the allocated space.
+		uint8_t *top_of_stack;
+		uint8_t *new_top_of_stack;
+		size_t padding = 0;
+		bool success = false;
+		chunk *chunk;
 
-		/*
-			ARM requires all memory reads to be word-aligned.  On some ARM there is a hardware flag to let the Operating System
-			catch the alignment fault and manage it, but that can take considerable time to execute.  So, on ARM all memory
-			allocations are automatically word-aligned.
-		*/
-		#ifdef __arm__
-			realign();
-		#endif
+		do
+			{
+			chunk = current_chunk;
+				
+			/*
+				Get a pointer to the next free byte
+			*/
+			if (chunk == nullptr)
+				top_of_stack = nullptr;
+			else
+				top_of_stack = chunk->chunk_at;
 
-		/*
-			If we can allocate out of the current chunk then use it, otherwise allocate a new chunk, update the list, update pointers, and be ready to be used
-		*/
-		if (chunk_at + bytes > chunk_end)
-			if (add_chunk(bytes) == nullptr)
+			/*
+				Align the block if requested to do so
+			*/
+			if (alignment != 1)
+				padding = realign(top_of_stack, alignment);
+			
+			/*
+				If we can allocate out of the current chunk then use it, otherwise allocate a new chunk, update the list, update pointers, and be ready to be used
+			*/
+			if (chunk == nullptr || top_of_stack + bytes + padding > chunk->chunk_end)
 				{
-//				#ifdef NEVER
-					exit(printf("file:%s line:%d: Out of memory:%lld bytes requested %lld bytes used %lld bytes allocated.\n",  __FILE__, __LINE__, (long long)bytes, (long long)used, (long long)allocated));
-//				#endif
-				return nullptr;		// out of memory
+				if (add_chunk(bytes) != nullptr)
+					continue;
+				else
+					{
+	//				#ifdef NEVER
+						exit(printf("file:%s line:%d: Out of memory:%lld bytes requested %lld bytes used %lld bytes allocated.\n",  __FILE__, __LINE__, (long long)bytes, (long long)used, (long long)allocated));
+	//				#endif
+					return nullptr;		// out of memory
+					}
 				}
 
-		/*
-			The current chunk is now guaranteed to be large enough to allocate from, so we do so.
-		*/
-		answer = chunk_at;
-		chunk_at += bytes;
+			/*
+				The current chunk is now guaranteed to be large enough to allocate from, so we do so.
+			*/
+			new_top_of_stack = top_of_stack + bytes + padding;
+			success = chunk->chunk_at.compare_exchange_strong(top_of_stack, new_top_of_stack);
+			}
+		while (!success);
+		
 		used += bytes;
 
 		/*
 			Done
 		*/
-		return answer;
+		return top_of_stack + padding;
 		}
 		
 	/*
@@ -172,7 +158,6 @@ namespace JASS
 		/*
 			zero the counters and pointers
 		*/
-		chunk_end = chunk_at = nullptr;
 		current_chunk = nullptr;
 		used = 0;
 		allocated = 0;
@@ -207,7 +192,6 @@ namespace JASS
 		/*
 			Re-allign the allocator to a word boundary
 		*/
-		memory.realign();
 		assert(memory.size() == 432);
 		assert(memory.capacity() != 0);
 		

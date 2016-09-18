@@ -28,7 +28,7 @@ namespace JASS
 			}
 
 		/*
-			Take the current top of stack, and mark the requested bytes are used
+			Take the current top of stack, and mark the requested bytes as used
 		*/
 		void *answer = buffer + used;
 		used += bytes;
@@ -39,23 +39,6 @@ namespace JASS
 		return answer;
 		}
 	
-	/*
-		ALLOCATOR_MEMORY::REALIGN()
-		---------------------------
-	*/
-	void allocator_memory::realign(void)
-		{
-		/*
-			Compute the amount of padding that is needed to pad to a boundary of size sizeof(void *) (i.e. 4 bytes on a 32-bit machine of 8 bytes on a 64-bit machine)
-		*/
-		size_t padding = (used % alignment_boundary == 0) ? 0 : alignment_boundary - used % alignment_boundary;
-
-		/*
-			This might overflow, but for a fixed buffer it will simply cause failure at the next call to malloc().
-		*/
-		used += padding;
-		}
-
 	/*
 		ALLOCATOR_MEMORY::REWIND()
 		--------------------------

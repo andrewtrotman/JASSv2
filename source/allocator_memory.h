@@ -67,20 +67,6 @@ namespace JASS
 			virtual void *malloc(size_t bytes);
 			
 			/*
-				ALLOCATOR_MEMORY::REALIGN()
-				---------------------------
-			*/
-			/*!
-				@brief Signal that the next allocation should be on a machine-word boundary.
-				@details Aligning all allocations on a machine-word boundary is a space / space trade off.  Allocating a string of single
-				bytes one after the other and word-aligned would result in a machine word being used per byte.  To avoid this wastage this
-				class, by default, does not word-align any allocations.  However, it is sometimes necessary to word-align because some
-				assembly instructions require word-alignment.  This method wastes as little memory as possible to make sure that the
-				next allocation is word-aligned.
-			*/
-			virtual void realign(void);
-
-			/*
 				ALLOCATOR_MEMORY::REWIND()
 				--------------------------
 			*/

@@ -59,23 +59,23 @@ namespace JASS
 			*/
 			/*!
 				@brief Details of an individual large-allocation unit.
-				@details The large-allocations are kept in a linked list of chunks.  Each chunk stores a backwards pointer (of NULL if not backwards chunk) and
-				the size of the allocation.  The large block that is allocated is actually the size of the caller's request plus the size of this structure.  The
-				large-block is layed out as this object at the start and data[] being of the user's requested length.  That is, if the user asks for 1KB then the
-				actual request from the C++ free store (or the Operating System) is 1BK + sizeof(allocator::chunk).
+				@details The large-allocations are kept in a linked list of chunks.  Each chunk stores a backwards pointer (of NULL if not backwards chunk) the 
+				size of the allocation and details of it's use.  The large block that is allocated is actually the size of the caller's request plus the size of
+				this structure.  The large-block is layed out as this object at the start and data[] being of the user's requested length.  That is, if the user
+				asks for 1KB then the actual request from the C++ free store (or the Operating System) is 1BK + sizeof(allocator::chunk).
 			*/
 			class chunk
 				{
 				public:
-					chunk *next_chunk;		///< Pointer to the previous large allocation (i.e. chunk).
-					size_t chunk_size;		///< The size of this chunk.
-					uint8_t data[];			///< The data in this large allocation that is available for re-distribution.
+					std::atomic<uint8_t *>chunk_at;	///< Pointer to the next byte that can be allocated (within the current chunk).
+					uint8_t *chunk_end;					///< Pointer to the end of the current chunk's large allocation (used to check for overflow).
+					chunk *next_chunk;					///< Pointer to the previous large allocation (i.e. chunk).
+					size_t chunk_size;					///< The size of this chunk.
+					uint8_t data[];						///< The data in this large allocation that is available for re-distribution.
 				};
 
 		private:
-			chunk *current_chunk;			///< Pointer to the top of the chunk list (of large allocations).
-			uint8_t *chunk_at;				///< Pointer to the next byte that can be allocated (within the current chunk).
-			uint8_t *chunk_end;				///< Pointer to the end of the current chunk's large allocation (used to check for overflow).
+			std::atomic<chunk *>current_chunk;			///< Pointer to the top of the chunk list (of large allocations).
 
 		private:
 			/*
@@ -167,20 +167,6 @@ namespace JASS
 			virtual ~allocator_pool();
 
 			/*
-				ALLOCATOR::REALIGN()
-				--------------------
-			*/
-			/*!
-				@brief Signal that the next allocation should be on a machine-word boundary.
-				@details Aligning all allocations on a machine-word boundary is a space / space trade off.  Allocating a string of single
-				bytes one after the other and word-aligned would result in a machine word being used per byte.  To avoid this wastage this
-				class, by default, does not word-align any allocations.  However, it is sometimes necessary to word-align because some
-				assembly instructions require word-alignment.  This method wastes as little memory as possible to make sure that the
-				next allocation is word-aligned.
-			*/
-			virtual void realign(void);
-
-			/*
 				ALLOCATOR_POOL::MALLOC()
 				------------------------
 			*/
@@ -189,7 +175,7 @@ namespace JASS
 				@param bytes [in] The size of the chunk of memory.
 				@return A pointer to a block of memory of size bytes, or NULL on failure.
 			*/
-			virtual void *malloc(size_t bytes);
+			virtual void *malloc(size_t bytes, size_t alignment = alignment_boundary);
 			
 			/*
 				ALLOCATOR_POOL::REWIND()
