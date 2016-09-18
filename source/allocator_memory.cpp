@@ -14,25 +14,46 @@ namespace JASS
 		ALLOCATOR_MEMORY::MALLOC()
 		--------------------------
 	*/
-	void *allocator_memory::malloc(size_t bytes)
+	void *allocator_memory::malloc(size_t bytes, size_t alignment)
 		{
-		/*
-			If we don't have capacity to succeed then fail
-		*/
-		if (used + bytes > allocated)
-			{
-//			#ifdef NEVER
-				exit(printf("file:%s line:%d: Out of memory:%lld bytes requested %lld bytes used %lld bytes allocated of %lld bytes available.\n", __FILE__, __LINE__, (long long)bytes, (long long)used, (long long)allocated, (long long)allocated));
-//			#endif
-			return nullptr;
-			}
+		size_t already_used;
+		size_t padding;
+		size_t new_used;
+		void *answer;
 
-		/*
-			Take the current top of stack, and mark the requested bytes as used
-		*/
-		void *answer = buffer + used;
-		used += bytes;
-		
+		do
+			{
+			/*
+				Get the top of stack
+			*/
+			already_used = used;
+
+			/*
+				Work out the padding for this allocation
+			*/
+			if (alignment == 1)
+				padding = 0;
+			else
+				padding = realign((uint8_t *)already_used, alignment);
+
+			/*
+				If we don't have capacity to succeed then fail
+			*/
+			if (already_used + bytes + padding > allocated)
+				{
+	//			#ifdef NEVER
+					exit(printf("file:%s line:%d: Out of memory:%lld bytes requested %lld bytes used %lld bytes allocated of %lld bytes available.\n", __FILE__, __LINE__, (long long)bytes, (long long)used, (long long)allocated, (long long)allocated));
+	//			#endif
+				return nullptr;
+				}
+
+			/*
+				Take the current top of stack, and mark the requested bytes as used
+			*/
+			answer = buffer + already_used + padding;
+			new_used = already_used + bytes + padding;
+			}
+		while (!used.compare_exchange_strong(already_used, new_used));
 		/*
 			return the old top of stack
 		*/
@@ -77,7 +98,7 @@ namespace JASS
 		/*
 			Re-allign the allocator to a word boundary
 		*/
-		memory.realign();
+		memory.malloc(1);
 		assert(memory.size() == 432);
 		assert(memory.capacity() == 1024);
 		

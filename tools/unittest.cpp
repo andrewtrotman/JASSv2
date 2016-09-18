@@ -26,21 +26,51 @@ int main(void)
 	/*
 		Test the JASS classes
 	*/
+	puts("PERFORM ALL UNIT TESTS");
+
+	puts("file");
 	JASS::file::unittest();
+	
+	puts("bitstring");
 	JASS::bitstring::unittest();
+
+	puts("unicode");
 	JASS::unicode::unittest();
+	
+	puts("ascii");
 	JASS::ascii::unittest();
+	
+	puts("maths");
 	JASS::maths::unittest();
+	
 	// JASS::allocator does not have a unittest because it is a virtual base class
+	
+	puts("allocator_pool");
 	JASS::allocator_pool::unittest();
+	
+	puts("allocator_memory");
 	JASS::allocator_memory::unittest();
+
+	puts("document");
 	JASS::document::unittest();
+	
+	puts("allocator_cpp");
 	JASS::allocator_cpp<size_t>::unittest();
+	
+	puts("slice");
 	JASS::slice::unittest();
+	
 	// instream does not have a unittest because it is a virtual base class
+	
+	puts("instream_file");
 	JASS::instream_file::unittest();
+	
+	puts("instream_memory");
 	JASS::instream_memory::unittest();
+	
+	puts("instream_document_trec");
 	JASS::instream_document_trec::unittest();
 	
+	puts("ALL UNIT TESTS HAVE PASSED");
 	return 0;
 	}

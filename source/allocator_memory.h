@@ -22,7 +22,7 @@ namespace JASS
 	class allocator_memory : public allocator
 		{
 		private:
-			uint8_t *buffer;		///< The buffer we're allocating from.
+			std::atomic<uint8_t *>buffer;		///< The buffer we're allocating from.
 
 		public:
 			/*
@@ -64,7 +64,7 @@ namespace JASS
 				@param bytes [in] The size of the chunk of memory.
 				@return A pointer to a block of memory of size bytes, or NULL on failure.
 			*/
-			virtual void *malloc(size_t bytes);
+			virtual void *malloc(size_t bytes, size_t alignment = alignment_boundary);
 			
 			/*
 				ALLOCATOR_MEMORY::REWIND()

@@ -60,9 +60,9 @@ namespace JASS
 		/*
 			Initialise the chunk
 		*/
-		chain->next_chunk = current_chunk;
+		chain->next_chunk = current_chunk.load();
 		chain->chunk_size = request;
-		chain->chunk_at = chain->data;										// this is the start of the data part of the chunk.
+		chain->chunk_at.store(chain->data);										// this is the start of the data part of the chunk.
 		chain->chunk_end = ((uint8_t *)chain) + request;		// this is the end of the allocation unit so we can ignore padding the chunk objects.
 
 		/*
@@ -192,6 +192,7 @@ namespace JASS
 		/*
 			Re-allign the allocator to a word boundary
 		*/
+		memory.malloc(1, sizeof(void *));
 		assert(memory.size() == 432);
 		assert(memory.capacity() != 0);
 		
