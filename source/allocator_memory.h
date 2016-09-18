@@ -18,6 +18,9 @@ namespace JASS
 	{
 	/*
 		@brief Memory allocator out of a single non-growable fixed-sized buffer
+		@details This allocator is thread safe.  A single allocator can be called from multiple threads concurrently and they will each
+		return a valid pointer to a piece of memory that is not overlapping with any pointer returned from any other call and is of
+		the requested size.
 	*/
 	class allocator_memory : public allocator
 		{

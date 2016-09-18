@@ -42,8 +42,8 @@ namespace JASS
 	*/
 	allocator_pool::chunk *allocator_pool::add_chunk(size_t bytes)
 		{
-		bool success;
-		size_t request;
+		bool success;				// was the compate_exchange successful?
+		size_t request;			// the amount of memory that is going to be allocated
 		
 		/*
 			work out the size of the request to the C++ free store or Operating System.
@@ -83,11 +83,11 @@ namespace JASS
 	*/
 	void *allocator_pool::malloc(size_t bytes, size_t alignment)
 		{
-		uint8_t *top_of_stack;
-		uint8_t *new_top_of_stack;
-		size_t padding = 0;
-		bool success = false;
-		chunk *chunk;
+		uint8_t *top_of_stack;					// The current free pointer
+		uint8_t *new_top_of_stack;				// Where the free pointer will be on success
+		size_t padding = 0;						// How much padding is needed to correctly align the memory
+		bool success = false;					// Success or failure of the compare_and_exchange
+		chunk *chunk;								// The current top chunk
 
 		do
 			{

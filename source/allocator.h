@@ -26,6 +26,9 @@ namespace JASS
 	*/
 	/*!
 		@brief Virtual base class for C style allocators.
+		@details All allocators are thread safe.  A single allocator can be called from multiple threads concurrently and they will each
+		return a valid pointer to a piece of memory that is not overlapping with any pointer returned from any other call and is of
+		the requested size.
 	*/
 	class allocator
 		{
@@ -83,7 +86,7 @@ namespace JASS
 				---------------------
 			*/
 			/*!
-				@brief Return the amount of memory that this object has allocated to it (i.e. the sum of the sizes of the large blocks in the large block chain)
+				@brief Return the amount of memory that this object has allocated to it.
 				@return The number of bytes of memory allocated to this object.
 			*/
 			size_t capacity(void) const

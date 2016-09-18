@@ -29,20 +29,24 @@ namespace JASS
 		@details This is a simple block allocator that internally allocated a large single block from the C++ free-store (or operating system)
 		and then allows calls to allocate small blocks from that one block.  These small blocks cannot be individually deallocated, but rather
 		are all deallocated all at once when rewind() is called.  C++ allocators can easily be defined that allocate from a single object of this
-		type, but that is left for other classes to manage.
+		type, but that is left for other classes to manage (for example, class allocator_cpp).
 		
 		If the large memory block "runs out" then a second (and subsequent) block are allocated from the C++ free-store and they
 		are chained together.  If the caller askes for a single piece of memory larger then that default_allocation_size then this
-		class will allocate a chunk of the required size and return that to the caller, and in doing so it sets the allocation size
-		to this new value.  Note that there is wastage at the end of each chunk as they callot be guaranteed to lay squentially in memory.
+		class will allocate a chunk of the required size and return that to the caller.  Note that there is wastage at the end of 
+		each chunk as they cannot be guaranteed to lay squentially in memory.
 		
-		By default allocatgions by this class are not aligned to any particular boundary.  That is, if 1 byte is allocated then the next memory
+		By default allocations by this class are not aligned to any particular boundary.  That is, if 1 byte is allocated then the next memory
 		allocation is likely to be exactly one byte further on.  So allocation of a uint8_t followed by the allocation of a uint32_t is likely to
-		result in the uint32_t being at an odd-numbered memory location.  Call realign() to move the next allocation to a machine-word boundary -
-		which is probably 8 bytes (on a 64-bit machine).  On ARM, all memory allocations are aligned by default because unaligned reads usually cause a fault.
+		result in the uint32_t being at an odd-numbered memory location.  Call malloc() with an alignment value to allocate an aligned piece of memory.
+		On ARM, all memory allocations are word-aligned (sizeof(void *) by default because unaligned reads usually cause a fault.
 		
 		The use of new and delete in C++ (and malloc and free in C) is expensive as a substantial amount of work is necessary in order to maintain
 		the heap.  This class reduces that cost - it exists for efficiency reasons alone.
+	
+		This allocator is thread safe.  A single allocator can be called from multiple threads concurrently and they will each
+		return a valid pointer to a piece of memory that is not overlapping with any pointer returned from any other call and is of
+		the requested size.
 	*/
 	class allocator_pool : public allocator
 		{
@@ -68,14 +72,14 @@ namespace JASS
 				{
 				public:
 					std::atomic<uint8_t *> chunk_at;	///< Pointer to the next byte that can be allocated (within the current chunk).
-					uint8_t * chunk_end;					///< Pointer to the end of the current chunk's large allocation (used to check for overflow).
-					chunk * next_chunk;					///< Pointer to the previous large allocation (i.e. chunk).
+					uint8_t *chunk_end;					///< Pointer to the end of the current chunk's large allocation (used to check for overflow).
+					chunk *next_chunk;					///< Pointer to the previous large allocation (i.e. chunk).
 					size_t chunk_size;					///< The size of this chunk.
 					uint8_t data[];						///< The data in this large allocation that is available for re-distribution.
 				};
 
 		private:
-			std::atomic<chunk *>current_chunk;			///< Pointer to the top of the chunk list (of large allocations).
+			std::atomic<chunk *> current_chunk;			///< Pointer to the top of the chunk list (of large allocations).
 
 		private:
 			/*
@@ -137,7 +141,7 @@ namespace JASS
 			*/
 			/*!
 				@brief Get memory from the C++ free store (or the Operating System) and add it to the linked list of large-allocations.
-				@details This is maintenance method whose function is to allocate large chunks of memory and to maintain the liked list
+				@details This is a maintenance method whose function is to allocate large chunks of memory and to maintain the liked list
 				of these large chunks.  As an allocator this object is allocating memory for the caller, so it may as well manage its own list.
 				The bytes parameter to this method is an indicator of the minimum amount of memory the caller requires, this object will allocate
 				at leat that amount of space plus any space necessary for housekeeping.
