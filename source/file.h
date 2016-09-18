@@ -3,6 +3,8 @@
 	------
 	Copyright (c) 2016 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
+	
+	Originally from the ATIRE codebase (where it was also written by Andrew Trotman)
 */
 /*!
 	@file
@@ -33,7 +35,7 @@ namespace JASS
 	*/
 	class file
 		{
-		private:
+		protected:
 			FILE *fp;				///< The underlying representation is a FILE *  from C (as they appear to be fast).
 			
 		private:

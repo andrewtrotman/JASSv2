@@ -1,6 +1,8 @@
 /*
 	INSTREAM_MEMORY.H
 	-----------------
+	Copyright (c) 2016 Andrew Trotman
+	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 /*!
 	@file
@@ -25,7 +27,7 @@ namespace JASS
 	*/
 	class instream_memory : public instream
 		{
-		private:
+		protected:
 			size_t bytes_read;					///< The number of bytes this object has read for the buffer
 			const uint8_t *file;					///< A pointer to the in-memory buffer (thought of as an in-place file)
 			size_t file_length;					///< The length of the in-memory buffer

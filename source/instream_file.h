@@ -27,7 +27,7 @@ namespace JASS
 	*/
 	class instream_file : public instream
 		{
-		private:
+		protected:
 			file file;					///< The file to read from.
 			size_t file_length;		///< The length of the file.
 			size_t bytes_read;		///< The number of bytes that have been read from the file.

@@ -77,6 +77,7 @@ namespace JASS
 			/*!
 				@brief Allocate a small chunk of memory from the internal pool and return a pointer to the caller.
 				@param bytes [in] The size of the chunk of memory.
+				@param alignment [in] If a word-aligned piece of memory is needed then this is the word-size (e.g. sizeof(void*))
 				@return A pointer to a block of memory of size bytes, or NULL on failure.
 			*/
 			virtual void *malloc(size_t bytes, size_t alignment = alignment_boundary) = 0;
@@ -122,7 +123,7 @@ namespace JASS
 				@param boundary [in] The byte-boundary to which this address should be alligned (e.g. 4 will ensure the least significant 2 bits are alwasys 00)
 				@return The number of bytes to add to address to make it aligned
 			*/
-			size_t realign(void *address, size_t boundary)
+			static size_t realign(const void *address, size_t boundary)
 				{
 				/*
 					Get the pointer as an integer

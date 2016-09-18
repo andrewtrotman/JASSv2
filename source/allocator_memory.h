@@ -16,7 +16,7 @@
 
 namespace JASS
 	{
-	/*
+	/*!
 		@brief Memory allocator out of a single non-growable fixed-sized buffer
 		@details This allocator is thread safe.  A single allocator can be called from multiple threads concurrently and they will each
 		return a valid pointer to a piece of memory that is not overlapping with any pointer returned from any other call and is of
@@ -24,8 +24,8 @@ namespace JASS
 	*/
 	class allocator_memory : public allocator
 		{
-		private:
-			std::atomic<uint8_t *>buffer;		///< The buffer we're allocating from.
+		protected:
+			std::atomic<uint8_t *> buffer;		///< The buffer we're allocating from.
 
 		public:
 			/*
@@ -65,6 +65,7 @@ namespace JASS
 			/*!
 				@brief Allocate a small chunk of memory from the internal pool and return a pointer to the caller.
 				@param bytes [in] The size of the chunk of memory.
+				@param alignment [in] If a word-aligned piece of memory is needed then this is the word-size (e.g. sizeof(void*))
 				@return A pointer to a block of memory of size bytes, or NULL on failure.
 			*/
 			virtual void *malloc(size_t bytes, size_t alignment = alignment_boundary);
@@ -84,7 +85,7 @@ namespace JASS
 				--------------------------
 			*/
 			/*!
-				@brief Unit test this class
+				@brief Unit test this class.
 			*/
 			static void unittest(void);
 		};

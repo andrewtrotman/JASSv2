@@ -1,6 +1,8 @@
 /*
 	INSTREAM_DOCUMENT_TREC.CPP
 	--------------------------
+	Copyright (c) 2016 Andrew Trotman
+	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 #include <stdio.h>
 #include <string.h>
@@ -45,7 +47,7 @@ namespace JASS
 		instream_document_trec(source, 16 * 1024 * 1024, document_tag, document_primary_key_tag)
 		{
 		/*
-			Nothing - all manages by the private constructor
+			Nothing - all managed by the protected constructor
 		*/
 		}
 
@@ -163,45 +165,45 @@ namespace JASS
 	void instream_document_trec::unittest(void)
 		{
 		/*
-			Set up a pipeline that is an instream_document_trec reading from a instream_document_trec reading from a instream_memory reading from the unittest_data_ten_documents string.
+			Set up a pipeline that is an instream_document_trec reading from a instream_document_trec reading from a instream_memory reading from the unittest_data::ten_documents string.
 		*/
-		instream_memory *buffer = new instream_memory((uint8_t *)unittest_data_ten_documents.c_str(), unittest_data_ten_documents.size());
-		instream_document_trec *first_slice = new instream_document_trec(*buffer, 80, "DOC", "DOCNO");				// call the private constructor and tell it to use an unusually small buffer
-		instream_document_trec slicer(*first_slice, 80, "DOC", "DOCNO");				// call the private constructor and tell it to use an unusually small buffer
+		instream_memory *buffer = new instream_memory((uint8_t *)unittest_data::ten_documents.c_str(), unittest_data::ten_documents.size());
+		instream_document_trec *first_slice = new instream_document_trec(*buffer, 80, "DOC", "DOCNO");				// call the protected constructor and tell it to use an unusually small buffer
+		instream_document_trec slicer(*first_slice, 80, "DOC", "DOCNO");				// call the protected constructor and tell it to use an unusually small buffer
 		document indexable_object;
 
 		/*
 			Check each read to make sure it worked.
 		*/
 		slicer.read(indexable_object);
-		assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data_ten_document_1);
+		assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_1);
 		
 		slicer.read(indexable_object);
-		assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data_ten_document_2);
+		assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_2);
 		
 		slicer.read(indexable_object);
-		assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data_ten_document_3);
+		assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_3);
 		
 		slicer.read(indexable_object);
-		assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data_ten_document_4);
+		assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_4);
 		
 		slicer.read(indexable_object);
-		assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data_ten_document_5);
+		assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_5);
 		
 		slicer.read(indexable_object);
-		assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data_ten_document_6);
+		assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_6);
 		
 		slicer.read(indexable_object);
-		assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data_ten_document_7);
+		assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_7);
 		
 		slicer.read(indexable_object);
-		assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data_ten_document_8);
+		assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_8);
 		
 		slicer.read(indexable_object);
-		assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data_ten_document_9);
+		assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_9);
 		
 		slicer.read(indexable_object);
-		assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data_ten_document_10);
+		assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_10);
 		
 		slicer.read(indexable_object);
 		assert(indexable_object.contents.size() == 0);

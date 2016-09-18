@@ -32,7 +32,7 @@ namespace JASS
 	*/
 	class ascii
 		{
-		private:
+		protected:
 			/*!
 				@brief The enum of characteristics of an ascii character.
 			*/
@@ -51,7 +51,7 @@ namespace JASS
 				GRAPH  = PUNC | UPPER | LOWER | DIGIT,		///< this character is a graphic character
 				};
 
-		private:
+		protected:
 			/*
 				These two are defined in the CPP file.
 			*/

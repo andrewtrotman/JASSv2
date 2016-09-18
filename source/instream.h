@@ -87,7 +87,7 @@ namespace JASS
 				-----------------
 			*/
 			/*!
-				@bried fetch() generates a document object, sets its contents to the passed buffer, calls read() and returns the number of bytes of data read
+				@brief fetch() generates a document object, sets its contents to the passed buffer, calls read() and returns the number of bytes of data read
 				@param buffer [in] Buffer to read into.
 				@param bytes [in] The maximum number of bytes to read into the buffer.
 				@return The number of bytes that were read into the buffer.

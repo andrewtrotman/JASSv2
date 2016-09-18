@@ -28,13 +28,13 @@ namespace JASS
 	*/
 	/*!
 		@brief Child class of instream for creating documents from TREC pre-web (i.e. news articles) data.
-		@detials Connect an object of this class to an input stream and it will return TREC new-arrticle formatted documents 
-		one per read.  This is done by looking for <DOC> and </DOC> tags in the source stream.  Document primary keys are
-		assumed to be between <DOCNO> and </DOCNO> tags.
+		@details Connect an object of this class to an input stream and it will return TREC new-arrticle formatted documents
+		one per read.  This is done by looking for \<DOC> and \</DOC> tags in the source stream.  Document primary keys are
+		assumed to be between \<DOCNO> and \</DOCNO> tags.
 	*/
 	class instream_document_trec : public instream
 		{
-		private:
+		protected:
 			size_t buffer_size;								///< Size of the disk read buffer.  Normally 16MB
 
 		protected:
@@ -47,13 +47,13 @@ namespace JASS
 			std::string primary_key_start_tag;			///< The primary key's start tag ("<DOCNO>" by default)
 			std::string primary_key_end_tag;				///< The primary key's end tag ("</DOCNO>" by default)
 
-		private:
+		protected:
 			/*
 				INSTREAM_DOCUMENT_TREC::INSTREAM_DOCUMENT_TREC()
 				------------------------------------------------
 			*/
 			/*!
-				@brief Private constructor used to set the size of the internal buffer in the unittest.
+				@brief Protected constructor used to set the size of the internal buffer in the unittest.
 				@param source [in] The innstream responsible for providing data to this class.
 				@param buffer_size [in] The size of the internal buffer filled from source.
 				@param document_tag [in] The name of the tag used to delineate docments.
@@ -68,13 +68,18 @@ namespace JASS
 			/*!
 				@brief Register the document tag and the primary key tag.  Used to set up internal data structures.
 				@param document_tag [in] The name of the tag used to delineate docments.
-				@param document_primary_key_tag [in] The name of the element that contans the document's primary key.
+				@param primary_key_tag [in] The name of the element that contans the document's primary key.
 			*/
 			void set_tags(const std::string &document_tag, const std::string &primary_key_tag);
 
 			/*
 				INSTREAM_DOCUMENT_TREC::FETCH()
 				-------------------------------
+			*/
+			/*!
+				@brief Fetch another block of data from the source.
+				@param buffer [out] Write bytes amount of data into this memory location.
+				@param bytes [in] Read this amount of data from the source.
 			*/
 			void fetch(void *buffer, size_t bytes)
 				{
@@ -89,7 +94,6 @@ namespace JASS
 			/*!
 				@brief Constructor
 				@param source [in] The innstream responsible for providing data to this class.
-				@param buffer_size [in] The size of the internal buffer filled from source.
 				@param document_tag [in] The name of the tag used to delineate docments (default = "DOC").
 				@param document_primary_key_tag [in] The name of the element that contans the document's primary key (default = "DOCNO").
 			*/

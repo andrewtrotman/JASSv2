@@ -26,7 +26,7 @@ namespace JASS
 	*/
 	class document
 		{
-		private:
+		protected:
 			allocator_pool default_allocator;		///< If a document is created without a specified allocator then use a pool allocator
 
 		public:

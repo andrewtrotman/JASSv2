@@ -4,7 +4,7 @@
 	Copyright (c) 2016 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 
-	Originally from the ATIRE codebase, this code is a re-write using C++ STL classes.
+	Originally from the ATIRE codebase (where it was also written by Andrew Trotman)
 */
 #include <stdio.h>
 #include <sys/types.h>

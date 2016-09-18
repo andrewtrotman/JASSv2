@@ -1,8 +1,16 @@
 /*
 	ALLOCATOR_CPP.H
 	---------------
-	This is a C++11 allocator class.  It is based on the article here: https://msdn.microsoft.com/en-us/library/aa985953.aspx
+	Copyright (c) 2016 Andrew Trotman
+	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
+/*!
+	@file
+	@brief C++11 allocator class that uses a C allocator.  See here: https://msdn.microsoft.com/en-us/library/aa985953.aspx
+	@author Andrew Trotman
+	@copyright 2016 Andrew Trotman
+*/
+
 #pragma once
 
 #include <stdlib.h>
@@ -25,7 +33,7 @@ namespace JASS
 	template <class TYPE>
 	class allocator_cpp
 		{
-		private:
+		protected:
 			allocator &pool;							///< This is the memory pool from which this C++ allocator allocated.
 			
 		public:
@@ -37,7 +45,7 @@ namespace JASS
 			*/
 			/*!
 				@brief Default constructor.
-				@param c_allocator [in] A reference to C style allocator.
+				@param pool [in] A reference to C style allocator.
 			*/
 			allocator_cpp(allocator &pool) : pool(pool)
 			 {

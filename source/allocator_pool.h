@@ -50,13 +50,13 @@ namespace JASS
 	*/
 	class allocator_pool : public allocator
 		{
-		private:
+		protected:
 			static const size_t default_allocation_size = 1024 * 1024 * 1024;			///< Allocations from the C++ free-store are this size
 			
-		private:
+		protected:
 			size_t block_size;				///< The size (in bytes) of the large-allocations this object will make.
 
-		private:
+		protected:
 			/*
 				CLASS ALLOCATOR_POOL::CHUNK
 				---------------------------
@@ -78,7 +78,7 @@ namespace JASS
 					uint8_t data[];						///< The data in this large allocation that is available for re-distribution.
 				};
 
-		private:
+		protected:
 			std::atomic<chunk *> current_chunk;			///< Pointer to the top of the chunk list (of large allocations).
 
 		private:
@@ -108,13 +108,14 @@ namespace JASS
 				return *this;
 				}
 			
+		protected:
 			/*
 				ALLOCATOR_POOL::ALLOC()
 				-----------------------
 			*/
 			/*!
 				@brief Allocate more memory from the C++ free-store
-				@param request_size [in] The size (in bytes) of the requested block.
+				@param size [in] The size (in bytes) of the requested block.
 				@return A pointer to a block of memory of size size, or NULL on failure.
 			*/
 			void *alloc(size_t size) const
@@ -177,6 +178,7 @@ namespace JASS
 			/*!
 				@brief Allocate a small chunk of memory from the internal block and return a pointer to the caller
 				@param bytes [in] The size of the chunk of memory.
+				@param alignment [in] If a word-aligned piece of memory is needed then this is the word-size (e.g. sizeof(void*))
 				@return A pointer to a block of memory of size bytes, or NULL on failure.
 			*/
 			virtual void *malloc(size_t bytes, size_t alignment = alignment_boundary);

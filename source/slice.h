@@ -18,12 +18,12 @@
 
 namespace JASS
 	{
-	/*
+	/*!
 		@brief C++ slices (string-descriptors)
 	*/
 	class slice
 		{
-		private:
+		protected:
 			void *pointer;			///< The start of the data.
 			size_t length;			///< The length of the data (in bytes).
 			
@@ -159,7 +159,7 @@ namespace JASS
 			*/
 			/*!
 				@brief Change the length of the slice.
-				@param new_size[in] The new size (in bytes) of the slice.
+				@param new_size [in] The new size (in bytes) of the slice.
 			*/
 			void resize(size_t new_size)
 				{
