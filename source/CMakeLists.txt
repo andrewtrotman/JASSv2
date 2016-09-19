@@ -30,6 +30,8 @@ set(JASSlib_FILES
 	instream_memory.h
 	instream_memory.cpp
 	maths.h
+	parser.h
+	parser.cpp
 	slice.h
 	unicode.h
 	unicode.cpp

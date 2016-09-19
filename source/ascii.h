@@ -61,6 +61,20 @@ namespace JASS
 
 		public:
 			/*
+				ASCII::ISASCII()
+				----------------
+			*/
+			/*!
+				@brief Is the given character a plain 7-bit ASCII character
+				@param c [in] The character to check.
+				@return true is the high bit is 0, false if the high bit is 1.
+			*/
+			inline static bool isascii(uint8_t c)
+				{
+				return !(c & 0x80);
+				}
+			
+			/*
 				ASCII::ISALNUM()
 				----------------
 			*/

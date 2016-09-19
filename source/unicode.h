@@ -22,6 +22,8 @@
 #include <stdint.h>
 #include <assert.h>
 
+#include <vector>
+
 extern unsigned char JASS_unicode_isalpha_data[];	///< is the given codepoint alphabetic
 extern unsigned char JASS_unicode_isalnum_data[];	///< is the given codepoint alphanumeric
 extern unsigned char JASS_unicode_isupper_data[];	///< is the given codepoint uppercase
@@ -50,6 +52,187 @@ namespace JASS
 	class unicode
 		{
 		public:
+			static constexpr uint32_t replacement_character = 0xFFFD;
+		public:
+			/*
+				UNICODE::UTF8_BYTES()
+				---------------------
+			*/
+			/*!
+				@brief Return the number of bytes the UTF-8 character starting at sequence is taking.
+				@details Computing the length is done by looking only at the first character in the sequence which contains the length bits.
+				@param sequence [in] A pointer to a UTF-8 character
+				@return The length (in bytes) of the UTF-8 character starting at sequence, or 0 if the UTF-8 length byte is malformed.
+			*/
+			static size_t utf8_bytes(const void *sequence)
+				{
+				if (*(uint8_t *)sequence < 0x80)
+					return 1;
+				else if ((*(uint8_t *)sequence & 0xE0) == 0xC0)
+					return 2;
+				else if ((*(uint8_t *)sequence & 0xF0) == 0xE0)
+					return 3;
+				else if ((*(uint8_t *)sequence & 0xF8) == 0xF0)
+					return 4;
+					
+				return 0;
+				}
+
+			/*
+				UNICODE::UTF8_BYTES()
+				---------------------
+			*/
+			/*!
+				@brief Return the number of bytes necessary to convert the codepoint into UTF-8.
+				@param codepoint [in] The codepoint to convert.
+				@return The minimum length (in bytes) of the UTF-8 sequence necessary to store codepoint.
+			*/
+			static size_t utf8_bytes(uint32_t codepoint)
+				{
+				if (codepoint <= 0x007F)
+					return 1;
+				if (codepoint <= 0x07FF)
+					return 2;
+				if (codepoint <= 0xFFFF)
+					return 3;
+				if (codepoint <= 0x1FFFFF)
+					return 4;
+
+				return 0;
+				}
+
+			/*
+				UNICODE::ISUTF8()
+				-----------------
+			*/
+			/*!
+				@brief Examine the UTF-8 sequence to determine whether or not it is valid UTF-8.
+				@param utf8_start [in] The start of the UTF-8 sequence.
+				@param end_of_buffer [in] The end of the buffer containing the UTF-8 sequence (not necessarily the end of the UTF-8 sequence).
+				@return The length of the UTF-8 sequence, or 0 on bad sequence.  That is, true or false.
+			*/
+			static size_t isutf8(const void *utf8_start, const void *end_of_buffer)
+				{
+				/*
+					get the length
+				*/
+				size_t number_of_bytes = utf8_bytes(utf8_start);
+
+				/*
+					check the length for validity
+				*/
+				if (number_of_bytes == 0)
+					return 0;
+
+				/*
+					check for overflow
+				*/
+				if ((uint8_t *)utf8_start + number_of_bytes > end_of_buffer)
+					return 0;
+
+				/*
+					check each byte is a valid UTF-8 continuation byte.
+				*/
+				const uint8_t *byte = (uint8_t *)utf8_start;
+				for (size_t byte_number = 1; byte_number < number_of_bytes; byte_number++)
+					if ((*++byte >> 6) != 2)
+						return 0;
+
+				/*
+					success so return the length of the sequence
+				*/
+				return number_of_bytes;
+				}
+
+			/*
+				UNICODE::UTF8_TO_CODEPOINT()
+				----------------------------
+			*/
+			/*!
+				@brief Convert the UTF-8 sequence into a Unicode codepoin (i.e. decode the UTF-8).
+				@param utf8_start [in] The start of the UTF-8 sequence.
+				@param end_of_buffer [in] The end of the buffer containing the UTF-8 sequence (not necessarily the end of the UTF-8 sequence).
+				@param bytes_consumed [out] The number of bytes taken by the UTF-8 sequence (computed as a byproduct of decoding).
+				@return The Unicode codepoint, or unicode::replacement_character on invalid input.
+			*/
+			static uint32_t utf8_to_codepoint(const void *utf8_start, const void *end_of_buffer, size_t &bytes_consumed)
+				{
+				const uint8_t *bytes = (const uint8_t *)utf8_start;
+
+				bytes_consumed = isutf8(bytes, end_of_buffer);
+
+				switch (bytes_consumed)
+					{
+					case 0:
+						return replacement_character;						// invaid UTF-8 sequence
+					case 1:
+						return *bytes;
+					case 2:
+						return ((*bytes & 0x1F) << 6) | (*(bytes + 1) & 0x3F);
+					case 3:
+						return ((*bytes & 0x0F) << 12) | ((*(bytes + 1) & 0x3F) << 6) | (*(bytes + 2) & 0x3F);
+					case 4:
+						return ((*bytes & 0x07) << 18) | ((*(bytes + 1) & 0x3F) << 12) | ((*(bytes + 2) & 0x3F) << 6) | (*(bytes + 3) & 0x3F);
+					default:
+						return replacement_character;							// Cannot happen, but Xcode gives a warning if this line is missing.
+					}
+				}
+
+			/*
+				UNICODE::CODEPOINT_TO_UTF8()
+				----------------------------
+			*/
+			/*!
+				@brief Encode the Unicode codepoint in UTF-8 into buffer utf8_start, not exceeding end_of_buffer.
+				@param utf8_start [out] The start of the UTF-8 sequence.
+				@param end_of_buffer [in] The end of the buffer to contain the UTF-8 sequence (not necessarily the end of the UTF-8 sequence).
+				@param codepoint [in] The codepoint to turn into UTF-8.
+				@return The number of bytes written into utf8_start, or 0 on error (e.g. overrun would occur, or invalid codepoint).
+			*/
+			static size_t codepoint_to_utf8(void *utf8_start, const void *end_of_buffer, uint32_t codepoint)
+			{
+			uint8_t *bytes = (uint8_t *)utf8_start;
+
+			/*
+				Find out how many bytes are needed and make sure it'll fit in the given space.
+			*/
+			size_t bytes_required = utf8_bytes(codepoint);
+			if (bytes + bytes_required > end_of_buffer)
+				return 0;
+
+			/*
+				It fits so write into the given space.
+			*/
+			switch (bytes_required)
+				{
+				case 0:
+					break;			// invalid codepoint
+				case 1:
+					bytes[0] = (uint8_t)(codepoint);
+					break;
+				case 2:
+					bytes[0] = (uint8_t)(0xC0 | (codepoint >> 6));
+					bytes[1] = (uint8_t)(0x80 | (codepoint & 0x3F));
+					break;
+				case 3:
+					bytes[0] = (uint8_t)(0xE0 | (codepoint >> 12));
+					bytes[1] = (uint8_t)(0x80 | ((codepoint & 0xFC0) >> 6));
+					bytes[2] = (uint8_t)(0x80 | (codepoint & 0x3F));
+					break;
+				case 4:
+					bytes[0] = (uint8_t)(0xF0 | (codepoint >> 18));
+					bytes[1] = (uint8_t)(0x80 | ((codepoint & 0x3F000) >> 12));
+					bytes[2] = (uint8_t)(0x80 | ((codepoint & 0xFC0) >> 6));
+					bytes[3] = (uint8_t)(0x80 | (codepoint & 0x3F));
+					break;
+				}
+
+			/*
+				return the number of bytes just written
+			*/
+			return bytes_required;
+			}
+
 			/*
 				UNICODE::TOCASEFOLD()
 				---------------------
@@ -68,6 +251,23 @@ namespace JASS
 				const uint32_t *got = JASS_normalisation[codepoint];
 				while (*got != 0)
 					casefolded.push_back(*got++);
+				}
+			
+			/*
+				UNICODE::TOCASEFOLD()
+				---------------------
+			*/
+			/*!
+				@brief Return a pointer to a 0 terminated array of codepoints that is the casefolded normalised codepoint.
+				@details This is the JASS character normalisation method.  It converts to Unicode "NFKD", strips all non-alpha-numerics, then
+				performs Unicode casefolding "C+F".  As unicode decomposition is involved (and casefolding) the resulting string can be considerably
+				larger than a single codepoint.  The worst case is the single codepoint U+FDFA becoming 18 codepoints once normalisd.  Two codepoints,
+				U+FDFA and U+FDFB expand into strings that contain spaces; it is the caller's responsibility to manage this should it need to be managed.
+				@param codepoint [in] The codepoint to normalise.
+			*/
+			static inline const uint32_t *tocasefold(uint32_t codepoint)
+				{
+				return JASS_normalisation[codepoint];
 				}
 			
 			/*
@@ -100,7 +300,7 @@ namespace JASS
 				@param codepoint [in] The Unicode codepoint to check.
 				@return true if alphabetic, else false.
 			*/
-			static inline bool isalum(uint32_t codepoint)
+			static inline bool isalnum(uint32_t codepoint)
 				{
 				uint32_t byte = codepoint >> 3;
 				uint32_t bit = 1 << (codepoint & 0x07);
@@ -307,7 +507,7 @@ namespace JASS
 
 				return JASS_unicode_issymbol_data[byte] & bit;
 				}
-				
+			
 			/*
 				UNICODE::UNITTEST()
 				-------------------
@@ -320,28 +520,77 @@ namespace JASS
 			*/
 			static void unittest(void)
 				{
+				/*
+					Test the UTF-8 methods.  These examples came from the Wikipedia here: https://en.wikipedia.org/wiki/UTF-8
+				*/
+				const uint8_t sequence_1[] = {0x24};
+				const uint8_t sequence_2[] = {0xC2, 0xA2};
+				const uint8_t sequence_3[] = {0xE2, 0x82, 0xAC};
+				const uint8_t sequence_4[] = {0xF0, 0x90, 0x8D, 0x88};
+				
+				/*
+					Check that the lengths are correctly decoded
+				*/
+				assert(utf8_bytes(sequence_1) == 1);
+				assert(utf8_bytes(sequence_2) == 2);
+				assert(utf8_bytes(sequence_3) == 3);
+				assert(utf8_bytes(sequence_4) == 4);
+				
+				/*
+					Check that the lengths are correctly encoded
+				*/
+				assert(utf8_bytes(0x24) == 1);
+				assert(utf8_bytes(0xA2) == 2);
+				assert(utf8_bytes(0x20AC) == 3);
+				assert(utf8_bytes(0x10348) == 4);
+				
+				/*
+					Check that it can decode UTF-8 correctly
+				*/
+				size_t consumed;
+				assert(utf8_to_codepoint(sequence_1, sequence_1 + sizeof(sequence_1), consumed) == 0x24 && consumed == 1);
+				assert(utf8_to_codepoint(sequence_2, sequence_2 + sizeof(sequence_2), consumed) == 0xA2 && consumed == 2);
+				assert(utf8_to_codepoint(sequence_3, sequence_3 + sizeof(sequence_3), consumed) == 0x20AC && consumed == 3);
+				assert(utf8_to_codepoint(sequence_4, sequence_4 + sizeof(sequence_4), consumed) == 0x10348 && consumed == 4);
+				
+				/*
+					Check that it can encode UTF-8 correctly
+				*/
+				uint8_t buffer[8];
+				assert(codepoint_to_utf8(buffer, buffer + sizeof(buffer), 0x24) == 1);
+				assert(memcmp(buffer, sequence_1, 1) == 0);
+				assert(codepoint_to_utf8(buffer, buffer + sizeof(buffer), 0xA2) == 2);
+				assert(memcmp(buffer, sequence_2, 2) == 0);
+				assert(codepoint_to_utf8(buffer, buffer + sizeof(buffer), 0x20AC) == 3);
+				assert(memcmp(buffer, sequence_3, 3) == 0);
+				assert(codepoint_to_utf8(buffer, buffer + sizeof(buffer), 0x10348) == 4);
+				assert(memcmp(buffer, sequence_4, 4) == 0);
+
+				/*
+					Test the ctype-like methods
+				*/
 				for (uint8_t character = 0; character <= 0x7F; character++)
 					{
-					assert(::isalpha(character) == isalpha(character));
-					assert(::isalnum(character) == isalnum(character));
-					assert(::isupper(character) == isupper(character));
-					assert(::islower(character) == islower(character));
-					assert(::isdigit(character) == isdigit(character));
-					assert(::isspace((uint8_t)character) == isspace(character));
-					assert(::isxdigit((uint8_t)character) == isxdigit(character));
-					assert(::iscntrl(character) == iscntrl(character));
+					assert(::isalpha(character) == unicode::isalpha(character));
+					assert(::isalnum(character) == unicode::isalnum(character));
+					assert(::isupper(character) == unicode::isupper(character));
+					assert(::islower(character) == unicode::islower(character));
+					assert(::isdigit(character) == unicode::isdigit(character));
+					assert(::isspace((uint8_t)character) == unicode::isspace(character));
+					assert(::isxdigit((uint8_t)character) == unicode::isxdigit(character));
+					assert(::iscntrl(character) == unicode::iscntrl(character));
 
 					/*
 						Unicode does not consider character 32 (space) to be a graph character as it is a space character
 					*/
 					if (character == 32)
-						assert(::isgraph(character) != isgraph(character));
+						assert(::isgraph(character) != unicode::isgraph(character));
 					else
-						assert(::isgraph(character) == isgraph(character));
+						assert(::isgraph(character) == unicode::isgraph(character));
 					/*
 						The rules for ispunct() are very different betwen C and Unicode so we won't even bother to check
 					*/
-					if (character <= 0x7F && isalnum(character))
+					if (character <= 0x7F && unicode::isalnum(character))
 						{
 						std::vector<uint32_t> casefold;
 						tocasefold(casefold, character);
