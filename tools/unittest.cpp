@@ -8,6 +8,7 @@
 #include "ascii.h"
 #include "maths.h"
 #include "slice.h"
+#include "parser.h"
 #include "unicode.h"
 #include "bitstring.h"
 #include "allocator_cpp.h"
@@ -70,6 +71,9 @@ int main(void)
 	
 	puts("instream_document_trec");
 	JASS::instream_document_trec::unittest();
+	
+	puts("parser");
+	JASS::parser::unittest();
 	
 	puts("ALL UNIT TESTS HAVE PASSED");
 	return 0;

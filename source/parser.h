@@ -20,10 +20,12 @@ namespace JASS
 			class token
 				{
 				public:
-					enum type
+					enum token_type
 						{
 						alpha,
-						numeric
+						numeric,
+						other,
+						eof
 						};
 				public:
 					static constexpr size_t max_token_length = 1024;
@@ -31,14 +33,19 @@ namespace JASS
 				public:
 					uint8_t buffer[max_token_length];
 					slice token;
-					type type;
+					token_type type;
 				};
 			
 		protected:
+			token eof_token;
 			document *document;
 			uint8_t *current;
 			uint8_t *end_of_document;
 			token token;
+			
+		protected:
+			void build_unicode_alphabetic_token(uint32_t codepoint, size_t bytes, uint8_t *&buffer_pos, uint8_t *buffer_end);
+			void build_unicode_numeric_token(uint32_t codepoint, size_t bytes, uint8_t *&buffer_pos, uint8_t *buffer_end);
 
 		public:
 			parser()
@@ -47,6 +54,7 @@ namespace JASS
 					Nothing
 				*/
 				current = NULL;
+				eof_token.type =  token::eof;
 				}
 			virtual ~parser()
 				{
@@ -62,6 +70,8 @@ namespace JASS
 				end_of_document = (uint8_t *)document.contents.address() + document.contents.size();
 				}
 				
-			virtual class token &get_next_token(void);
+			virtual const class parser::token &get_next_token(void);
+			
+			static void unittest(void);
 		};
 	}

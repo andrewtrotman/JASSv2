@@ -135,7 +135,7 @@ namespace JASS
 				@brief Return the length of this slice.
 				@return Slice length.
 			*/
-			size_t size(void)
+			size_t size(void) const
 				{
 				return length;
 				}
@@ -148,7 +148,7 @@ namespace JASS
 				@brief Extract the pointer value from the slice
 				@return The slice's internal pointer
 			*/
-			void *address(void)
+			void *address(void) const
 				{
 				return pointer;
 				}
@@ -175,7 +175,7 @@ namespace JASS
 				@param index [in] Which byte to return.
 				@return A reference to the byte at position specified in index.
 			*/
-			uint8_t &operator[](size_t index)
+			uint8_t &operator[](size_t index) const
 				{
 				return ((uint8_t *)pointer)[index];
 				}
