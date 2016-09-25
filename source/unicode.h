@@ -37,6 +37,8 @@ extern unsigned char JASS_unicode_isuspace_data[];	///< is the given codepoint a
 extern unsigned char JASS_unicode_isxdigit_data[];	///< is the given codepoint a hexadecimal digit
 extern unsigned char JASS_unicode_ismark_data[];	///< is the given codepoint a mark
 extern unsigned char JASS_unicode_issymbol_data[];	///< is the given codepoint a symbol
+extern unsigned char JASS_unicode_isxmlnamestartchar_data[]; ///< is the given character a XML NameStartChar (see XML production 4)
+extern unsigned char JASS_unicode_isxmlnamechar_data[]; ///< is the given character a XML NameStartChar (see XML production 4a)
 
 extern const uint32_t *JASS_normalisation[];		///< an array of pointers to JASS normalised codepoints for the given codepoint
 
@@ -506,6 +508,44 @@ namespace JASS
 				uint32_t bit = 1 << (codepoint & 0x07);
 
 				return JASS_unicode_issymbol_data[byte] & bit;
+				}
+			
+			/*
+				UNICODE::ISXMNAMESTARTCHAR()
+				----------------------------
+			*/
+			/*!
+				@brief Check to see if the codepoint is a valid character to start and XML tag name with.
+				@details According to XML production 4, valid Unicode characters are (":" | [A-Z] | "_" | [a-z] | [#xC0-#xD6] | [#xD8-#xF6] | [#xF8-#x2FF] | [#x370-#x37D] | [#x37F-#x1FFF] | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF] | [#x3001-#xD7FF] | [#xF900-#xFDCF] | [#xFDF0-#xFFFD] | [#x10000-#xEFFFF])
+				For details see: "Extensible Markup Language (XML) 1.0 (Fifth Edition) W3C Recommendation 26 November 2008", https://www.w3.org/TR/REC-xml/#NT-extSubsetDecl
+				@param codepoint [in] The Unicode codepoint to check.
+				@return true if an XML NameStartChar character, else false.
+			*/
+			static inline bool isxmlnamestartchar(uint32_t codepoint)
+				{
+				uint32_t byte = codepoint >> 3;
+				uint32_t bit = 1 << (codepoint & 0x07);
+
+				return JASS_unicode_isxmlnamestartchar_data[byte] & bit;
+				}
+
+			/*
+				UNICODE::ISXMNAMETCHAR()
+				------------------------
+			*/
+			/*!
+				@brief Check to see if the codepoint is a valid character to follow a NameStartChar in an XML tag name.
+				@details According to XML production 4a, valid Unicode characters are (NameStartChar | "-" | "." | [0-9] | #xB7 | [#x0300-#x036F] | [#x203F-#x2040])
+				For details see: "Extensible Markup Language (XML) 1.0 (Fifth Edition) W3C Recommendation 26 November 2008", https://www.w3.org/TR/REC-xml/#NT-extSubsetDecl
+				@param codepoint [in] The Unicode codepoint to check.
+				@return true if an XML NameChar character, else false.
+			*/
+			static inline bool isxmlnamechar(uint32_t codepoint)
+				{
+				uint32_t byte = codepoint >> 3;
+				uint32_t bit = 1 << (codepoint & 0x07);
+
+				return JASS_unicode_isxmlnamechar_data[byte] & bit;
 				}
 			
 			/*

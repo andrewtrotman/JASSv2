@@ -159,34 +159,81 @@ namespace JASS
 		*/
 		else if (ascii::isascii(*current))
 			{
-			if (*current != '<')
-				{
-				/*
-					Just plain old non alphanumerics.  Returned one character at a time
-				*/
-				token.type = token.other;
-				*buffer_pos++ = *current;
-				current++;
-				}
+			/*
+				What ever we have we want the first character.
+			*/
+			*buffer_pos++ = *current;
+			current++;
+			if (*(current - 1) != '<')
+				token.type = token.other;				//Just plain old non alphanumerics.  Returned one character at a time
 			else
 				{
 				/*
-					FIX THIS..
+					The XML rules from: "Extensible Markup Language (XML) 1.0 (Fifth Edition) W3C Recommendation 26 November 2008", at
+					https://www.w3.org/TR/REC-xml/#NT-extSubsetDecl are followed as much as is reasonably possible without a writing a
+					full XML parser.
+					
+					For XML start tags the rules are (where square brackets are the XML production numbers
+					[40]     STag          ::= '<' Name (S Attribute)* S? '>'
+					[5]      Name          ::= NameStartChar (NameChar)*
+					[4]      NameStartChar ::= ":" | [A-Z] | "_" | [a-z] | [#xC0-#xD6] | [#xD8-#xF6] | [#xF8-#x2FF] | [#x370-#x37D] | [#x37F-#x1FFF] | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF] | [#x3001-#xD7FF] | [#xF900-#xFDCF] | [#xFDF0-#xFFFD] | [#x10000-#xEFFFF]
+					[4a]     NameChar      ::= NameStartChar | "-" | "." | [0-9] | #xB7 | [#x0300-#x036F] | [#x203F-#x2040]
+					Attributes are ignored at the moment (Last time I needed to index attributes was in the 1990s!)
+					
+					For XML end tags the rules are:
+					[42]     ETag        ::= '</' Name S? '>'
+					
+					For XML empty tags the rules are:
+					[44]     EmptyElemTag ::= '<' Name (S Attribute)* S? '/>'
+
+					For XML comments the rules are:
+					[15]     Comment     ::= '<!--' ((Char - '-') | ('-' (Char - '-')))* '-->'
+					
+					For XML processing instructions the rules are:
+					[16]     PI          ::= '<?' PITarget (S (Char* - (Char* '?>' Char*)))? '?>'
+					
+					For XML CDATA sections the rules are:
+					[18]     CDSect      ::= CDStart CData CDEnd
+					[19]     CDStart     ::= '<![CDATA['
+					[20]     CData       ::= (Char* - (Char* ']]>' Char*))
+					[21]     CDEnd       ::= ']]>'
+					
+					For XML Document Type Definition, Element Type Declaration, Attribute-list Declaration, Entity Declarations, Notations the rules are:
+					[28]   	doctypedecl ::= '<!DOCTYPE' S Name (S ExternalID)? S? ('[' intSubset ']' S?)? '>'
+					[45]     elementdecl ::= '<!ELEMENT' S Name S contentspec S? '>'
+					[52]     AttlistDecl ::= '<!ATTLIST' S Name AttDef* S? '>'
+					[71]     GEDecl      ::= '<!ENTITY' S Name S EntityDef S? '>'
+					[72]     PEDecl      ::= '<!ENTITY' S '%' S Name S PEDef S? '>'
+					[82]     NotationDecl::= '<!NOTATION' S Name S (ExternalID | PublicID) S? '>'
+
+					For XML conditional sections the rules are (note that includes can be nested but ignores cannot):
+					[62]     includeSect        ::= '<![' S? 'INCLUDE' S? '[' extSubsetDecl ']]>'	[VC: Proper Conditional Section/PE Nesting]
+					[63]     ignoreSect         ::= '<![' S? 'IGNORE' S? '[' ignoreSectContents* ']]>'	[VC: Proper Conditional Section/PE Nesting]
+					[64]     ignoreSectContents ::= Ignore ('<![' ignoreSectContents ']]>' Ignore)*
+					[65]     Ignore             ::= Char* - (Char* ('<![' | ']]>') Char*)
+					[31]     extSubsetDecl      ::= ( markupdecl | conditionalSect | DeclSep)*
+
 				*/
-				token.type = token.other;
-				*buffer_pos++ = *current;
-				current++;
-				/*
-					XML or HTML markup
-					Concepts to deal with here include:
-						XML open tags <xx>
-						XML close tags </xx>
-						XML processing instructons <? xxx ?>
-						HTML processing instructions <? xxx >
-						XML comment <!-- xxx -->
-						HTML comment <!-- xxx >
-						Other XML stuff <![CDATA[<greeting>Hello, world!</greeting>]]>
-				*/
+				if (*current == '/')
+					{
+					token.type = token.xml_end_tag;
+					}
+				else if (unicode::isxmlnamestartchar(*current))
+					{
+					token.type = token.xml_start_tag;
+					token.type = token.xml_empty_tag;
+					}
+				else if (*current == '!')
+					{
+					token.type = token.xml_comment;
+					token.type = token.xml_cdata;
+					token.type = token.xml_definition;
+					token.type = token.xml_conditional;
+					}
+				else if (*current == '?')
+					{
+					token.type = token.xml_processing_instruction;
+					}
 				}
 			}
 		else

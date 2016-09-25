@@ -33,7 +33,13 @@
 		-					symbol								"general Unicode category: Sm, Sc, Sk, So"
 		tolower
 		toupper
-		
+	
+	For the latext XML spec see: https://www.w3.org/TR/REC-xml/#NT-extSubsetDecl  These definitions are taken from "Extensible Markup Language (XML) 1.0 (Fifth Edition) W3C Recommendation 26 November 2008"
+	Added (for XML and HTML parsing) are:
+		NAME                                         DEFINITION
+		isxmlnamestartchar                           ":" | [A-Z] | "_" | [a-z] | [#xC0-#xD6] | [#xD8-#xF6] | [#xF8-#x2FF] | [#x370-#x37D] | [#x37F-#x1FFF] | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF] | [#x3001-#xD7FF] | [#xF900-#xFDCF] | [#xFDF0-#xFFFD] | [#x10000-#xEFFFF]
+		isxmlnamechar                                NameStartChar | "-" | "." | [0-9] | #xB7 | [#x0300-#x036F] | [#x203F-#x2040]
+
 	These are then dumped out as C routines.
 */
 /*!
@@ -131,6 +137,12 @@ std::map<int, std::vector<int>> casefold;		///< The casefolded version of the co
 	Fast alphanumeric lookup (used as part of JASS normalisation)
 */
 std::map<int, bool> codepoint_isalnum;
+
+/*
+	XML NameStartChar and XML NameChar
+*/
+std::vector<uint32_t> xmlnamestartchar;
+std::vector<uint32_t> xmlnamechar;
 
 /*
 	USAGE()
@@ -426,6 +438,21 @@ int process_unicodedata(const char *line, int last_codepoint)
 		*/
 		if (strcmp(category, "Cc") == 0)						// a C0 or C1 control code
 			control.push_back(codepoint);
+
+		/*
+			XML NameStartChar and NameChar
+		*/
+		if ((codepoint == ':') || (codepoint >= 'A' && codepoint <= 'Z') || (codepoint == '_') || (codepoint >= 'a' && codepoint <= 'z') || (codepoint >= 0xC0 && codepoint <= 0xD6) || (codepoint >= 0xD8 && codepoint <= 0xF6) || (codepoint >= 0xF8 && codepoint <= 0x2FF) || (codepoint >= 0x370 && codepoint <= 0x37D) || (codepoint >= 0x37F && codepoint <= 0x1FFF) || (codepoint >= 0x200C && codepoint <= 0x200D) || (codepoint >= 0x2070 && codepoint <= 0x218F) || (codepoint >= 0x2C00 && codepoint <= 0x2FEF) || (codepoint >= 0x3001 && codepoint <= 0xD7FF) || (codepoint >= 0xF900 && codepoint <= 0xFDCF) || (codepoint >= 0xFDF0 && codepoint <= 0xFFFD) || (codepoint >= 0x10000 && codepoint <= 0xEFFFF))
+			{
+			xmlnamechar.push_back(codepoint);
+			xmlnamestartchar.push_back(codepoint);
+			}
+			
+		/*
+			XML NameChar
+		*/
+		if ((codepoint == '-') || (codepoint == '.') || (codepoint >= '0' && codepoint <= '9') || (codepoint == 0xB7) || (codepoint >= 0x0300 && codepoint <= 0x036F) || (codepoint >= 0x203F && codepoint <= 0x2040))
+			xmlnamechar.push_back(codepoint);
 		}
 		
 	return range_end;
@@ -795,6 +822,11 @@ int main(int argc, char *argv[])
 	serialise("iscntrl", control);
 	serialise("isgraph", graphical);
 	serialise("isxdigit", xdigit);
+	/*
+		Including the XML methods
+	*/
+	serialise("isxmlnamechar", xmlnamechar);
+	serialise("xmlnamestartchar", xmlnamestartchar);
 
 	/*
 		Now for case folded normalisation.

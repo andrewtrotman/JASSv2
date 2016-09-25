@@ -25,6 +25,14 @@ namespace JASS
 						alpha,
 						numeric,
 						other,
+						xml_end_tag,
+						xml_start_tag,
+						xml_empty_tag,
+						xml_comment,
+						xml_cdata,
+						xml_definition,
+						xml_conditional,
+						xml_processing_instruction,
 						eof
 						};
 				public:
