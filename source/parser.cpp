@@ -4,7 +4,10 @@
 */
 #include <string.h>
 
+#include <algorithm>
+
 #include "ascii.h"
+#include "maths.h"
 #include "parser.h"
 #include "unicode.h"
 #include "document.h"
@@ -20,7 +23,7 @@ namespace JASS
 			for (const uint32_t *folded = unicode::tocasefold(codepoint); *folded != 0; folded++)
 				buffer_pos += unicode::codepoint_to_utf8(buffer_pos, buffer_end, *folded);						// won't write on overflow
 
-			if ((current += bytes) >= end_of_document)
+			if ((current += bytes) >= end_of_document || bytes == 0)
 				break;
 			codepoint = unicode::utf8_to_codepoint(current, end_of_document, bytes);
 			}
@@ -35,7 +38,7 @@ namespace JASS
 			for (const uint32_t *folded = unicode::tocasefold(codepoint); *folded != 0; folded++)
 				buffer_pos += unicode::codepoint_to_utf8(buffer_pos, buffer_end, *folded);						// won't write on overflow
 
-			if ((current += bytes) >= end_of_document)
+			if ((current += bytes) >= end_of_document || bytes == 0)
 				break;
 			codepoint = unicode::utf8_to_codepoint(current, end_of_document, bytes);
 			}
@@ -159,80 +162,198 @@ namespace JASS
 		*/
 		else if (ascii::isascii(*current))
 			{
-			/*
-				What ever we have we want the first character.
-			*/
-			*buffer_pos++ = *current;
-			current++;
-			if (*(current - 1) != '<')
-				token.type = token.other;				//Just plain old non alphanumerics.  Returned one character at a time
+			if (*current != '<')
+				{
+				*buffer_pos++ = *current++;
+				token.type = token.other;				// Just plain old non alphanumerics.  Returned one character at a time.
+				}
 			else
 				{
+				current++;
 				/*
 					The XML rules from: "Extensible Markup Language (XML) 1.0 (Fifth Edition) W3C Recommendation 26 November 2008", at
-					https://www.w3.org/TR/REC-xml/#NT-extSubsetDecl are followed as much as is reasonably possible without a writing a
-					full XML parser.
-					
-					For XML start tags the rules are (where square brackets are the XML production numbers
-					[40]     STag          ::= '<' Name (S Attribute)* S? '>'
-					[5]      Name          ::= NameStartChar (NameChar)*
-					[4]      NameStartChar ::= ":" | [A-Z] | "_" | [a-z] | [#xC0-#xD6] | [#xD8-#xF6] | [#xF8-#x2FF] | [#x370-#x37D] | [#x37F-#x1FFF] | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF] | [#x3001-#xD7FF] | [#xF900-#xFDCF] | [#xFDF0-#xFFFD] | [#x10000-#xEFFFF]
-					[4a]     NameChar      ::= NameStartChar | "-" | "." | [0-9] | #xB7 | [#x0300-#x036F] | [#x203F-#x2040]
-					Attributes are ignored at the moment (Last time I needed to index attributes was in the 1990s!)
-					
-					For XML end tags the rules are:
-					[42]     ETag        ::= '</' Name S? '>'
-					
-					For XML empty tags the rules are:
-					[44]     EmptyElemTag ::= '<' Name (S Attribute)* S? '/>'
-
-					For XML comments the rules are:
-					[15]     Comment     ::= '<!--' ((Char - '-') | ('-' (Char - '-')))* '-->'
-					
-					For XML processing instructions the rules are:
-					[16]     PI          ::= '<?' PITarget (S (Char* - (Char* '?>' Char*)))? '?>'
-					
-					For XML CDATA sections the rules are:
-					[18]     CDSect      ::= CDStart CData CDEnd
-					[19]     CDStart     ::= '<![CDATA['
-					[20]     CData       ::= (Char* - (Char* ']]>' Char*))
-					[21]     CDEnd       ::= ']]>'
-					
-					For XML Document Type Definition, Element Type Declaration, Attribute-list Declaration, Entity Declarations, Notations the rules are:
-					[28]   	doctypedecl ::= '<!DOCTYPE' S Name (S ExternalID)? S? ('[' intSubset ']' S?)? '>'
-					[45]     elementdecl ::= '<!ELEMENT' S Name S contentspec S? '>'
-					[52]     AttlistDecl ::= '<!ATTLIST' S Name AttDef* S? '>'
-					[71]     GEDecl      ::= '<!ENTITY' S Name S EntityDef S? '>'
-					[72]     PEDecl      ::= '<!ENTITY' S '%' S Name S PEDef S? '>'
-					[82]     NotationDecl::= '<!NOTATION' S Name S (ExternalID | PublicID) S? '>'
-
-					For XML conditional sections the rules are (note that includes can be nested but ignores cannot):
-					[62]     includeSect        ::= '<![' S? 'INCLUDE' S? '[' extSubsetDecl ']]>'	[VC: Proper Conditional Section/PE Nesting]
-					[63]     ignoreSect         ::= '<![' S? 'IGNORE' S? '[' ignoreSectContents* ']]>'	[VC: Proper Conditional Section/PE Nesting]
-					[64]     ignoreSectContents ::= Ignore ('<![' ignoreSectContents ']]>' Ignore)*
-					[65]     Ignore             ::= Char* - (Char* ('<![' | ']]>') Char*)
-					[31]     extSubsetDecl      ::= ( markupdecl | conditionalSect | DeclSep)*
-
+					https://www.w3.org/TR/REC-xml are followed as much as is reasonably possible without a writing a
+					full XML parser. Square brackets below are XML production numbers.
 				*/
-				if (*current == '/')
+				uint32_t codepoint = unicode::utf8_to_codepoint(current, end_of_document, bytes);
+ 				if (unicode::isxmlnamestartchar(codepoint))
 					{
-					token.type = token.xml_end_tag;
+					/*
+						[40]     STag          ::= '<' Name (S Attribute)* S? '>'
+						[5]      Name          ::= NameStartChar (NameChar)*
+						[4]      NameStartChar ::= ":" | [A-Z] | "_" | [a-z] | [#xC0-#xD6] | [#xD8-#xF6] | [#xF8-#x2FF] | [#x370-#x37D] | [#x37F-#x1FFF] | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF] | [#x3001-#xD7FF] | [#xF900-#xFDCF] | [#xFDF0-#xFFFD] | [#x10000-#xEFFFF]
+						[4a]     NameChar      ::= NameStartChar | "-" | "." | [0-9] | #xB7 | [#x0300-#x036F] | [#x203F-#x2040]
+
+						[44]     EmptyElemTag ::= '<' Name (S Attribute)* S? '/>'
+					*/
+					/*
+						Get the name of the tag (without the '<' or '>')
+					*/
+					uint8_t *start = current;
+
+					current += bytes;
+					codepoint = unicode::utf8_to_codepoint(current, end_of_document, bytes);
+					while (current < end_of_document && unicode::isxmlnamechar(codepoint) && bytes != 0)
+						{
+						current += bytes;
+						codepoint = unicode::utf8_to_codepoint(current, end_of_document, bytes);
+						}
+					uint8_t *end = current;
+
+					/*
+						Attributes are ignored at the moment (Last time I needed to index attributes was in the 1990s!)
+					*/
+					while (current < end_of_document && *current != '>')
+						{
+						/*
+							skipping over double-quoted attributes (that might contain single-quotes) and vice versa
+						*/
+						if (*current == '"')
+							do
+								current++;
+							while (current < end_of_document && *current != '"');
+						else if (*current == '\'')
+							do
+								current++;
+							while (current < end_of_document && *current != '\'');
+
+						current++;
+						}
+						
+					/*
+						was it an open tag or an empty tag?
+					*/
+					if (*(current - 1) == '/')
+						token.type = token.xml_empty_tag;				// Empty tag
+					else
+						token.type = token.xml_start_tag;				// Start tag.
+						
+					/*
+						copy the tag into the token buffer
+					*/
+					size_t bytes = maths::min((size_t)(end - start), sizeof(token.buffer));
+					memcpy(token.buffer, start, bytes);
+					buffer_pos += bytes;
+					current++;
 					}
-				else if (unicode::isxmlnamestartchar(*current))
+				else if (codepoint == '/')
 					{
-					token.type = token.xml_start_tag;
-					token.type = token.xml_empty_tag;
+					/*
+						[42]     ETag        ::= '</' Name S? '>'
+					*/
+					codepoint = unicode::utf8_to_codepoint(current + 1, end_of_document, bytes);
+	 				if (unicode::isxmlnamestartchar(codepoint))
+						{
+						current++;
+						uint8_t *found = std::find(current, end_of_document, '>');
+						size_t bytes = maths::min((size_t)(found - current), sizeof(token.buffer));
+						memcpy(token.buffer, current, bytes);
+						buffer_pos = token.buffer + bytes;
+						current = found + 1;
+						token.type = token.xml_end_tag;
+						}
+					else
+						{
+						*buffer_pos++ = *(current - 1);
+						token.type = token.other;				// Just plain old non alphanumerics.  Returned one character at a time.
+						}
 					}
-				else if (*current == '!')
+				else if (codepoint == '?')
 					{
-					token.type = token.xml_comment;
-					token.type = token.xml_cdata;
-					token.type = token.xml_definition;
-					token.type = token.xml_conditional;
-					}
-				else if (*current == '?')
-					{
+					/*
+						[16]     PI          ::= '<?' PITarget (S (Char* - (Char* '?>' Char*)))? '?>'
+					*/
+					static uint8_t close_pi[] = "?>";
+					current++;
+					uint8_t *found = std::search(current, end_of_document, close_pi, close_pi + sizeof(close_pi) - 1);
+					size_t bytes = maths::min((size_t)(found - current), sizeof(token.buffer));
+					memcpy(token.buffer, current, bytes);
+					buffer_pos = token.buffer + bytes;
+					current = found + sizeof(close_pi) - 1;
 					token.type = token.xml_processing_instruction;
+					}
+				else if (codepoint == '!')
+					{
+					current++;
+					if (current + 4 < end_of_document && *current == '-' && *(current + 1) == '-')
+						{
+						/*
+							[15]     Comment     ::= '<!--' ((Char - '-') | ('-' (Char - '-')))* '-->'
+						*/
+						static uint8_t close_comment[] = "-->";
+						current += 2;
+						uint8_t *found = std::search(current, end_of_document, close_comment, close_comment + sizeof(close_comment) - 1);
+						size_t bytes = maths::min((size_t)(found - current), sizeof(token.buffer));
+						memcpy(token.buffer, current, bytes);
+						buffer_pos = token.buffer + bytes;
+						current = found + sizeof(close_comment) - 1;
+						token.type = token.xml_comment;
+						}
+					else if (current < end_of_document && ascii::isupper(*current))
+						{
+						/*
+							[28]   	doctypedecl ::= '<!DOCTYPE' S Name (S ExternalID)? S? ('[' intSubset ']' S?)? '>'
+							[45]     elementdecl ::= '<!ELEMENT' S Name S contentspec S? '>'
+							[52]     AttlistDecl ::= '<!ATTLIST' S Name AttDef* S? '>'
+							[71]     GEDecl      ::= '<!ENTITY' S Name S EntityDef S? '>'
+							[72]     PEDecl      ::= '<!ENTITY' S '%' S Name S PEDef S? '>'
+							[82]     NotationDecl::= '<!NOTATION' S Name S (ExternalID | PublicID) S? '>'
+						*/
+						uint8_t *found = std::find(current, end_of_document, '>');
+						size_t bytes = maths::min((size_t)(found - current), sizeof(token.buffer));
+						memcpy(token.buffer, current, bytes);
+						buffer_pos = token.buffer + bytes;
+						current = found + 1;
+						token.type = token.xml_definition;
+						}
+					else if (current + 9 < end_of_document && *current == '[' && strncmp((char *)current + 1, "CDATA[", 6) == 0)
+						{
+						/*
+							[18]     CDSect      ::= CDStart CData CDEnd
+							[19]     CDStart     ::= '<![CDATA['
+							[20]     CData       ::= (Char* - (Char* ']]>' Char*))
+							[21]     CDEnd       ::= ']]>'
+						*/
+						static uint8_t close_block[] = "]]>";
+						current += 7;
+						uint8_t *found = std::search(current, end_of_document, close_block, close_block + sizeof(close_block) - 1);
+						size_t bytes = maths::min((size_t)(found - current), sizeof(token.buffer));
+						memcpy(token.buffer, current, bytes);
+						buffer_pos = token.buffer + bytes;
+						current = found + sizeof(close_block) - 1;
+						token.type = token.xml_cdata;
+						}
+					else if (current + 4 < end_of_document && *current == '[')
+						{
+						/*
+							[62]     includeSect        ::= '<![' S? 'INCLUDE' S? '[' extSubsetDecl ']]>'
+							[63]     ignoreSect         ::= '<![' S? 'IGNORE' S? '[' ignoreSectContents* ']]>'
+							[64]     ignoreSectContents ::= Ignore ('<![' ignoreSectContents ']]>' Ignore)*
+							[65]     Ignore             ::= Char* - (Char* ('<![' | ']]>') Char*)
+							[31]     extSubsetDecl      ::= ( markupdecl | conditionalSect | DeclSep)*
+						*/
+						/*
+							This one is a bit nasty.  An IGNORE ends at the first "]]>", but and INCLUDE does not - it can be pretty much the remainder of the XML file.
+							So what we'll return is the tokens between the "<![" and the "[".  Its the caller's problem to deal with the close square brackets.
+						*/
+						current++;
+						uint8_t *found = std::find(current, end_of_document, '[');
+						size_t bytes = maths::min((size_t)(found - current), sizeof(token.buffer));
+						memcpy(token.buffer, current, bytes);
+						buffer_pos = token.buffer + bytes;
+						current = found + 1;
+						token.type = token.xml_conditional;
+						}
+					else
+						{
+						*buffer_pos++ = *(current - 1);
+						token.type = token.other;				// Just plain old non alphanumerics.  Returned one character at a time.
+						}
+					}
+				else
+					{
+					*buffer_pos++ = *(current - 1);
+					token.type = token.other;				// Just plain old non alphanumerics.  Returned one character at a time.
 					}
 				}
 			}
@@ -263,7 +384,7 @@ namespace JASS
 					Return a single characters being of type "other"
 				*/
 				token.type = token.other;
-				current += bytes;
+				current += bytes == 0 ? 1 : bytes;
 				
 				for (const uint32_t *folded = unicode::tocasefold(codepoint); *folded != 0; folded++)
 					buffer_pos += unicode::codepoint_to_utf8(buffer_pos, buffer_end, *folded);
@@ -340,23 +461,73 @@ namespace JASS
 		assert(count == 13);
 		
 		
+		
 		/*
-			Now check a document for the unittests
+			Check a whole load of XML stuff
 		*/
-		example.contents = slice((void *)unittest_data::ten_document_1.c_str(), unittest_data::ten_document_1.size());
+		const uint8_t xml_data[] = "<![ INCLUDE [<!DOCTYPE note SYSTEM \"Note.dtd\"><DOC a=\"'h\"><?JASS ignore?><!--rem--><![CDATA[<t>text</t>]]><empty/>< notopen></ notclose>< notempty/></DOC>]]>";
+		std::string xml_data_answer[] =
+			{
+			" INCLUDE ",
+			"DOCTYPE note SYSTEM \"Note.dtd\"",
+			"DOC",
+			"JASS ignore",
+			"rem",
+			"<t>text</t>",
+			"empty",
+			"<",
+			"notopen",
+			">",
+			"<",
+			"/",
+			"notclose",
+			">",
+			"<",
+			"notempty",
+			"/",
+			">",
+			"DOC",
+			"]",
+			"]",
+			">"
+			};
+
+		example.contents = slice((void *)xml_data, sizeof(xml_data) - 1);
 		tokenizer.set_document(example);
 		count = 0;
 		do
 			{
 			const auto &token = tokenizer.get_next_token();
 			if (token.type != token::eof)
-				printf("%*.*s\n", (int)token.token.size(), (int)token.token.size(), token.token.address());
+				{
+				assert(std::string((char *)token.token.address(), token.token.size()) == xml_data_answer[count]);
+				}
 			count++;
 			type = token.type;
 			}
 		while (type != token::eof);
-		assert(count == 13);
+		assert(count == 23);
 		
+
+		
+		/*
+			Check broken UTF-8 at end of file and inside tag name - all of which are graceful (i.e. non-crashing) "undefined behaviour".
+		*/
+		const uint8_t broken[] = "<DOC\xc3></DOC\xc3>\xc3";
+		example.contents = slice((void *)broken, sizeof(broken) - 1);
+		tokenizer.set_document(example);
+		count = 0;
+		do
+			{
+			const auto &token = tokenizer.get_next_token();
+//			if (token.type != token::eof)
+//				printf("%*.*s\n", (int)token.token.size(), (int)token.token.size(), token.token.address());
+			count++;
+			type = token.type;
+			}
+		while (type != token::eof);
+		assert(count == 4);
+
 		/*
 			Yay, we passed
 		*/

@@ -826,7 +826,7 @@ int main(int argc, char *argv[])
 		Including the XML methods
 	*/
 	serialise("isxmlnamechar", xmlnamechar);
-	serialise("xmlnamestartchar", xmlnamestartchar);
+	serialise("isxmlnamestartchar", xmlnamestartchar);
 
 	/*
 		Now for case folded normalisation.
