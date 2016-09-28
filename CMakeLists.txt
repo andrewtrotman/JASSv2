@@ -15,7 +15,12 @@
 #       methods.
 
 cmake_minimum_required (VERSION 3.1.0)
+
+set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_CONFIGURATION_TYPES Release)
+
 project(JASS)
+
 
 add_definitions("-Wall")
 
@@ -42,6 +47,12 @@ add_subdirectory(source)
 include_directories(source)
 add_executable(unittest tools/unittest.cpp)
 target_link_libraries(unittest JASSlib)
+
+#
+# build the indexer
+#
+add_executable(index tools/index.cpp)
+target_link_libraries(index JASSlib)
 
 #
 # Build the documentation with Doxygen (but Apple's HeaderDoc also works)

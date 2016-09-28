@@ -15,7 +15,6 @@
 
 namespace JASS
 	{
-	
 	void parser::build_unicode_alphabetic_token(uint32_t codepoint, size_t bytes, uint8_t *&buffer_pos, uint8_t *buffer_end)
 		{
 		do
@@ -426,7 +425,7 @@ namespace JASS
 			"αβγ",
 			"123"
 			};
-		
+		(void)text_answer;				// Silence the  "Unused variable" message when in Release
 		/*
 			create a document object and give it a the document.
 		*/
@@ -491,7 +490,7 @@ namespace JASS
 			"]",
 			">"
 			};
-
+		(void)xml_data_answer;				// Silence the  "Unused variable" message when in Release
 		example.contents = slice((void *)xml_data, sizeof(xml_data) - 1);
 		tokenizer.set_document(example);
 		count = 0;

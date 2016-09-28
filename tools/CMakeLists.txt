@@ -54,3 +54,5 @@ add_custom_target(generate_ascii_cpp DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/../sour
 add_executable(ascii_database_to_c
 	ascii_database_to_c.cpp
 	)
+
+

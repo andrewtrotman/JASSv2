@@ -67,6 +67,19 @@ namespace JASS
 				}
 			
 			/*
+				DOCUMENT::ISEMPTY()
+				-------------------
+			*/
+			/*!
+				@brief Check to see whether this is an empty document.
+				@return true if the document has no contents, else false;
+			*/
+			bool isempty(void)
+				{
+				return contents.size() == 0;
+				}
+
+			/*
 				DOCUMENT::UNITTEST()
 				--------------------
 			*/

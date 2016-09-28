@@ -547,7 +547,7 @@ namespace JASS
 
 				return JASS_unicode_isxmlnamechar_data[byte] & bit;
 				}
-			
+
 			/*
 				UNICODE::UNITTEST()
 				-------------------
@@ -567,6 +567,12 @@ namespace JASS
 				const uint8_t sequence_2[] = {0xC2, 0xA2};
 				const uint8_t sequence_3[] = {0xE2, 0x82, 0xAC};
 				const uint8_t sequence_4[] = {0xF0, 0x90, 0x8D, 0x88};
+				
+				
+				(void)sequence_1;				// Silence the  "Unused variable" message when in Release
+				(void)sequence_2;				// Silence the  "Unused variable" message when in Release
+				(void)sequence_3;				// Silence the  "Unused variable" message when in Release
+				(void)sequence_4;				// Silence the  "Unused variable" message when in Release
 				
 				/*
 					Check that the lengths are correctly decoded
@@ -588,6 +594,7 @@ namespace JASS
 					Check that it can decode UTF-8 correctly
 				*/
 				size_t consumed;
+				(void)consumed;				// Silence the  "Unused variable" message when in Release
 				assert(utf8_to_codepoint(sequence_1, sequence_1 + sizeof(sequence_1), consumed) == 0x24 && consumed == 1);
 				assert(utf8_to_codepoint(sequence_2, sequence_2 + sizeof(sequence_2), consumed) == 0xA2 && consumed == 2);
 				assert(utf8_to_codepoint(sequence_3, sequence_3 + sizeof(sequence_3), consumed) == 0x20AC && consumed == 3);
@@ -597,6 +604,7 @@ namespace JASS
 					Check that it can encode UTF-8 correctly
 				*/
 				uint8_t buffer[8];
+				(void)buffer;				// Silence the  "Unused variable" message when in Release
 				assert(codepoint_to_utf8(buffer, buffer + sizeof(buffer), 0x24) == 1);
 				assert(memcmp(buffer, sequence_1, 1) == 0);
 				assert(codepoint_to_utf8(buffer, buffer + sizeof(buffer), 0xA2) == 2);

@@ -158,7 +158,7 @@ namespace JASS
 				collection_2.push_back(64);
 				
 				collection_1[0] = collection_2[0];
-				
+	
 				assert(collection_1[0] == collection_2[0]);
 				
 				puts("allocator_cpp::PASSED");

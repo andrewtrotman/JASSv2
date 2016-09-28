@@ -13,8 +13,10 @@
 #pragma once
 
 #include <string.h>
+#include <assert.h>
 
 #include "allocator_pool.h"
+#
 
 namespace JASS
 	{
