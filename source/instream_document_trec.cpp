@@ -6,11 +6,11 @@
 */
 #include <stdio.h>
 #include <string.h>
-#include <assert.h>
 
 #include <new>
 #include <algorithm>
 
+#include "assert.h"
 #include "unittest_data.h"
 #include "instream_memory.h"
 #include "instream_document_trec.h"
@@ -176,37 +176,37 @@ namespace JASS
 			Check each read to make sure it worked.
 		*/
 		slicer.read(indexable_object);
-		assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_1);
+		JASS_assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_1);
 		
 		slicer.read(indexable_object);
-		assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_2);
+		JASS_assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_2);
 		
 		slicer.read(indexable_object);
-		assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_3);
+		JASS_assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_3);
 		
 		slicer.read(indexable_object);
-		assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_4);
+		JASS_assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_4);
 		
 		slicer.read(indexable_object);
-		assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_5);
+		JASS_assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_5);
 		
 		slicer.read(indexable_object);
-		assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_6);
+		JASS_assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_6);
 		
 		slicer.read(indexable_object);
-		assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_7);
+		JASS_assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_7);
 		
 		slicer.read(indexable_object);
-		assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_8);
+		JASS_assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_8);
 		
 		slicer.read(indexable_object);
-		assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_9);
+		JASS_assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_9);
 		
 		slicer.read(indexable_object);
-		assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_10);
+		JASS_assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_10);
 		
 		slicer.read(indexable_object);
-		assert(indexable_object.contents.size() == 0);
+		JASS_assert(indexable_object.contents.size() == 0);
 		
 		puts("instream_document_trec::PASSED");
 		}

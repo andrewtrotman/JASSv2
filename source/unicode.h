@@ -20,9 +20,10 @@
 
 #include <ctype.h>
 #include <stdint.h>
-#include <assert.h>
 
 #include <vector>
+
+#include "assert.h"
 
 extern unsigned char JASS_unicode_isalpha_data[];	///< is the given codepoint alphabetic
 extern unsigned char JASS_unicode_isalnum_data[];	///< is the given codepoint alphanumeric
@@ -577,64 +578,64 @@ namespace JASS
 				/*
 					Check that the lengths are correctly decoded
 				*/
-				assert(utf8_bytes(sequence_1) == 1);
-				assert(utf8_bytes(sequence_2) == 2);
-				assert(utf8_bytes(sequence_3) == 3);
-				assert(utf8_bytes(sequence_4) == 4);
+				JASS_assert(utf8_bytes(sequence_1) == 1);
+				JASS_assert(utf8_bytes(sequence_2) == 2);
+				JASS_assert(utf8_bytes(sequence_3) == 3);
+				JASS_assert(utf8_bytes(sequence_4) == 4);
 				
 				/*
 					Check that the lengths are correctly encoded
 				*/
-				assert(utf8_bytes(0x24) == 1);
-				assert(utf8_bytes(0xA2) == 2);
-				assert(utf8_bytes(0x20AC) == 3);
-				assert(utf8_bytes(0x10348) == 4);
+				JASS_assert(utf8_bytes(0x24) == 1);
+				JASS_assert(utf8_bytes(0xA2) == 2);
+				JASS_assert(utf8_bytes(0x20AC) == 3);
+				JASS_assert(utf8_bytes(0x10348) == 4);
 				
 				/*
 					Check that it can decode UTF-8 correctly
 				*/
 				size_t consumed;
 				(void)consumed;				// Silence the  "Unused variable" message when in Release
-				assert(utf8_to_codepoint(sequence_1, sequence_1 + sizeof(sequence_1), consumed) == 0x24 && consumed == 1);
-				assert(utf8_to_codepoint(sequence_2, sequence_2 + sizeof(sequence_2), consumed) == 0xA2 && consumed == 2);
-				assert(utf8_to_codepoint(sequence_3, sequence_3 + sizeof(sequence_3), consumed) == 0x20AC && consumed == 3);
-				assert(utf8_to_codepoint(sequence_4, sequence_4 + sizeof(sequence_4), consumed) == 0x10348 && consumed == 4);
+				JASS_assert(utf8_to_codepoint(sequence_1, sequence_1 + sizeof(sequence_1), consumed) == 0x24 && consumed == 1);
+				JASS_assert(utf8_to_codepoint(sequence_2, sequence_2 + sizeof(sequence_2), consumed) == 0xA2 && consumed == 2);
+				JASS_assert(utf8_to_codepoint(sequence_3, sequence_3 + sizeof(sequence_3), consumed) == 0x20AC && consumed == 3);
+				JASS_assert(utf8_to_codepoint(sequence_4, sequence_4 + sizeof(sequence_4), consumed) == 0x10348 && consumed == 4);
 				
 				/*
 					Check that it can encode UTF-8 correctly
 				*/
 				uint8_t buffer[8];
 				(void)buffer;				// Silence the  "Unused variable" message when in Release
-				assert(codepoint_to_utf8(buffer, buffer + sizeof(buffer), 0x24) == 1);
-				assert(memcmp(buffer, sequence_1, 1) == 0);
-				assert(codepoint_to_utf8(buffer, buffer + sizeof(buffer), 0xA2) == 2);
-				assert(memcmp(buffer, sequence_2, 2) == 0);
-				assert(codepoint_to_utf8(buffer, buffer + sizeof(buffer), 0x20AC) == 3);
-				assert(memcmp(buffer, sequence_3, 3) == 0);
-				assert(codepoint_to_utf8(buffer, buffer + sizeof(buffer), 0x10348) == 4);
-				assert(memcmp(buffer, sequence_4, 4) == 0);
+				JASS_assert(codepoint_to_utf8(buffer, buffer + sizeof(buffer), 0x24) == 1);
+				JASS_assert(memcmp(buffer, sequence_1, 1) == 0);
+				JASS_assert(codepoint_to_utf8(buffer, buffer + sizeof(buffer), 0xA2) == 2);
+				JASS_assert(memcmp(buffer, sequence_2, 2) == 0);
+				JASS_assert(codepoint_to_utf8(buffer, buffer + sizeof(buffer), 0x20AC) == 3);
+				JASS_assert(memcmp(buffer, sequence_3, 3) == 0);
+				JASS_assert(codepoint_to_utf8(buffer, buffer + sizeof(buffer), 0x10348) == 4);
+				JASS_assert(memcmp(buffer, sequence_4, 4) == 0);
 
 				/*
 					Test the ctype-like methods
 				*/
 				for (uint8_t character = 0; character <= 0x7F; character++)
 					{
-					assert(::isalpha(character) == unicode::isalpha(character));
-					assert(::isalnum(character) == unicode::isalnum(character));
-					assert(::isupper(character) == unicode::isupper(character));
-					assert(::islower(character) == unicode::islower(character));
-					assert(::isdigit(character) == unicode::isdigit(character));
-					assert(::isspace((uint8_t)character) == unicode::isspace(character));
-					assert(::isxdigit((uint8_t)character) == unicode::isxdigit(character));
-					assert(::iscntrl(character) == unicode::iscntrl(character));
+					JASS_assert(::isalpha(character) == unicode::isalpha(character));
+					JASS_assert(::isalnum(character) == unicode::isalnum(character));
+					JASS_assert(::isupper(character) == unicode::isupper(character));
+					JASS_assert(::islower(character) == unicode::islower(character));
+					JASS_assert(::isdigit(character) == unicode::isdigit(character));
+					JASS_assert(::isspace((uint8_t)character) == unicode::isspace(character));
+					JASS_assert(::isxdigit((uint8_t)character) == unicode::isxdigit(character));
+					JASS_assert(::iscntrl(character) == unicode::iscntrl(character));
 
 					/*
 						Unicode does not consider character 32 (space) to be a graph character as it is a space character
 					*/
 					if (character == 32)
-						assert(::isgraph(character) != unicode::isgraph(character));
+						JASS_assert(::isgraph(character) != unicode::isgraph(character));
 					else
-						assert(::isgraph(character) == unicode::isgraph(character));
+						JASS_assert(::isgraph(character) == unicode::isgraph(character));
 					/*
 						The rules for ispunct() are very different betwen C and Unicode so we won't even bother to check
 					*/
@@ -642,7 +643,7 @@ namespace JASS
 						{
 						std::vector<uint32_t> casefold;
 						tocasefold(casefold, character);
-						assert(casefold.size() == 1 && casefold[0] == ::tolower(character));
+						JASS_assert(casefold.size() == 1 && casefold[0] == ::tolower(character));
 						}
 					}
 				puts("unicode::PASSED");

@@ -4,9 +4,9 @@
 	Copyright (c) 2016 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
-#include <assert.h>
 #include <string.h>
 
+#include "assert.h"
 #include "unittest_data.h"
 #include "instream_memory.h"
 
@@ -47,7 +47,7 @@ namespace JASS
 
 	/*
 		INSTREAM_MEMORY::UNITTEST()
-		-------------------------
+		---------------------------
 	*/
 	void instream_memory::unittest(void)
 		{
@@ -61,17 +61,17 @@ namespace JASS
 			read twice from it making sure we got what we should have
 		*/
 		reader.read(document);
-		assert(document.contents.size() == 15);
+		JASS_assert(document.contents.size() == 15);
 		for (size_t index = 0; index < document.contents.size(); index++)
-			assert(document.contents[index] == example_file[index]);
+			JASS_assert(document.contents[index] == example_file[index]);
 		
 		reader.read(document);
-		assert(document.contents.size() == 15);
+		JASS_assert(document.contents.size() == 15);
 		for (size_t index = 0; index < document.contents.size(); index++)
-			assert(document.contents[index] == example_file[index + 15]);
+			JASS_assert(document.contents[index] == example_file[index + 15]);
 
 		reader.read(document);
-		assert(document.contents.size() == 0);
+		JASS_assert(document.contents.size() == 0);
 
 		/*
 			Yay, we passed

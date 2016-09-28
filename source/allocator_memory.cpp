@@ -5,8 +5,9 @@
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 #include <string.h>
-#include <assert.h>
 #include "allocator_memory.h"
+
+#include "assert.h"
 
 namespace JASS
 	{
@@ -80,15 +81,15 @@ namespace JASS
 		/*
 			Should be empty at the start
 		*/
-		assert(memory.size() == 0);
-		assert(memory.capacity() == 1024);
+		JASS_assert(memory.size() == 0);
+		JASS_assert(memory.capacity() == 1024);
 		
 		/*
 			Allocate some memory
 		*/
 		uint8_t *block = (uint8_t *)memory.malloc(431);
-		assert(memory.size() == 431);
-		assert(memory.capacity() == 1024);
+		JASS_assert(memory.size() == 431);
+		JASS_assert(memory.capacity() == 1024);
 		
 		/*
 			write to the memory chunk (this will segfault if we got it all wrong)
@@ -99,15 +100,15 @@ namespace JASS
 			Re-allign the allocator to a word boundary
 		*/
 		memory.malloc(1);
-		assert(memory.size() == 432);
-		assert(memory.capacity() == 1024);
+		JASS_assert(memory.size() == 432);
+		JASS_assert(memory.capacity() == 1024);
 		
 		/*
 			free up all the memory
 		*/
 		memory.rewind();
-		assert(memory.size() == 0);
-		assert(memory.capacity() == 1024);
+		JASS_assert(memory.size() == 0);
+		JASS_assert(memory.capacity() == 1024);
 	
 		/*
 			Yay, we passed

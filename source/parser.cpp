@@ -9,6 +9,7 @@
 #include "ascii.h"
 #include "maths.h"
 #include "parser.h"
+#include "assert.h"
 #include "unicode.h"
 #include "document.h"
 #include "unittest_data.h"
@@ -447,7 +448,7 @@ namespace JASS
 			const auto &token = tokenizer.get_next_token();
 			if (token.type != token::eof)
 				{
-				assert(std::string((char *)token.token.address(), token.token.size()) == text_answer[count]);
+				JASS_assert(std::string((char *)token.token.address(), token.token.size()) == text_answer[count]);
 				}
 			count++;
 			type = token.type;
@@ -457,7 +458,7 @@ namespace JASS
 		/*
 			make sure we got the right number of tokens
 		*/
-		assert(count == 13);
+		JASS_assert(count == 13);
 		
 		
 		
@@ -499,13 +500,13 @@ namespace JASS
 			const auto &token = tokenizer.get_next_token();
 			if (token.type != token::eof)
 				{
-				assert(std::string((char *)token.token.address(), token.token.size()) == xml_data_answer[count]);
+				JASS_assert(std::string((char *)token.token.address(), token.token.size()) == xml_data_answer[count]);
 				}
 			count++;
 			type = token.type;
 			}
 		while (type != token::eof);
-		assert(count == 23);
+		JASS_assert(count == 23);
 		
 
 		
@@ -525,7 +526,7 @@ namespace JASS
 			type = token.type;
 			}
 		while (type != token::eof);
-		assert(count == 4);
+		JASS_assert(count == 4);
 
 		/*
 			Yay, we passed

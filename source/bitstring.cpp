@@ -8,9 +8,9 @@
 */
 #include <string.h>
 #include <stdlib.h>
-#include <assert.h>
 
 #include "maths.h"
+#include "assert.h"
 #include "bitstring.h"
 
 namespace JASS
@@ -188,51 +188,51 @@ namespace JASS
 			check that a bitstring is initialised to zero
 		*/
 		b1.resize(100);
-		assert(b1.popcount() == 0);
+		JASS_assert(b1.popcount() == 0);
 
 		b2.resize(1000);
-		assert(b2.popcount() == 0);
+		JASS_assert(b2.popcount() == 0);
 		
 		/*
 			check that setting a bit only sets one bit
 		*/
 		b1.unsafe_setbit(99);
-		assert(b1.unsafe_getbit(99));
+		JASS_assert(b1.unsafe_getbit(99));
 		
 		b2.unsafe_setbit(999);
-		assert(b2.unsafe_getbit(999));
+		JASS_assert(b2.unsafe_getbit(999));
 		
 		/*
 			Check that OR words
 		*/
 		b1.bit_or(b3, b2);
-		assert(b3.unsafe_getbit(99));
-		assert(b3.unsafe_getbit(999));
-		assert(b3.popcount() == 2);
+		JASS_assert(b3.unsafe_getbit(99));
+		JASS_assert(b3.unsafe_getbit(999));
+		JASS_assert(b3.popcount() == 2);
 		
 		/*
 			make sure OR didn't trash the original strings
 		*/
-		assert(b1.popcount() == 1);
-		assert(b2.popcount() == 1);
+		JASS_assert(b1.popcount() == 1);
+		JASS_assert(b2.popcount() == 1);
 
 		/*
 			does index() work?
 		*/
-		assert(b3.index(1) == 99);
-		assert(b3.index(2) == 999);
+		JASS_assert(b3.index(1) == 99);
+		JASS_assert(b3.index(2) == 999);
 
 		/*
 			zero() should work
 		*/
 		b2.zero();
-		assert(b2.popcount() == 0);
+		JASS_assert(b2.popcount() == 0);
 		
 		/*
 			one() is a bit more complex, the check is that it doesn't overshoot
 		*/
 		b1.one();
-		assert(b1.popcount() == b1.size());
+		JASS_assert(b1.popcount() == b1.size());
 		
 		/*
 			Yay, we passed

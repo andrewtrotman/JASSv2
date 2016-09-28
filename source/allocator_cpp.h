@@ -14,11 +14,11 @@
 #pragma once
 
 #include <stdlib.h>
-#include <assert.h>
 
 #include <new>
 #include <memory>
 
+#include "assert.h"
 #include "allocator.h"
 
 namespace JASS
@@ -159,7 +159,7 @@ namespace JASS
 				
 				collection_1[0] = collection_2[0];
 	
-				assert(collection_1[0] == collection_2[0]);
+				JASS_assert(collection_1[0] == collection_2[0]);
 				
 				puts("allocator_cpp::PASSED");
 				}

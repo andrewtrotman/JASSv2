@@ -7,12 +7,12 @@
 	Originally from the ATIRE codebase (where it was also written by Andrew Trotman)
 */
 #include <stdio.h>
-#include <sys/types.h>
+#include <stdlib.h>
 #include <sys/stat.h>
-#include <assert.h>
-#include <stdio.h>
+#include <sys/types.h>
 
 #include "file.h"
+#include "assert.h"
 
 namespace JASS
 	{
@@ -205,13 +205,13 @@ namespace JASS
 		/*
 			dot must be a directory
 		*/
-		assert(is_directory("."));
+		JASS_assert(is_directory("."));
 		
 		/*
 			something we know is not a directory.  In this case we'll use this very file.  Yes, this assumes
 			the unit tests are not run when the source code is not available - but I think that's reasonable.
 		*/
-		assert(!is_directory(__FILE__));
+		JASS_assert(!is_directory(__FILE__));
 
 		/*
 			CHECK WRITE_ENTIRE_FILE() then READ_ENTIRE_FILE()
@@ -240,7 +240,7 @@ namespace JASS
 		*/
 		write_entire_file(filename, example_file);
 		read_entire_file(filename, reread);
-		assert(example_file == reread);
+		JASS_assert(example_file == reread);
 		remove(filename);								// delete the file once we're done with it
 		
 		/*
@@ -251,40 +251,40 @@ namespace JASS
 		*/
 		example_file = "";
 		buffer_to_list(lines, example_file);
-		assert(lines.size() == 0);
+		JASS_assert(lines.size() == 0);
 
 		/*
 			File with only blank lines is of length 0
 		*/
 		example_file = "\r\n";
 		buffer_to_list(lines, example_file);
-		assert(lines.size() == 0);
+		JASS_assert(lines.size() == 0);
 
 		/*
 			File without any new lines is of length 1
 		*/
 		example_file = "one";
 		buffer_to_list(lines, example_file);
-		assert(lines.size() == 1);
-		assert(std::string((char *)lines[0]) == example_file);
+		JASS_assert(lines.size() == 1);
+		JASS_assert(std::string((char *)lines[0]) == example_file);
 		
 		/*
 			File with a single new line in the middle (none on the end) is of length 2
 		*/
 		example_file = "one\ntwo";
 		buffer_to_list(lines, example_file);
-		assert(lines.size() == 2);
-		assert(std::string((char *)lines[0]) == "one");
-		assert(std::string((char *)lines[1]) == "two");
+		JASS_assert(lines.size() == 2);
+		JASS_assert(std::string((char *)lines[0]) == "one");
+		JASS_assert(std::string((char *)lines[1]) == "two");
 
 		/*
 			File with tons of blank lines, this one is of length 2
 		*/
 		example_file = "\n\n\none\r\n\n\rtwo\n\r\n\r\r\r\n\n\n";
 		buffer_to_list(lines, example_file);
-		assert(lines.size() == 2);
-		assert(std::string((char *)lines[0]) == "one");
-		assert(std::string((char *)lines[1]) == "two");
+		JASS_assert(lines.size() == 2);
+		JASS_assert(std::string((char *)lines[0]) == "one");
+		JASS_assert(std::string((char *)lines[1]) == "two");
 
 		/*
 			Yay, we passed

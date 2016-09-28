@@ -16,6 +16,7 @@
 
 #include "parser.h"
 #include "instream_file.h"
+#include "instream_memory.h"
 #include "instream_document_trec.h"
 
 /*

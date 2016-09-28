@@ -15,7 +15,8 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <stdint.h>
-#include <assert.h>
+
+#include "assert.h"
 
 namespace JASS
 	{
@@ -269,19 +270,19 @@ namespace JASS
 				{
 				for (uint8_t character = 0; character <= 0x7F; character++)
 					{
-					assert(::isalpha(character) == isalpha(character));
-					assert(::isalnum(character) == isalnum(character));
-					assert(::isupper(character) == isupper(character));
-					assert(::islower(character) == islower(character));
-					assert(::isdigit(character) == isdigit(character));
-					assert(::isspace(character) == isspace(character));
-					assert(::iscntrl(character) == iscntrl(character));
-					assert(::isgraph(character) == isgraph(character));
-					assert(::isprint(character) == isprint(character));
-					assert(::ispunct(character) == ispunct(character));
-					assert(::isxdigit(character) == isxdigit(character));
-					assert(::tolower(character) == tolower(character));
-					assert(::toupper(character) == toupper(character));
+					JASS_assert(::isalpha(character) == isalpha(character));
+					JASS_assert(::isalnum(character) == isalnum(character));
+					JASS_assert(::isupper(character) == isupper(character));
+					JASS_assert(::islower(character) == islower(character));
+					JASS_assert(::isdigit(character) == isdigit(character));
+					JASS_assert(::isspace(character) == isspace(character));
+					JASS_assert(::iscntrl(character) == iscntrl(character));
+					JASS_assert(::isgraph(character) == isgraph(character));
+					JASS_assert(::isprint(character) == isprint(character));
+					JASS_assert(::ispunct(character) == ispunct(character));
+					JASS_assert(::isxdigit(character) == isxdigit(character));
+					JASS_assert(::tolower(character) == tolower(character));
+					JASS_assert(::toupper(character) == toupper(character));
 					}
 				puts("ascii::PASSED");
 				}
