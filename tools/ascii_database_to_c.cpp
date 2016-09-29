@@ -84,7 +84,7 @@ while (ch > 0)
 int main(void)
 {
 uint32_t bits;		///< What is the current truth for this character?
-uint32_t ch;		///< The character currently being examined.
+int ch;		///< The character currently being examined.
 
 /*
 	Output the file's preamble

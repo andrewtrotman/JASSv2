@@ -263,11 +263,11 @@ void serialise(const std::string &operation, const std::vector<uint32_t> &list)
 	@param last_codepoint [in] The start of the current unicode range
 	@return The last Unicode codepoint we've seen (which must be passed back next call for ranges).
 */
-int process_unicodedata(const char *line, int last_codepoint)
+unsigned process_unicodedata(const char *line, unsigned last_codepoint)
 	{
-	int codepoint;			// unicode number of the codepoint
-	int range_start;		// start of the range for this line in the Unicode database
-	int range_end;			// end of the range for this line in the Unicode database
+	unsigned codepoint;			// unicode number of the codepoint
+	unsigned range_start;		// start of the range for this line in the Unicode database
+	unsigned range_end;			// end of the range for this line in the Unicode database
 	char category[3];		// Two letter catagory code for the codepoint
 	
 	/*
@@ -287,7 +287,7 @@ int process_unicodedata(const char *line, int last_codepoint)
 	/*
 		step over the second parameter
 	*/
-	char *semicolon;
+	const char *semicolon;
 	if ((semicolon = strchr(line, ';')) == nullptr)
 		exit(printf("Badly formed line:%s\n", line));
 	if ((semicolon = strchr(semicolon + 1, ';')) == nullptr)
@@ -416,7 +416,7 @@ int process_unicodedata(const char *line, int last_codepoint)
 			whitespace.push_back(codepoint);
 		if (strcmp(category, "Zp") == 0)				// Paragraph_Separator
 			whitespace.push_back(codepoint);
-		if (codepoint <= 0xFF && isspace(codepoint))		// space, tab, vertical tab, form feed, carriage return, and linefeed characters
+		if (codepoint <= 0xFF && isspace((int)codepoint))		// space, tab, vertical tab, form feed, carriage return, and linefeed characters
 			whitespace.push_back(codepoint);
 		if (codepoint == 0x85)								// NEL character (the Next Line character)
 			whitespace.push_back(codepoint);
@@ -482,17 +482,17 @@ int range_end;
 if (sscanf(line, "%x..%x", &range_start, &range_end) == 1)
 	range_end = range_start;
 	
-char *semicolon;
+const char *semicolon;
 
 if ((semicolon = strchr(line, ';')) == nullptr)
 	exit(printf("badly formed line:%s\n", line));
 	
-char *hash;
+const char *hash;
 
 if ((hash = strchr(line, '#')) == nullptr)
 	exit(printf("badly formed line:%s\n", line));
 
-for (int codepoint = range_start; codepoint <= range_end; codepoint++)
+for (size_t codepoint = range_start; codepoint <= range_end; codepoint++)
 	{
 	if (strncmp(semicolon, "; Other_Alphabetic #", hash - semicolon) == 0)				// Other_Alphabetic
 		{
@@ -778,7 +778,7 @@ int main(int argc, char *argv[])
 	/*
 		Process each line.
 	*/
-	int codepoint = 0;
+	unsigned codepoint = 0;
 	for (const auto &line : lines)
 		codepoint = process_unicodedata((const char *)line, codepoint);
 		

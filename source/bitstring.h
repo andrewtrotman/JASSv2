@@ -163,9 +163,9 @@ namespace JASS
 			*/
 			inline static size_t popcount(uint16_t value)
 				{
-				value = value - ((value >> 1) & 0x5555);
-				value = (value & 0x3333) + ((value >> 2) & 0x3333);
-				return (((value + (value >> 4)) & 0xF0F) * 0x101) >> 8;
+				value = value - ((value >> 1) & 0x5555u);
+				value = (value & 0x3333u) + ((value >> 2) & 0x3333u);
+				return (((value + (value >> 4)) & 0xF0Fu) * 0x101u) >> 8;
 				}
 
 			/*
@@ -177,9 +177,9 @@ namespace JASS
 			*/
 			inline static size_t popcount(uint8_t value)
 				{
-				value = value - ((value >> 1) & 0x55);
-				value = (value & 0x3333) + ((value >> 2) & 0x33);
-				return (((value + (value >> 4)) & 0xF) * 0x1);
+				value = value - ((value >> 1) & 0x55u);
+				value = (value & 0x33u) + ((value >> 2) & 0x33u);
+				return (((value + (value >> 4)) & 0xFu) * 0x1);
 				}
 
 			/*
