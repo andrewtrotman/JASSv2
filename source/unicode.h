@@ -55,7 +55,8 @@ namespace JASS
 	class unicode
 		{
 		public:
-			static constexpr uint32_t replacement_character = 0xFFFD;
+			static constexpr uint32_t replacement_character = 0xFFFD;		///< bad UTF-8 characters become codepoint U+FFFD (the Unicode replacement character designed for that purpose).
+			
 		public:
 			/*
 				UNICODE::UTF8_BYTES()
@@ -517,8 +518,8 @@ namespace JASS
 			*/
 			/*!
 				@brief Check to see if the codepoint is a valid character to start and XML tag name with.
-				@details According to XML production 4, valid Unicode characters are (":" | [A-Z] | "_" | [a-z] | [#xC0-#xD6] | [#xD8-#xF6] | [#xF8-#x2FF] | [#x370-#x37D] | [#x37F-#x1FFF] | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF] | [#x3001-#xD7FF] | [#xF900-#xFDCF] | [#xFDF0-#xFFFD] | [#x10000-#xEFFFF])
-				For details see: "Extensible Markup Language (XML) 1.0 (Fifth Edition) W3C Recommendation 26 November 2008", https://www.w3.org/TR/REC-xml/#NT-extSubsetDecl
+				@details According to XML production 4, valid Unicode characters are (":" | [A-Z] | "_" | [a-z] | [\#xC0-\#xD6] | [\#xD8-\#xF6] | [\#xF8-\#x2FF] | [\#x370-\#x37D] | [\#x37F-\#x1FFF] | [\#x200C-\#x200D] | [\#x2070-\#x218F] | [\#x2C00-\#x2FEF] | [\#x3001-\#xD7FF] | [\#xF900-\#xFDCF] | [\#xFDF0-\#xFFFD] | [\#x10000-\#xEFFFF])
+				For details see: "Extensible Markup Language (XML) 1.0 (Fifth Edition) W3C Recommendation 26 November 2008", https://www.w3.org/TR/REC-xml
 				@param codepoint [in] The Unicode codepoint to check.
 				@return true if an XML NameStartChar character, else false.
 			*/
@@ -536,8 +537,8 @@ namespace JASS
 			*/
 			/*!
 				@brief Check to see if the codepoint is a valid character to follow a NameStartChar in an XML tag name.
-				@details According to XML production 4a, valid Unicode characters are (NameStartChar | "-" | "." | [0-9] | #xB7 | [#x0300-#x036F] | [#x203F-#x2040])
-				For details see: "Extensible Markup Language (XML) 1.0 (Fifth Edition) W3C Recommendation 26 November 2008", https://www.w3.org/TR/REC-xml/#NT-extSubsetDecl
+				@details According to XML production 4a, valid Unicode characters are (NameStartChar | "-" | "." | [0-9] | \#xB7 | [\#x0300-\#x036F] | [\#x203F-\#x2040])
+				For details see: "Extensible Markup Language (XML) 1.0 (Fifth Edition) W3C Recommendation 26 November 2008", https://www.w3.org/TR/REC-xml
 				@param codepoint [in] The Unicode codepoint to check.
 				@return true if an XML NameChar character, else false.
 			*/

@@ -94,7 +94,7 @@ namespace JASS
 		*/
 		instream_file reader(filename);
 		document document;
-		document.contents = slice(document.allocator, 15);
+		document.contents = slice(document.contenst_allocator, 15);
 		
 		/*
 			read twice from it making sure we got what we should have

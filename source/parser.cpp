@@ -1,6 +1,8 @@
 /*
 	PARSER.CPP
 	----------
+	Copyright (c) 2016 Andrew Trotman
+	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 #include <string.h>
 
@@ -16,13 +18,26 @@
 
 namespace JASS
 	{
+	/*
+		PARSER::BUILD_UNICODE_ALPHABETIC_TOKEN()
+		----------------------------------------
+	*/
 	void parser::build_unicode_alphabetic_token(uint32_t codepoint, size_t bytes, uint8_t *&buffer_pos, uint8_t *buffer_end)
 		{
+		/*
+			while we have alphabetics, case fold into the token buffer.
+		*/
 		do
 			{
+			/*
+				Case fold.
+			*/
 			for (const uint32_t *folded = unicode::tocasefold(codepoint); *folded != 0; folded++)
 				buffer_pos += unicode::codepoint_to_utf8(buffer_pos, buffer_end, *folded);						// won't write on overflow
 
+			/*
+				Get the next codepoint
+			*/
 			if ((current += bytes) >= end_of_document || bytes == 0)
 				break;
 			codepoint = unicode::utf8_to_codepoint(current, end_of_document, bytes);
@@ -30,14 +45,27 @@ namespace JASS
 		while (unicode::isalpha(codepoint));
 		}
 		
-		
+	/*
+		PARSER::BUILD_UNICODE_NUMERIC_TOKEN()
+		-------------------------------------
+	*/
 	void parser::build_unicode_numeric_token(uint32_t codepoint, size_t bytes, uint8_t *&buffer_pos, uint8_t *buffer_end)
 		{
+		/*
+			while we have numerics, case fold into the token buffer.
+		*/
 		do
 			{
+			/*
+				Case fold.  Yes, its necessary to casefile numerics.  Some Unicode codepoints turn into more than
+				one digit when normalised.  For example, the sumbol for a half (1/2) becomes a 1 and a 2.
+			*/
 			for (const uint32_t *folded = unicode::tocasefold(codepoint); *folded != 0; folded++)
 				buffer_pos += unicode::codepoint_to_utf8(buffer_pos, buffer_end, *folded);						// won't write on overflow
 
+			/*
+				Get the next codepoint
+			*/
 			if ((current += bytes) >= end_of_document || bytes == 0)
 				break;
 			codepoint = unicode::utf8_to_codepoint(current, end_of_document, bytes);

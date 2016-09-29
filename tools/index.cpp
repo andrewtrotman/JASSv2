@@ -38,6 +38,7 @@ int main(int argc, char *argv[])
 	
 	do
 		{
+		document.rewind();
 		source.read(document);
 		if (document.isempty())
 			break;
@@ -86,3 +87,4 @@ int main(int argc, char *argv[])
 
 	return 0;
 	}
+

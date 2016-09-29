@@ -151,11 +151,11 @@ namespace JASS
 		/*
 			Copy the id into the document object and get the document
 		*/
-		object.contents = slice(object.allocator, document_start, document_end);
+		object.contents = slice(object.contenst_allocator, document_start, document_end);
 		if (document_id_end == NULL)
-			object.primary_key = slice(object.allocator, "Unknown");
+			object.primary_key = slice(object.primary_key_allocator, "Unknown");
 		else
-			object.primary_key = slice(object.allocator, document_id_start, document_id_end);
+			object.primary_key = slice(object.primary_key_allocator, document_id_start, document_id_end);
 		}
 		
 	/*

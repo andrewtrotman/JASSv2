@@ -35,7 +35,7 @@
 	------
 */
 /*!
-	@brief Helper function to JASS_assert().  Prints a message and calls ::abort().	
+	@brief Helper function to JASS_assert().  Prints a message and calls abort().	
 	@param function [in] The name of the function in which the JASS assert triggered.
 	@param file [in] The name of the file in which the JASS assert triggered.
 	@param line [in] The line number of the file in which the JASS assert triggered.
