@@ -75,10 +75,14 @@ namespace JASS
 					uint8_t *chunk_end;					///< Pointer to the end of the current chunk's large allocation (used to check for overflow).
 					chunk *next_chunk;					///< Pointer to the previous large allocation (i.e. chunk).
 					size_t chunk_size;					///< The size of this chunk.
-					#pragma warning(push)
-					#pragma warning(disable : 4200)
-						uint8_t data[];						///< The data in this large allocation that is available for re-distribution.
-					#pragma warning(pop)
+					#ifdef WIN32
+						#pragma warning(push)			// Xcode thinks thinks a 0-sized entity in a class is OK, but Visual Studio kicks up a fuss (but does it anyway).
+						#pragma warning(disable : 4200)
+					#endif
+						uint8_t data[];					///< The data in this large allocation that is available for re-distribution.
+					#ifdef WIN32
+						#pragma warning(pop)
+					#endif
 			};
 
 		protected:
