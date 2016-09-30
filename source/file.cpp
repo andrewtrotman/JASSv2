@@ -11,6 +11,10 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#ifdef WIN32
+	#include <io.h>
+#endif
+
 #include "file.h"
 #include "assert.h"
 
@@ -142,7 +146,13 @@ namespace JASS
 		struct stat st;				// file system details
 
 		if(stat(filename.c_str(), &st) == 0)
-			return S_ISDIR(st.st_mode);		// simply check the S_ISDIR() flag
+			{
+			#ifdef WIN32
+				return (st.st_mode & _S_IFDIR) == 0 ? false : true;		// check the _S_IFDIR flag as there is no S_ISDIR() on Windows
+			#else
+				return S_ISDIR(st.st_mode);		// simply check the S_ISDIR() flag
+			#endif
+			}
 		return false;
 		}
 
@@ -175,10 +185,17 @@ namespace JASS
 			seek to the end and heck where we are now, and seek back.  This will probably
 			be very fast as it doesn't (normally) need to do and I/O to compute the answer
 		*/
-		off_t current_position = ftello(fp);
-		fseeko(fp, 0, SEEK_END);
-		off_t file_size = ftello(fp);
-		fseeko(fp, current_position, SEEK_SET);
+		#ifdef WIN32
+			uint64_t current_position = _ftelli64(fp);
+			_fseeki64(fp, 0, SEEK_END);
+			uint64_t file_size = _ftelli64(fp);
+			_fseeki64(fp, current_position, SEEK_SET);
+		#else
+			off_t current_position = ftello(fp);
+			fseeko(fp, 0, SEEK_END);
+			off_t file_size = ftello(fp);
+			fseeko(fp, current_position, SEEK_SET);
+		#endif
 		
 		/*
 			This will fail in the case where off_t is larger than a size_t.  This is unlikely.
@@ -232,7 +249,11 @@ namespace JASS
 				to tell the Xcode analysis tool not to look at the line below.  Actually, this should continue to function file within
 				this function without this line, but you never know when someone has already taken your filename (so we call mktemp()).
 			*/
-			mktemp(filename);
+			#ifdef WIN32
+				_mktemp(filename);
+			#else
+				mktemp(filename);
+			#endif
 		#endif
 
 		/*

@@ -172,7 +172,7 @@ namespace JASS
 					
 				public:
 					uint8_t buffer[max_token_length];	///< The token manages its memory through this buffer
-					slice token;								///< The token itself, stored as a slice (pointer / length pair)
+					slice lexeme;								///< The token itself, stored as a slice (pointer / length pair)
 					token_type type;							///< The type of this token (See token_type)
 				};
 			

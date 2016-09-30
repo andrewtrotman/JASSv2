@@ -70,7 +70,8 @@ namespace JASS
 				@param c [in] The character to check.
 				@return true is the high bit is 0, false if the high bit is 1.
 			*/
-			inline static bool isascii(uint8_t c)
+			#undef isascii
+			inline static int isascii(uint8_t c)
 				{
 				return !(c & 0x80);
 				}
@@ -84,9 +85,9 @@ namespace JASS
 				@param c [in] The character to check
 				@return true if uppercase, lowercase, or a digit, else false.
 			*/
-			inline static bool isalnum(uint8_t c)
+			inline static int isalnum(uint8_t c)
 				{
-				return (ctype[c] & ALNUM) != 0;
+				return (ctype[c] & ALNUM);
 				}
 
 			/*
@@ -98,9 +99,9 @@ namespace JASS
 				@param c [in] The character to check
 				@return true if uppercase or lowercase, else false.
 			*/
-			inline static bool isalpha(uint8_t c)
+			inline static int isalpha(uint8_t c)
 				{
-				return (ctype[c] & ALPHA) != 0;
+				return (ctype[c] & ALPHA);
 				}
 				
 			/*
@@ -112,9 +113,9 @@ namespace JASS
 				@param c [in] The character to check
 				@return true if a control character, else false.
 			*/
-			inline static bool iscntrl(uint8_t c)
+			inline static int iscntrl(uint8_t c)
 				{
-				return (ctype[c] & CONTROL) != 0;
+				return (ctype[c] & CONTROL);
 				}
 			
 			
@@ -127,9 +128,9 @@ namespace JASS
 				@param c [in] The character to check
 				@return true if a digit, else false.
 			*/
-			inline static bool isdigit(uint8_t c)
+			inline static int isdigit(uint8_t c)
 				{
-				return (ctype[c] & DIGIT) != 0;
+				return (ctype[c] & DIGIT);
 				}
 			
 			/*
@@ -141,9 +142,9 @@ namespace JASS
 				@param c [in] The character to check
 				@return true if a graphic character, else false.
 			*/
-			inline static bool isgraph(uint8_t c)
+			inline static int isgraph(uint8_t c)
 				{
-				return (ctype[c] & GRAPH) != 0;
+				return (ctype[c] & GRAPH);
 				}
 			
 			/*
@@ -155,9 +156,9 @@ namespace JASS
 				@param c [in] The character to check
 				@return true if a lowercase character, else false.
 			*/
-			inline static bool islower(uint8_t c)
+			inline static int islower(uint8_t c)
 				{
-				return (ctype[c] & LOWER) != 0;
+				return (ctype[c] & LOWER);
 				}
 				
 			/*
@@ -169,7 +170,7 @@ namespace JASS
 				@param c [in] The character to check
 				@return true if a printable character, else false.
 			*/
-			inline static bool isprint(uint8_t c)
+			inline static int isprint(uint8_t c)
 				{
 				return !iscntrl(c);
 				}
@@ -183,9 +184,9 @@ namespace JASS
 				@param c [in] The character to check
 				@return true if a punctuation character, else false.
 			*/
-			inline static bool ispunct(uint8_t c)
+			inline static int ispunct(uint8_t c)
 				{
-				return (ctype[c] & PUNC) != 0;
+				return (ctype[c] & PUNC);
 				}
 			
 			/*
@@ -197,9 +198,9 @@ namespace JASS
 				@param c [in] The character to check
 				@return true if a space character, else false.
 			*/
-			inline static bool isspace(uint8_t c)
+			inline static int isspace(uint8_t c)
 				{
-				return (ctype[c] & SPACE) != 0;
+				return (ctype[c] & SPACE);
 				}
 				
 			/*
@@ -211,9 +212,9 @@ namespace JASS
 				@param c [in] The character to check
 				@return true if an uppercase character, else false.
 			*/
-			inline static bool isupper(uint8_t c)
+			inline static int isupper(uint8_t c)
 				{
-				return (ctype[c] & UPPER) != 0;
+				return (ctype[c] & UPPER);
 				}
 			
 			/*
@@ -225,9 +226,9 @@ namespace JASS
 				@param c [in] The character to check
 				@return true if a hexadecimal, else false.
 			*/
-			inline static bool isxdigit(uint8_t c)
+			inline static int isxdigit(uint8_t c)
 				{
-				return (ctype[c] & HEX) != 0;
+				return (ctype[c] & HEX);
 				}
 
 			/*
@@ -270,17 +271,18 @@ namespace JASS
 				{
 				for (uint8_t character = 0; character <= 0x7F; character++)
 					{
-					JASS_assert(::isalpha(character) == isalpha(character));
-					JASS_assert(::isalnum(character) == isalnum(character));
-					JASS_assert(::isupper(character) == isupper(character));
-					JASS_assert(::islower(character) == islower(character));
-					JASS_assert(::isdigit(character) == isdigit(character));
-					JASS_assert(::isspace(character) == isspace(character));
-					JASS_assert(::iscntrl(character) == iscntrl(character));
-					JASS_assert(::isgraph(character) == isgraph(character));
-					JASS_assert(::isprint(character) == isprint(character));
-					JASS_assert(::ispunct(character) == ispunct(character));
-					JASS_assert(::isxdigit(character) == isxdigit(character));
+					JASS_assert((::isalpha(character) && isalpha(character)) || ((!::isalpha(character) && !isalpha(character))));
+					JASS_assert((::isalnum(character) && isalnum(character)) || ((!::isalnum(character) && !isalnum(character))));
+					JASS_assert((::isupper(character) && isupper(character)) || ((!::isupper(character) && !isupper(character))));
+					JASS_assert((::islower(character) && islower(character)) || ((!::islower(character) && !islower(character))));
+					JASS_assert((::isdigit(character) && isdigit(character)) || ((!::isdigit(character) && !isdigit(character))));
+					JASS_assert((::isspace(character) && isspace(character)) || ((!::isspace(character) && !isspace(character))));
+					JASS_assert((::iscntrl(character) && iscntrl(character)) || ((!::iscntrl(character) && !iscntrl(character))));
+					JASS_assert((::isgraph(character) && isgraph(character)) || ((!::isgraph(character) && !isgraph(character))));
+					JASS_assert((::isprint(character) && isprint(character)) || ((!::isprint(character) && !isprint(character))));
+					JASS_assert((::ispunct(character) && ispunct(character)) || ((!::ispunct(character) && !ispunct(character))));
+					JASS_assert((::isxdigit(character) && isxdigit(character)) || ((!::isxdigit(character) && !isxdigit(character))));
+
 					JASS_assert(::tolower(character) == tolower(character));
 					JASS_assert(::toupper(character) == toupper(character));
 					}

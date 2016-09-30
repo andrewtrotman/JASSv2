@@ -64,11 +64,11 @@ int main(int argc, char *argv[])
 					numerics++;
 					break;
 				case JASS::parser::token::xml_start_tag:
-					if (token.token.size() == 3 && strncmp((char *)token.token.address(), "DOC", 3) == 0)
+					if (token.lexeme.size() == 3 && strncmp((char *)token.lexeme.address(), "DOC", 3) == 0)
 						start_doc_tags++;
 					break;
 				case JASS::parser::token::xml_end_tag:
-					if (token.token.size() == 3 && strncmp((char *)token.token.address(), "DOC", 3) == 0)
+					if (token.lexeme.size() == 3 && strncmp((char *)token.lexeme.address(), "DOC", 3) == 0)
 						end_doc_tags++;
 					break;
 				default:

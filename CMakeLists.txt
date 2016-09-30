@@ -16,17 +16,15 @@
 
 cmake_minimum_required (VERSION 3.1.0)
 
-# set(CMAKE_BUILD_TYPE Release)
-# set(CMAKE_CONFIGURATION_TYPES Release)
-
-if(MSVC)
+set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_CONFIGURATION_TYPES Debug)
+#if(MSVC)
 	add_definitions( "/W3 /D_CRT_SECURE_NO_WARNINGS /wd4005 /wd4996 /wd4514 /wd4996 /nologo" )
-endif()
+#else()
+#	add_definitions("-Wall")
+#endif()
 
 project(JASS)
-
-
-add_definitions("-Wall")
 
 set(CMAKE_CXX_STANDARD 11)
 

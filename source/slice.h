@@ -196,7 +196,8 @@ namespace JASS
 				JASS_assert(chunk2.address() == unittest && chunk2.size() == 5);
 				
 				allocator_pool pool;
-				slice chunk3(pool, (void *)unittest, (void *)((uint8_t *)unittest + 5));
+				char data[6];
+				slice chunk3(pool, (void *)data, (void *)((uint8_t *)data + 5));
 				JASS_assert(pool.size() == 5 && chunk3.size() == 5);
 				
 				const char *message = "here there and everywhere";

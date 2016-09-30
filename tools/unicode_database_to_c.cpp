@@ -68,60 +68,60 @@ static const size_t MAX_CODEPOINT = 0x10FFFF;
 	alphabetic characters.  Note that alpha != lowercase + uppercase because there are many
 	characters that are caseless (such as the phonetic characters).
 */
-std::vector<uint32_t>alpha;				///< list of alphabetical characters
-std::vector<uint32_t>uppercase;			///< list of uppercase characters
-std::vector<uint32_t>lowercase;			///< list of lowercase characgers
+std::vector<size_t>alpha;				///< list of alphabetical characters
+std::vector<size_t>uppercase;			///< list of uppercase characters
+std::vector<size_t>lowercase;			///< list of lowercase characgers
 
 /*
 	Digits, or more accurately number characters including digit characters
 */
-std::vector<uint32_t>digit;				///< list of digits
+std::vector<size_t>digit;				///< list of digits
 
 /*
 	Alphanumerics
 */
-std::vector<uint32_t>alphanumeric;		///< list of alphanumeric characters
+std::vector<size_t>alphanumeric;		///< list of alphanumeric characters
 
 /*
 	Punctuaton
 */
-std::vector<uint32_t>punc;					///< list of punctuation symbols
+std::vector<size_t>punc;					///< list of punctuation symbols
 
 /*
 	Space characters (by the unicode definition of space)
 */
-std::vector<uint32_t>space;				///< list of Unicode space characters (not a superset C's isspace())
+std::vector<size_t>space;				///< list of Unicode space characters (not a superset C's isspace())
 
 /*
 	White Space characters (by the D Phobos definition of whitespace) which is:
 	"general Unicode category: Part of C0(tab, vertical tab, form feed, carriage return, and linefeed characters), Zs, Zl, Zp, and NEL(U+0085))"
 */
-std::vector<uint32_t>whitespace;			///< list of space characters (is a superset C's isspace())
+std::vector<size_t>whitespace;			///< list of space characters (is a superset C's isspace())
 
 /*
 	Diacritic marks
 */
-std::vector<uint32_t>mark;					///< list of diacritic marks
+std::vector<size_t>mark;					///< list of diacritic marks
 
 /*
 	Symbols
 */
-std::vector<uint32_t>symbol;				///< list of symbols
+std::vector<size_t>symbol;				///< list of symbols
 
 /*
 	Control characters
 */
-std::vector<uint32_t>control;				///< list of control characters
+std::vector<size_t>control;				///< list of control characters
 
 /*
 	Graphical characters
 */
-std::vector<uint32_t>graphical;			///< list of graphical (printable) characters
+std::vector<size_t>graphical;			///< list of graphical (printable) characters
 
 /*
 	Hexadecimal digits
 */
-std::vector<uint32_t>xdigit;				///< list of Unicode defined hexadecimal characters
+std::vector<size_t>xdigit;				///< list of Unicode defined hexadecimal characters
 
 /*
 	JASS normalisation
@@ -136,13 +136,13 @@ std::map<int, std::vector<int>> casefold;		///< The casefolded version of the co
 /*
 	Fast alphanumeric lookup (used as part of JASS normalisation)
 */
-std::map<int, bool> codepoint_isalnum;
+std::map<size_t, bool> codepoint_isalnum;
 
 /*
 	XML NameStartChar and XML NameChar
 */
-std::vector<uint32_t> xmlnamestartchar;
-std::vector<uint32_t> xmlnamechar;
+std::vector<size_t> xmlnamestartchar;
+std::vector<size_t> xmlnamechar;
 
 /*
 	USAGE()
@@ -168,7 +168,7 @@ void usage(char *filename)
 	@param operation [in] The name of the "is" operation.
 	@param list [in] The list of which codepoints are valid for this "is" condition.
 */
-void serialise(const std::string &operation, const std::vector<uint32_t> &list)
+void serialise(const std::string &operation, const std::vector<size_t> &list)
 	{
 	static bool first_time = true;		// used to make sure includes are only included once
 	JASS::bitstring bits;					// the list is converted into this bitstring
@@ -230,7 +230,7 @@ void serialise(const std::string &operation, const std::vector<uint32_t> &list)
 		Add a C Method.  There are several reasons for doing this, but it basically boils down to the
 		unit tests doing a comparison to the "D" methods and the need to link against a non-inline method.
 	*/
-	printf("bool JASS_unicode_%s(uint32_t codepoint)\n", operation.c_str());
+	printf("int JASS_unicode_%s(uint32_t codepoint)\n", operation.c_str());
 	puts("{");
 	puts("uint32_t byte = codepoint >> 3;");
 	puts("uint32_t bit = 1 << (codepoint & 0x07);");

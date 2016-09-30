@@ -33,7 +33,7 @@ namespace JASS
 	template <class TYPE>
 	class allocator_cpp
 		{
-		protected:
+		public:
 			allocator &pool;							///< This is the memory pool from which this C++ allocator allocated.
 			
 		public:
@@ -63,9 +63,11 @@ namespace JASS
 				@param other [in] the object to copy
 			*/
 			template<class OTHER_TYPE>
-			allocator_cpp(const allocator_cpp<OTHER_TYPE> &other)
+			allocator_cpp(const allocator_cpp<OTHER_TYPE> &other) : pool(other.pool)
 				{
-				this->pool = other.pool;
+				/*
+					Nothing
+				*/
 				}
 			
 			/*

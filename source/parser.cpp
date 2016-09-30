@@ -419,7 +419,7 @@ namespace JASS
 				}
 			}
 
-		token.token = slice((void *)token.buffer, (void *)buffer_pos);
+		token.lexeme = slice((void *)token.buffer, (void *)buffer_pos);
 		return token;
 		}
 		
@@ -476,7 +476,7 @@ namespace JASS
 			const auto &token = tokenizer.get_next_token();
 			if (token.type != token::eof)
 				{
-				JASS_assert(std::string((char *)token.token.address(), token.token.size()) == text_answer[count]);
+				JASS_assert(std::string((char *)token.lexeme.address(), token.lexeme.size()) == text_answer[count]);
 				}
 			count++;
 			type = token.type;
@@ -528,7 +528,7 @@ namespace JASS
 			const auto &token = tokenizer.get_next_token();
 			if (token.type != token::eof)
 				{
-				JASS_assert(std::string((char *)token.token.address(), token.token.size()) == xml_data_answer[count]);
+				JASS_assert(std::string((char *)token.lexeme.address(), token.lexeme.size()) == xml_data_answer[count]);
 				}
 			count++;
 			type = token.type;

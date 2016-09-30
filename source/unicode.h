@@ -284,7 +284,7 @@ namespace JASS
 				@param codepoint [in] The Unicode codepoint to check.
 				@return true if alphabetic, else false.
 			*/
-			static inline bool isalpha(uint32_t codepoint)
+			static inline int isalpha(uint32_t codepoint)
 				{
 				uint32_t byte = codepoint >> 3;
 				uint32_t bit = 1 << (codepoint & 0x07);
@@ -304,7 +304,7 @@ namespace JASS
 				@param codepoint [in] The Unicode codepoint to check.
 				@return true if alphabetic, else false.
 			*/
-			static inline bool isalnum(uint32_t codepoint)
+			static inline int isalnum(uint32_t codepoint)
 				{
 				uint32_t byte = codepoint >> 3;
 				uint32_t bit = 1 << (codepoint & 0x07);
@@ -322,7 +322,7 @@ namespace JASS
 				@param codepoint [in] The Unicode codepoint to check.
 				@return true if uppercase alphabetic, else false.
 			*/
-			static inline bool isupper(uint32_t codepoint)
+			static inline int isupper(uint32_t codepoint)
 				{
 				uint32_t byte = codepoint >> 3;
 				uint32_t bit = 1 << (codepoint & 0x07);
@@ -340,7 +340,7 @@ namespace JASS
 				@param codepoint [in] The Unicode codepoint to check.
 				@return true if lowercase alphabetic, else false.
 			*/
-			static inline bool islower(uint32_t codepoint)
+			static inline int islower(uint32_t codepoint)
 				{
 				uint32_t byte = codepoint >> 3;
 				uint32_t bit = 1 << (codepoint & 0x07);
@@ -358,7 +358,7 @@ namespace JASS
 				@param codepoint [in] The Unicode codepoint to check.
 				@return true if a control character, else false.
 			*/
-			static inline bool iscntrl(uint32_t codepoint)
+			static inline int iscntrl(uint32_t codepoint)
 				{
 				uint32_t byte = codepoint >> 3;
 				uint32_t bit = 1 << (codepoint & 0x07);
@@ -378,7 +378,7 @@ namespace JASS
 				@param codepoint [in] The Unicode codepoint to check.
 				@return true if a numeric character, else false.
 			*/
-			static inline bool isdigit(uint32_t codepoint)
+			static inline int isdigit(uint32_t codepoint)
 				{
 				uint32_t byte = codepoint >> 3;
 				uint32_t bit = 1 << (codepoint & 0x07);
@@ -396,7 +396,7 @@ namespace JASS
 				@param codepoint [in] The Unicode codepoint to check.
 				@return true if a graphical character, else false.
 			*/
-			static inline bool isgraph(uint32_t codepoint)
+			static inline int isgraph(uint32_t codepoint)
 				{
 				uint32_t byte = codepoint >> 3;
 				uint32_t bit = 1 << (codepoint & 0x07);
@@ -414,7 +414,7 @@ namespace JASS
 				@param codepoint [in] The Unicode codepoint to check.
 				@return true if a punctuation character, else false.
 			*/
-			static inline bool ispunct(uint32_t codepoint)
+			static inline int ispunct(uint32_t codepoint)
 				{
 				uint32_t byte = codepoint >> 3;
 				uint32_t bit = 1 << (codepoint & 0x07);
@@ -432,7 +432,7 @@ namespace JASS
 				@param codepoint [in] The Unicode codepoint to check.
 				@return true if a space character, else false.
 			*/
-			static inline bool isspace(uint32_t codepoint)
+			static inline int isspace(uint32_t codepoint)
 				{
 				uint32_t byte = codepoint >> 3;
 				uint32_t bit = 1 << (codepoint & 0x07);
@@ -450,7 +450,7 @@ namespace JASS
 				@param codepoint [in] The Unicode codepoint to check.
 				@return true if a space character, else false.
 			*/
-			static inline bool isuspace(uint32_t codepoint)
+			static inline int isuspace(uint32_t codepoint)
 				{
 				uint32_t byte = codepoint >> 3;
 				uint32_t bit = 1 << (codepoint & 0x07);
@@ -468,7 +468,7 @@ namespace JASS
 				@param codepoint [in] The Unicode codepoint to check.
 				@return true if a hex character, else false.
 			*/
-			static inline bool isxdigit(uint32_t codepoint)
+			static inline int isxdigit(uint32_t codepoint)
 				{
 				uint32_t byte = codepoint >> 3;
 				uint32_t bit = 1 << (codepoint & 0x07);
@@ -486,7 +486,7 @@ namespace JASS
 				@param codepoint [in] The Unicode codepoint to check.
 				@return true if a mark character, else false.
 			*/
-			static inline bool ismark(uint32_t codepoint)
+			static inline int ismark(uint32_t codepoint)
 				{
 				uint32_t byte = codepoint >> 3;
 				uint32_t bit = 1 << (codepoint & 0x07);
@@ -504,7 +504,7 @@ namespace JASS
 				@param codepoint [in] The Unicode codepoint to check.
 				@return true if a symbol character, else false.
 			*/
-			static inline bool issymbol(uint32_t codepoint)
+			static inline int issymbol(uint32_t codepoint)
 				{
 				uint32_t byte = codepoint >> 3;
 				uint32_t bit = 1 << (codepoint & 0x07);
@@ -523,7 +523,7 @@ namespace JASS
 				@param codepoint [in] The Unicode codepoint to check.
 				@return true if an XML NameStartChar character, else false.
 			*/
-			static inline bool isxmlnamestartchar(uint32_t codepoint)
+			static inline int isxmlnamestartchar(uint32_t codepoint)
 				{
 				uint32_t byte = codepoint >> 3;
 				uint32_t bit = 1 << (codepoint & 0x07);
@@ -542,7 +542,7 @@ namespace JASS
 				@param codepoint [in] The Unicode codepoint to check.
 				@return true if an XML NameChar character, else false.
 			*/
-			static inline bool isxmlnamechar(uint32_t codepoint)
+			static inline int isxmlnamechar(uint32_t codepoint)
 				{
 				uint32_t byte = codepoint >> 3;
 				uint32_t bit = 1 << (codepoint & 0x07);
@@ -621,22 +621,22 @@ namespace JASS
 				*/
 				for (uint8_t character = 0; character <= 0x7F; character++)
 					{
-					JASS_assert(::isalpha(character) == unicode::isalpha(character));
-					JASS_assert(::isalnum(character) == unicode::isalnum(character));
-					JASS_assert(::isupper(character) == unicode::isupper(character));
-					JASS_assert(::islower(character) == unicode::islower(character));
-					JASS_assert(::isdigit(character) == unicode::isdigit(character));
-					JASS_assert(::isspace((uint8_t)character) == unicode::isspace(character));
-					JASS_assert(::isxdigit((uint8_t)character) == unicode::isxdigit(character));
-					JASS_assert(::iscntrl(character) == unicode::iscntrl(character));
+					JASS_assert((::isalpha(character) && unicode::isalpha(character)) || ((!::isalpha(character) && !unicode::isalpha(character))));
+					JASS_assert((::isalnum(character) && unicode::isalnum(character)) || ((!::isalnum(character) && !unicode::isalnum(character))));
+					JASS_assert((::isupper(character) && unicode::isupper(character)) || ((!::isupper(character) && !unicode::isupper(character))));
+					JASS_assert((::islower(character) && unicode::islower(character)) || ((!::islower(character) && !unicode::islower(character))));
+					JASS_assert((::isdigit(character) && unicode::isdigit(character)) || ((!::isdigit(character) && !unicode::isdigit(character))));
+					JASS_assert((::isspace(character) && unicode::isspace(character)) || ((!::isspace(character) && !unicode::isspace(character))));
+					JASS_assert((::iscntrl(character) && unicode::iscntrl(character)) || ((!::iscntrl(character) && !unicode::iscntrl(character))));
+					JASS_assert((::isxdigit(character) && unicode::isxdigit(character)) || ((!::isxdigit(character) && !unicode::isxdigit(character))));
 
 					/*
 						Unicode does not consider character 32 (space) to be a graph character as it is a space character
 					*/
 					if (character == 32)
-						JASS_assert(::isgraph(character) != unicode::isgraph(character));
+						JASS_assert((::isgraph(character) && !unicode::isgraph(character)) || ((!::isgraph(character) && unicode::isgraph(character))));
 					else
-						JASS_assert(::isgraph(character) == unicode::isgraph(character));
+						JASS_assert((::isgraph(character) && unicode::isgraph(character)) || ((!::isgraph(character) && !unicode::isgraph(character))));
 					/*
 						The rules for ispunct() are very different betwen C and Unicode so we won't even bother to check
 					*/

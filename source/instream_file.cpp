@@ -6,6 +6,10 @@
 */
 #include <string.h>
 
+#ifdef WIN32
+	#include <io.h>
+#endif
+
 #include "assert.h"
 #include "instream_file.h"
 
@@ -81,7 +85,11 @@ namespace JASS
 				to tell the Xcode analysis tool not to look at the line below.  Actually, this should continue to function file within
 				this function without this line, but you never know when someone has already taken your filename (so we call mktemp()).
 			*/
-			mktemp(filename);
+			#ifdef WIN32
+				_mktemp(filename);
+			#else
+				mktemp(filename);
+			#endif
 		#endif
 
 		/*
