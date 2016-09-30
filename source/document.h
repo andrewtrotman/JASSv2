@@ -22,7 +22,11 @@ namespace JASS
 		--------------
 	*/
 	/*!
-		@brief Container class representing a document through the indexing pipeline
+		@brief Container class representing a document through the indexing pipeline.
+		
+		@details An example tying documents, instreams, and parsing to count the number of document and non-unique symbols is:
+		
+		@include parser_use.cpp
 	*/
 	class document
 		{

@@ -45,6 +45,11 @@ add_subdirectory(tools)
 add_subdirectory(source)
 
 #
+# Build the documentation examples
+#
+add_subdirectory(examples)
+
+#
 #  build the unit tests
 #
 include_directories(source)

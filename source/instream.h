@@ -36,6 +36,10 @@ namespace JASS
 		The constructor of a complex pipeline does not want to keep track of each and every pointer to parts of the stream - and to free them on
 		competion so this object deletes the predecessor in the pipeline if deleted.  This propegates down the pipeline which is eventially cleaned
 		up bottom up.
+
+		An example tying documents, instreams, and parsing to count the number of document and non-unique symbols is:
+		
+		@include parser_use.cpp
 	*/
 	class instream
 		{
