@@ -24,6 +24,7 @@ set(JASSlib_FILES
 	document.h
 	file.h
 	file.cpp
+	hash_table.h
 	instream.h
 	instream_document_trec.h
 	instream_document_trec.cpp
