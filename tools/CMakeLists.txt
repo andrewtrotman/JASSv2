@@ -35,7 +35,7 @@ add_custom_target(generate_unicode_cpp DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/../so
 #
 add_executable(unicode_database_to_c
 	unicode_database_to_c.cpp
-	../source/assert.cpp
+	../source/asserts.cpp
 	../source/file.cpp
 	../source/bitstring.cpp)
 

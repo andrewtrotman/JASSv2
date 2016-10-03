@@ -17,14 +17,17 @@ set(JASSlib_FILES
 	allocator_pool.cpp
 	ascii.h
 	ascii.cpp
-	assert.h
-	assert.cpp
+	asserts.h
+	asserts.cpp
+	binary_tree.h
 	bitstring.h
 	bitstring.cpp
 	document.h
 	file.h
 	file.cpp
 	hash_table.h
+	hash_pearson.h
+	hash_pearson.cpp
 	instream.h
 	instream_document_trec.h
 	instream_document_trec.cpp

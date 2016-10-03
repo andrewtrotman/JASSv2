@@ -6,16 +6,36 @@
 */
 #pragma once
 
+#include "allocator.h"
+#include "hash_pearson.h"
+
 namespace JASS
 	{
-	template <typename KEY, TYPE, size_t bits = 24>
+	template <typename KEY, TYPE, size_t BITS = 24>
 	class hash_table
 		{
 		protected:
 			constexpr size_t hash_table_size = size(bits);
+			
+		protected:
+			class node
+				{
+				public:
+					KEY key;
+					ELEMENT *element;
+					node *left;
+					node *right;
+				public:
+					node()
+						{
+						left = right = nullptr;
+						element = nullptr;
+						}
+				};
 		
 		protected:
 			TYPE *table[hash_table_size];
+			allocator &memory_pool;
 			
 		protected:
 			constexpr size_t size(size_t bits)
@@ -35,7 +55,7 @@ namespace JASS
 				}
 
 		public:
-			hash_table()
+			hash_table(allocator &pool) : memory_pool(pool)
 				{
 				memset(table, 0, sizeof(table));
 				}
@@ -47,9 +67,12 @@ namespace JASS
 				*/
 				}
 			
-			TYPE &operator[](KEY key)
+			TYPE &operator[](const KEY &key)
 				{
-				hash = 2;
+				size_t hash = hash_pearson<BITS>(key);
+				if (table[hash] == nullptr)
+					{
+					}
 				return table[hash];
 				}
 

@@ -11,6 +11,7 @@
 #include "parser.h"
 #include "unicode.h"
 #include "bitstring.h"
+#include "binary_tree.h"
 #include "allocator_cpp.h"
 #include "instream_file.h"
 #include "allocator_pool.h"
@@ -74,6 +75,9 @@ int main(void)
 	
 	puts("parser");
 	JASS::parser::unittest();
+	
+	puts("binary_tree");
+	JASS::binary_tree<size_t, size_t>::unittest();
 	
 	puts("ALL UNIT TESTS HAVE PASSED");
 	return 0;

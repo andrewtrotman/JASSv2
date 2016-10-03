@@ -16,7 +16,7 @@
 #endif
 
 #include "file.h"
-#include "assert.h"
+#include "asserts.h"
 
 namespace JASS
 	{

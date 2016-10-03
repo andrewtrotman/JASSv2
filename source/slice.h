@@ -14,7 +14,9 @@
 
 #include <string.h>
 
-#include "assert.h"
+#include <iostream>
+
+#include "asserts.h"
 #include "allocator_pool.h"
 
 namespace JASS
@@ -57,6 +59,22 @@ namespace JASS
 			slice(void *start, void *end) :
 				pointer(start),
 				length((uint8_t *)end - (uint8_t *)start)
+				{
+				/* Nothing */
+				}
+			/*
+
+				SLICE::SLICE()
+				--------------
+			*/
+			/*!
+				@brief Constructor
+				@param start [in] The start address of the memory this slice represents.
+				@param end [in] The end address of the memory this slice represents.
+			*/
+			slice(const char *message) :
+				pointer((void *)message),
+				length(strlen(message))
 				{
 				/* Nothing */
 				}
@@ -118,6 +136,22 @@ namespace JASS
 				--------------
 			*/
 			/*!
+				@brief Construct a slice by copying its contents into the pool allocator.
+				@param pool [in] An allocator to allocate the memory from.
+				@param from [in] The slice to copy.
+			*/
+			slice(allocator &pool, const slice &from)
+				{
+				length = from.size();
+				pointer = (void *)pool.malloc(length);
+				memcpy(pointer, from.address(), length);
+				}
+
+			/*
+				SLICE::SLICE()
+				--------------
+			*/
+			/*!
 				@brief Construct a slice by allocating bytes of memory from a pool allocator
 				@param pool [in] An allocator to allocate from.
 				@param bytes [in] The number of bytes of memory to allocate from the pool.
@@ -126,6 +160,20 @@ namespace JASS
 				{
 				length = bytes;
 				pointer = (void *)pool.malloc(bytes);
+				}
+
+			/*
+				SLICE::SLICE()
+				--------------
+			*/
+			/*!
+				@brief Construct an empty slice with a pool allocator
+				@param pool [in] An allocator to allocate from.
+			*/
+			slice(allocator &pool)
+				{
+				length = 0;
+				pointer = nullptr;
 				}
 			
 			/*
@@ -180,6 +228,25 @@ namespace JASS
 				{
 				return ((uint8_t *)pointer)[index];
 				}
+
+			/*
+				SLICE::OPERATOR<()
+				------------------
+			*/
+			/*!
+				@brief Return true if this < with.
+				@param with [in] The slice to compare to.
+				@return true if this < with, else false.
+			*/
+			bool operator<(const slice &with) const
+				{
+				if (size() < with.size())
+					return true;
+				if (size() > with.size())
+					return false;
+				return memcmp(address(), with.address(), size()) < 0;
+				}
+
 			/*
 				SLICE::UNITTEST()
 				-----------------
@@ -219,4 +286,11 @@ namespace JASS
 				}
 			
 		};
+		
+	inline std::ostream &operator<<(std::ostream &stream, const slice &data)
+		{
+		stream.write((char *)data.address(), data.size());
+		return stream;
+		}
+
 	}

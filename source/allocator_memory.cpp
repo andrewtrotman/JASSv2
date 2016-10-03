@@ -7,7 +7,7 @@
 #include <string.h>
 #include "allocator_memory.h"
 
-#include "assert.h"
+#include "asserts.h"
 
 namespace JASS
 	{

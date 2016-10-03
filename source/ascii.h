@@ -16,7 +16,7 @@
 #include <ctype.h>
 #include <stdint.h>
 
-#include "assert.h"
+#include "asserts.h"
 
 namespace JASS
 	{
