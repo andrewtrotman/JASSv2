@@ -37,236 +37,242 @@ namespace JASS
 		protected:
 			static uint8_t random_walk[];				///< Pearson's random walk table.
 
-		/*
-			HASH_PEARSON::HASH_8()
-			----------------------
-		*/
-		/*!
-			@brief To-the-letter implementaiton of Pearson's hash function.
-			@param string [in] The byte string to hash.
-			@param length [in] The length of the byte stream, measured in bytes.
-			@param seed [in] The intial value used to seed the random walk (default = 0).
-			@return an 8-bit hash value.
-		*/
-		static inline size_t hash_8(const void *string, size_t length, uint8_t seed = 0)
-			{
-			uint8_t *byte = (uint8_t *)string;
-
+		public:
 			/*
-				Perform the random walk
+				HASH_PEARSON::HASH_8()
+				----------------------
 			*/
-			for (size_t pos = 0; pos < length; pos++)
-				seed = random_walk[seed ^ *byte++];
-
-			return seed;
-			}
-			
-		/*
-			HASH_PEARSON::HASH_16()
-			-----------------------
-		*/
-		/*!
-			@brief Pearson's hash into a 16-bit value.
-			@details Generates 16-bit hash on the a = 0,2,4... and b = 1,3,5,... characters which are then combined together  (b << 8 | a) for the final hash.
-			@param string [in] The byte string to hash.
-			@param length [in] The length of the byte stream, measured in bytes.
-			@return an 16-bit hash value.
-		*/
-		static inline size_t hash_16(const void *string, size_t length)
-			{
-			/*
-				Compute the results seperately then combine at the end.
-				This approach is taken so that hash-values are consistent across different endian architectures.
+			/*!
+				@brief To-the-letter implementaiton of Pearson's hash function.
+				@param string [in] The byte string to hash.
+				@param length [in] The length of the byte stream, measured in bytes.
+				@param seed [in] The intial value used to seed the random walk (default = 0).
+				@return an 8-bit hash value.
 			*/
-			uint8_t seed_0 = 0;
-			uint8_t seed_1 = 0;
-
-			/*
-				Take pointers to the start and end of the string
-			*/
-			uint8_t *byte = (uint8_t *)string;
-			uint8_t *end = byte + length;
-
-			/*
-				Walk through the string to hash
-			*/
-			while (byte < end)
+			static inline size_t hash_8(const void *string, size_t length, uint8_t seed = 0)
 				{
-				seed_0 = random_walk[seed_0 ^ *byte++];
-				if (byte >= end)
-					break;
+				uint8_t *byte = (uint8_t *)string;
 
-				seed_1 = random_walk[seed_1 ^ *byte++];
+				/*
+					Perform the random walk
+				*/
+				for (size_t pos = 0; pos < length; pos++)
+					seed = random_walk[seed ^ *byte++];
 
+				return seed;
 				}
-			
+				
 			/*
-				construct the hash from each part.
+				HASH_PEARSON::HASH_16()
+				-----------------------
 			*/
-			return seed_1 << 8 | seed_0;
-			}
-
-		/*
-			HASH_PEARSON::HASH_24()
-			-----------------------
-		*/
-		/*!
-			@brief Pearson's hash into a 24-bit value.
-			@details Generates 16-bit hash on the a = 0,3,6..., b = 1,4,7,..., and c = 2,5,8,...characters which are then combined together  (c << 16 | b << 8 | a) for the final hash.
-			@param string [in] The byte string to hash.
-			@param length [in] The length of the byte stream, measured in bytes.
-			@return an 24-bit hash value.
-		*/
-		static inline size_t hash_24(const void *string, size_t length)
-			{
-			/*
-				Compute the results seperately then combine at the end.
-				This approach is taken so that hash-values are consistent across different endian architectures.
+			/*!
+				@brief Pearson's hash into a 16-bit value.
+				@details Generates 16-bit hash on the a = 0,2,4... and b = 1,3,5,... characters which are then combined together  (b << 8 | a) for the final hash.
+				@param string [in] The byte string to hash.
+				@param length [in] The length of the byte stream, measured in bytes.
+				@return an 16-bit hash value.
 			*/
-			uint8_t seed_0 = 0;
-			uint8_t seed_1 = 0;
-			uint8_t seed_2 = 0;
-
-			/*
-				Take pointers to the start and end of the string
-			*/
-			uint8_t *byte = (uint8_t *)string;
-			uint8_t *end = byte + length;
-
-			/*
-				Walk through the string to hash
-			*/
-			while (byte < end)
+			static inline size_t hash_16(const void *string, size_t length)
 				{
-				seed_0 = random_walk[seed_0 ^ *byte++];
-				if (byte >= end)
-					break;
+				/*
+					Compute the results seperately then combine at the end.
+					This approach is taken so that hash-values are consistent across different endian architectures.
+				*/
+				uint8_t seed_0 = 0;
+				uint8_t seed_1 = 0;
 
-				seed_1 = random_walk[seed_1 ^ *byte++];
+				/*
+					Take pointers to the start and end of the string
+				*/
+				uint8_t *byte = (uint8_t *)string;
+				uint8_t *end = byte + length;
 
-				if (byte >= end)
-					break;
-					
-				seed_2 = random_walk[seed_2 ^ *byte++];
+				/*
+					Walk through the string to hash
+				*/
+				while (byte < end)
+					{
+					seed_0 = random_walk[seed_0 ^ *byte++];
+					if (byte >= end)
+						break;
+
+					seed_1 = random_walk[seed_1 ^ *byte++];
+
+					}
+				
+				/*
+					construct the hash from each part.
+				*/
+				return seed_1 << 8 | seed_0;
 				}
-			
-			/*
-				construct the hash from each part.
-			*/
-			return seed_2 << 16 | seed_1 << 8 | seed_0;
-			}
-			
-		/*
-			HASH_PEARSON::HASH_32()
-			-----------------------
-			Generates 32-bit hash on the 0,4,8... 1,5,9,... 2,6,9,..., 3,7,10... characters which are then combined togehter for the final hash.
-		*/
-		/*!
-			@brief Pearson's hash into a 32-bit value.
-			@details Generates 16-bit hash on the a = 0,4,8..., b = 1,5,9,..., c = 2,6,9,..., d = 3,7,10... characters which are then combined together  (d << 24 | c << 16 | b << 8 | a) for the final hash.
-			@param string [in] The byte string to hash.
-			@param length [in] The length of the byte stream, measured in bytes.
-			@return an 32-bit hash value.
-		*/
-		static inline size_t hash_32(const void *string, size_t length)
-			{
-			/*
-				Compute the results seperately then combine at the end.
-				This approach is taken so that hash-values are consistent across different endian architectures.
-			*/
-			uint8_t seed_0 = 0;
-			uint8_t seed_1 = 0;
-			uint8_t seed_2 = 0;
-			uint8_t seed_3 = 0;
 
 			/*
-				Take pointers to the start and end of the string
+				HASH_PEARSON::HASH_24()
+				-----------------------
 			*/
-			uint8_t *byte = (uint8_t *)string;
-			uint8_t *end = byte + length;
-
-			/*
-				Walk through the string to hash
+			/*!
+				@brief Pearson's hash into a 24-bit value.
+				@details Generates 16-bit hash on the a = 0,3,6..., b = 1,4,7,..., and c = 2,5,8,...characters which are then combined together  (c << 16 | b << 8 | a) for the final hash.
+				@param string [in] The byte string to hash.
+				@param length [in] The length of the byte stream, measured in bytes.
+				@return an 24-bit hash value.
 			*/
-			while (byte < end)
+			static inline size_t hash_24(const void *string, size_t length)
 				{
-				seed_0 = random_walk[seed_0 ^ *byte++];
-				if (byte >= end)
-					break;
+				/*
+					Compute the results seperately then combine at the end.
+					This approach is taken so that hash-values are consistent across different endian architectures.
+				*/
+				uint8_t seed_0 = 0;
+				uint8_t seed_1 = 0;
+				uint8_t seed_2 = 0;
 
-				seed_1 = random_walk[seed_1 ^ *byte++];
+				/*
+					Take pointers to the start and end of the string
+				*/
+				uint8_t *byte = (uint8_t *)string;
+				uint8_t *end = byte + length;
 
-				if (byte >= end)
-					break;
-					
-				seed_2 = random_walk[seed_2 ^ *byte++];
-					
-				if (byte >= end)
-					break;
+				/*
+					Walk through the string to hash
+				*/
+				while (byte < end)
+					{
+					seed_0 = random_walk[seed_0 ^ *byte++];
+					if (byte >= end)
+						break;
 
-				seed_3 = random_walk[seed_3 ^ *byte++];
+					seed_1 = random_walk[seed_1 ^ *byte++];
+
+					if (byte >= end)
+						break;
+						
+					seed_2 = random_walk[seed_2 ^ *byte++];
+					}
+				
+				/*
+					construct the hash from each part.
+				*/
+				return seed_2 << 16 | seed_1 << 8 | seed_0;
 				}
-			
+				
 			/*
-				construct the hash from each part.
+				HASH_PEARSON::HASH_32()
+				-----------------------
+				Generates 32-bit hash on the 0,4,8... 1,5,9,... 2,6,9,..., 3,7,10... characters which are then combined togehter for the final hash.
 			*/
-			return seed_3 << 24 | seed_2 << 16 | seed_1 << 8 | seed_0;
-			}
-			
-		/*
-			HASH_PEARSON::HASH()
-			--------------------
-		*/
-		/*!
-			@brief Pearson's hash into a result of SIZE bits (where size = 8, 16, 24, or 32)
-			@param string [in] The byte string to hash.
-			@param length [in] The length of the byte stream, measured in bytes.
-			@return The hash value.
-		*/
-		template <size_t SIZE>
-		static size_t hash(const void *string, size_t length)
-			{
-			if (SIZE == 8)
-				return hash_8(string, length);
-			else if (SIZE == 16)
-				return hash_16(string, length);
-			else if (SIZE == 24)
-				return hash_24(string, length);
-			else if (SIZE == 32)
-				return hash_32(string, length);
-			else
+			/*!
+				@brief Pearson's hash into a 32-bit value.
+				@details Generates 16-bit hash on the a = 0,4,8..., b = 1,5,9,..., c = 2,6,9,..., d = 3,7,10... characters which are then combined together  (d << 24 | c << 16 | b << 8 | a) for the final hash.
+				@param string [in] The byte string to hash.
+				@param length [in] The length of the byte stream, measured in bytes.
+				@return an 32-bit hash value.
+			*/
+			static inline size_t hash_32(const void *string, size_t length)
 				{
-				assert(SIZE == 8 || SIZE == 16 || SIZE == 24 || SIZE == 32);
+				/*
+					Compute the results seperately then combine at the end.
+					This approach is taken so that hash-values are consistent across different endian architectures.
+				*/
+				uint8_t seed_0 = 0;
+				uint8_t seed_1 = 0;
+				uint8_t seed_2 = 0;
+				uint8_t seed_3 = 0;
+
+				/*
+					Take pointers to the start and end of the string
+				*/
+				uint8_t *byte = (uint8_t *)string;
+				uint8_t *end = byte + length;
+
+				/*
+					Walk through the string to hash
+				*/
+				while (byte < end)
+					{
+					seed_0 = random_walk[seed_0 ^ *byte++];
+					if (byte >= end)
+						break;
+
+					seed_1 = random_walk[seed_1 ^ *byte++];
+
+					if (byte >= end)
+						break;
+						
+					seed_2 = random_walk[seed_2 ^ *byte++];
+						
+					if (byte >= end)
+						break;
+
+					seed_3 = random_walk[seed_3 ^ *byte++];
+					}
+				
+				/*
+					construct the hash from each part.
+				*/
+				return seed_3 << 24 | seed_2 << 16 | seed_1 << 8 | seed_0;
 				}
-			}
-		/*
-			HASH_PEARSON::HASH()
-			--------------------
-		*/
-		/*!
-			@brief Pearson's hash into a result of SIZE bits (where size = 8, 16, 24, or 32)
-			@param string [in] The slice to hash.
-			@return The hash value.
-		*/
-		template <size_t SIZE>
-		size_t hash(const slice &string)
-			{
-			if (SIZE == 8)
-				return hash_8(string.address(), string.size());
-			else if (SIZE == 16)
-				return hash_16(string.address(), string.size());
-			else if (SIZE == 24)
-				return hash_24(string.address(), string.size());
-			else if (SIZE == 32)
-				return hash_32(string.address(), string.size());
-			else
+				
+			/*
+				HASH_PEARSON::HASH()
+				--------------------
+			*/
+			/*!
+				@brief Pearson's hash into a result of SIZE bits (where size = 8, 16, 24, or 32)
+				@param string [in] The byte string to hash.
+				@param length [in] The length of the byte stream, measured in bytes.
+				@return The hash value.
+			*/
+			template <size_t SIZE>
+			static size_t hash(const void *string, size_t length)
 				{
-				assert(SIZE == 8 || SIZE == 16 || SIZE == 24 || SIZE == 32);
+				if (SIZE == 8)
+					return hash_8(string, length);
+				else if (SIZE == 16)
+					return hash_16(string, length);
+				else if (SIZE == 24)
+					return hash_24(string, length);
+				else if (SIZE == 32)
+					return hash_32(string, length);
+				else
+					{
+					assert(SIZE == 8 || SIZE == 16 || SIZE == 24 || SIZE == 32);
+					}
 				}
-			}
-			
-			
-			
+			/*
+				HASH_PEARSON::HASH()
+				--------------------
+			*/
+			/*!
+				@brief Pearson's hash into a result of SIZE bits (where size = 8, 16, 24, or 32)
+				@param string [in] The slice to hash.
+				@return The hash value.
+			*/
+			template <size_t SIZE>
+			size_t hash(const slice &string)
+				{
+				if (SIZE == 8)
+					return hash_8(string.address(), string.size());
+				else if (SIZE == 16)
+					return hash_16(string.address(), string.size());
+				else if (SIZE == 24)
+					return hash_24(string.address(), string.size());
+				else if (SIZE == 32)
+					return hash_32(string.address(), string.size());
+				else
+					{
+					assert(SIZE == 8 || SIZE == 16 || SIZE == 24 || SIZE == 32);
+					}
+				}
+			/*
+				HASH_PEARSON::UNITTEST()
+				------------------------
+			*/
+			/*!
+				@brief Unit test this class
+			*/
+			static void unittest(void);
 		};
 	}
 

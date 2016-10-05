@@ -83,9 +83,10 @@ namespace JASS
 				@brief If the key exists in the tree then return the data associated with it, else create empty data for the key
 				@param key [in] The key to search for.
 				@param current [in] A reference to the current node pointer.
+				@paramn ew_node [in] A pointer to the node to add to the tree (do not use, this is used internally to avoid memory wastage)
 				@return The element associated with the key, or an empty element if a new node for the key was created.
 			*/
-			ELEMENT &find_and_add(const KEY &key, std::atomic<node *> &current)
+			ELEMENT &find_and_add(const KEY &key, std::atomic<node *> &current, node *new_node = nullptr)
 				{
 				if (current == nullptr)
 					{
@@ -93,8 +94,19 @@ namespace JASS
 						We have a NULL pointer so we've exhausted the search
 					*/
 					node *empty = nullptr;
-					node *another = new (pool.malloc(sizeof(node))) node(key, pool);
-					current.compare_exchange_strong(empty, another);							// either way current->element is the correct answer now.
+					if (new_node == nullptr)
+						new_node = new (pool.malloc(sizeof(node))) node(key, pool);
+					/*
+						If the Compare and Swap fails then there are two possible reasons: Either some other thread has created
+						this node with the same key, or some other thread has created this node with a different key.  Either way,
+						this can be resolved with a recursive call back into this method.  Note that if the tree is undergoing heavy
+						change then this might fail several times before finally succeeding (one way or another).
+						If the Compare and Swap was successful then the answer is current.load()->element.
+					*/
+					if (!current.compare_exchange_strong(empty, new_node))
+						return find_and_add(key, current, new_node);
+					else
+						return current.load()->element;
 					}
 				/*
 					Search on the left or the right

@@ -12,6 +12,8 @@
 */
 #pragma once
 
+#include <stdlib.h>
+
 /*
 	JASS_ASSERT()
 	-------------

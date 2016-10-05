@@ -7,6 +7,7 @@
 	CACM Volume 33, No. 6 (June 1990),  pp. 677-680
 */
 
+#include "asserts.h"
 #include "hash_pearson.h"
 
 namespace JASS
@@ -34,6 +35,25 @@ namespace JASS
 		0xA8, 0xE5, 0x87, 0x97, 0xAF, 0xD4, 0xD9, 0x45, 0x13, 0x08, 0x76, 0xE6, 0xF6, 0x5E, 0x21, 0xB2,
 		0x49, 0xBF, 0xB0, 0xC3, 0x71, 0xFF, 0x2A, 0x6A, 0x37, 0x44, 0x0F, 0x03, 0xF5, 0xA7, 0x09, 0xE8
 		};
+
+	/*
+		HASH_PEARSON::UNITTEST()
+		------------------------
+	*/
+	void hash_pearson::unittest(void)
+		{
+		size_t eight = hash_pearson::hash_8("here", 4);
+		size_t sixteen = hash_pearson::hash_16("here there", 10);
+		size_t twentyfour = hash_pearson::hash_24("here there and", 14);
+		size_t thirtytwo = hash_pearson::hash_32("here there and everywhere", 25);
+		
+		JASS_assert(eight == 83);
+		JASS_assert(sixteen == 49465);
+		JASS_assert(twentyfour == 13710892);
+		JASS_assert(thirtytwo == 1803130861);
+		
+		puts("hash_pearson::PASSED");
+		}
 	}
 
 #ifdef NEVER
