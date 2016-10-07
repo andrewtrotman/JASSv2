@@ -6,7 +6,7 @@
 */
 /*!
 	@file
-	@brief Thread-safe hash table.
+	@brief Thread-safe hash table (without delete).
 	@author Andrew Trotman
 	@copyright 2016 Andrew Trotman
 */
@@ -27,12 +27,13 @@ namespace JASS
 		----------------
 	*/
 	/*!
-		@brief Thread-safe hash table.
+		@brief Thread-safe hash table (without delete).
 		@details The thread-safe hash table is implemented as an array of pointers to the thread-safe binary tree.  The only
 		way to access elements is with operator[], thus making it easier to access and easier to implement as thread safe.
 		As a thread-safe lock-free structure using a pool allocator, its possible for there to be a leak if multiple threads
 		try and allocate the same node (or same node in the same tree) at the same time. Destructors of ELEMENT and KEY are
-		never called as all memory is managed by the pool allocator.
+		never called as all memory is managed by the pool allocator.  There is no way to remove an element from the hash table
+		once added.
 		@tparam KEY The type used as the key to the element (must include KEY(allocator, KEY) copy constructor).
 		@tparam ELEMENT The element data returned given the key (must include ELEMENT(allocator) constructur).
 		@tparam BITS The size of the hash table will be 2^BITS (must be 8, 16, or 24).
