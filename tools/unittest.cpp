@@ -11,6 +11,7 @@
 #include "parser.h"
 #include "unicode.h"
 #include "bitstring.h"
+#include "hash_table.h"
 #include "binary_tree.h"
 #include "hash_pearson.h"
 #include "allocator_cpp.h"
@@ -83,6 +84,9 @@ int main(void)
 	puts("binary_tree");
 	JASS::binary_tree<size_t, size_t>::unittest();
 	
+	puts("hash_table");
+	JASS::hash_table<JASS::slice, JASS::slice>::unittest();
+
 	puts("ALL UNIT TESTS HAVE PASSED");
 	return 0;
 	}

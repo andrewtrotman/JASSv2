@@ -30,6 +30,8 @@ namespace JASS
 		@brief Thread-safe binary tree that uses an allocator, and consequently never calls delete on elements or keys.
 		@details Data is kept in nodes and in-order with low on the left and high on the right.
 		Elements are addressed using the operator[key] syntax seen with a std::map.  Note that this syntax makes it impossible to have duplicate keys.
+		@tparam KEY The type used as the key to the element (must include KEY(allocator, KEY) copy constructor)
+		@tparam ELEMENT The element data returned given the key (must include ELEMENT(allocator) constructur)
 	*/
 	template <typename KEY, typename ELEMENT>
 	class binary_tree
@@ -95,7 +97,7 @@ namespace JASS
 					*/
 					node *empty = nullptr;
 					if (new_node == nullptr)
-						new_node = new (pool.malloc(sizeof(node))) node(key, pool);
+						new_node = new (pool.malloc(sizeof(node), sizeof(void *))) node(key, pool);
 					/*
 						If the Compare and Swap fails then there are two possible reasons: Either some other thread has created
 						this node with the same key, or some other thread has created this node with a different key.  Either way,

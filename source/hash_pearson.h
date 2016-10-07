@@ -250,7 +250,7 @@ namespace JASS
 				@return The hash value.
 			*/
 			template <size_t SIZE>
-			size_t hash(const slice &string)
+			static size_t hash(const slice &string)
 				{
 				if (SIZE == 8)
 					return hash_8(string.address(), string.size());
