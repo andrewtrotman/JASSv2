@@ -23,6 +23,7 @@ set(JASSlib_FILES
 	bitstring.h
 	bitstring.cpp
 	document.h
+	dynamic_array.h
 	file.h
 	file.cpp
 	hash_table.h

@@ -14,6 +14,7 @@
 #include "hash_table.h"
 #include "binary_tree.h"
 #include "hash_pearson.h"
+#include "dynamic_array.h"
 #include "allocator_cpp.h"
 #include "instream_file.h"
 #include "allocator_pool.h"
@@ -86,7 +87,10 @@ int main(void)
 	
 	puts("hash_table");
 	JASS::hash_table<JASS::slice, JASS::slice>::unittest();
-
+	
+	puts("dynamic_array");
+	JASS::dynamic_array<JASS::slice>::unittest();
+	
 	puts("ALL UNIT TESTS HAVE PASSED");
 	return 0;
 	}

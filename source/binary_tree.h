@@ -223,7 +223,7 @@ namespace JASS
 				serialised << tree;
 				JASS_assert(strcmp(serialised.str().c_str(), answer) == 0);
 				
-				puts("binary_tree:PASSED");
+				puts("binary_tree::PASSED");
 				}
 	};
 

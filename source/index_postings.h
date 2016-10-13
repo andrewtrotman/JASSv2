@@ -1,14 +1,6 @@
 /*
 	INDEX_POSTINGS.H
 	----------------
-	Copyright (c) 2016 Andrew Trotman
-	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
-*/
-/*!
-	@file
-	@brief The structure used to store the postings during indexing.
-	@author Andrew Trotman
-	@copyright 2016 Andrew Trotman
 */
 #pragma once
 
@@ -21,7 +13,7 @@ namespace JASS
 		private:
 			allocator pool;
 
-			uint64_t highest_document_id;
+			size_t highest_document_id;
 
 			uint8_t *document_ids;
 			uint16_t *term_frequencies;
@@ -42,7 +34,7 @@ namespace JASS
 				document_ids = term_frequencies = positions = nullptr;
 				}
 			
-			push_back(uint64_t document_id, uint64_t term_position)
+			push_back(size_t document_id, size_t term_position)
 				{
 				
 				}
