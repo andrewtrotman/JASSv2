@@ -28,6 +28,7 @@ set(JASSlib_FILES
 	hash_table.h
 	hash_pearson.h
 	hash_pearson.cpp
+	index_postings.h
 	instream.h
 	instream_document_trec.h
 	instream_document_trec.cpp
