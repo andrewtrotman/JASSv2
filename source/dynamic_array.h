@@ -27,7 +27,7 @@ namespace JASS
 	/*!
 		@brief Thread-safe grow-only dynamic array using the thread-safe allocator.
 		@details The array data is stored in a linked list of chunks where each chunk is larger then the previous as the array is growing.  Although random access
-		is supported, it is slow as it is necessary to walk the linked list to find the given element.  The iterator, however, does not need to do this and has
+		is supported, it is slow as it is necessary to walk the linked list to find the given element (see operator[]()).  The iterator, however, does not need to do this and has
 		O(1) access time to each element.
 		@tparam TYPE The dynamic array is an array of this type.
 	*/
@@ -199,7 +199,7 @@ namespace JASS
 				@param initial_size [in] The size (in elements) of the initial allocation in the linked list.
 				@param growth_factor [in] The next node in the linked list stored an element this many times larger than the previous (as an integer).
 			*/
-			dynamic_array(allocator &pool, size_t initial_size = 1, double growth_factor = 1.4) :
+			dynamic_array(allocator &pool, size_t initial_size = 1, double growth_factor = 1.5) :
 				pool(pool),
 				growth_factor(growth_factor)
 				{
@@ -292,16 +292,27 @@ namespace JASS
 			*/
 			/*!
 				@brief Return a reference to the given element (counting from 0).
-				@details The C++ std::array has "undefined behavior" if the given index is out-of-range.  This, too, has undefined behaviour in that case.
+				@details This method must walk the linked list to find the requested element and then returns a reference to it.  Since the growth factor might be 1 and the initial
+				allocation size might be 1, the worst case for requesting the final element is O(n) where n is the number of elements in the array.  Walking through the array accessing
+				each element is therefore O(n^2) - so don't do this.  The preferred method for iterating over the array is to use a for each iterator (i.e. through begin() and end()).
+				The C++ std::array has "undefined behavior" if the given index is out-of-range.  This, too, has undefined behaviour in that case.
 				@param element [in] The element to find.
 			*/
 			TYPE &operator[](size_t element)
 				{
+				/*
+					Walk the linked list until we find the requested element
+				*/
 				for (node *current = head; current != nullptr; current = current->next)
 					if (element < current->used)
-						return current->data[element];
+						return current->data[element];				// got it
 					else
-						element -= current->used;
+						element -= current->used;						// its further down the list
+					
+				/*
+					The undefined behaviour is to return the first element in the array.
+				*/
+				return head->data[0];
 				}
 			
 			/*

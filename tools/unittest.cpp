@@ -18,6 +18,7 @@
 #include "allocator_cpp.h"
 #include "instream_file.h"
 #include "allocator_pool.h"
+#include "index_postings.h"
 #include "instream_memory.h"
 #include "allocator_memory.h"
 #include "instream_document_trec.h"
@@ -90,6 +91,9 @@ int main(void)
 	
 	puts("dynamic_array");
 	JASS::dynamic_array<JASS::slice>::unittest();
+
+	puts("index_postings");
+	JASS::index_postings::unittest();
 	
 	puts("ALL UNIT TESTS HAVE PASSED");
 	return 0;
