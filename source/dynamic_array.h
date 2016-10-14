@@ -26,7 +26,9 @@ namespace JASS
 	*/
 	/*!
 		@brief Thread-safe grow-only dynamic array using the thread-safe allocator.
-		@details The array data is stored in a linked list of chunks where each chunk is larger then the previous as the array is growing.
+		@details The array data is stored in a linked list of chunks where each chunk is larger then the previous as the array is growing.  Although random access
+		is supported, it is slow as it is necessary to walk the linked list to find the given element.  The iterator, however, does not need to do this and has
+		O(1) access time to each element.
 		@tparam TYPE The dynamic array is an array of this type.
 	*/
 	template <typename TYPE>
@@ -284,6 +286,23 @@ namespace JASS
 				while(true);
 				}
 			
+			/*
+				DYNAMIC_ARRAY::OPERATOR[]()
+				---------------------------
+			*/
+			/*!
+				@brief Return a reference to the given element (counting from 0).
+				@details The C++ std::array has "undefined behavior" if the given index is out-of-range.  This, too, has undefined behaviour in that case.
+				@param element [in] The element to find.
+			*/
+			TYPE &operator[](size_t element)
+				{
+				for (node *current = head; current != nullptr; current = current->next)
+					if (element < current->used)
+						return current->data[element];
+					else
+						element -= current->used;
+				}
 			
 			/*
 				DYNAMIC_ARRAY::UNITTEST_THREAD()
@@ -352,6 +371,19 @@ namespace JASS
 					JASS_assert(element == thread_count);
 					}
 				
+				/*
+					Simple check to make sure indexing into the array works.  Simply fill the array with numbers and make sure array[element] == element.
+					As this is O(n^2), the size of the array will be kept small so that it completes in reasonable time.
+				*/
+				static constexpr size_t highest_index = 100;
+
+				dynamic_array<size_t> indexable(memory, 1, 1);
+				indexable.unittest_thread(highest_index);
+				for (size_t index = 0; index < highest_index; index++)
+					{
+					JASS_assert(indexable[index] == index);
+					}
+
 				/*
 					Passed!
 				*/
