@@ -89,7 +89,7 @@ namespace JASS
 			const document *document;			///< The document that is currently being parsed.
 			uint8_t *current;						///< The current location within the document.
 			uint8_t *end_of_document;			///< Pointer to the end of the document, used to avoid read past end of buffer.
-			token token;							///< The token that is currently being build.  A reference to this is returned when the token is complete.
+			token current_token;					///< The token that is currently being build.  A reference to this is returned when the token is complete.
 			
 		protected:
 			/*

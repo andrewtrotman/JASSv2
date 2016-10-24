@@ -286,7 +286,15 @@ namespace JASS
 				}
 			
 		};
-		
+
+	/*
+		OPERATOR<<()
+		------------
+		@brief Dump the contents of a slice (as binary data) down an output stream.
+		@param stream [in] The stream to write to.
+		@param tree [in] The slice to write.
+		@return The stream once the slice has been written.
+	*/
 	inline std::ostream &operator<<(std::ostream &stream, const slice &data)
 		{
 		stream.write((char *)data.address(), data.size());

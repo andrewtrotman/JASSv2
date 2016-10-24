@@ -18,6 +18,7 @@
 #include "instream_file.h"
 #include "instream_memory.h"
 #include "instream_document_trec.h"
+#include "index_manager_sequential.h"
 
 /*
 	MAIN()
@@ -29,12 +30,9 @@ int main(int argc, char *argv[])
 	JASS::document document;
 	JASS::instream_file *file = new JASS::instream_file(argv[1]);
 	JASS::instream_document_trec source(*file);
-
+	JASS::index_manager_sequential index;
+	
 	size_t total_documents = 0;
-	size_t start_doc_tags = 0;
-	size_t end_doc_tags = 0;
-	size_t alphas = 0;
-	size_t numerics = 0;
 	
 	do
 		{
@@ -58,18 +56,14 @@ int main(int argc, char *argv[])
 					finished = true;
 					break;
 				case JASS::parser::token::alpha:
-					alphas++;
-					break;
 				case JASS::parser::token::numeric:
-					numerics++;
+					index.term(token);
 					break;
 				case JASS::parser::token::xml_start_tag:
-					if (token.lexeme.size() == 3 && strncmp((char *)token.lexeme.address(), "DOC", 3) == 0)
-						start_doc_tags++;
+					index.begin_document();
 					break;
 				case JASS::parser::token::xml_end_tag:
-					if (token.lexeme.size() == 3 && strncmp((char *)token.lexeme.address(), "DOC", 3) == 0)
-						end_doc_tags++;
+					index.end_document();
 					break;
 				default:
 					break;
@@ -80,10 +74,6 @@ int main(int argc, char *argv[])
 	while (!document.isempty());
 	
 	printf("Documents:%lld\n", (long long)total_documents);
-	printf("<DOC>    :%lld\n", (long long)start_doc_tags);
-	printf("</DOC>   :%lld\n", (long long)end_doc_tags);
-	printf("alphas   :%lld\n", (long long)alphas);
-	printf("numerics :%lld\n", (long long)numerics);
 
 	return 0;
 	}

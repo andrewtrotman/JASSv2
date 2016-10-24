@@ -240,6 +240,7 @@ namespace JASS
 					assert(SIZE == 8 || SIZE == 16 || SIZE == 24 || SIZE == 32);
 					}
 				}
+			
 			/*
 				HASH_PEARSON::HASH()
 				--------------------
@@ -265,6 +266,7 @@ namespace JASS
 					assert(SIZE == 8 || SIZE == 16 || SIZE == 24 || SIZE == 32);
 					}
 				}
+			
 			/*
 				HASH_PEARSON::UNITTEST()
 				------------------------

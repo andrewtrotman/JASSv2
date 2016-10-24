@@ -20,7 +20,6 @@ namespace JASS
 			dynamic_array<uint32_t > positions;
 			
 		private:
-	
 			/*
 				private to avoid parameterless construction (this can't be called, so can't leak either).
 			*/
@@ -62,9 +61,36 @@ namespace JASS
 				highest_position = position;
 				}
 			
+			void text_render(std::ostream &stream) const
+				{
+				auto frequency = term_frequencies.begin();
+				auto position = positions.begin();
+				for (const auto &id : document_ids)
+					{
+					stream << '<' << id << ',' << *frequency << ',';
+					
+					for (size_t which = 0; which < *frequency; which++)
+						{
+						stream << *position << ',';
+						++position;
+						}
+
+					stream << '>';
+						
+					++frequency;
+					}
+				}
+			
 			static void unittest(void)
 				{
 				index_postings postings;
 				}
 		};
+		
+	inline std::ostream &operator<<(std::ostream &stream, const index_postings &data)
+		{
+		data.text_render(stream);
+		return stream;
+		}
+
 	}

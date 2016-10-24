@@ -124,15 +124,15 @@ namespace JASS
 			Unicode normalisation can result in one codepoint becoming
 			more than one ASCII digit.
 		*/
-		uint8_t *buffer_pos = token.buffer;
-		uint8_t *buffer_end = token.buffer + sizeof(token.buffer);
+		uint8_t *buffer_pos = current_token.buffer;
+		uint8_t *buffer_end = current_token.buffer + sizeof(current_token.buffer);
 
 		/*
 			ASCII Alphabetics
 		*/
 		if (ascii::isalpha(*current))
 			{
-			token.type = token.alpha;
+			current_token.type = current_token.alpha;
 			/*
 				As the first character is ASCII then assume the remainder will be.
 			*/
@@ -161,7 +161,8 @@ namespace JASS
 		*/
 		else if (ascii::isdigit(*current))
 			{
-			token.type = token.numeric;
+			current_token.type = current_token.numeric;
+			
 			/*
 				As the first character is ASCII then assume the remainder will be.
 			*/
@@ -193,7 +194,7 @@ namespace JASS
 			if (*current != '<')
 				{
 				*buffer_pos++ = *current++;
-				token.type = token.other;				// Just plain old non alphanumerics.  Returned one character at a time.
+				current_token.type = current_token.other;				// Just plain old non alphanumerics.  Returned one character at a time.
 				}
 			else
 				{
@@ -252,15 +253,15 @@ namespace JASS
 						was it an open tag or an empty tag?
 					*/
 					if (*(current - 1) == '/')
-						token.type = token.xml_empty_tag;				// Empty tag
+						current_token.type = current_token.xml_empty_tag;				// Empty tag
 					else
-						token.type = token.xml_start_tag;				// Start tag.
+						current_token.type = current_token.xml_start_tag;				// Start tag.
 						
 					/*
 						copy the tag into the token buffer
 					*/
-					size_t bytes = maths::min((size_t)(end - start), sizeof(token.buffer));
-					memcpy(token.buffer, start, bytes);
+					size_t bytes = maths::min((size_t)(end - start), sizeof(current_token.buffer));
+					memcpy(current_token.buffer, start, bytes);
 					buffer_pos += bytes;
 					current++;
 					}
@@ -274,16 +275,16 @@ namespace JASS
 						{
 						current++;
 						uint8_t *found = std::find(current, end_of_document, '>');
-						size_t bytes = maths::min((size_t)(found - current), sizeof(token.buffer));
-						memcpy(token.buffer, current, bytes);
-						buffer_pos = token.buffer + bytes;
+						size_t bytes = maths::min((size_t)(found - current), sizeof(current_token.buffer));
+						memcpy(current_token.buffer, current, bytes);
+						buffer_pos = current_token.buffer + bytes;
 						current = found + 1;
-						token.type = token.xml_end_tag;
+						current_token.type = current_token.xml_end_tag;
 						}
 					else
 						{
 						*buffer_pos++ = *(current - 1);
-						token.type = token.other;				// Just plain old non alphanumerics.  Returned one character at a time.
+						current_token.type = current_token.other;				// Just plain old non alphanumerics.  Returned one character at a time.
 						}
 					}
 				else if (codepoint == '?')
@@ -294,11 +295,11 @@ namespace JASS
 					static uint8_t close_pi[] = "?>";
 					current++;
 					uint8_t *found = std::search(current, end_of_document, close_pi, close_pi + sizeof(close_pi) - 1);
-					size_t bytes = maths::min((size_t)(found - current), sizeof(token.buffer));
-					memcpy(token.buffer, current, bytes);
-					buffer_pos = token.buffer + bytes;
+					size_t bytes = maths::min((size_t)(found - current), sizeof(current_token.buffer));
+					memcpy(current_token.buffer, current, bytes);
+					buffer_pos = current_token.buffer + bytes;
 					current = found + sizeof(close_pi) - 1;
-					token.type = token.xml_processing_instruction;
+					current_token.type = current_token.xml_processing_instruction;
 					}
 				else if (codepoint == '!')
 					{
@@ -311,11 +312,11 @@ namespace JASS
 						static uint8_t close_comment[] = "-->";
 						current += 2;
 						uint8_t *found = std::search(current, end_of_document, close_comment, close_comment + sizeof(close_comment) - 1);
-						size_t bytes = maths::min((size_t)(found - current), sizeof(token.buffer));
-						memcpy(token.buffer, current, bytes);
-						buffer_pos = token.buffer + bytes;
+						size_t bytes = maths::min((size_t)(found - current), sizeof(current_token.buffer));
+						memcpy(current_token.buffer, current, bytes);
+						buffer_pos = current_token.buffer + bytes;
 						current = found + sizeof(close_comment) - 1;
-						token.type = token.xml_comment;
+						current_token.type = current_token.xml_comment;
 						}
 					else if (current < end_of_document && ascii::isupper(*current))
 						{
@@ -328,11 +329,11 @@ namespace JASS
 							[82]     NotationDecl::= '<!NOTATION' S Name S (ExternalID | PublicID) S? '>'
 						*/
 						uint8_t *found = std::find(current, end_of_document, '>');
-						size_t bytes = maths::min((size_t)(found - current), sizeof(token.buffer));
-						memcpy(token.buffer, current, bytes);
-						buffer_pos = token.buffer + bytes;
+						size_t bytes = maths::min((size_t)(found - current), sizeof(current_token.buffer));
+						memcpy(current_token.buffer, current, bytes);
+						buffer_pos = current_token.buffer + bytes;
 						current = found + 1;
-						token.type = token.xml_definition;
+						current_token.type = current_token.xml_definition;
 						}
 					else if (current + 9 < end_of_document && *current == '[' && strncmp((char *)current + 1, "CDATA[", 6) == 0)
 						{
@@ -345,11 +346,11 @@ namespace JASS
 						static uint8_t close_block[] = "]]>";
 						current += 7;
 						uint8_t *found = std::search(current, end_of_document, close_block, close_block + sizeof(close_block) - 1);
-						size_t bytes = maths::min((size_t)(found - current), sizeof(token.buffer));
-						memcpy(token.buffer, current, bytes);
-						buffer_pos = token.buffer + bytes;
+						size_t bytes = maths::min((size_t)(found - current), sizeof(current_token.buffer));
+						memcpy(current_token.buffer, current, bytes);
+						buffer_pos = current_token.buffer + bytes;
 						current = found + sizeof(close_block) - 1;
-						token.type = token.xml_cdata;
+						current_token.type = current_token.xml_cdata;
 						}
 					else if (current + 4 < end_of_document && *current == '[')
 						{
@@ -366,22 +367,22 @@ namespace JASS
 						*/
 						current++;
 						uint8_t *found = std::find(current, end_of_document, '[');
-						size_t bytes = maths::min((size_t)(found - current), sizeof(token.buffer));
-						memcpy(token.buffer, current, bytes);
-						buffer_pos = token.buffer + bytes;
+						size_t bytes = maths::min((size_t)(found - current), sizeof(current_token.buffer));
+						memcpy(current_token.buffer, current, bytes);
+						buffer_pos = current_token.buffer + bytes;
 						current = found + 1;
-						token.type = token.xml_conditional;
+						current_token.type = current_token.xml_conditional;
 						}
 					else
 						{
 						*buffer_pos++ = *(current - 1);
-						token.type = token.other;				// Just plain old non alphanumerics.  Returned one character at a time.
+						current_token.type = current_token.other;				// Just plain old non alphanumerics.  Returned one character at a time.
 						}
 					}
 				else
 					{
 					*buffer_pos++ = *(current - 1);
-					token.type = token.other;				// Just plain old non alphanumerics.  Returned one character at a time.
+					current_token.type = current_token.other;				// Just plain old non alphanumerics.  Returned one character at a time.
 					}
 				}
 			}
@@ -392,7 +393,7 @@ namespace JASS
 			*/
 			if (unicode::isalpha(codepoint))
 				{
-				token.type = token.alpha;
+				current_token.type = current_token.alpha;
 				build_unicode_alphabetic_token(codepoint, bytes, buffer_pos, buffer_end);
 				}
 			/*
@@ -400,7 +401,7 @@ namespace JASS
 			*/
 			else if (unicode::isdigit(codepoint))
 				{
-				token.type = token.numeric;
+				current_token.type = current_token.numeric;
 				build_unicode_numeric_token(codepoint, bytes, buffer_pos, buffer_end);
 				}
 			/*
@@ -411,7 +412,7 @@ namespace JASS
 				/*
 					Return a single characters being of type "other"
 				*/
-				token.type = token.other;
+				current_token.type = current_token.other;
 				current += bytes == 0 ? 1 : bytes;
 				
 				for (const uint32_t *folded = unicode::tocasefold(codepoint); *folded != 0; folded++)
@@ -419,8 +420,8 @@ namespace JASS
 				}
 			}
 
-		token.lexeme = slice((void *)token.buffer, (void *)buffer_pos);
-		return token;
+		current_token.lexeme = slice((void *)current_token.buffer, (void *)buffer_pos);
+		return current_token;
 		}
 		
 	/*

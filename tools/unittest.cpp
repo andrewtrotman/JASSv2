@@ -17,11 +17,13 @@
 #include "dynamic_array.h"
 #include "allocator_cpp.h"
 #include "instream_file.h"
+#include "index_manager.h"
 #include "allocator_pool.h"
 #include "index_postings.h"
 #include "instream_memory.h"
 #include "allocator_memory.h"
 #include "instream_document_trec.h"
+#include "index_manager_sequential.h"
 
 /*
 	MAIN()
@@ -94,6 +96,12 @@ int main(void)
 
 	puts("index_postings");
 	JASS::index_postings::unittest();
+	
+	puts("index_manager");
+	JASS::index_manager::unittest();
+
+	puts("index_manager_sequential");
+	JASS::index_manager_sequential::unittest();
 	
 	puts("ALL UNIT TESTS HAVE PASSED");
 	return 0;
