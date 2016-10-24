@@ -1,6 +1,14 @@
 /*
 	INDEX_MANAGER.H
 	---------------
+	Copyright (c) 2016 Andrew Trotman
+	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
+*/
+/*!
+	@file
+	@brief Base class for the indexer object that stored the actual index during indexing.
+	@author Andrew Trotman
+	@copyright 2016 Andrew Trotman
 */
 #pragma once
 
@@ -8,71 +16,184 @@
 
 namespace JASS
 	{
+	/*
+		CLASS INDEX_MANAGER
+		-------------------
+	*/
+	/*!
+		@brief Base class for holding the index during indexing.
+		@details This class is a base class used to define the interface for different approaches to indexing.  Once an object of this type has been
+		declared it is used by calling begin_document() at the beginning of each document, end_document() at the end of each document, and term()
+		for each term in the token stream (i.e. "the cat and the dog" is 5 tokens, "the", "cat", "and", "the", "dog".  This class does not stem and
+		it does not stop words.  That behaviour is exterior to this class.  To find out how many documents have been indexed up-to a given point call
+		get_highest_document_id().  To find out how many tokens have been indexed call get_highest_term_id().  When subclassing, remember to call this
+		class's methods from the over-ridden methods in the sub-class.
+	*/
 	class index_manager
 		{
 		private:
-			size_t highest_document_id;
-			size_t highest_term_id;
+			size_t highest_document_id;					///< The highest document_id seen so far (counts from 1).
+			size_t highest_term_id;							///< The highest term_id seen so far (counts from 1).
 			
 		public:
+			/*
+				INDEX_MANAGER::INDEX_MANAGER()
+				------------------------------
+			*/
+			/*!
+				@brief Constructor
+			*/
 			index_manager() :
-				highest_document_id(0),
-				highest_term_id(0)
+				highest_document_id(0),				// initialised to 0, this is the number of documents that have (or is) being indexed.
+				highest_term_id(0)					// initialised to 0, this is the number of terms that have been seen.
 				{
 				/*
-					Nothing.
+					Nothing
 				*/
 				}
 			
+			/*
+				INDEX_MANAGER::~INDEX_MANAGER()
+				-------------------------------
+			*/
+			/*!
+				@brief Destructor
+			*/
 			virtual ~index_manager()
 				{
 				/*
-					Nothing.
+					Nothing
 				*/
 				}
 			
+			/*
+				INDEX_MANAGER::BEGIN_DOCUMENT()
+				-------------------------------
+			*/
+			/*!
+				@brief Tell this object that you're about to start indexing a new object.
+			*/
 			virtual void begin_document(void)
 				{
 				highest_document_id++;
 				}
 			
+			/*
+				INDEX_MANAGER::TERM()
+				---------------------
+			*/
+			/*!
+				@brief Hand a new term from the token stream to this object.
+				@param term [in] The term from the token stream.
+			*/
 			virtual void term(const parser::token &term)
 				{
 				highest_term_id++;
 				}
 			
+			/*
+				INDEX_MANAGER::END_DOCUMENT()
+				-----------------------------
+			*/
+			/*!
+				@brief Tell this object that you've finished with the current document (and are about to move on to the next, or are completely finished).
+			*/
 			virtual void end_document(void)
 				{
 				/*
-					Nothing.
+					Nothing
 				*/
 				}
 			
-			size_t get_highest_term_id(void) const
+			/*
+				INDEX_MANAGER::TEXT_RENDER()
+				----------------------------
+			*/
+			/*!
+				@brief Dump a human-readable version of the index down the stream.
+				@param stream [in] The stream to write to.
+			*/
+			virtual void text_render(std::ostream &stream) const
 				{
-				return highest_term_id;
+				/*
+					Nothing
+				*/
 				}
-			
+
+			/*
+				INDEX_MANAGER::GET_HIGHEST_DOCUMENT_ID()
+				----------------------------------------
+			*/
+			/*!
+				@brief Return the number of documents that have been successfully indexed or are in the process of being indexed.
+			*/
 			size_t get_highest_document_id(void) const
 				{
 				return highest_document_id;
 				}
 			
+			/*
+				INDEX_MANAGER::GET_HIGHEST_TERM_ID()
+				------------------------------------
+			*/
+			/*!
+				@brief Return the number of tokens that have been successfully indexed.
+			*/
+			size_t get_highest_term_id(void) const
+				{
+				return highest_term_id;
+				}
+			
+			/*
+				INDEX_MANAGER::UNITTEST()
+				-------------------------
+			*/
+			/*!
+				@brief Unit test this class.
+			*/
 			static void unittest(void)
 				{
+				/*
+					This just creates an empty index and makes sure the index is empty
+				*/
 				index_manager index;
-				
+			
 				JASS_assert(index.get_highest_term_id() == 0);
 				JASS_assert(index.get_highest_document_id() == 0);
-				
+
+				/*
+					Add a token
+				*/
 				parser::token token;
 				index.begin_document();
 				index.term(token);
 				index.end_document();
 
+				/*
+					Make sure its no longer empty
+				*/
 				JASS_assert(index.get_highest_term_id() == 1);
 				JASS_assert(index.get_highest_document_id() == 1);
+				
+				/*
+					Done.
+				*/
 				puts("index_manager::PASSED");
 				}
 		};
+		
+	/*
+		OPERATOR<<()
+		------------
+		@brief Dump a human readable version of the index down an output stream.
+		@param stream [in] The stream to write to.
+		@param tree [in] The index to write.
+		@return The stream once the index has been written.
+	*/
+	inline std::ostream &operator<<(std::ostream &stream, const index_manager &data)
+		{
+		data.text_render(stream);
+		return stream;
+		}
+
 	}
