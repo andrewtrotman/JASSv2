@@ -27,6 +27,10 @@ namespace JASS
 	class index_postings
 		{
 		private:
+			static constexpr size_t initial_size = 4;		///< Initially allocate space for 4 elements
+			static constexpr double growth_factor = 1.5;	///< Grow dynamic arrays by a factor of 1.5
+			
+		private:
 			size_t highest_document;							///< The higest document number seen in this postings list (counting from 1)
 			size_t highest_position;							///< The higest position seen in this postings list (counting from 1)
 
@@ -40,7 +44,7 @@ namespace JASS
 				--------------------------------
 			*/
 			/*!
-				@brief Parameterless construction is forbidden (private).
+				@brief Parameterless construction is forbidden (so private).
 			*/
 			index_postings() :
 				index_postings(*new allocator_pool(1024))
@@ -60,11 +64,11 @@ namespace JASS
 				@param memory_pool [in] All allocation is from this allocator.
 			*/
 			index_postings(allocator &memory_pool) :
-				highest_document(0),									// starts at 0, counts from 1
-				highest_position(0),									// starts at 0, counts from 1
-				document_ids(memory_pool),							// give the allocator to the array
-				term_frequencies(memory_pool),					// give the allocator to the array
-				positions(memory_pool)								// give the allocator to the array
+				highest_document(0),															// starts at 0, counts from 1
+				highest_position(0),															// starts at 0, counts from 1
+				document_ids(memory_pool, initial_size, growth_factor),			// give the allocator to the array
+				term_frequencies(memory_pool, initial_size, growth_factor),		// give the allocator to the array
+				positions(memory_pool, initial_size, growth_factor)				// give the allocator to the array
 				{
 				/*
 					Nothing
@@ -82,42 +86,68 @@ namespace JASS
 				{
 				if (document_id == highest_document)
 					{
+					/*
+						If this is the second or subseqent occurrence then just add 1 to the term frequency (and make sure it doesn't overflow).
+					*/
 					uint16_t &frequency = term_frequencies.back();
 					if (frequency <= 0xFFFE)
 						frequency++;
 					}
 				else
 					{
+					/*
+						First time we've seen this term in this document so add a new document ID and set the term frequency to 1.
+					*/
 					document_ids.push_back(document_id);
+					highest_document = document_id;
 					term_frequencies.push_back(1);
 					}
+					
+				/*
+					Always add a new position
+				*/
 				positions.push_back(position);
 				highest_position = position;
 				}
+			
 			/*
 				INDEX_POSTINGS::TEXT_RENDER()
 				-----------------------------
 			*/
 			/*!
-				@brief Dump a human-readable version of the postings list down the stream.
+				@brief Dump a human-readable version of the postings list down the stream. Format is: <DocID, TF, Pos, Pos, Pos>...
 				@param stream [in] The stream to write to.
 			*/
 			void text_render(std::ostream &stream) const
 				{
-				auto frequency = term_frequencies.begin();
-				auto position = positions.begin();
+				/*
+					Walk all three lists at once, keying on the document_id list
+					for which there is 1 term_frequency and term_frequency positions
+				*/
+				auto frequency = term_frequencies.begin();			// increment with each document_id
+				auto position = positions.begin();						// increment by frequency with each document_id
+				
+				/*
+					Key on the document_ids
+				*/
 				for (const auto &id : document_ids)
 					{
-					stream << '<' << id << ',' << *frequency << ',';
+					stream << '<' << id << ',' << *frequency;
 					
+					/*
+						Walk the position list
+					*/
 					for (size_t which = 0; which < *frequency; which++)
 						{
-						stream << *position << ',';
+						stream << ',' << *position;
 						++position;
 						}
 
 					stream << '>';
 						
+					/*
+						Move on to the next frequencym, as the next document_id happens in the for loop
+					*/
 					++frequency;
 					}
 				}
@@ -132,6 +162,19 @@ namespace JASS
 			static void unittest(void)
 				{
 				index_postings postings;
+				
+				postings.push_back(1, 100);
+				postings.push_back(1, 101);
+				postings.push_back(2, 102);
+				postings.push_back(2, 103);
+				
+				std::ostringstream result;
+				
+				postings.text_render(result);
+				
+				JASS_assert(strcmp(result.str().c_str(), "<1,2,100,101><2,2,102,103>") == 0);
+				
+				puts("index_postings::PASSED");
 				}
 		};
 		

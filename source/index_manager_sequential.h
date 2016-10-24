@@ -145,6 +145,36 @@ namespace JASS
 				instream_document_trec source(*file);	// Set up the instream
 				index_manager_sequential index;			// And finally a index to populate
 				
+				/*
+					This is the answer that is expected
+				*/
+				std::string answer
+					(
+					"6-><6,1,21>\n"
+					"1-><1,1,1>\n"
+					"4-><4,1,10>\n"
+					"5-><5,1,15>\n"
+					"3-><3,1,6>\n"
+					"8-><8,1,36>\n"
+					"7-><7,1,28>\n"
+					"2-><2,1,3>\n"
+					"9-><9,1,45>\n"
+					"10-><10,1,55>\n"
+					"four-><7,1,35><8,1,43><9,1,52><10,1,62>\n"
+					"eight-><3,1,9><4,1,13><5,1,18><6,1,24><7,1,31><8,1,39><9,1,48><10,1,58>\n"
+					"five-><6,1,27><7,1,34><8,1,42><9,1,51><10,1,61>\n"
+					"seven-><4,1,14><5,1,19><6,1,25><7,1,32><8,1,40><9,1,49><10,1,59>\n"
+					"two-><9,1,54><10,1,64>\n"
+					"six-><5,1,20><6,1,26><7,1,33><8,1,41><9,1,50><10,1,60>\n"
+					"three-><8,1,44><9,1,53><10,1,63>\n"
+					"one-><10,1,65>\n"
+					"nine-><2,1,5><3,1,8><4,1,12><5,1,17><6,1,23><7,1,30><8,1,38><9,1,47><10,1,57>\n"
+					"ten-><1,1,2><2,1,4><3,1,7><4,1,11><5,1,16><6,1,22><7,1,29><8,1,37><9,1,46><10,1,56>\n"
+					);
+
+				/*
+					The easiest way to test this is to actually build the index for a set of document... and this is where unittest_data::ten_documents comes in handy
+				*/
 				do
 					{
 					/*
@@ -197,7 +227,10 @@ namespace JASS
 					}
 				while (!document.isempty());
 				
-				std::cout << index;
+				std::ostringstream computed_result;
+				computed_result << index;
+				
+				JASS_assert(computed_result.str() == answer);
 				
 				puts("index_manager_sequential::PASSED");
 				}
