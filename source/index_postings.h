@@ -12,42 +12,59 @@ namespace JASS
 	class index_postings
 		{
 		private:
-			allocator &pool;
+			size_t highest_document;
+			size_t highest_position;
 
-			size_t highest_document_id;
-
-			dynamic_array<uint8_t> document_ids;
+			dynamic_array<uint32_t> document_ids;
 			dynamic_array<uint16_t> term_frequencies;
-			dynamic_array<uint8_t > positions;
+			dynamic_array<uint32_t > positions;
 			
 		private:
+	
+			/*
+				private to avoid parameterless construction (this can't be called, so can't leak either).
+			*/
 			index_postings() :
-				pool(*new allocator_pool),
-				document_ids(pool),
-				term_frequencies(pool),
-				positions(pool)
+				index_postings(*new allocator_pool(1024))
 				{
-				highest_document_id = 0;
+				/*
+					Nothing
+				*/
 				}
-			
+
 		public:
 			index_postings(allocator &pool) :
-				pool(pool),
+				highest_document(0),
+				highest_position(0),
 				document_ids(pool),
 				term_frequencies(pool),
 				positions(pool)
 				{
-				highest_document_id = 0;
+				/*
+					Nothing
+				*/
 				}
 			
-			void push_back(size_t document_id, size_t term_position)
+			virtual void push_back(size_t document_id, size_t position)
 				{
-				
+				if (document_id == highest_document)
+					{
+					uint16_t &frequency = term_frequencies.back();
+					if (frequency <= 0xFFFE)
+						frequency++;
+					}
+				else
+					{
+					document_ids.push_back(document_id);
+					term_frequencies.push_back(1);
+					}
+				positions.push_back(position);
+				highest_position = position;
 				}
+			
 			static void unittest(void)
 				{
 				index_postings postings;
-				postings.push_back(1,1);
 				}
 		};
 	}

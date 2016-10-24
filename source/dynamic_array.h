@@ -48,7 +48,7 @@ namespace JASS
 					TYPE *data;									///< The array data for this node.
 					node *next;									///< Pointer to the next node in the chain.
 					size_t allocated;							///< The size of this node's data object (in elements).
-					std::atomic<size_t> used;				///< The numner of elements in data that are used (always <= allocated).
+					std::atomic<size_t> used;				///< The number of elements in data that are used (always <= allocated).
 					
 				public:
 					/*
@@ -234,6 +234,19 @@ namespace JASS
 				{
 				return iterator(nullptr, 0);
 				}
+
+			/*
+				DYNAMIC_ARRAY::BACK()
+				---------------------
+			*/
+			/*!
+				@brief Return an reference to the final (used) element in the dynamic array.
+				@return Reference to the last used element in the array.
+			*/
+			TYPE &back(void) const
+				{
+				return tail.load()->data[tail.load()->used - 1];
+				}
 			
 			/*
 				DYNAMIC_ARRAY::PUSH_BACK()
@@ -395,6 +408,16 @@ namespace JASS
 					JASS_assert(indexable[index] == index);
 					}
 
+				/*
+					Check the back() method.
+				*/
+				dynamic_array<size_t> another(memory, 1, 1);
+				for (size_t which = 0; which < 10; which++)
+					{
+					another.push_back(which);
+					JASS_assert(another.back() == which);
+					}
+				
 				/*
 					Passed!
 				*/

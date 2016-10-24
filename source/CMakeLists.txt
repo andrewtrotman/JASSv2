@@ -22,6 +22,9 @@ set(JASSlib_FILES
 	binary_tree.h
 	bitstring.h
 	bitstring.cpp
+	compress_integer.h
+	compress_integer_variable_byte.h
+	compress_integer_variable_byte.cpp
 	document.h
 	dynamic_array.h
 	file.h
