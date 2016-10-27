@@ -1,98 +1,206 @@
 /*
-	COMPRESS_VARIABLE_BYTE.H
-	------------------------
+	COMPRESS_INTEGER_VARIABLE_BYTE.H
+	--------------------------------
+	Copyright (c) 2016 Andrew Trotman
+	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
-#ifndef COMPRESS_VARIABLE_BYTE_H_
-#define COMPRESS_VARIABLE_BYTE_H_
+/*!
+	@file
+	@brief Variable byte compression for integer sequences.
+	@author Andrew Trotman
+	@copyright 2016 Andrew Trotman
+*/
+#pragma once
 
 #include "compress_integer.h"
 
-/*
-	class ANT_COMPRESS_VARIABLE_BYTE
-	--------------------------------
-*/
-class ANT_compress_variable_byte : public ANT_compress
-{
-public:
-	ANT_compress_variable_byte() {}
-	virtual ~ANT_compress_variable_byte() {}
+namespace JASS
+	{
+	/*
+		CLASS COMPRESS_INTEGER_VARIABLE_BYTE
+		------------------------------------
+	*/
+	/*!
+		@brief Variable byte compression for integer sequences.
+		@details Variable byte compression is a whole suite of different techniques, for details see:
+		A. Trotman (2014), Compression, SIMD, and Postings Lists. In Proceedings of the 2014 Australasian Document Computing Symposium (ADCS 2014), Pages 50-58. DOI=http://dx.doi.org/10.1145/2682862.2682870
+		This particular version uses a stop-bit in the high bit of the last byte of the encoded integer, 
+		stores the integer big-endian (high byte first), and uses loop unwinding for decoding efficiency.
+		The encoding is straight forward.  An integer is broken into 7-bit chunks with the top bit of each
+		chunk being 0, except the last byte which has a 1 in the top bit.  So, the integer 1905 (0x771)
+		is the binary sequence 011101110001, which broken into 7-bit chunks is 0001110 1110001.  These then
+		get the high bits added, 0 for all except the last byte, [0]0001110 [1]1110001, then write out
+		the byte sequence high byte first 0x0E 0xF1.
+		This implementation works with 32-bit and 64-bit integers.
+	*/
+	class compress_integer_variable_byte : public compress_integer
+		{
+		public:
+			/*
+				COMPRESS_INTEGER_VARIABLE_BYTE::COMPRESS_INTEGER_VARIABLE_BYTE()
+				----------------------------------------------------------------
+			*/
+			/*!
+				@brief Constructor.
+			*/
+			compress_integer_variable_byte()
+				{
+				}
+			
+			/*
+				COMPRESS_INTEGER_VARIABLE_BYTE::~COMPRESS_INTEGER_VARIABLE_BYTE()
+				-----------------------------------------------------------------
+			*/
+			/*!
+				@brief Constructor.
+			*/
+			virtual ~compress_integer_variable_byte()
+				{
+				}
 
-	virtual long long compress(unsigned char *destination, long long destination_length, ANT_compressable_integer *source, long long source_integers);
-	virtual void decompress(ANT_compressable_integer *destination, unsigned char *source, long long destination_integers);
+			/*
+				COMPRESS_INTEGER_VARIABLE_BYTE::ENCODE()
+				----------------------------------------
+			*/
+			/*!
+				@brief Encode a sequence of integers returning the number of bytes used for the encoding, or 0 if the encoded sequence doesn't fit in the buffer.
+				@param encoded [out] The sequence of bytes that is the encoded sequence.
+				@param encoded_buffer_length [in] The length (in bytes) of the output buffer, encoded.
+				@param source [in] The sequence of integers to encode.
+				@param source_integers [in] The length (in integers) of the source buffer.
+				@return The number of bytes used to encode the integer sequence, or 0 on error (i.e. overflow).
+			*/
+			virtual size_t encode(uint8_t *encoded, size_t encoded_buffer_length, const integer *source, size_t source_integers);
+			
+			/*
+				COMPRESS_INTEGER_VARIABLE_BYTE::DECODE()
+				----------------------------------------
+			*/
+			/*!
+				@brief Decode a sequence of integers encoded with this codex.
+				@param decoded [out] The sequence of decoded integers.
+				@param integers_to_decode [in] The minimum number of integers to decode (it may decode more).
+				@param source [in] The encoded integers.
+				@param source_length [in] The length (in bytes) of the source buffer.
+			*/
+			virtual void decode(integer *decoded, size_t integers_to_decode, const uint8_t *source, size_t source_length);
 
-	static inline long compress_bytes_needed(long long docno);
-	static inline void compress_into(unsigned char *dest, long long docno);
-} ;
+			/*
+				COMPRESS_INTEGER_VARIABLE_BYTE::BYTES_NEEDED_FOR()
+				--------------------------------------------------
+			*/
+			/*!
+				@brief Return the number of bytes necessary to encode the integer value.
+				@param value [in] The value whose encoded size is being computed
+				@return the numner of bytes needed to store the enoding of value.
+			*/
+			static inline size_t bytes_needed_for(integer value)
+				{
+				/*
+					The size can be computed by compairing to a bunch of constants.
+				*/
+				if (value < ((uint64_t)1 << 7))
+					return 1;
+				else if (value < ((uint64_t)1 << 14))
+					return 2;
+				else if (value < ((uint64_t)1 << 21))
+					return 3;
+				else if (value < ((uint64_t)1 << 28))
+					return 4;
+#if JASS_COMPRESS_INTEGER_BITS_PER_INTEGER == 32
+				else
+					return 5;
+#else
+				else if (value < ((uint64_t)1 << 35))
+					return 5;
+				else if (value < ((uint64_t)1 << 42))
+					return 6;
+				else if (value < ((uint64_t)1 << 49))
+					return 7;
+				else if (value < ((uint64_t)1 << 56))
+					return 8;
+				else if (value < ((uint64_t)1 << 63))
+					return 9;
+				else
+					return 10;
+#endif
+				}
 
-/*
-	ANT_COMPRESS_VARIABLE_BYTE::COMPRESS_BYTES_NEEDED()
-	---------------------------------------------------
-*/
-inline long ANT_compress_variable_byte::compress_bytes_needed(long long docno)
-{
-if (docno < ((long long)1 << 7))
-	return 1;
-else if (docno < ((long long)1 << 14))
-	return 2;
-else if (docno < ((long long)1 << 21))
-	return 3;
-else if (docno < ((long long)1 << 28))
-	return 4;
-else if (docno < ((long long)1 << 35))
-	return 5;
-else if (docno < ((long long)1 << 42))
-	return 6;
-else if (docno < ((long long)1 << 49))
-	return 7;
-else if (docno < ((long long)1 << 56))
-	return 8;
-else
-	return 9;
+			/*
+				COMPRESS_INTEGER_VARIABLE_BYTE::COMPRESS_INTO()
+				-----------------------------------------------
+			*/
+			/*!
+				@brief Encode the given integer placing the encoding into destination (whose size is not validated).
+				@param destination [out] The buffer to write into.
+				@param value [in] The value to encode.
+			*/
+			static inline void compress_into(uint8_t *destination, integer value)
+				{
+				/*
+					Work out how many bytes it'll take to encode
+				*/
+				if (value < ((uint64_t)1 << 7))
+					goto one;
+				else if (value < ((uint64_t)1 << 14))
+					goto two;
+				else if (value < ((uint64_t)1 << 21))
+					goto three;
+				else if (value < ((uint64_t)1 << 28))
+					goto four;
+#if JASS_COMPRESS_INTEGER_BITS_PER_INTEGER == 32
+				goto five;
+#else
+				else if (value < ((uint64_t)1 << 35))
+					goto five;
+				else if (value < ((uint64_t)1 << 42))
+					goto six;
+				else if (value < ((uint64_t)1 << 49))
+					goto seven;
+				else if (value < ((uint64_t)1 << 56))
+					goto eight;
+				else if (value < ((uint64_t)1 << 63))
+					goto nine;
+				else
+					goto ten;
+#endif
+
+				/*
+					Now encode byte at a time with fall-through
+				*/
+#if JASS_COMPRESS_INTEGER_BITS_PER_INTEGER == 64
+				ten:
+					*destination++ = (value >> 63) & 0x7F;
+				nine:
+					*destination++ = (value >> 56) & 0x7F;
+				eight:
+					*destination++ = (value >> 49) & 0x7F;
+				seven:
+					*destination++ = (value >> 42) & 0x7F;
+				six:
+					*destination++ = (value >> 35) & 0x7F;
+#endif
+				five:
+					*destination++ = (value >> 28) & 0x7F;
+				four:
+					*destination++ = (value >> 21) & 0x7F;
+				three:
+					*destination++ = (value >> 14) & 0x7F;
+				two:
+					*destination++ = (value >> 7) & 0x7F;
+				one:
+					*destination++ = (value & 0x7F) | 0x80;
+				}
+				
+			/*
+				COMPRESS_INTEGER_VARIABLE_BYTE::UNITTEST()
+				------------------------------------------
+			*/
+			/*!
+				@brief Unit test this class
+			*/
+			static void unittest(void);
+		} ;
+
+
 }
-
-/*
-	ANT_COMPRESS_VARIABLE_BYTE::COMPRESS_INTO()
-	-------------------------------------------
-*/
-inline void ANT_compress_variable_byte::compress_into(unsigned char *dest, long long docno)
-{
-if (docno < ((long long)1 << 7))
-	goto one;
-else if (docno < ((long long)1 << 14))
-	goto two;
-else if (docno < ((long long)1 << 21))
-	goto three;
-else if (docno < ((long long)1 << 28))
-	goto four;
-else if (docno < ((long long)1 << 35))
-	goto five;
-else if (docno < ((long long)1 << 42))
-	goto six;
-else if (docno < ((long long)1 << 49))
-	goto seven;
-else if (docno < ((long long)1 << 56))
-	goto eight;
-
-/*
-	Else we are a nine byte compressed integer
-*/
-	*dest++ = (docno >> 56) & 0x7F;
-eight:
-	*dest++ = (docno >> 49) & 0x7F;
-seven:
-	*dest++ = (docno >> 42) & 0x7F;
-six:
-	*dest++ = (docno >> 35) & 0x7F;
-five:
-	*dest++ = (docno >> 28) & 0x7F;
-four:
-	*dest++ = (docno >> 21) & 0x7F;
-three:
-	*dest++ = (docno >> 14) & 0x7F;
-two:
-	*dest++ = (docno >> 7) & 0x7F;
-one:
-	*dest++ = (docno & 0x7F) | 0x80;
-}
-
-#endif  /* COMPRESS_VARIABLE_BYTE_H_ */

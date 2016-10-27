@@ -24,7 +24,7 @@
 #include "allocator_memory.h"
 #include "instream_document_trec.h"
 #include "index_manager_sequential.h"
-
+#include "compress_integer_variable_byte.h"
 /*
 	MAIN()
 	------
@@ -103,6 +103,9 @@ int main(void)
 	puts("index_manager_sequential");
 	JASS::index_manager_sequential::unittest();
 	
+	puts("compress_integer_variable_byte");
+	JASS::compress_integer_variable_byte::unittest();
+
 	puts("ALL UNIT TESTS HAVE PASSED");
 	return 0;
 	}
