@@ -68,9 +68,8 @@ namespace JASS
 				--------------
 			*/
 			/*!
-				@brief Constructor
-				@param start [in] The start address of the memory this slice represents.
-				@param end [in] The end address of the memory this slice represents.
+				@brief Constructor.  Construct as a pointer to message and with length strlen(message).  Does not copy, points to.
+				@param message [in] A pointer to a '\0' terminated 'C' string.
 			*/
 			slice(const char *message) :
 				pointer((void *)message),
@@ -290,9 +289,11 @@ namespace JASS
 	/*
 		OPERATOR<<()
 		------------
+	*/
+	/*!
 		@brief Dump the contents of a slice (as binary data) down an output stream.
 		@param stream [in] The stream to write to.
-		@param tree [in] The slice to write.
+		@param data [in] The slice to write.
 		@return The stream once the slice has been written.
 	*/
 	inline std::ostream &operator<<(std::ostream &stream, const slice &data)

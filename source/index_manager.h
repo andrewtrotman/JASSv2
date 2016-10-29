@@ -185,9 +185,11 @@ namespace JASS
 	/*
 		OPERATOR<<()
 		------------
+	*/
+	/*!
 		@brief Dump a human readable version of the index down an output stream.
 		@param stream [in] The stream to write to.
-		@param tree [in] The index to write.
+		@param data [in] The index to write.
 		@return The stream once the index has been written.
 	*/
 	inline std::ostream &operator<<(std::ostream &stream, const index_manager &data)

@@ -41,6 +41,10 @@ namespace JASS
 	template <typename KEY, typename ELEMENT, size_t BITS = 24>
 	class hash_table
 		{
+		/*!
+			@brief Output a human readable serialisation to an ostream
+			@relates hash_table
+		*/
 		template<typename A, typename B, size_t C> friend std::ostream &operator<<(std::ostream &stream, const hash_table<A, B, C> &tree);
 
 		protected:
@@ -174,9 +178,14 @@ namespace JASS
 	/*
 		OPERATOR<<()
 		------------
-		@brief Dump the contents of a binary_tree down an output stream.
+	*/
+	/*!
+		@brief Dump the contents of a hash table down an output stream.
 		@param stream [in] The stream to write to.
-		@param tree [in] The tree to write.
+		@param map [in] The hash table to write.
+		@tparam KEY The type used as the key to the elements.
+		@tparam ELEMENT The element data returned given the key.
+		@tparam BITS The size of the hash table is 2^BITS (must be 8, 16, or 24).
 		@return The stream once the tree has been written.
 	*/
 	template <typename KEY, typename ELEMENT, size_t BITS>

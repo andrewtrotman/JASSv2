@@ -37,6 +37,10 @@ namespace JASS
 	template <typename KEY, typename ELEMENT>
 	class binary_tree
 		{
+		/*!
+			@brief Output a human readable serialisation to an ostream
+			@relates binary_tree
+		*/
 		template<typename A, typename B> friend std::ostream &operator<<(std::ostream &stream, const binary_tree<A, B> &tree);
 
 		protected:
@@ -86,7 +90,7 @@ namespace JASS
 				@brief If the key exists in the tree then return the data associated with it, else create empty data for the key
 				@param key [in] The key to search for.
 				@param current [in] A reference to the current node pointer.
-				@paramn ew_node [in] A pointer to the node to add to the tree (do not use, this is used internally to avoid memory wastage)
+				@param new_node [in] A pointer to the node to add to the tree (do not use, this is used internally to avoid memory wastage)
 				@return The element associated with the key, or an empty element if a new node for the key was created.
 			*/
 			ELEMENT &find_and_add(const KEY &key, std::atomic<node *> &current, node *new_node = nullptr)
@@ -147,6 +151,7 @@ namespace JASS
 				@brief Helper function for writing to output streams.
 				@param stream [in] The stream to write to.
 				@param current [in] A reference to the node to write.
+				@param depth [in] The level of recursion (used for spacing).
 			*/
 
 			void text_render(std::ostream &stream, const std::atomic<node *> &current, size_t depth = 0) const
@@ -230,9 +235,13 @@ namespace JASS
 	/*
 		OPERATOR<<()
 		------------
+	*/
+	/*!
 		@brief Dump the contents of a binary_tree down an output stream.
 		@param stream [in] The stream to write to.
 		@param tree [in] The tree to write.
+		@tparam KEY The type used as the key to the element (must include KEY(allocator, KEY) copy constructor)
+		@tparam ELEMENT The element data returned given the key (must include ELEMENT(allocator) constructur)
 		@return The stream once the tree has been written.
 	*/
 	template<typename KEY, typename ELEMENT>

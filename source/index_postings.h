@@ -181,9 +181,11 @@ namespace JASS
 	/*
 		OPERATOR<<()
 		------------
+	*/
+	/*!
 		@brief Dump a human readable version of the postings list down an output stream.
 		@param stream [in] The stream to write to.
-		@param tree [in] The postings list to write.
+		@param data [in] The postings list to write.
 		@return The stream once the postings list has been written.
 	*/
 	inline std::ostream &operator<<(std::ostream &stream, const index_postings &data)
