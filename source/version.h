@@ -34,7 +34,7 @@ namespace JASS
 					static constexpr bool debug = true;							///< Is this a debug build or not?
 				#endif
 			#else
-				static constexpr std::string debugness = "";					///< String declairing whether or not this is a debug build
+				static constexpr char *debugness = "";					///< String declairing whether or not this is a debug build
 				static constexpr bool debug = false;							///< Is this a debug build or not?
 			#endif
 

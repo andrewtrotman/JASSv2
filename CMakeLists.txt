@@ -16,8 +16,8 @@
 
 cmake_minimum_required (VERSION 3.6.0)
 
-set(CMAKE_BUILD_TYPE Debug)
-set(CMAKE_CONFIGURATION_TYPES Debug)
+set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_CONFIGURATION_TYPES Release)
 
 #
 #	Set the debug flags based on the compiler
