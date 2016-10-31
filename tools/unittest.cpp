@@ -10,6 +10,7 @@
 #include "slice.h"
 #include "parser.h"
 #include "unicode.h"
+#include "version.h"
 #include "bitstring.h"
 #include "hash_table.h"
 #include "binary_tree.h"
@@ -26,12 +27,17 @@
 #include "index_manager_sequential.h"
 #include "compress_integer_variable_byte.h"
 #include "index_manager_delegate_jass_ci.h"
+
 /*
 	MAIN()
 	------
 */
 int main(void)
 	{
+	/*
+		Output basic statistics about JASS as it stands
+	*/
+	puts(JASS::version::build().c_str());
 	/*
 		Test the JASS classes
 	*/
@@ -76,7 +82,7 @@ int main(void)
 	
 	puts("instream_memory");
 	JASS::instream_memory::unittest();
-	
+
 	puts("instream_document_trec");
 	JASS::instream_document_trec::unittest();
 	

@@ -287,7 +287,7 @@ namespace JASS
 							We've walked past the end so we allocate space for a new node (and elements in that node) and add it to the list.
 						*/
 						last->used = last->allocated;
-						node *another = new (pool.malloc(sizeof(node))) node(pool, last->allocated * growth_factor);
+						node *another = new (pool.malloc(sizeof(node))) node(pool, (size_t)(last->allocated * growth_factor));
 						/*
 							Atomicly make it the tail and if we succeed than make the previous node in the list point to this one.
 							If we fail then the pool allocator won't take the memory back so ignore and re-try
@@ -324,6 +324,7 @@ namespace JASS
 					
 				/*
 					The undefined behaviour is to return the first element in the array.
+					Which will probably cause a crash if there are no elements in the array.
 				*/
 				return head->data[0];
 				}
@@ -355,7 +356,7 @@ namespace JASS
 				static constexpr size_t thread_count = 50;						// use this many concurrent threads to add those elements.
 				allocator_pool memory;													// pool allocator that holds all the memory.
 				dynamic_array<size_t> array(memory, 1, 1);						// the dynamic_array.
-				std::thread thread_pool[thread_count];								// a thread pool used to ensure all the threads are done.
+				std::array<std::thread, thread_count> thread_pool;				// a thread pool used to ensure all the threads are done.
 				
 				/*
 					The "test" is to have thread_count threads each adding integers 0..highest_value to the array at once.  The test is
@@ -407,7 +408,6 @@ namespace JASS
 					{
 					JASS_assert(indexable[index] == index);
 					}
-
 				/*
 					Check the back() method.
 				*/
@@ -417,7 +417,7 @@ namespace JASS
 					another.push_back(which);
 					JASS_assert(another.back() == which);
 					}
-				
+
 				/*
 					Passed!
 				*/

@@ -66,7 +66,11 @@ namespace JASS
 				/*
 					Open the given file in the given mode
 				*/
-				fp = fopen(filename, mode);
+				#if defined(__STDC_LIB_EXT1__)
+					fopen_s(&fp, filename, mode);
+				#else
+					fp = fopen(filename, mode);
+				#endif
 				}
 
 			/*

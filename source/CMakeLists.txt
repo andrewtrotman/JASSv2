@@ -52,6 +52,7 @@ set(JASSlib_FILES
 	unicode.cpp
 	unittest_data.h
 	unittest_data.cpp
+	version.h
 	)
 
 add_library(JASSlib ${JASSlib_FILES})

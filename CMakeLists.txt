@@ -14,13 +14,16 @@
 #       data file that describes all the Unicode characters - which is used for the isalpha() and similar
 #       methods.
 
-cmake_minimum_required (VERSION 3.1.0)
+cmake_minimum_required (VERSION 3.6.0)
 
 set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_CONFIGURATION_TYPES Debug)
 
-if(MSVC)
-	add_definitions( "/W3 /D_CRT_SECURE_NO_WARNINGS /wd4005 /wd4996 /wd4514 /wd4996 /nologo" )
+#
+#	Set the debug flags based on the compiler
+#
+if(WIN32)
+ 	add_definitions( "/W3 /wd4005 /wd4996 /wd4514 /wd4996 /wd4820 /nologo" )
 else()
 	add_definitions("-Wall")
 endif()

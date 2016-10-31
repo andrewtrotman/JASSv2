@@ -121,6 +121,11 @@ namespace JASS
 		JASS_assert(document.contents.size() == 0);
 
 		/*
+			Delete the temporary file.
+		*/
+		remove(filename);
+
+		/*
 			Yay, we passed
 		*/
 		puts("instream_file::PASSED");

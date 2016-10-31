@@ -36,7 +36,7 @@ namespace JASS
 
 			dynamic_array<uint32_t> document_ids;			///< Array holding the document IDs
 			dynamic_array<uint16_t> term_frequencies;		///< Array holding the term frequencies
-			dynamic_array<uint32_t > positions;				///< Array holding the term positions
+			dynamic_array<uint32_t> positions;				///< Array holding the term positions
 			
 		private:
 			/*

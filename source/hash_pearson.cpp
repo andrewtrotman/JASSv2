@@ -51,6 +51,18 @@ namespace JASS
 		JASS_assert(sixteen == 49465);
 		JASS_assert(twentyfour == 13710892);
 		JASS_assert(thirtytwo == 1803130861);
+
+
+		size_t eight_a = hash_pearson::hash<8>("here", 4);
+		size_t sixteen_a = hash_pearson::hash<16>("here there", 10);
+		size_t twentyfour_a = hash_pearson::hash<24>("here there and", 14);
+		size_t thirtytwo_a = hash_pearson::hash<32>("here there and everywhere", 25);
+
+		JASS_assert(eight_a == 83);
+		JASS_assert(sixteen_a == 49465);
+		JASS_assert(twentyfour_a == 13710892);
+		JASS_assert(thirtytwo_a == 1803130861);
+
 		
 		puts("hash_pearson::PASSED");
 		}

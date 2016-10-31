@@ -39,6 +39,7 @@ namespace JASS
 			Fopen() the file then fstat() it.  The alternative is to stat() then fopen() - but that is wrong because the file might change between the two calls.
 		*/
 		if ((fp = fopen(filename.c_str(), "rb")) != nullptr)
+			{
 			if (fstat(fileno(fp), &details) == 0)
 				if ((file_length = details.st_size) != 0)
 					{
@@ -46,7 +47,8 @@ namespace JASS
 					if (fread(&into[0], details.st_size, 1, fp) != 1)
 						into.resize(0);
 					}
-		fclose(fp);
+			fclose(fp);
+			}
 
 		return file_length;
 		}

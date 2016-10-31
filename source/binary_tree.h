@@ -95,7 +95,7 @@ namespace JASS
 			*/
 			ELEMENT &find_and_add(const KEY &key, std::atomic<node *> &current, node *new_node = nullptr)
 				{
-				if (current == nullptr)
+				if (current.load() == nullptr)
 					{
 					/*
 						We have a NULL pointer so we've exhausted the search
@@ -156,7 +156,7 @@ namespace JASS
 
 			void text_render(std::ostream &stream, const std::atomic<node *> &current, size_t depth = 0) const
 				{
-				if (current != nullptr)
+				if (current.load() != nullptr)
 					{
 					/*
 						In-order traversal.

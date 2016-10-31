@@ -247,6 +247,39 @@ namespace JASS
 				}
 
 			/*
+				SLICE::OPERATOR>()
+				------------------
+			*/
+			/*!
+				@brief Return true if this > with.
+				@param with [in] The slice to compare to.
+				@return true if this > with, else false.
+			*/
+			bool operator>(const slice &with) const
+			{
+				if (size() > with.size())
+					return true;
+				if (size() < with.size())
+					return false;
+				return memcmp(address(), with.address(), size()) > 0;
+			}
+
+			/*
+				SLICE::OPERATOR==()
+				-------------------
+			*/
+			/*!
+				@brief Return true if this == with.
+				@param with [in] The slice to compare to.
+				@return true if this == with, else false.
+			*/
+			bool operator==(const slice &with) const
+			{
+				if (size() == with.size())
+					return true;
+				return memcmp(address(), with.address(), size()) == 0;
+			}
+			/*
 				SLICE::UNITTEST()
 				-----------------
 			*/
@@ -280,7 +313,22 @@ namespace JASS
 				
 				chunk6.resize(5);
 				JASS_assert(chunk6.size() == 5);
-			
+
+				JASS_assert(slice("a") < slice("b"));
+				JASS_assert(!(slice("b") < slice("a")));
+
+				JASS_assert(!(slice("aa") < slice("b")));
+				JASS_assert(slice("b") < slice("aa"));
+
+				JASS_assert(!(slice("a") > slice("b")));
+				JASS_assert(slice("b") > slice("a"));
+
+				JASS_assert(slice("aa") > slice("b"));
+				JASS_assert(!(slice("b") > slice("aa")));
+
+				JASS_assert(slice("a") == slice("a"));
+				JASS_assert(!(slice("aa") == slice("a")));
+
 				puts("slice::PASSED");
 				}
 			

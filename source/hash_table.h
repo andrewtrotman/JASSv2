@@ -109,7 +109,7 @@ namespace JASS
 			void text_render(std::ostream &stream) const
 				{
 				for (size_t element = 0; element < hash_table_size; element++)
-					if (table[element] != nullptr)
+					if (table[element].load() != nullptr)
 						stream << *table[element];
 				}
 			
@@ -126,7 +126,7 @@ namespace JASS
 				{
 				size_t hash = hash_pearson::hash<BITS>(key);
 				
-				if (table[hash] == nullptr)
+				if (table[hash].load() == nullptr)
 					{
 					binary_tree<KEY, ELEMENT> *empty = nullptr;
 					binary_tree<KEY, ELEMENT> *new_tree = new (memory_pool.malloc(sizeof(*new_tree), sizeof(void *))) binary_tree<KEY, ELEMENT>(memory_pool);
