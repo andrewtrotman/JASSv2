@@ -394,7 +394,7 @@ namespace JASS
 				for (size_t *element  = check; element < check + highest_value; element++)
 					JASS_assert(*element == thread_count);
 
-				delete check;
+				delete [] check;
 
 				/*
 					Simple check to make sure indexing into the array works.  Simply fill the array with numbers and make sure array[element] == element.
