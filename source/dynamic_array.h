@@ -357,7 +357,7 @@ namespace JASS
 				allocator_pool memory;													// pool allocator that holds all the memory.
 				dynamic_array<size_t> array(memory, 1, 1);						// the dynamic_array.
 				std::array<std::thread, thread_count> thread_pool;				// a thread pool used to ensure all the threads are done.
-				
+
 				/*
 					The "test" is to have thread_count threads each adding integers 0..highest_value to the array at once.  The test is
 					considered passed if each integer appears in the array thread_count times.
@@ -373,14 +373,14 @@ namespace JASS
 				*/
 				for (size_t which = 0; which < thread_count; which++)
 					thread_pool[which].join();
-					
+
 				/*
 					We're going to walk through the array once counting the number of times each integer occurs so
 					allocate an array of the right size, and initialise it to all 0.
 				*/
-				std::array<size_t, highest_value> check;
-				for (auto &element : check)
-					element = 0;
+				size_t *check = new size_t[highest_value];
+				for (size_t *element = check; element < check + highest_value; element++)
+					*element = 0;
 					
 				/*
 					Walk through the array taking a talley
@@ -391,11 +391,11 @@ namespace JASS
 				/*
 					Check each talley to make sure it is the right size.
 				*/
-				for (const auto &element : check)
-					{
-					JASS_assert(element == thread_count);
-					}
-				
+				for (size_t *element  = check; element < check + highest_value; element++)
+					JASS_assert(*element == thread_count);
+
+				delete check;
+
 				/*
 					Simple check to make sure indexing into the array works.  Simply fill the array with numbers and make sure array[element] == element.
 					As this is O(n^2), the size of the array will be kept small so that it completes in reasonable time.
@@ -408,6 +408,7 @@ namespace JASS
 					{
 					JASS_assert(indexable[index] == index);
 					}
+
 				/*
 					Check the back() method.
 				*/
