@@ -16,6 +16,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <vector>
+#include <mutex>
+
 #include "allocator.h"
 
 namespace JASS
@@ -54,7 +57,12 @@ namespace JASS
 			static const size_t default_allocation_size = 1024 * 1024 * 1024;			///< Allocations from the C++ free-store are this size
 			
 		protected:
-			size_t block_size;				///< The size (in bytes) of the large-allocations this object will make.
+			size_t block_size;					///< The size (in bytes) of the large-allocations this object will make.
+
+#ifdef USE_CRT_MALLOC
+		std::vector<void *> crt_malloc_list;	///< When USE_CRT_MALLOC is defined the C RTL malloc() is called and this keeps track of those calls (so that rewind() works).
+		std::mutex mutex;						///< Mutex used to control access to crt_malloc_list as it is not thread-safe.
+#endif
 
 		protected:
 			/*

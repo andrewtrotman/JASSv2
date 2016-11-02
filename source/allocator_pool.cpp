@@ -85,6 +85,20 @@ namespace JASS
 	*/
 	void *allocator_pool::malloc(size_t bytes, size_t alignment)
 		{
+#ifdef USE_CRT_MALLOC
+		/*
+			If USE_CRT_MALLOC is defined then we use the C Runtime Library's malloc.  This is helpful
+			when using memory checkers such as Valgrind.
+		*/
+		void *allocation = ::malloc(bytes);
+		used = allocated += bytes;
+
+		std::lock_guard<std::mutex> critical_section(mutex);
+
+		crt_malloc_list.push_back(allocation);
+
+		return allocation;
+#else
 		uint8_t *top_of_stack;					// The current free pointer
 		uint8_t *new_top_of_stack;				// Where the free pointer will be on success
 		size_t padding = 0;						// How much padding is needed to correctly align the memory
@@ -139,6 +153,7 @@ namespace JASS
 			Done
 		*/
 		return top_of_stack + padding;
+#endif
 		}
 		
 	/*
@@ -147,6 +162,13 @@ namespace JASS
 	*/
 	void allocator_pool::rewind(void)
 		{
+#ifdef USE_CRT_MALLOC
+		for (auto &block : crt_malloc_list)
+			free(block);
+		used = 0;
+		allocated = 0;
+		crt_malloc_list.clear();
+#else
 		/*
 			Free all memory blocks
 		*/
@@ -163,6 +185,7 @@ namespace JASS
 		current_chunk = nullptr;
 		used = 0;
 		allocated = 0;
+#endif
 		}
 
 	/*
