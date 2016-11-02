@@ -23,18 +23,18 @@ namespace JASS
 	class version
 		{
 		public:
-			static constexpr char *version_string = "0.1";			///< Current version of JASS as a C string
+			static constexpr const char *version_string = "0.1";			///< Current version of JASS as a C string
 			static constexpr uint64_t version_BCD = 0x0001;			///< Current version of JASS as a BCD string
 			static constexpr size_t bitness = sizeof(void *) * 8;	///< Either a 32-bit or 64-bit build
 			#if defined(DEBUG) || defined(_DEBUG)
 				#ifdef NDEBUG
 					#error "NDEBUG is defined in a DEBUG build - Can't proceed without know which is true"
 				#else
-					static constexpr char *debugness = "DEBUGGING-build";		///< String declairing whether or not this is a debug build
+					static constexpr const char *debugness = "DEBUGGING-build";		///< String declairing whether or not this is a debug build
 					static constexpr bool debug = true;							///< Is this a debug build or not?
 				#endif
 			#else
-				static constexpr char *debugness = "";					///< String declairing whether or not this is a debug build
+				static constexpr const char *debugness = "";					///< String declairing whether or not this is a debug build
 				static constexpr bool debug = false;							///< Is this a debug build or not?
 			#endif
 

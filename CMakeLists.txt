@@ -14,10 +14,10 @@
 #       data file that describes all the Unicode characters - which is used for the isalpha() and similar
 #       methods.
 
-cmake_minimum_required (VERSION 3.6.0)
+cmake_minimum_required (VERSION 3.5.0)
 
-set(CMAKE_BUILD_TYPE Release)
-set(CMAKE_CONFIGURATION_TYPES Release)
+set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_CONFIGURATION_TYPES Debug)
 
 #
 #	Set the debug flags based on the compiler
