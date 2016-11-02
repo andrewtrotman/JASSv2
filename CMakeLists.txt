@@ -14,7 +14,7 @@
 #       data file that describes all the Unicode characters - which is used for the isalpha() and similar
 #       methods.
 
-cmake_minimum_required (VERSION 3.5.0)
+cmake_minimum_required (VERSION 3.3.0)
 
 # set(CMAKE_VERBOSE_MAKEFILE on)
 set(CMAKE_BUILD_TYPE Debug)
@@ -32,6 +32,8 @@ endif()
 project(JASS)
 
 set(CMAKE_CXX_STANDARD 11)
+
+find_package(Threads)
 
 #
 # Download any external dependencies
@@ -58,13 +60,13 @@ add_subdirectory(examples)
 #
 include_directories(source)
 add_executable(unittest tools/unittest.cpp)
-target_link_libraries(unittest JASSlib)
+target_link_libraries(unittest JASSlib ${CMAKE_THREAD_LIBS_INIT})
 
 #
 # build the indexer
 #
 add_executable(index tools/index.cpp)
-target_link_libraries(index JASSlib)
+target_link_libraries(index JASSlib ${CMAKE_THREAD_LIBS_INIT})
 
 #
 # Build the documentation with Doxygen (but Apple's HeaderDoc also works)
