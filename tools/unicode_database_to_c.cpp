@@ -48,6 +48,7 @@
 	@copyright 2016 Andrew Trotman
 */
 #include <time.h>
+#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -492,7 +493,7 @@ const char *hash;
 if ((hash = strchr(line, '#')) == nullptr)
 	exit(printf("badly formed line:%s\n", line));
 
-for (size_t codepoint = range_start; codepoint <= range_end; codepoint++)
+for (size_t codepoint = (size_t)range_start; codepoint <= (size_t)range_end; codepoint++)
 	{
 	if (strncmp(semicolon, "; Other_Alphabetic #", hash - semicolon) == 0)				// Other_Alphabetic
 		{
@@ -627,7 +628,7 @@ while ((digit = strpbrk(digit, ";0123456789")) != nullptr)
 	{
 	if (*digit == ';')
 		{
-		if (normalisation == codepoint)
+		if (normalisation == (uint32_t)codepoint)
 			JASS_normalisation[codepoint].push_back(normalisation);
 		break;
 		}

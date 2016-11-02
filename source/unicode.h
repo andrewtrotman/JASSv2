@@ -644,7 +644,7 @@ namespace JASS
 						{
 						std::vector<uint32_t> casefold;
 						tocasefold(casefold, character);
-						JASS_assert(casefold.size() == 1 && casefold[0] == ::tolower(character));
+						JASS_assert(casefold.size() == 1 && casefold[0] == (size_t)::tolower(character));
 						}
 					}
 				puts("unicode::PASSED");

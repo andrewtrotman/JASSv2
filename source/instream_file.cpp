@@ -20,12 +20,12 @@ namespace JASS
 		------------------------------
 	*/
 	instream_file::instream_file(const std::string &filename) :
-		file(filename.c_str(), "rb")				// use RAII to open and close the file
+		disk_file(filename.c_str(), "rb")				// use RAII to open and close the file
 		{
 		/*
 			Get the file length and note that we've not read any of it yet
 		*/
-		file_length = file.size();
+		file_length = disk_file.size();
 		bytes_read = 0;
 		}
 
@@ -56,7 +56,7 @@ namespace JASS
 	/*
 		Do the read and note how many bytes we're read.
 	*/
-	file.read(&document.contents[0], document.contents.size());
+	disk_file.read(&document.contents[0], document.contents.size());
 	bytes_read += document.contents.size();
 	}
 	

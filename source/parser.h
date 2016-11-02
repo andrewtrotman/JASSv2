@@ -86,7 +86,7 @@ namespace JASS
 			
 		protected:
 			token eof_token;						///< Sentinal returned when reading past end of document.
-			const document *document;			///< The document that is currently being parsed.
+			const document *the_document;		///< The document that is currently being parsed.
 			uint8_t *current;						///< The current location within the document.
 			uint8_t *end_of_document;			///< Pointer to the end of the document, used to avoid read past end of buffer.
 			token current_token;					///< The token that is currently being build.  A reference to this is returned when the token is complete.
@@ -159,7 +159,7 @@ namespace JASS
 			*/
 			virtual void set_document(const class document &document)
 				{
-				this->document = &document;
+				the_document = &document;
 				current = (uint8_t *)document.contents.address();
 				end_of_document = (uint8_t *)document.contents.address() + document.contents.size();
 				}
