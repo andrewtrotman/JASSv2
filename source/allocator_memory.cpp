@@ -76,7 +76,8 @@ namespace JASS
 	*/
 	 void allocator_memory::unittest(void)
 		{
-		allocator_memory memory(new uint8_t[1024], 1024);
+		uint8_t *chunk_of_memory = new uint8_t[1024];
+		allocator_memory memory(chunk_of_memory, 1024);
 		
 		/*
 			Should be empty at the start
@@ -113,6 +114,7 @@ namespace JASS
 		/*
 			Yay, we passed
 		*/
+		delete [] chunk_of_memory;
 		puts("allocator_memory::PASSED");
 		}
 	}

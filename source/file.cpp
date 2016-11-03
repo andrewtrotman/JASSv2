@@ -6,6 +6,7 @@
 
 	Originally from the ATIRE codebase (where it was also written by Andrew Trotman)
 */
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -259,7 +260,7 @@ namespace JASS
 		write_entire_file(filename, example_file);
 		read_entire_file(filename, reread);
 		JASS_assert(example_file == reread);
-		auto got = remove(filename);								// delete the file once we're done with it
+		remove(filename);								// delete the file once we're done with it
 		
 		/*
 			CHECK BUFFER_TO_LIST()

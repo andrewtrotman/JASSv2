@@ -49,9 +49,7 @@ namespace JASS
 			index_postings() :
 				index_postings(*new allocator_pool(1024))
 				{
-				/*
-					Nothing
-				*/
+				static_assert(0, "Cannot call private constructor of index_potings\n");
 				}
 
 		public:
@@ -161,7 +159,8 @@ namespace JASS
 			*/
 			static void unittest(void)
 				{
-				index_postings postings;
+				memory_pool pool;
+				index_postings postings(pool);
 				
 				postings.push_back(1, 100);
 				postings.push_back(1, 101);
