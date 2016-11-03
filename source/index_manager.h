@@ -170,7 +170,7 @@ namespace JASS
 				{
 				return highest_term_id;
 				}
-			
+
 			/*
 				INDEX_MANAGER::UNITTEST()
 				-------------------------

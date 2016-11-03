@@ -3,6 +3,43 @@
 	-------------
 	Copyright (c) 2016 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
+
+
+	see here: http://stackoverflow.com/questions/2942517/how-do-i-iterate-over-binary-tree
+
+	public class SuccessorIteration {
+	    static class Node {
+	        final Node left;
+	        final Node right;
+	        final int key;
+	        Node parent;
+	        Node(int key, Node left, Node right) {
+	            this.key = key;
+	            this.left = left;
+	            this.right = right;
+	            if (left != null) left.parent = this;
+	            if (right != null) right.parent = this;
+	        }
+	        Node getLeftMost() {
+	            Node n = this;
+	            while (n.left != null) {
+	                n = n.left;
+	            }
+	            return n;
+	        }
+	        Node getNext() {
+	            if (right != null) {
+	                return right.getLeftMost();
+	            } else {
+	                Node n = this;
+	                while (n.parent != null && n == n.parent.right) {
+	                    n = n.parent;
+	                }
+	                return n.parent;
+	            }
+	        }
+	    }
+	}
 */
 /*!
 	@file
@@ -58,6 +95,7 @@ namespace JASS
 					ELEMENT element;						///< This is the data stored in the tree.
 					std::atomic<node *>left;			///< Pointer to the left (smaller than) data.
 					std::atomic<node *>right;			///< Pointer to the right (larger than) data.
+					std::atomic<node *>parent;						///< Pointer to the parent node.
 					
 				public:
 					/*
@@ -93,7 +131,7 @@ namespace JASS
 				@param new_node [in] A pointer to the node to add to the tree (do not use, this is used internally to avoid memory wastage)
 				@return The element associated with the key, or an empty element if a new node for the key was created.
 			*/
-			ELEMENT &find_and_add(const KEY &key, std::atomic<node *> &current, node *new_node = nullptr)
+			ELEMENT &find_and_add(const KEY &key, std::atomic<node *>&parent, std::atomic<node *> &current, node *new_node = nullptr)
 				{
 				if (current.load() == nullptr)
 					{
@@ -111,17 +149,20 @@ namespace JASS
 						If the Compare and Swap was successful then the answer is current.load()->element.
 					*/
 					if (!current.compare_exchange_strong(empty, new_node))
-						return find_and_add(key, current, new_node);
+						return find_and_add(key, parent, current, new_node);
 					else
+						{
+						current.load()->parent = parent.load();
 						return current.load()->element;
+						}
 					}
 				/*
 					Search on the left or the right
 				*/
 				else if (key < current.load()->key)
-					return find_and_add(key, current.load()->right);
+					return find_and_add(key, current, current.load()->right);
 				else if (current.load()->key < key)
-					return find_and_add(key, current.load()->left);
+					return find_and_add(key, current, current.load()->left);
 
 				/*
 					Found the element, or we created one.
@@ -196,7 +237,7 @@ namespace JASS
 			*/
 			ELEMENT &operator[](const KEY &key)
 				{
-				return find_and_add(key, root);
+				return find_and_add(key, root, root);
 				}
 			
 			/*
