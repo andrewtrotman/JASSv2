@@ -30,7 +30,7 @@ namespace JASS
 		
 		Returns the length of the file in bytes - which is also the size of the string buffer once read.
 	*/
-	size_t file::read_entire_file(const std::string &filename, std::string &into)
+		size_t file::read_entire_file(const std::string &filename, std::string &into)
 		{
 		FILE *fp;							// "C" pointer to the file
 		struct stat details;				// file system's details of the file
@@ -243,20 +243,14 @@ namespace JASS
 		*/
 		char filename[11];
 		strcpy(filename, "jassXXXXXX");
-		#ifndef __clang_analyzer__
-			/*
-				The Xcode code analysis tool correctly says:
-				"Call to function 'mktemp' is insecure as it always creates or uses insecure temporary file.  Use 'mkstemp' instead"
-				However, as we need a way to get the filename to read_entire_file, and you can't turn a file descriptor into filename
-				(because it might be a special file like a TCP/IP socket) I don't see a way around this.  The solution appears to be
-				to tell the Xcode analysis tool not to look at the line below.  Actually, this should continue to function file within
-				this function without this line, but you never know when someone has already taken your filename (so we call mktemp()).
-			*/
-			#ifdef WIN32
-				_mktemp(filename);
-			#else
-				mktemp(filename);
-			#endif
+
+		/*
+			Create a temporary filename.  Windows does not appear to have mkstemp so we use mktemp().
+		*/
+		#ifdef WIN32
+			_mktemp(filename);
+		#else
+			close(mkstemp(filename));
 		#endif
 
 		/*
@@ -265,7 +259,7 @@ namespace JASS
 		write_entire_file(filename, example_file);
 		read_entire_file(filename, reread);
 		JASS_assert(example_file == reread);
-		remove(filename);								// delete the file once we're done with it
+		auto got = remove(filename);								// delete the file once we're done with it
 		
 		/*
 			CHECK BUFFER_TO_LIST()

@@ -76,20 +76,14 @@ namespace JASS
 		*/
 		char filename[11];
 		strcpy(filename, "jassXXXXXX");
-		#ifndef __clang_analyzer__
-			/*
-				The Xcode code analysis tool correctly says:
-				"Call to function 'mktemp' is insecure as it always creates or uses insecure temporary file.  Use 'mkstemp' instead"
-				However, as we need a way to get the filename to read_entire_file, and you can't turn a file descriptor into filename
-				(because it might be a special file like a TCP/IP socket) I don't see a way around this.  The solution appears to be
-				to tell the Xcode analysis tool not to look at the line below.  Actually, this should continue to function file within
-				this function without this line, but you never know when someone has already taken your filename (so we call mktemp()).
-			*/
-			#ifdef WIN32
-				_mktemp(filename);
-			#else
-				mktemp(filename);
-			#endif
+
+		/*
+			Create a temporary filename.  Windows does not appear to have mkstemp so we use _mktemp().
+		*/
+		#ifdef WIN32
+			_mktemp(filename);
+		#else
+			close(mkstemp(filename));
 		#endif
 
 		/*
@@ -98,33 +92,37 @@ namespace JASS
 		file::write_entire_file(filename, example_file);
 		
 		/*
-			create an instream_file
+			create an instream_file and test it.
+			NOTE: The score is created so that the object is deleted before removal of the temporary file.
 		*/
-		instream_file reader(filename);
-		document document;
-		document.contents = slice(document.contenst_allocator, 15);
+		do
+			{
+			instream_file reader(filename);
+			document document;
+			document.contents = slice(document.contenst_allocator, 15);
 		
-		/*
-			read twice from it making sure we got what we should have
-		*/
-		reader.read(document);
-		JASS_assert(document.contents.size() == 15);
-		for (size_t index = 0; index < document.contents.size(); index++)
-			JASS_assert(document.contents[index] == example_file[index]);
+			/*
+				read twice from it making sure we got what we should have
+			*/
+			reader.read(document);
+			JASS_assert(document.contents.size() == 15);
+			for (size_t index = 0; index < document.contents.size(); index++)
+				JASS_assert(document.contents[index] == example_file[index]);
 		
-		reader.read(document);
-		JASS_assert(document.contents.size() == 15);
-		for (size_t index = 0; index < document.contents.size(); index++)
-			JASS_assert(document.contents[index] == example_file[index + 15]);
+			reader.read(document);
+			JASS_assert(document.contents.size() == 15);
+			for (size_t index = 0; index < document.contents.size(); index++)
+				JASS_assert(document.contents[index] == example_file[index + 15]);
 
-		reader.read(document);
-		JASS_assert(document.contents.size() == 0);
+			reader.read(document);
+			JASS_assert(document.contents.size() == 0);
 
-		/*
-			Delete the temporary file.
-		*/
-		remove(filename);
-
+			/*
+				Delete the temporary file.
+			*/
+			}
+		while (0);
+		auto got = remove(filename);
 		/*
 			Yay, we passed
 		*/

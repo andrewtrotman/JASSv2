@@ -20,8 +20,7 @@ cmake_minimum_required (VERSION 3.3.0)
 set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_CONFIGURATION_TYPES Debug)
 
-
-add_definitions(-DUSE_CRT_MALLOC)
+# add_definitions(-DUSE_CRT_MALLOC)
 
 #
 #	Set the debug flags based on the compiler
