@@ -31,33 +31,6 @@ namespace JASS
 	*/
 	class index_manager
 		{
-		public:
-			/*
-				CLASS INDEX_MANAGER::DELEGATE
-				-----------------------------
-			*/
-			/*!
-				@brief Delegate class for index serialisation.
-			*/
-			class delegate
-				{
-				/*
-					INDEX_MANAGER::DELEGATE::OPERATOR()
-					-----------------------------------
-				*/
-				/*!
-					@brief Callback function.
-					@param term [in] The term
-					@param The postings for the term.
-				*/
-				virtual void operator()(const slice &term, const void *postings)
-					{
-					/*
-						Nothing
-					*/
-					}
-				};
-			
 		private:
 			size_t highest_document_id;					///< The highest document_id seen so far (counts from 1).
 			size_t highest_term_id;							///< The highest term_id seen so far (counts from 1).

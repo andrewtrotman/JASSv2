@@ -33,8 +33,6 @@ set(JASSlib_FILES
 	hash_pearson.h
 	hash_pearson.cpp
 	index_manager.h
-	index_manager_delegate_jass_ci.h
-	index_manager_delegate_jass_ci.cpp
 	index_manager_sequential.h
 	index_postings.h
 	instream.h

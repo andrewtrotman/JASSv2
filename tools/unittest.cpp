@@ -26,7 +26,6 @@
 #include "instream_document_trec.h"
 #include "index_manager_sequential.h"
 #include "compress_integer_variable_byte.h"
-#include "index_manager_delegate_jass_ci.h"
 
 /*
 	MAIN()
@@ -113,9 +112,6 @@ int main(void)
 	puts("compress_integer_variable_byte");
 	JASS::compress_integer_variable_byte::unittest();
 	
-	puts("index_manager_delegate_jass_ci");
-	JASS::index_manager_delegate_jass_ci::unittest();
-
 	puts("ALL UNIT TESTS HAVE PASSED");
 	return 0;
 	}
