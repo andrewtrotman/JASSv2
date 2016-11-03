@@ -77,7 +77,7 @@ namespace JASS
 						left = right = nullptr;
 						}
 				};
-			
+		public:
 			/*
 				CLASS BINARY_TREE::ITERATOR
 				---------------------------
@@ -353,7 +353,7 @@ namespace JASS
 				@brief Return an iterator pointing to left-most (smallest) node in the tree.
 				@return Iterator pointing to smallest member of the tree.
 			*/
-			iterator begin()
+			iterator begin() const
 				{
 				return iterator(root);
 				}
@@ -366,7 +366,7 @@ namespace JASS
 				@brief Return an iterator pointing past the end of the tree.
 				@return Iterator pointing past the end of the tree.
 			*/
-			iterator end()
+			iterator end() const
 				{
 				return iterator(nullptr);
 				}

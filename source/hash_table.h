@@ -46,6 +46,60 @@ namespace JASS
 			@relates hash_table
 		*/
 		template<typename A, typename B, size_t C> friend std::ostream &operator<<(std::ostream &stream, const hash_table<A, B, C> &tree);
+		
+		protected:
+			class iterator
+				{
+				private:
+					const hash_table<KEY, ELEMENT, BITS> &iterand;
+					size_t location;
+					typename binary_tree<KEY, ELEMENT>::iterator tree_iterator;
+					typename binary_tree<KEY, ELEMENT>::iterator tree_iterator_end;
+					
+				public:
+					iterator(const hash_table &over, size_t current) :
+						iterand(over),
+						location(current),
+						tree_iterator(nullptr),
+						tree_iterator_end(nullptr)
+						{
+						while (location <= size(BITS) && iterand.table[location] == nullptr)
+							location++;
+						if (location < size(BITS))
+							{
+							tree_iterator = iterand.table[location].load()->begin();
+							tree_iterator_end = iterand.table[location].load()->end();
+							}
+						}
+
+					const typename binary_tree<KEY, ELEMENT>::iterator::pair operator*() const
+						{
+						return *tree_iterator;
+						}
+					
+					bool operator!=(const iterator &other)
+						{
+						return location != other.location;
+						}
+					
+					iterator &operator++()
+						{
+						++tree_iterator;
+						if (!(tree_iterator != tree_iterator_end))
+							{
+							do
+								location++;
+							while (location <= size(BITS) && iterand.table[location] == nullptr);
+								
+							if (location < size(BITS))
+								{
+								tree_iterator = iterand.table[location].load()->begin();
+								tree_iterator_end = iterand.table[location].load()->end();
+								}
+							}
+						return *this;
+						}
+				};
 
 		protected:
 			/*
@@ -58,7 +112,7 @@ namespace JASS
 				@param bits [in] The size of the hash table is 2^bits
 				@return 2^bits.
 			*/
-			static  constexpr size_t size(size_t bits)
+			static constexpr size_t size(size_t bits)
 				{
 				static_assert((BITS == 8 || BITS == 16 || BITS == 24), "hash_table size must be 8, 16, or 24 bits in size");
 				return bits == 8 ? 256 : bits == 16 ? 65536 : bits == 24 ? 16777216 : 0;
@@ -99,6 +153,16 @@ namespace JASS
 					Nothing
 				*/
 				}
+			iterator begin() const
+				{
+				return iterator(*this, 0);
+				}
+			
+			iterator end() const 
+				{
+				return iterator(*this, size(BITS));
+				}
+			
 			/*
 				HASH_TABLE::TEXT_RENDER()
 				-------------------------
@@ -152,6 +216,9 @@ namespace JASS
 			*/
 			static void unittest(void)
 				{
+				/*
+					Check inserting and serialising
+				*/
 				allocator_pool pool;
 				hash_table<slice, slice> map(pool);
 				
@@ -172,10 +239,18 @@ namespace JASS
 				serialised << map;
 				JASS_assert(strcmp(serialised.str().c_str(), answer) == 0);
 	
+				/*
+					Check the iterator
+				*/
+				std::ostringstream output;
+				for (const auto &element : map)
+					output << element.first;
+				JASS_assert(output.str() == "0614538729");
+	
 				puts("hash_table::PASSED");
 				}
 		};
-		
+
 	/*
 		OPERATOR<<()
 		------------
