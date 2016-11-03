@@ -194,7 +194,7 @@ namespace JASS
 	*/
 	 void allocator_pool::unittest(void)
 		{
-		allocator_pool memory;
+		allocator_pool memory(default_allocation_size);
 		
 		/*
 			Should be empty at the start

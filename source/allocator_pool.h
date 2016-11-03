@@ -12,9 +12,10 @@
 */
 #pragma once
 
+#include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <stdio.h>
+#include <assert.h>
 
 #include <vector>
 #include <mutex>
@@ -106,7 +107,7 @@ namespace JASS
 			*/
 			allocator_pool(allocator_pool &)
 				{
-				static_assert(0, "Cannot call private constructor for allocator_pool");
+				assert(0);
 				}
 
 			/*
@@ -118,7 +119,7 @@ namespace JASS
 			*/
 			allocator_pool &operator=(const allocator_pool &)
 				{
-				static_assert(0, "Cannot call allocator_pool::operator=()");
+				assert(0);
 				return *this;
 				}
 			

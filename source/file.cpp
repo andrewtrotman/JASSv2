@@ -6,7 +6,6 @@
 
 	Originally from the ATIRE codebase (where it was also written by Andrew Trotman)
 */
-#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,6 +14,8 @@
 
 #ifdef WIN32
 	#include <io.h>
+#else
+	#include <unistd.h>
 #endif
 
 #include "file.h"

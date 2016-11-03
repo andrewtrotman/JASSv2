@@ -60,6 +60,7 @@ namespace JASS
 			*/
 			static  constexpr size_t size(size_t bits)
 				{
+				static_assert((BITS == 8 || BITS == 16 || BITS == 24), "hash_table size must be 8, 16, or 24 bits in size");
 				return bits == 8 ? 256 : bits == 16 ? 65536 : bits == 24 ? 16777216 : 0;
 				}
 
