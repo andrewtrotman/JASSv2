@@ -48,23 +48,46 @@ namespace JASS
 		template<typename A, typename B, size_t C> friend std::ostream &operator<<(std::ostream &stream, const hash_table<A, B, C> &tree);
 		
 		protected:
+			/*
+				CLASS HASH_TABLE::ITERATOR
+				--------------------------
+			*/
+			/*!
+				@brief Iterate over the hash table.
+			*/
 			class iterator
 				{
 				private:
-					const hash_table<KEY, ELEMENT, BITS> &iterand;
-					size_t location;
-					typename binary_tree<KEY, ELEMENT>::iterator tree_iterator;
-					typename binary_tree<KEY, ELEMENT>::iterator tree_iterator_end;
+					const hash_table<KEY, ELEMENT, BITS> &iterand;								///< The hash table being iterated over.
+					size_t location;																		///< Current node in the hash table.
+					typename binary_tree<KEY, ELEMENT>::iterator tree_iterator;				///< Iterator over the binary tree at the current hash table node.
+					typename binary_tree<KEY, ELEMENT>::iterator tree_iterator_end;		///< When to end iterating over the binary tree at the current hash table node.
 					
 				public:
+					/*
+						HASH_TABLE::ITERATOR::ITERATOR
+						------------------------------
+					*/
+					/*!
+						@brief Constructor.
+						@param over [in] The hash table to iterate over.
+						@param current [in] The node to start at.
+					*/
 					iterator(const hash_table &over, size_t current) :
 						iterand(over),
 						location(current),
 						tree_iterator(nullptr),
 						tree_iterator_end(nullptr)
 						{
+						/*
+							Find the first node in the hash table that has content
+						*/
 						while (location <= size(BITS) && iterand.table[location] == nullptr)
 							location++;
+						
+						/*
+							If we found a node the set up iterators at that node
+						*/
 						if (location < size(BITS))
 							{
 							tree_iterator = iterand.table[location].load()->begin();
@@ -72,25 +95,59 @@ namespace JASS
 							}
 						}
 
+					/*
+						HASH_TABLE::ITERATOR::OPERATOR*()
+						---------------------------------
+					*/
+					/*!
+						@brief Return a reference to the object at the current location.
+						@return The current object.
+					*/
 					const typename binary_tree<KEY, ELEMENT>::iterator::pair operator*() const
 						{
 						return *tree_iterator;
 						}
 					
+					/*
+						HASH_TABLE::ITERATOR::OPERATOR!=()
+						----------------------------------
+					*/
+					/*!
+						@brief Compare two iterator objects for non-equality.
+						@param other [in] The iterator object to compare to.
+						@return true if they differ, else false.
+					*/
 					bool operator!=(const iterator &other)
 						{
 						return location != other.location;
 						}
+
 					
+					/*
+						HASH_TABLE::ITERATOR::OPERATOR++()
+						----------------------------------
+					*/
+					/*!
+						@brief Increment this iterator.
+					*/
 					iterator &operator++()
 						{
+						/*
+							move on to the next element in the tree and check for end
+						*/
 						++tree_iterator;
 						if (!(tree_iterator != tree_iterator_end))
 							{
+							/*
+								Find the next element in the hash table that has something in it
+							*/
 							do
 								location++;
 							while (location <= size(BITS) && iterand.table[location] == nullptr);
 								
+							/*
+								If we found a node the set up iterators at that node
+							*/
 							if (location < size(BITS))
 								{
 								tree_iterator = iterand.table[location].load()->begin();
@@ -153,12 +210,29 @@ namespace JASS
 					Nothing
 				*/
 				}
+			
+			/*
+				HASH_TABLE::BEGIN()
+				-------------------
+			*/
+			/*!
+				@brief Return an iterator pointing to the smallest element in the hash table.
+				@return Iterator pointing to smallest element in the hash table.
+			*/
 			iterator begin() const
 				{
 				return iterator(*this, 0);
 				}
 			
-			iterator end() const 
+			/*
+				HASH_TABLE::END()
+				-----------------
+			*/
+			/*!
+				@brief Return an iterator pointing past the end of the hash table.
+				@return Iterator pointing past the end of the hash table.
+			*/
+			iterator end() const
 				{
 				return iterator(*this, size(BITS));
 				}
