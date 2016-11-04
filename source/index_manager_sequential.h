@@ -235,8 +235,10 @@ namespace JASS
 				/*
 					Test the iterator
 				*/
+#ifdef NEVER
 				for (const auto pair : index)
 					std::cout << pair.first;
+#endif
 
 				/*
 					Done

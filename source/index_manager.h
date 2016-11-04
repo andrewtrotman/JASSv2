@@ -146,7 +146,7 @@ namespace JASS
 				}
 
 
-
+#ifdef NEVER
 class iterator
 	{
 	private:
@@ -184,7 +184,7 @@ virtual iterator end() const
 	{
 	return iterator(1);
 	}
-
+#endif
 
 
 			/*
