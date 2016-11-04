@@ -17,6 +17,7 @@
 #include <atomic>
 #include <sstream>
 #include <iostream>
+#include <utility>
 
 #include "allocator_pool.h"
 
@@ -107,42 +108,6 @@ namespace JASS
 			*/
 			class iterator
 				{
-				public:
-					/*
-						CLASS BINARY_TREE::ITERATOR::PAIR
-						---------------------------------
-					*/
-					/*!
-						@brief C++ iterator compatible intermediary used to store the key and element of a node.
-						@details The C++ iterator for a std::map stores the key on iterator->first and the element on iterator->second.  This
-						class mirrors that behaviour (despite it being horrible).
-					*/
-					class pair
-						{
-						public:
-							const KEY &first;						///< The key
-							const ELEMENT &second;				///< The element
-							
-						public:
-							/*
-								CLASS BINARY_TREE::ITERATOR::PAIR::PAIR()
-								-----------------------------------------
-							*/
-							/*!
-								@brief Constructor
-								@param key [in] The key.
-								@param element [in] The element being keyed.
-							*/
-							pair(const KEY &key, const ELEMENT &element) :
-								first(key),
-								second(element)
-									{
-									/*
-										Nothing
-									*/
-									}
-						};
-					
 				private:
 					node *location;			///< The node that is currently being examined.
 					
@@ -169,9 +134,9 @@ namespace JASS
 						@brief Return a reference to the object at the current location.
 						@return The current object.
 					*/
-					const pair operator*() const
+					const std::pair<KEY, ELEMENT> operator*() const
 						{
-						return pair(location->key, location->element);
+						return std::make_pair(location->key, location->element);
 						}
 					
 					/*
@@ -183,7 +148,7 @@ namespace JASS
 						@param other [in] The iterator object to compare to.
 						@return true if they differ, else false.
 					*/
-					bool operator!=(const iterator &other)
+					bool operator!=(const iterator &other) const
 						{
 						return location != other.location;
 						}
@@ -197,7 +162,7 @@ namespace JASS
 					*/
 					void get_left_most(void)
 						{
-						while (location->left != nullptr)
+						while (location->left.load() != nullptr)
 							location = location->left;
 						}
 		
@@ -210,7 +175,7 @@ namespace JASS
 					*/
 					iterator &operator++()
 						{
-						if (location->right != nullptr)
+						if (location->right.load() != nullptr)
 							{
 							/*
 								If there is a right subtree then the left-most node in it is the next location (the Next-R rule)
@@ -223,7 +188,7 @@ namespace JASS
 							/*
 								Otherwise move up the tree (the Next-U rule)
 							*/
-							while (location->parent != nullptr && location == location->parent.load()->right)
+							while (location->parent.load() != nullptr && location == location->parent.load()->right.load())
 								location = location->parent;
 								
 							location = location->parent;

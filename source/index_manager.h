@@ -13,6 +13,7 @@
 #pragma once
 
 #include "parser.h"
+#include "index_postings.h"
 
 namespace JASS
 	{
@@ -34,7 +35,7 @@ namespace JASS
 		private:
 			size_t highest_document_id;					///< The highest document_id seen so far (counts from 1).
 			size_t highest_term_id;							///< The highest term_id seen so far (counts from 1).
-			
+
 		public:
 			/*
 				INDEX_MANAGER::INDEX_MANAGER()
@@ -143,6 +144,48 @@ namespace JASS
 				{
 				return highest_term_id;
 				}
+
+
+
+class iterator
+	{
+	private:
+		void *element;
+
+	public:
+		iterator(void *element) :
+			element(element)
+			{
+			//
+			}
+		
+		bool operator!=(const iterator &other) const
+			{
+			return element != other.element;
+			}
+
+		std::pair<slice, index_postings> &operator*() const
+			{
+			return
+			}
+
+		const iterator &operator++()
+			{
+			return
+			}
+	};
+
+virtual iterator begin() const
+	{
+	return iterator(0);
+	}
+
+virtual iterator end() const
+	{
+	return iterator(1);
+	}
+
+
 
 			/*
 				INDEX_MANAGER::UNITTEST()

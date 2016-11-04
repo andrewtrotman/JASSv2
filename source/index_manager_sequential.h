@@ -129,10 +129,10 @@ namespace JASS
 				{
 				stream << index;
 				}
-			
+
 			/*
-				INDEX_MANAGER::UNITTEST()
-				-------------------------
+				INDEX_MANAGER_SEQUENTIAL::UNITTEST()
+				------------------------------------
 			*/
 			/*!
 				@brief Unit test this class.
@@ -231,7 +231,16 @@ namespace JASS
 				computed_result << index;
 				
 				JASS_assert(computed_result.str() == answer);
-				
+
+				/*
+					Test the iterator
+				*/
+				for (const auto pair : index)
+					std::cout << pair.first;
+
+				/*
+					Done
+				*/
 				puts("index_manager_sequential::PASSED");
 				}
 		};

@@ -82,7 +82,7 @@ namespace JASS
 						/*
 							Find the first node in the hash table that has content
 						*/
-						while (location <= size(BITS) && iterand.table[location] == nullptr)
+						while (location <= size(BITS) && iterand.table[location].load() == nullptr)
 							location++;
 						
 						/*
@@ -103,7 +103,7 @@ namespace JASS
 						@brief Return a reference to the object at the current location.
 						@return The current object.
 					*/
-					const typename binary_tree<KEY, ELEMENT>::iterator::pair operator*() const
+					const typename std::pair<KEY, ELEMENT> operator*() const
 						{
 						return *tree_iterator;
 						}
@@ -117,7 +117,7 @@ namespace JASS
 						@param other [in] The iterator object to compare to.
 						@return true if they differ, else false.
 					*/
-					bool operator!=(const iterator &other)
+					bool operator!=(const iterator &other) const
 						{
 						return location != other.location;
 						}
@@ -143,7 +143,7 @@ namespace JASS
 							*/
 							do
 								location++;
-							while (location <= size(BITS) && iterand.table[location] == nullptr);
+							while (location <= size(BITS) && iterand.table[location].load() == nullptr);
 								
 							/*
 								If we found a node the set up iterators at that node
