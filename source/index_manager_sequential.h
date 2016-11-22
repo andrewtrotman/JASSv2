@@ -39,6 +39,30 @@ namespace JASS
 			
 		public:
 			/*
+				CLASS INDEX_MANAGER_SEQUENTIAL::DELEGATE
+				----------------------------------------
+			*/
+			/*!
+				@brief Base class for the callback function called by iterate.
+			*/
+			class delegate : public index_manager::delegate
+				{
+				public:
+					/*
+						INDEX_MANAGER_SEQUENTIAL::DELEGATE::OPERATOR()()
+						------------------------------------------------
+					*/
+					/*!
+						@brief The callback function is operator().
+					*/
+					virtual void operator()(const slice &term, const index_postings &postings) const
+						{
+						std::cout << term << "->" << postings << std::endl;
+						}
+				};
+
+		public:
+			/*
 				INDEX_MANAGER_SEQUENTIAL::INDEX_MANAGER_SEQUENTIAL()
 				----------------------------------------------------
 			*/
@@ -128,6 +152,23 @@ namespace JASS
 			virtual void text_render(std::ostream &stream) const
 				{
 				stream << index;
+				}
+
+			/*
+				INDEX_MANAGER_SEQUENTIAL::ITERATE()
+				-----------------------------------
+			*/
+			/*!
+				@brief Iterate over the index calling callback.operator() with each postings list.
+				@param callback [in] The callback to call.
+			*/
+			virtual void iterate(const delegate &callback) const
+				{
+				/*
+					Iterate over the hash table calling the callback function with each term->postings pair.
+				*/
+				for (const auto &listing : index)
+					callback(listing.first, listing.second);
 				}
 
 			/*
@@ -233,12 +274,10 @@ namespace JASS
 				JASS_assert(computed_result.str() == answer);
 
 				/*
-					Test the iterator
+					Test the iterating callback mechanism
 				*/
-#ifdef NEVER
-				for (const auto pair : index)
-					std::cout << pair.first;
-#endif
+				delegate callback;
+				index.iterate(callback);
 
 				/*
 					Done

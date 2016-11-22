@@ -38,6 +38,27 @@ namespace JASS
 
 		public:
 			/*
+				CLASS INDEX_MANAGER::DELEGATE
+				-----------------------------
+			*/
+			/*!
+				@brief Base class for the callback function called by iterate.
+			*/
+			class delegate
+				{
+				public:
+					/*
+						INDEX_MANAGER::DELEGATE::OPERATOR()()
+						-------------------------------------
+					*/
+					/*!
+						@brief The callback function is operator().
+					*/
+					virtual void operator()(const slice &term, const index_postings &postings) const = 0;
+				};
+
+		public:
+			/*
 				INDEX_MANAGER::INDEX_MANAGER()
 				------------------------------
 			*/
@@ -122,6 +143,21 @@ namespace JASS
 				}
 
 			/*
+				INDEX_MANAGER::ITERATE()
+				------------------------
+			*/
+			/*!
+				@brief Iterate over the index calling callback.operator() with each postings list.
+				@param callback [in] The callback to call.
+			*/
+			virtual void iterate(const delegate &callback) const
+				{
+				/*
+					Nothing
+				*/
+				}
+
+			/*
 				INDEX_MANAGER::GET_HIGHEST_DOCUMENT_ID()
 				----------------------------------------
 			*/
@@ -144,48 +180,6 @@ namespace JASS
 				{
 				return highest_term_id;
 				}
-
-
-#ifdef NEVER
-class iterator
-	{
-	private:
-		void *element;
-
-	public:
-		iterator(void *element) :
-			element(element)
-			{
-			//
-			}
-		
-		bool operator!=(const iterator &other) const
-			{
-			return element != other.element;
-			}
-
-		std::pair<slice, index_postings> &operator*() const
-			{
-			return
-			}
-
-		const iterator &operator++()
-			{
-			return
-			}
-	};
-
-virtual iterator begin() const
-	{
-	return iterator(0);
-	}
-
-virtual iterator end() const
-	{
-	return iterator(1);
-	}
-#endif
-
 
 			/*
 				INDEX_MANAGER::UNITTEST()

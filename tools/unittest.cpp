@@ -37,6 +37,7 @@ int main(void)
 		Output basic statistics about JASS as it stands
 	*/
 	puts(JASS::version::build().c_str());
+
 	/*
 		Test the JASS classes
 	*/

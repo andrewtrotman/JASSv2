@@ -103,7 +103,7 @@ namespace JASS
 						@brief Return a reference to the object at the current location.
 						@return The current object.
 					*/
-					const typename std::pair<KEY, ELEMENT> operator*() const
+					const typename std::pair<const KEY &, const ELEMENT &> operator*() const
 						{
 						return *tree_iterator;
 						}

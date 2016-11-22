@@ -72,7 +72,7 @@ namespace JASS
 					Nothing
 				*/
 				}
-			
+
 			/*
 				INDEX_POSTINGS::PUSH_BACK()
 				---------------------------

@@ -134,9 +134,9 @@ namespace JASS
 						@brief Return a reference to the object at the current location.
 						@return The current object.
 					*/
-					const std::pair<KEY, ELEMENT> operator*() const
+					const std::pair<const KEY &, const ELEMENT &> operator*() const
 						{
-						return std::make_pair(location->key, location->element);
+						return std::make_pair(std::ref(location->key), std::ref(location->element));
 						}
 					
 					/*
