@@ -52,9 +52,22 @@ namespace JASS
 						-------------------------------------
 					*/
 					/*!
+						@brief Destructor
+					*/
+					virtual ~delegate()
+						{
+						/*
+							Nothing
+						*/
+						}
+					/*
+						INDEX_MANAGER::DELEGATE::OPERATOR()()
+						-------------------------------------
+					*/
+					/*!
 						@brief The callback function is operator().
 					*/
-					virtual void operator()(const slice &term, const index_postings &postings) const = 0;
+					virtual void operator()(const slice &term, const index_postings &postings) = 0;
 				};
 
 		public:
@@ -150,7 +163,7 @@ namespace JASS
 				@brief Iterate over the index calling callback.operator() with each postings list.
 				@param callback [in] The callback to call.
 			*/
-			virtual void iterate(const delegate &callback) const
+			virtual void iterate(delegate &callback) const
 				{
 				/*
 					Nothing

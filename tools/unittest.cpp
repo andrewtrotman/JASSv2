@@ -23,6 +23,7 @@
 #include "index_postings.h"
 #include "instream_memory.h"
 #include "allocator_memory.h"
+#include "serialise_jass_ci.h"
 #include "instream_document_trec.h"
 #include "index_manager_sequential.h"
 #include "compress_integer_variable_byte.h"
@@ -38,6 +39,7 @@ int main(void)
 	*/
 	puts(JASS::version::build().c_str());
 
+#ifdef NEVER
 	/*
 		Test the JASS classes
 	*/
@@ -107,11 +109,21 @@ int main(void)
 	puts("index_manager");
 	JASS::index_manager::unittest();
 
+#endif
+
 	puts("index_manager_sequential");
 	JASS::index_manager_sequential::unittest();
-	
+
+
+	puts("serialise_jass_ci");
+	JASS::serialise_jass_ci::unittest();
+
+#ifdef NEVER
+
 	puts("compress_integer_variable_byte");
 	JASS::compress_integer_variable_byte::unittest();
+
+#endif
 	
 	puts("ALL UNIT TESTS HAVE PASSED");
 	return 0;

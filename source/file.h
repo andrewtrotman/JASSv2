@@ -61,7 +61,7 @@ namespace JASS
 				@param filename [in] the name of the file.
 				@param mode [in] The file open mode.  See C's fopen() for details on possible modes.
 			*/
-			file(const char *filename, const char *mode)
+			file(const char *filename, const char *mode = "w+b")
 				{
 				/*
 					Open the given file in the given mode
@@ -108,6 +108,21 @@ namespace JASS
 			size_t read(void *buffer, size_t bytes)
 				{
 				return ::fread(buffer, 1, bytes, fp);
+				}
+
+			/*
+				FILE::WRITE()
+				-------------
+			*/
+			/*!
+				@brief Write bytes number of bytes to the give file at the current cursor position.
+				@param buffer [in] the byte sequence to write.
+				@param bytes [in] The number of bytes of data to write.
+				@return The number of bytes of data that were written to the file.
+			*/
+			size_t write(void *buffer, size_t bytes)
+				{
+				return ::fwrite(buffer, 1, bytes, fp);
 				}
 
 			/*

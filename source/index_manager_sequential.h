@@ -12,12 +12,15 @@
 */
 #pragma once
 
+#include <sstream>
+
 #include "parser.h"
 #include "hash_table.h"
 #include "index_manager.h"
 #include "unittest_data.h"
 #include "index_postings.h"
 #include "instream_memory.h"
+#include "instream_document_trec.h"
 
 namespace JASS
 	{
@@ -30,7 +33,6 @@ namespace JASS
 		@details This class is a non-thread-safe indexer used for regular sequential indexing.  It self-contains its memory, uses a hash-table with
 		direct chaining (in a non-ballanced tree) and supports a positional index.
 	*/
-	
 	class index_manager_sequential : public index_manager
 		{
 		private:
@@ -47,7 +49,40 @@ namespace JASS
 			*/
 			class delegate : public index_manager::delegate
 				{
+				private:
+					std::ostream &into;					///< The unit test iterates into this.
+
 				public:
+					/*
+						INDEX_MANAGER_SEQUENTIAL::DELEGATE::OPERATOR()()
+						------------------------------------------------
+					*/
+					/*!
+						@brief Constructor
+						@param into [out] data is written into this object.
+					*/
+					delegate(std::ostream &into) :
+						into(into)
+						{
+						/*
+							Nothing
+						*/
+						}
+
+					/*
+						INDEX_MANAGER_SEQUENTIAL::DELEGATE::OPERATOR()()
+						------------------------------------------------
+					*/
+					/*!
+						@brief Destructor
+					*/
+					virtual ~delegate()
+						{
+						/*
+							Nothing
+						*/
+						}
+
 					/*
 						INDEX_MANAGER_SEQUENTIAL::DELEGATE::OPERATOR()()
 						------------------------------------------------
@@ -55,9 +90,9 @@ namespace JASS
 					/*!
 						@brief The callback function is operator().
 					*/
-					virtual void operator()(const slice &term, const index_postings &postings) const
+					virtual void operator()(const slice &term, const index_postings &postings)
 						{
-						std::cout << term << "->" << postings << std::endl;
+						into << term << "->" << postings << std::endl;
 						}
 				};
 
@@ -162,7 +197,7 @@ namespace JASS
 				@brief Iterate over the index calling callback.operator() with each postings list.
 				@param callback [in] The callback to call.
 			*/
-			virtual void iterate(const delegate &callback) const
+			virtual void iterate(index_manager::delegate &callback) const
 				{
 				/*
 					Iterate over the hash table calling the callback function with each term->postings pair.
@@ -172,49 +207,19 @@ namespace JASS
 				}
 
 			/*
-				INDEX_MANAGER_SEQUENTIAL::UNITTEST()
-				------------------------------------
+				INDEX_MANAGER_SEQUENTIAL::UNITTEST_BUILD_INDEX()
+				------------------------------------------------
+				Build a index from the standard 10-document collection.
 			*/
-			/*!
-				@brief Unit test this class.
-			*/
-			static void unittest(void)
+			static void unittest_build_index(index_manager_sequential &index)
 				{
 				parser parser;								// We need a parser
 				document document;						// That creates documents
 				instream *file = new instream_memory(unittest_data::ten_documents.c_str(), unittest_data::ten_documents.size());			// From this stream (the standard 10 document stream).
 				instream_document_trec source(*file);	// Set up the instream
-				index_manager_sequential index;			// And finally a index to populate
 				
 				/*
-					This is the answer that is expected
-				*/
-				std::string answer
-					(
-					"6-><6,1,21>\n"
-					"1-><1,1,1>\n"
-					"4-><4,1,10>\n"
-					"5-><5,1,15>\n"
-					"3-><3,1,6>\n"
-					"8-><8,1,36>\n"
-					"7-><7,1,28>\n"
-					"2-><2,1,3>\n"
-					"9-><9,1,45>\n"
-					"10-><10,1,55>\n"
-					"four-><7,1,35><8,1,43><9,1,52><10,1,62>\n"
-					"eight-><3,1,9><4,1,13><5,1,18><6,1,24><7,1,31><8,1,39><9,1,48><10,1,58>\n"
-					"five-><6,1,27><7,1,34><8,1,42><9,1,51><10,1,61>\n"
-					"seven-><4,1,14><5,1,19><6,1,25><7,1,32><8,1,40><9,1,49><10,1,59>\n"
-					"two-><9,1,54><10,1,64>\n"
-					"six-><5,1,20><6,1,26><7,1,33><8,1,41><9,1,50><10,1,60>\n"
-					"three-><8,1,44><9,1,53><10,1,63>\n"
-					"one-><10,1,65>\n"
-					"nine-><2,1,5><3,1,8><4,1,12><5,1,17><6,1,23><7,1,30><8,1,38><9,1,47><10,1,57>\n"
-					"ten-><1,1,2><2,1,4><3,1,7><4,1,11><5,1,16><6,1,22><7,1,29><8,1,37><9,1,46><10,1,56>\n"
-					);
-
-				/*
-					The easiest way to test this is to actually build the index for a set of document... and this is where unittest_data::ten_documents comes in handy
+					Build an indes
 				*/
 				do
 					{
@@ -267,17 +272,69 @@ namespace JASS
 					index.end_document();
 					}
 				while (!document.isempty());
-				
+				}
+
+			/*
+				INDEX_MANAGER_SEQUENTIAL::UNITTEST()
+				------------------------------------
+			*/
+			/*!
+				@brief Unit test this class.
+			*/
+			static void unittest(void)
+				{
+				/*
+					This is the answer that is expected
+				*/
+				std::string answer
+					(
+					"6-><6,1,21>\n"
+					"1-><1,1,1>\n"
+					"4-><4,1,10>\n"
+					"5-><5,1,15>\n"
+					"3-><3,1,6>\n"
+					"8-><8,1,36>\n"
+					"7-><7,1,28>\n"
+					"2-><2,1,3>\n"
+					"9-><9,1,45>\n"
+					"10-><10,1,55>\n"
+					"four-><7,1,35><8,1,43><9,1,52><10,1,62>\n"
+					"eight-><3,1,9><4,1,13><5,1,18><6,1,24><7,1,31><8,1,39><9,1,48><10,1,58>\n"
+					"five-><6,1,27><7,1,34><8,1,42><9,1,51><10,1,61>\n"
+					"seven-><4,1,14><5,1,19><6,1,25><7,1,32><8,1,40><9,1,49><10,1,59>\n"
+					"two-><9,1,54><10,1,64>\n"
+					"six-><5,1,20><6,1,26><7,1,33><8,1,41><9,1,50><10,1,60>\n"
+					"three-><8,1,44><9,1,53><10,1,63>\n"
+					"one-><10,1,65>\n"
+					"nine-><2,1,5><3,1,8><4,1,12><5,1,17><6,1,23><7,1,30><8,1,38><9,1,47><10,1,57>\n"
+					"ten-><1,1,2><2,1,4><3,1,7><4,1,11><5,1,16><6,1,22><7,1,29><8,1,37><9,1,46><10,1,56>\n"
+					);
+
+				/*
+				   Build the index for the standard 10 document collection
+				*/
+				index_manager_sequential index;
+				unittest_build_index(index);
+
+				/*
+					Serialise it
+				*/
 				std::ostringstream computed_result;
 				computed_result << index;
 				
+				/*
+					Check it produced the expected index
+				*/
 				JASS_assert(computed_result.str() == answer);
 
 				/*
 					Test the iterating callback mechanism
 				*/
-				delegate callback;
+				std::ostringstream callback_result;
+				delegate callback(callback_result);
 				index.iterate(callback);
+
+				JASS_assert(callback_result.str() == answer);
 
 				/*
 					Done

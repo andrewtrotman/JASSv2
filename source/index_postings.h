@@ -12,6 +12,8 @@
 */
 #pragma once
 
+#include <sstream>
+
 #include "dynamic_array.h"
 #include "allocator_pool.h"
 

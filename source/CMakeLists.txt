@@ -45,6 +45,8 @@ set(JASSlib_FILES
 	maths.h
 	parser.h
 	parser.cpp
+	serialise_jass_ci.cpp
+	serialise_jass_ci.h
 	slice.h
 	unicode.h
 	unicode.cpp
