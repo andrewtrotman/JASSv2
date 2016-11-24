@@ -37,7 +37,8 @@ namespace JASS
 		/*
 			Serialise it.
 		*/
-		index.iterate(serialise_jass_ci());
+		serialise_jass_ci serialiser;
+		index.iterate(serialiser);
 
 		/*
 			Checksum it.

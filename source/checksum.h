@@ -38,8 +38,22 @@ namespace JASS
 				For details see: Fletcher, J. G. (1982). An Arithmetic Checksum for Serial Transmissions. IEEE Transactions on Communications. COM-30 (1): 247-252. doi:10.1109/tcom.1982.1095369
 				The Wikipedia article is: https://en.wikipedia.org/wiki/Fletcher's_checksum
 				Dr Dobbs has an article that examines how good the algorithm is: http://www.drdobbs.com/database/fletchers-checksum/184408761
+				@param start [in] A pointer to a sequence of bytes to checksum.
+				@param end [in] A pointer to the end of the buffer.
+				@return The Fletcher 16-bit checksum of the 8-bit sequence.
+			*/
+			template <typename TYPE>
+			static uint16_t fletcher_16(TYPE &start, TYPE &end);
+
+
+			/*
+				CHECKSUM::FLETCHER_16()
+				-----------------------
+			*/
+			/*!
+				@brief Compute the Fletcher 16-bit checksum of a string (see the template verison details)..
 				@param data [in] A pointer to a sequence of bytes of length length to checksum.
-				@param [in] length The number of bytes to checksum, starting from data.
+				@param length [in] The number of bytes to checksum.
 				@return The Fletcher 16-bit checksum of the 8-bit sequence.
 			*/
 			static uint16_t fletcher_16(const void *data, size_t length);
@@ -49,7 +63,7 @@ namespace JASS
 				-----------------------
 			*/
 			/*!
-				@brief Compute the Fletcher 16-bit checksum of a string (see the verison that takes void* for details)..
+				@brief Compute the Fletcher 16-bit checksum of a string (see the template verison details)..
 				@param string [in] A C++ string to checksum.
 				@return The Fletcher 16-bit checksum of the string.
 			*/
@@ -63,11 +77,11 @@ namespace JASS
 				-----------------------
 			*/
 			/*!
-				@brief Compute the Fletcher 16-bit checksum of an istream (see the verison that takes void* for details)..
+				@brief Compute the Fletcher 16-bit checksum of an istream (see the template verison for details)..
 				@param stream [in] The stream to checksum
 				@return The Fletcher 16-bit checksum of the stream.
 			*/
-			static uint16_t checksum::fletcher_16(std::istream &stream);
+			static uint16_t fletcher_16(std::istream &stream);
 
 			/*
 				CHECKSUM::FLETCHER_16_FILE()

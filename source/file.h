@@ -120,9 +120,9 @@ namespace JASS
 				@param bytes [in] The number of bytes of data to write.
 				@return The number of bytes of data that were written to the file.
 			*/
-			size_t write(void *buffer, size_t bytes)
+			size_t write(const void *buffer, size_t bytes)
 				{
-				return ::fwrite(buffer, 1, bytes, fp);
+				return ::fwrite(const_cast<void *>(buffer), 1, bytes, fp);
 				}
 
 			/*

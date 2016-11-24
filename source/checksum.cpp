@@ -23,27 +23,37 @@ namespace JASS
 		CHECKSUM::FLETCHER_16()
 		-----------------------
 	*/
-	uint16_t checksum::fletcher_16(const void *address, size_t length)
+	template <typename TYPE>
+	uint16_t checksum::fletcher_16(TYPE &start, TYPE &end)
 		{
 		/*
 			This is a re-written version of the Wikipedia example (https://en.wikipedia.org/wiki/Fletcher%27s_checksum).
 			Re-written to avoid the array dereference. This is the "slow" version, but its a lot clearer than the fast version,
 			in this case clarity wins over speed.
 		*/
-		const uint8_t *byte = (const uint8_t *)address;
-		const uint8_t *end = byte + length;
 		uint16_t sum_1 = 0;
 		uint16_t sum_2 = 0;
 
-		while (byte < end)
+		while (start != end)
 			{
-			sum_1 = (sum_1 + *byte) % 255;
+			sum_1 = (sum_1 + *start) % 255;
 			sum_2 = (sum_2 + sum_1) % 255;
 
-			++byte;
+			++start;
 			}
 
 		return (sum_2 << 8) | sum_1;
+		}
+
+	/*
+		CHECKSUM::FLETCHER_16()
+		-----------------------
+	*/
+	uint16_t checksum::fletcher_16(const void *address, size_t length)
+		{
+		const uint8_t *start = (const uint8_t *)address;
+		const uint8_t *end = (const uint8_t *)address + length;
+		return fletcher_16(start, end);
 		}
 
 	/*
@@ -62,31 +72,19 @@ namespace JASS
 		*/
 		stream >> std::noskipws;
 
-
 		/*
-			See checksum::fletcher_16() for details
+			Compute the checksum
 		*/
 		std::istream_iterator<uint8_t> byte(stream);
 		std::istream_iterator<uint8_t> end;
-
-		uint16_t sum_1 = 0;
-		uint16_t sum_2 = 0;
-
-		while (byte != end)
-			{
-
-			sum_1 = (sum_1 + *byte) % 255;
-			sum_2 = (sum_2 + sum_1) % 255;
-
-			++byte;
-			}
+		auto checksum = fletcher_16(byte, end);
 
 		/*
 			Reset the stream's flags.
 		*/
 		stream.flags(flags); 
 
-		return (sum_2 << 8) | sum_1;
+		return checksum;
 		}
 
 	/*

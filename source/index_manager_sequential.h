@@ -211,6 +211,10 @@ namespace JASS
 				------------------------------------------------
 				Build a index from the standard 10-document collection.
 			*/
+			/*!
+				@brief Build and index for the 10 sample documents.  This is used by several unit tests that need a valid index.
+				@param index [out] The index once built.
+			*/
 			static void unittest_build_index(index_manager_sequential &index)
 				{
 				parser parser;								// We need a parser
