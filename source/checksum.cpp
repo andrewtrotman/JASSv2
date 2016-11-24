@@ -4,37 +4,83 @@
 	Copyright (c) 2016 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
+#include <stdio.h>
+
+#include "asserts.h"
+#include "checksum.h"
+#include "unittest_data.h"
+
 namespace JASS
 	{
 	/*
 		CHECKSUM::FLETCHER_16()
 		-----------------------
 	*/
-	uint16_t checksum::fletcher_16(void *data, int length)
+	uint16_t checksum::fletcher_16(const void *address, size_t length)
 		{
-		uint8_t sum_1 = 0;
-		uint8_t sum_2 = 0;
-
-		uint8_t *byte = (uint8_t *)data;
-		uint8_t *end = start + length;
+		/*
+			This is a re-written version of the Wikipedia example (https://en.wikipedia.org/wiki/Fletcher%27s_checksum).
+			Re-written to avoid the array dereference. This is the "slow" version, but its a lot clearer than the fast version,
+			in this case clarity wins over speed.
+		*/
+		const uint8_t *byte = (const uint8_t *)address;
+		const uint8_t *end = byte + length;
+		uint16_t sum_1 = 0;
+		uint16_t sum_2 = 0;
 
 		while (byte < end)
 			{
-			sum_1 = sum_1 + *byte;
-			sum_2 = sum_2 + sum_1;
+			sum_1 = (sum_1 + *byte) % 255;
+			sum_2 = (sum_2 + sum_1) % 255;
 
 			byte++;
 			}
 
-		return (((uint16_t)sum_2) << 8) | sum_1;
+		return (sum_2 << 8) | sum_1;
 		}
 
 	/*
 		CHECKSUM::UNITTEST()
 		--------------------
 	*/
-	static void checksum::unittest(void)
+	void checksum::unittest(void)
 		{
-		}
+		/*
+			Check the Fletcher 16-bit checksum of 8-bit data against the online calculator here: http://www.nitrxgen.net/hashgen/
+		*/
+		uint16_t checksum;
 
+		/*
+			Zero length string should produce 0
+		*/
+		checksum = checksum::fletcher_16("", 0);
+		JASS_assert(checksum == 0x0000);
+
+
+		/*
+			String of length 1
+		*/
+		checksum = checksum::fletcher_16("a", 1);
+		JASS_assert(checksum == 0x6161);
+
+		checksum = checksum::fletcher_16("z", 1);
+		JASS_assert(checksum == 0x7A7A);
+
+		/*
+			Long string
+		*/
+		checksum = checksum::fletcher_16((const uint8_t *)(unittest_data::ten_documents.c_str()), (int)unittest_data::ten_documents.size());
+		JASS_assert(checksum == 0xC29E);
+
+		/*
+			C++ Strings.  Since this just calls the C version, checking only one string suffices.
+		*/
+		checksum = checksum::fletcher_16(unittest_data::ten_documents);
+		JASS_assert(checksum == 0xC29E);
+
+		/*
+			Passed!
+		*/
+		puts("checksum::PASSED");
+		}
 	}

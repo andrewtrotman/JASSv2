@@ -22,6 +22,8 @@ set(JASSlib_FILES
 	binary_tree.h
 	bitstring.h
 	bitstring.cpp
+	checksum.h
+	checksum.cpp
 	compress_integer.h
 	compress_integer_variable_byte.h
 	compress_integer_variable_byte.cpp

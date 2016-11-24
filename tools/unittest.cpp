@@ -11,6 +11,7 @@
 #include "parser.h"
 #include "unicode.h"
 #include "version.h"
+#include "checksum.h"
 #include "bitstring.h"
 #include "hash_table.h"
 #include "binary_tree.h"
@@ -28,6 +29,7 @@
 #include "index_manager_sequential.h"
 #include "compress_integer_variable_byte.h"
 
+
 /*
 	MAIN()
 	------
@@ -39,11 +41,14 @@ int main(void)
 	*/
 	puts(JASS::version::build().c_str());
 
-#ifdef NEVER
 	/*
 		Test the JASS classes
 	*/
 	puts("PERFORM ALL UNIT TESTS");
+
+#ifndef NEVER
+	puts("checksum");
+	JASS::checksum::unittest();
 
 	puts("file");
 	JASS::file::unittest();
@@ -118,7 +123,7 @@ int main(void)
 	puts("serialise_jass_ci");
 	JASS::serialise_jass_ci::unittest();
 
-#ifdef NEVER
+#ifndef NEVER
 
 	puts("compress_integer_variable_byte");
 	JASS::compress_integer_variable_byte::unittest();
