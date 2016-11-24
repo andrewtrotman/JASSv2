@@ -6,6 +6,13 @@
 */
 #include <stdio.h>
 
+#include <ios>
+#include <fstream>
+#include <sstream>
+#include <iomanip>
+#include <iostream>
+#include <iterator>
+
 #include "asserts.h"
 #include "checksum.h"
 #include "unittest_data.h"
@@ -33,10 +40,63 @@ namespace JASS
 			sum_1 = (sum_1 + *byte) % 255;
 			sum_2 = (sum_2 + sum_1) % 255;
 
-			byte++;
+			++byte;
 			}
 
 		return (sum_2 << 8) | sum_1;
+		}
+
+	/*
+		CHECKSUM::FLETCHER_16()
+		-----------------------
+	*/
+	uint16_t checksum::fletcher_16(std::istream &stream)
+		{
+		/*
+			Get the stream's flags
+		*/
+		auto flags = stream.flags(); 
+
+		/*
+			set the noskipws so that it also checksums the whitespaces
+		*/
+		stream >> std::noskipws;
+
+
+		/*
+			See checksum::fletcher_16() for details
+		*/
+		std::istream_iterator<uint8_t> byte(stream);
+		std::istream_iterator<uint8_t> end;
+
+		uint16_t sum_1 = 0;
+		uint16_t sum_2 = 0;
+
+		while (byte != end)
+			{
+
+			sum_1 = (sum_1 + *byte) % 255;
+			sum_2 = (sum_2 + sum_1) % 255;
+
+			++byte;
+			}
+
+		/*
+			Reset the stream's flags.
+		*/
+		stream.flags(flags); 
+
+		return (sum_2 << 8) | sum_1;
+		}
+
+	/*
+		CHECKSUM::FLETCHER_16_FILE()
+		----------------------------
+	*/
+	uint16_t checksum::fletcher_16_file(const std::string &filename)
+		{
+		std::ifstream file(filename);
+		return fletcher_16(file);
 		}
 
 	/*
@@ -78,6 +138,13 @@ namespace JASS
 		checksum = checksum::fletcher_16(unittest_data::ten_documents);
 		JASS_assert(checksum == 0xC29E);
 
+		/*
+			Check the istream version
+		*/
+		std::istringstream stream(unittest_data::ten_documents);
+		checksum = checksum::fletcher_16(stream);
+		JASS_assert(checksum == 0xC29E);
+		
 		/*
 			Passed!
 		*/

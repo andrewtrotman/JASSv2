@@ -29,14 +29,18 @@ namespace JASS
 	void serialise_jass_ci::unittest(void)
 		{
 		/*
-			Build an index
+			Build an index.
 		*/
 		index_manager_sequential index;
 		index_manager_sequential::unittest_build_index(index);
 		
 		/*
-			Now serialise it
+			Serialise it.
 		*/
 		index.iterate(serialise_jass_ci());
+
+		/*
+			Checksum it.
+		*/
 		}
 	}

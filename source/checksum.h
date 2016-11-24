@@ -33,7 +33,7 @@ namespace JASS
 				-----------------------
 			*/
 			/*!
-				@brief Fletcher 16-bit checksum of 8-bit data.  Unlike a "regular" 8-bit checsum, this manages position as well as content.
+				@brief Compute the Fletcher 16-bit checksum of 8-bit data.  Unlike a "regular" 8-bit checsum, this manages position as well as content.
 				@details  The Fletcher checksum was designed to identify when two bytes in an 8-bit data-stream are swapped over. which a "regular" checksum cannot detect.
 				For details see: Fletcher, J. G. (1982). An Arithmetic Checksum for Serial Transmissions. IEEE Transactions on Communications. COM-30 (1): 247-252. doi:10.1109/tcom.1982.1095369
 				The Wikipedia article is: https://en.wikipedia.org/wiki/Fletcher's_checksum
@@ -49,7 +49,7 @@ namespace JASS
 				-----------------------
 			*/
 			/*!
-				@brief Fletcher 16-bit checksum of a string (see the verison that takes void* for details)..
+				@brief Compute the Fletcher 16-bit checksum of a string (see the verison that takes void* for details)..
 				@param string [in] A C++ string to checksum.
 				@return The Fletcher 16-bit checksum of the string.
 			*/
@@ -57,6 +57,28 @@ namespace JASS
 				{
 				return fletcher_16(string.c_str(), string.length());
 				}
+
+			/*
+				CHECKSUM::FLETCHER_16()
+				-----------------------
+			*/
+			/*!
+				@brief Compute the Fletcher 16-bit checksum of an istream (see the verison that takes void* for details)..
+				@param stream [in] The stream to checksum
+				@return The Fletcher 16-bit checksum of the stream.
+			*/
+			static uint16_t checksum::fletcher_16(std::istream &stream);
+
+			/*
+				CHECKSUM::FLETCHER_16_FILE()
+				----------------------------
+			*/
+			/*!
+				@brief Compute the Fletcher 16-bit checksum of a disk file.
+				@param filename [in] The path to the file to checksum.
+				@return The Fletcher 16-bit checksum of the file.
+			*/
+			static uint16_t fletcher_16_file(const std::string &filename);
 
 			/*
 				CHECKSUM::UNITTEST()

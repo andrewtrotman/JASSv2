@@ -46,7 +46,6 @@ int main(void)
 	*/
 	puts("PERFORM ALL UNIT TESTS");
 
-#ifndef NEVER
 	puts("checksum");
 	JASS::checksum::unittest();
 
@@ -114,8 +113,6 @@ int main(void)
 	puts("index_manager");
 	JASS::index_manager::unittest();
 
-#endif
-
 	puts("index_manager_sequential");
 	JASS::index_manager_sequential::unittest();
 
@@ -123,13 +120,9 @@ int main(void)
 	puts("serialise_jass_ci");
 	JASS::serialise_jass_ci::unittest();
 
-#ifndef NEVER
-
 	puts("compress_integer_variable_byte");
 	JASS::compress_integer_variable_byte::unittest();
 
-#endif
-	
 	puts("ALL UNIT TESTS HAVE PASSED");
 	return 0;
 	}
