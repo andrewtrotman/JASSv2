@@ -116,7 +116,6 @@ int main(void)
 	puts("index_manager_sequential");
 	JASS::index_manager_sequential::unittest();
 
-
 	puts("serialise_jass_ci");
 	JASS::serialise_jass_ci::unittest();
 

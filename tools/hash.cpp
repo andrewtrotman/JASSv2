@@ -26,7 +26,7 @@
 */
 uint8_t usage(const std::string &filename)
 	{
-	printf("Usage:%s <filename> <filename> ...\n", filename.c_str());
+	printf("Usage:%s <filename> [<filename> ...]\n", filename.c_str());
 	return 0;
 	}
 

@@ -4,6 +4,7 @@
 	Copyright (c) 2016 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
+#include "checksum.h"
 #include "serialise_jass_ci.h"
 #include "index_manager_sequential.h"
 
@@ -35,13 +36,19 @@ namespace JASS
 		index_manager_sequential::unittest_build_index(index);
 		
 		/*
-			Serialise it.
+			Serialise the index.
 		*/
+		{
 		serialise_jass_ci serialiser;
 		index.iterate(serialiser);
+		}
 
 		/*
-			Checksum it.
+			Checksum the inde to make sure its correct.
 		*/
+		auto checksum = checksum::fletcher_16_file("CIvocab_terms.bin");
+		JASS_assert(checksum == 0x61E1);
+
+		puts("\t\tserialise_jass_ci::INCOMPLETE - not all implemented");
 		}
 	}
