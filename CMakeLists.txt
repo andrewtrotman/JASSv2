@@ -71,6 +71,12 @@ add_executable(index tools/index.cpp)
 target_link_libraries(index JASSlib ${CMAKE_THREAD_LIBS_INIT})
 
 #
+# build the checksummer
+#
+add_executable(hash tools/hash.cpp)
+target_link_libraries(hash JASSlib ${CMAKE_THREAD_LIBS_INIT})
+
+#
 # Build the documentation with Doxygen (but Apple's HeaderDoc also works)
 #
 find_package(Doxygen)
