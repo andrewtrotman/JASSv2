@@ -12,6 +12,7 @@
 	@copyright 2016 Andrew Trotman
 */
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "checksum.h"
 
