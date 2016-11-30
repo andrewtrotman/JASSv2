@@ -10,6 +10,6 @@ function cmake_ubuntu {
   sudo update-alternatives --install /usr/bin/cmake cmake /usr/local/bin/cmake 1 --force
 }
 
-if [ "$TRAVIS_OS_NAME" = linux ]; then
+if [ "$TRAVIS_OS_NAME" = XXlinux ]; then
   cmake_ubuntu
 fi
