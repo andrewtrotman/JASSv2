@@ -3,13 +3,11 @@ sudo: required
 dist: trusty
 
 before_install:
-  - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-  - sudo apt-get update -q
-  - sudo apt-get install g++-5 -y
-  - export CXX=g++-5
+  - if [ "$TRAVIS_OS_NAME" == linux ]; then ./tools/travis_dependencies.sh; export CXX=g++-5; fi
 script: cd build && cmake .. && make && ./unittest
 
 os:
   - linux
+  - osx
 compiler:
   - gcc
