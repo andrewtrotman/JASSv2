@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/andrewtrotman/JASSv2.svg?branch=master)](https://travis-ci.org/andrewtrotman/JASSv2)
+
 # JASSv2
 
 ## Building JASSv2
