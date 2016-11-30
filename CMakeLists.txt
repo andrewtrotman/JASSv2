@@ -14,7 +14,7 @@
 #       data file that describes all the Unicode characters - which is used for the isalpha() and similar
 #       methods.
 
-cmake_minimum_required (VERSION 3.3.0)
+cmake_minimum_required (VERSION 2.8.0)
 
 # set(CMAKE_VERBOSE_MAKEFILE on)
 set(CMAKE_BUILD_TYPE Debug)
