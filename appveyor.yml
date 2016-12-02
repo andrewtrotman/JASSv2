@@ -1,0 +1,15 @@
+platform:
+  - x64
+
+branches:
+  only:
+    - master
+
+build_script:
+  - 'call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64'
+  - "cd build && cmake -G \"NMake Makefiles\" .. && nmake"
+
+test_script:
+  - "unittest"
+
+
