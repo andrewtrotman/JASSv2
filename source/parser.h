@@ -132,6 +132,8 @@ namespace JASS
 					Nothing
 				*/
 				current = NULL;
+				the_document = NULL;
+				end_of_document = NULL;
 				eof_token.type =  token::eof;
 				}
 			

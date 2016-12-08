@@ -58,8 +58,8 @@ namespace JASS
 	/*
 		Do the read and note how many bytes we're read.
 	*/
-	disk_file.read(&document.contents[0], document.contents.size());
-	bytes_read += document.contents.size();
+	if (disk_file.read(&document.contents[0], document.contents.size()) > 0)
+		bytes_read += document.contents.size();
 	}
 	
 	/*
@@ -85,7 +85,10 @@ namespace JASS
 		#ifdef WIN32
 			_mktemp(filename);
 		#else
-			close(mkstemp(filename));
+			umask(umask(0));				// This sets the umask to its current value, and prevents Coverity from producing a warning
+			int file_descriptor = mkstemp(filename));
+			if (file_descriptor >= 0)
+				close(file_descriptor);
 		#endif
 
 		/*
@@ -124,7 +127,7 @@ namespace JASS
 			*/
 			}
 		while (0);
-		remove(filename);
+		(void)remove(filename);			// delete the file.  Case to void to remove Coverity warning if remove() fails.
 		/*
 			Yay, we passed
 		*/

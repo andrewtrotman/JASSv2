@@ -175,7 +175,9 @@ namespace JASS
 		/*
 			If we got a short read then resize the buffer to signal back to the caller that we failed to read (probably EOF).
 		*/
-		if (bytes_read != buffer.size())
+		if (bytes_read <= 0)
+			buffer.resize(0);
+		else if (bytes_read != buffer.size())
 			buffer.resize(bytes_read);
 		}
 	
@@ -191,13 +193,19 @@ namespace JASS
 			be very fast as it doesn't (normally) need to do and I/O to compute the answer
 		*/
 		#ifdef WIN32
-			uint64_t current_position = _ftelli64(fp);
-			_fseeki64(fp, 0, SEEK_END);
-			uint64_t file_size = _ftelli64(fp);
+			int64_t current_position = _ftelli64(fp);
+			if (current_position < 0)
+				return 0;							// this only happens on _ftelli64() failing
+			if (_fseeki64(fp, 0, SEEK_END) < 0)
+				return 0;
+			int64_t file_size = _ftelli64(fp);
 			_fseeki64(fp, current_position, SEEK_SET);
 		#else
 			off_t current_position = ftello(fp);
-			fseeko(fp, 0, SEEK_END);
+			if (current_position < 0)
+				return 0;							// this only happens on ftello() failing
+			if (fseeko(fp, 0, SEEK_END) < 0)
+				return 0;
 			off_t file_size = ftello(fp);
 			fseeko(fp, current_position, SEEK_SET);
 		#endif
@@ -206,7 +214,7 @@ namespace JASS
 			This will fail in the case where off_t is larger than a size_t.  This is unlikely.
 			On the machines this is being developed on both size_t and off_t are 8-byte integers.
 		*/
-		return file_size;
+		return file_size < 0 ? 0 : file_size;
 		}
 
 
@@ -252,7 +260,10 @@ namespace JASS
 		#ifdef WIN32
 			_mktemp(filename);
 		#else
-			close(mkstemp(filename));
+			umask(umask(0));				// This sets the umask to its current value, and prevents Coverity from producing a warning
+			int file_descriptor = mkstemp(filename));
+			if (file_descriptor >= 0)
+				close(file_descriptor);
 		#endif
 
 		/*
@@ -261,7 +272,7 @@ namespace JASS
 		write_entire_file(filename, example_file);
 		read_entire_file(filename, reread);
 		JASS_assert(example_file == reread);
-		remove(filename);								// delete the file once we're done with it
+		(void)remove(filename);								// delete the file once we're done with it (cast to void to remove Coverity warning)
 		
 		/*
 			CHECK BUFFER_TO_LIST()

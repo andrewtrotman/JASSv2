@@ -36,6 +36,8 @@
 */
 int main(void)
 	{
+	int failed = false;			// main() returns 0 on success
+
 	/*
 		Output basic statistics about JASS as it stands
 	*/
@@ -46,82 +48,92 @@ int main(void)
 	*/
 	puts("PERFORM ALL UNIT TESTS");
 
-	puts("checksum");
-	JASS::checksum::unittest();
+	try
+		{
+		puts("checksum");
+		JASS::checksum::unittest();
 
-	puts("file");
-	JASS::file::unittest();
-	
-	puts("bitstring");
-	JASS::bitstring::unittest();
+		puts("file");
+		JASS::file::unittest();
+		
+		puts("bitstring");
+		JASS::bitstring::unittest();
 
-	puts("unicode");
-	JASS::unicode::unittest();
-	
-	puts("ascii");
-	JASS::ascii::unittest();
-	
-	puts("maths");
-	JASS::maths::unittest();
-	
-	// JASS::allocator does not have a unittest because it is a virtual base class
-	
-	puts("allocator_pool");
-	JASS::allocator_pool::unittest();
-	
-	puts("allocator_memory");
-	JASS::allocator_memory::unittest();
+		puts("unicode");
+		JASS::unicode::unittest();
+		
+		puts("ascii");
+		JASS::ascii::unittest();
+		
+		puts("maths");
+		JASS::maths::unittest();
+		
+		// JASS::allocator does not have a unittest because it is a virtual base class
+		
+		puts("allocator_pool");
+		JASS::allocator_pool::unittest();
+		
+		puts("allocator_memory");
+		JASS::allocator_memory::unittest();
 
-	puts("document");
-	JASS::document::unittest();
-	
-	puts("allocator_cpp");
-	JASS::allocator_cpp<size_t>::unittest();
-	
-	puts("slice");
-	JASS::slice::unittest();
-	
-	// instream does not have a unittest because it is a virtual base class
-	
-	puts("instream_file");
-	JASS::instream_file::unittest();
-	
-	puts("instream_memory");
-	JASS::instream_memory::unittest();
+		puts("document");
+		JASS::document::unittest();
+		
+		puts("allocator_cpp");
+		JASS::allocator_cpp<size_t>::unittest();
+		
+		puts("slice");
+		JASS::slice::unittest();
+		
+		// instream does not have a unittest because it is a virtual base class
+		
+		puts("instream_file");
+		JASS::instream_file::unittest();
+		
+		puts("instream_memory");
+		JASS::instream_memory::unittest();
 
-	puts("instream_document_trec");
-	JASS::instream_document_trec::unittest();
-	
-	puts("parser");
-	JASS::parser::unittest();
-	
-	puts("hash_pearson");
-	JASS::hash_pearson::unittest();
+		puts("instream_document_trec");
+		JASS::instream_document_trec::unittest();
+		
+		puts("parser");
+		JASS::parser::unittest();
+		
+		puts("hash_pearson");
+		JASS::hash_pearson::unittest();
 
-	puts("binary_tree");
-	JASS::binary_tree<size_t, size_t>::unittest();
-	
-	puts("hash_table");
-	JASS::hash_table<JASS::slice, JASS::slice>::unittest();
-	
-	puts("dynamic_array");
-	JASS::dynamic_array<JASS::slice>::unittest();
+		puts("binary_tree");
+		JASS::binary_tree<size_t, size_t>::unittest();
+		
+		puts("hash_table");
+		JASS::hash_table<JASS::slice, JASS::slice>::unittest();
+		
+		puts("dynamic_array");
+		JASS::dynamic_array<JASS::slice>::unittest();
 
-	puts("index_postings");
-	JASS::index_postings::unittest();
-	
-	puts("index_manager");
-	JASS::index_manager::unittest();
+		puts("index_postings");
+		JASS::index_postings::unittest();
+		
+		puts("index_manager");
+		JASS::index_manager::unittest();
 
-	puts("index_manager_sequential");
-	JASS::index_manager_sequential::unittest();
+		puts("index_manager_sequential");
+		JASS::index_manager_sequential::unittest();
 
-	puts("serialise_jass_ci");
-	JASS::serialise_jass_ci::unittest();
+		puts("serialise_jass_ci");
+		JASS::serialise_jass_ci::unittest();
 
-	puts("compress_integer_variable_byte");
-	JASS::compress_integer_variable_byte::unittest();
+		puts("compress_integer_variable_byte");
+		JASS::compress_integer_variable_byte::unittest();
 
-	puts("ALL UNIT TESTS HAVE PASSED");
-	return 0;
+		puts("ALL UNIT TESTS HAVE PASSED");
+		}
+
+	catch (std::bad_array_new_length error)
+		{
+		failed = true;
+		printf("CAUGHT AN EXCEPTION OF TYPE std::bad_array_new_length (%s)\n", error.what());
+		}
+
+	return failed;
 	}

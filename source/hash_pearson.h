@@ -211,7 +211,7 @@ namespace JASS
 				/*
 					construct the hash from each part.
 				*/
-				return seed_3 << 24 | seed_2 << 16 | seed_1 << 8 | seed_0;
+				return (size_t)seed_3 << 24 | (size_t)seed_2 << 16 | (size_t)seed_1 << 8 | (size_t)seed_0;
 				}
 				
 			/*
