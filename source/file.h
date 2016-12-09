@@ -61,7 +61,7 @@ namespace JASS
 				@param filename [in] the name of the file.
 				@param mode [in] The file open mode.  See C's fopen() for details on possible modes.
 			*/
-			file(const char *filename, const char *mode = "w+b")
+			file(const char *filename, const char *mode)
 				{
 				/*
 					Open the given file in the given mode

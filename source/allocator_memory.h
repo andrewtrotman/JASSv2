@@ -59,6 +59,56 @@ namespace JASS
 				}
 
 			/*
+				ALLOCATOR_MEMORY::OPERATOR==()
+				------------------------------
+			*/
+			/*!
+				@brief Compare for equality two objects of this class type.
+				@param that [in] The object to compare to.
+				@return True if this == that, else false.
+			*/
+			virtual bool operator==(const allocator &with)
+				{
+				try
+					{
+					/*
+						Downcast the parameter to an allocator_memory and see if it matches this.
+					*/
+					auto other = dynamic_cast<const allocator_memory *>(&with);
+					return (used == other->size()) && (allocated == other->capacity()) && (buffer == other->buffer);
+					}
+				catch (...)
+					{
+					return false;
+					}
+				}
+			
+			/*
+				ALLOCATOR_MEMORY::OPERATOR!=()
+				------------------------------
+			*/
+			/*!
+				@brief Compare for inequlity two objects of this class type.
+				@param that [in] The object to compare to.
+				@return True if this != that, else false.
+			*/
+			virtual bool operator!=(const allocator &with)
+				{
+				try
+					{
+					/*
+						Downcast the parameter to an allocator_memory and see if it matches this.
+					*/
+					auto other = dynamic_cast<const allocator_memory *>(&with);
+					return (used != other->size()) || (allocated != other->capacity()) || (buffer != other->buffer);
+					}
+				catch (...)
+					{
+					return false;
+					}
+				}
+			
+			/*
 				ALLOCATOR_MEMORY::MALLOC()
 				--------------------------
 			*/

@@ -272,8 +272,20 @@ namespace JASS
 		write_entire_file(filename, example_file);
 		read_entire_file(filename, reread);
 		JASS_assert(example_file == reread);
-		(void)remove(filename);								// delete the file once we're done with it (cast to void to remove Coverity warning)
 		
+		/*
+			Also check that read works
+		*/
+		file *disk_object = new file(filename, "rb");
+		std::vector<uint8_t> disk_object_contents;
+		disk_object_contents.resize(example_file.size() + 1024);
+		disk_object->read(disk_object_contents);
+		std::string disk_object_as_string(disk_object_contents.begin(), disk_object_contents.end());
+		delete disk_object;
+		JASS_assert(example_file == disk_object_as_string);
+
+		(void)remove(filename);								// delete the file once we're done with it (cast to void to remove Coverity warning)
+	
 		/*
 			CHECK BUFFER_TO_LIST()
 		*/

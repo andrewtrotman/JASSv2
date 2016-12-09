@@ -62,7 +62,7 @@ namespace JASS
 
 #ifdef USE_CRT_MALLOC
 		std::vector<void *> crt_malloc_list;	///< When USE_CRT_MALLOC is defined the C RTL malloc() is called and this keeps track of those calls (so that rewind() works).
-		std::mutex mutex;						///< Mutex used to control access to crt_malloc_list as it is not thread-safe.
+		std::mutex mutex;								///< Mutex used to control access to crt_malloc_list as it is not thread-safe.
 #endif
 
 		protected:
@@ -185,6 +185,58 @@ namespace JASS
 				@brief Destructor.
 			*/
 			virtual ~allocator_pool();
+
+			/*
+				ALLOCATOR_POOL::OPERATOR==()
+				----------------------------
+			*/
+			/*!
+				@brief Compare for equality two objects of this class type.
+				@details Any two unused allocator_pool objects are equal until one or the other is first used.
+				@param that [in] The object to compare to.
+				@return True if this == that, else false.
+			*/
+			virtual bool operator==(const allocator &with)
+				{
+				try
+					{
+					/*
+						Downcast the parameter to an allocator_memory and see if it matches this.
+					*/
+					auto other = dynamic_cast<const allocator_pool *>(&with);
+					return (used == other->size()) && (allocated == other->capacity()) && (current_chunk == other->current_chunk);
+					}
+				catch (...)
+					{
+					return false;
+					}
+				}
+			
+			/*
+				ALLOCATOR_POOL::OPERATOR!=()
+				----------------------------
+			*/
+			/*!
+				@brief Compare for inequlity two objects of this class type.
+				@details Any two unused allocator_pool objects are equal until one or the other is first used.
+				@param that [in] The object to compare to.
+				@return True if this != that, else false.
+			*/
+			virtual bool operator!=(const allocator &with)
+				{
+				try
+					{
+					/*
+						Downcast the parameter to an allocator_memory and see if it matches this.
+					*/
+					auto other = dynamic_cast<const allocator_pool *>(&with);
+					return (used != other->size()) || (allocated != other->capacity()) || (current_chunk != other->current_chunk);
+					}
+				catch (...)
+					{
+					return false;
+					}
+				}
 
 			/*
 				ALLOCATOR_POOL::MALLOC()

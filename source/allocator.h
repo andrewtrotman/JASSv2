@@ -36,7 +36,7 @@ namespace JASS
 			#ifdef __arm__
 				static constexpr size_t alignment_boundary = sizeof(void *);		///< On ARM its necessary to align all memory allocations on word boundaries
 			#else
-				static constexpr size_t alignment_boundary = 1;							///< Elsewhee don't bother with alignment (align on byte boundaries)
+				static constexpr size_t alignment_boundary = 1;							///< Elsewhere don't bother with alignment (align on byte boundaries)
 			#endif
 		protected:
 			std::atomic<size_t> used;						///< The number of bytes this object has passed back to the caller.
@@ -68,6 +68,34 @@ namespace JASS
 				/*
 					Nothing
 				*/
+				}
+
+			/*
+				ALLOCATOR::OPERATOR==()
+				-----------------------
+			*/
+			/*!
+				@brief Compare for equality two objects of this class type.
+				@param that [in] The object to compare to.
+				@return True if this == that, else false.
+			*/
+			virtual bool operator==(const allocator &with)
+				{
+				return (used == with.used) && (allocated == with.allocated);
+				}
+			
+			/*
+				ALLOCATOR::OPERATOR!=()
+				-----------------------
+			*/
+			/*!
+				@brief Compare for inequlity two objects of this class type.
+				@param that [in] The object to compare to.
+				@return True if this != that, else false.
+			*/
+			virtual bool operator!=(const allocator &with)
+				{
+				return (used != with.used) || (allocated != with.allocated);
 				}
 
 			/*

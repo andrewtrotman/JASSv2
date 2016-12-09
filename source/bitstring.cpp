@@ -219,8 +219,54 @@ namespace JASS
 		/*
 			does index() work?
 		*/
+		JASS_assert(b3.index(0) == -1);
 		JASS_assert(b3.index(1) == 99);
 		JASS_assert(b3.index(2) == 999);
+		JASS_assert(b3.index(1024) == -1);
+
+		/*
+			Check that XOR words
+		*/
+		b1.bit_xor(b3, b2);
+		JASS_assert(b3.unsafe_getbit(99));
+		JASS_assert(b3.unsafe_getbit(999));
+		JASS_assert(b3.popcount() == 2);
+		
+		/*
+			make sure XOR didn't trash the original strings
+		*/
+		JASS_assert(b1.popcount() == 1);
+		JASS_assert(b2.popcount() == 1);
+
+		/*
+			Check that AND words
+		*/
+		b2.unsafe_setbit(99);
+		b1.bit_and(b3, b2);
+		JASS_assert(b3.unsafe_getbit(99) == 1);
+		JASS_assert(b3.unsafe_getbit(999) == 0);
+		JASS_assert(b3.popcount() == 1);
+		
+		/*
+			make sure AND didn't trash the original strings
+		*/
+		JASS_assert(b1.popcount() == 1);
+		JASS_assert(b2.popcount() == 2);
+
+		/*
+			Check that AND_NOT words
+		*/
+		b2.unsafe_unsetbit(99);
+		b1.bit_and_not(b3, b2);
+		JASS_assert(b3.unsafe_getbit(99) == 1);
+		JASS_assert(b3.unsafe_getbit(999) == 0);
+		JASS_assert(b3.popcount() == 1);
+		
+		/*
+			make sure AND_NOT didn't trash the original strings
+		*/
+		JASS_assert(b1.popcount() == 1);
+		JASS_assert(b2.popcount() == 1);
 
 		/*
 			zero() should work

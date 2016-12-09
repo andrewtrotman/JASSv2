@@ -91,6 +91,7 @@ namespace JASS
 								*decoded = (*decoded << 7) | (*source++ & 0x7F);
 							else
 								{
+#if JASS_COMPRESS_INTEGER_BITS_PER_INTEGER == 64
 								*decoded = (*decoded << 7) | *source++;
 								if (*source & 0x80)
 									*decoded = (*decoded << 7) | (*source++ & 0x7F);
@@ -120,6 +121,7 @@ namespace JASS
 											}
 										}
 									}
+#endif
 								}
 							}
 						}

@@ -58,9 +58,9 @@ namespace JASS
 				@brief Constructor
 			*/
 			serialise_jass_ci() :
-				vocabulary_strings("CIvocab_terms.bin"),
-				vocabulary("CIvocab.bin"),
-				postings("CIpostings.bin")
+				vocabulary_strings("CIvocab_terms.bin", "w+b"),
+				vocabulary("CIvocab.bin", "w+b"),
+				postings("CIpostings.bin", "w+b")
 				{
 				/*
 					Nothing

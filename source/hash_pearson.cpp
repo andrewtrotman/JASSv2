@@ -42,6 +42,9 @@ namespace JASS
 	*/
 	void hash_pearson::unittest(void)
 		{
+		/*
+			Check success states
+		*/
 		size_t eight = hash_pearson::hash_8("here", 4);
 		size_t sixteen = hash_pearson::hash_16("here there", 10);
 		size_t twentyfour = hash_pearson::hash_24("here there and", 14);
@@ -52,7 +55,6 @@ namespace JASS
 		JASS_assert(twentyfour == 13710892);
 		JASS_assert(thirtytwo == 1803130861);
 
-
 		size_t eight_a = hash_pearson::hash<8>("here", 4);
 		size_t sixteen_a = hash_pearson::hash<16>("here there", 10);
 		size_t twentyfour_a = hash_pearson::hash<24>("here there and", 14);
@@ -62,6 +64,30 @@ namespace JASS
 		JASS_assert(sixteen_a == 49465);
 		JASS_assert(twentyfour_a == 13710892);
 		JASS_assert(thirtytwo_a == 1803130861);
+
+		/*
+			Check odd lengths
+		*/
+		eight = hash_pearson::hash_8("here", 4);
+		JASS_assert(eight == 83);
+		sixteen = hash_pearson::hash_16("here there", 10);
+		JASS_assert(sixteen == 49465);
+		sixteen = hash_pearson::hash_16("here there", 9);
+		JASS_assert(sixteen == 63545);
+		twentyfour = hash_pearson::hash_24("here there and", 12);
+		JASS_assert(twentyfour == 13744990);
+		twentyfour = hash_pearson::hash_24("here there and", 11);
+		JASS_assert(twentyfour == 2603870);
+		twentyfour = hash_pearson::hash_24("here there and", 10);
+		JASS_assert(twentyfour == 2595934);
+		thirtytwo = hash_pearson::hash_32("here there and everywhere", 24);
+		JASS_assert(thirtytwo == 1803130851);
+		thirtytwo = hash_pearson::hash_32("here there and everywhere", 23);
+		JASS_assert(thirtytwo == 2054789091);
+		thirtytwo = hash_pearson::hash_32("here there and everywhere", 22);
+		JASS_assert(thirtytwo == 2062194659);
+		thirtytwo = hash_pearson::hash_32("here there and everywhere", 21);
+		JASS_assert(thirtytwo == 2062191587);
 
 		
 		puts("hash_pearson::PASSED");

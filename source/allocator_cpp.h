@@ -162,7 +162,29 @@ namespace JASS
 				collection_1[0] = collection_2[0];
 	
 				JASS_assert(collection_1[0] == collection_2[0]);
-				
+	
+				/*
+					Check the cases that should fail
+				*/
+				JASS_assert(memory_1.allocate(0) == nullptr);
+				try
+					{
+					/*
+						Allocating -1 should cause an exeption which will get caught below
+					*/
+					JASS_assert(memory_1.allocate(-1));
+					}
+				catch (std::bad_array_new_length error)
+					{
+					//puts("EXCEPTION CORRECT");				// It is correct that an exception happened, so we ignore it.
+					}
+
+				/*
+					Check the comparison operators
+				*/
+				JASS_assert(memory_1 == memory_1);
+				JASS_assert(!(memory_1 != memory_2));
+					
 				puts("allocator_cpp::PASSED");
 				}
 		};
