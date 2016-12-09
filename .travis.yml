@@ -4,12 +4,13 @@ dist: trusty
 
 before_install:
   - if [ "$TRAVIS_OS_NAME" == linux ]; then ./tools/travis_dependencies.sh; export CXX=g++-5; fi
+  # Inject gcov debug flags into all CMakeLists.txt
   - if [ "$CODECOV_RUN" == 1 ]; then find . -name 'CMakeLists.txt' -exec sh -c "echo '\nSET(CMAKE_CXX_FLAGS \"-g -O0 -fprofile-arcs -ftest-coverage\")\nSET(CMAKE_C_FLAGS \"-g -O0 -fprofile-arcs -ftest-coverage\")' >> {}" \;; fi
 script:
-  - if [ "$COVERITY_SCAN_BRANCH" != 1 ]; then cd build && cmake .. && make && ./unittest; fi
+  - if [ "$COVERITY_SCAN_BRANCH" != 1 -a "$VALGRIND_RUN" != 1 ]; then cd build && cmake .. && make && ./unittest; fi
+  - if [ "$VALGRIND_RUN" == 1 ]; then cd build && cmake .. && make && valgrind -q --error-exitcode=42 ./unittest; fi
 after_success:
-  - if [ "$CODECOV_RUN" == 1 ]; then bash <(curl -s https://codecov.io/bash); fi
-
+- if [ "$CODECOV_RUN" == 1 ]; then bash <(curl -s https://codecov.io/bash); fi
 matrix:
   include:
     - os: linux
@@ -26,6 +27,11 @@ matrix:
       env:
         - CODECOV_RUN=1
 
+    - os: linux
+      compiler: gcc
+      env:
+        - VALGRIND_RUN=1
+
 branches:
   only:
     - master
@@ -40,5 +46,3 @@ addons:
     build_command_prepend: "unset CXX; sudo ln -sf /usr/bin/g++-5 /usr/bin/c++; cd build && cmake .."
     build_command: "make"
     branch_pattern: coverity_scan
-
-
