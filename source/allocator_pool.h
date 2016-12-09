@@ -204,7 +204,7 @@ namespace JASS
 						Downcast the parameter to an allocator_memory and see if it matches this.
 					*/
 					auto other = dynamic_cast<const allocator_pool *>(&with);
-					return (used == other->size()) && (allocated == other->capacity()) && (current_chunk == other->current_chunk);
+					return (used == other->size()) && (allocated == other->capacity()) && (current_chunk.load() == other->current_chunk.load());
 					}
 				catch (...)
 					{
@@ -230,7 +230,7 @@ namespace JASS
 						Downcast the parameter to an allocator_memory and see if it matches this.
 					*/
 					auto other = dynamic_cast<const allocator_pool *>(&with);
-					return (used != other->size()) || (allocated != other->capacity()) || (current_chunk != other->current_chunk);
+					return (used != other->size()) || (allocated != other->capacity()) || (current_chunk.load() != other->current_chunk.load());
 					}
 				catch (...)
 					{

@@ -79,10 +79,7 @@ namespace JASS
 				@param that [in] The object to compare to.
 				@return True if this == that, else false.
 			*/
-			virtual bool operator==(const allocator &with)
-				{
-				return (used == with.used) && (allocated == with.allocated);
-				}
+			virtual bool operator==(const allocator &with) = 0;
 			
 			/*
 				ALLOCATOR::OPERATOR!=()
@@ -93,10 +90,7 @@ namespace JASS
 				@param that [in] The object to compare to.
 				@return True if this != that, else false.
 			*/
-			virtual bool operator!=(const allocator &with)
-				{
-				return (used != with.used) || (allocated != with.allocated);
-				}
+			virtual bool operator!=(const allocator &with) = 0;
 
 			/*
 				ALLOCATOR::MALLOC()
