@@ -6,9 +6,9 @@ before_install:
   - if [ "$TRAVIS_OS_NAME" == linux ]; then ./tools/travis_dependencies.sh; export CXX=g++-5; fi
   - if [ "$CODECOV_RUN" == 1 ]; then find . -name 'CMakeLists.txt' -exec sh -c "echo '\nSET(CMAKE_CXX_FLAGS \"-g -O0 -fprofile-arcs -ftest-coverage\")\nSET(CMAKE_C_FLAGS \"-g -O0 -fprofile-arcs -ftest-coverage\")' >> {}" \;; fi
 script:
-	- if [ "$COVERITY_SCAN_BRANCH" != 1 ]; then cd build && cmake .. && make && ./unittest; fi
+  - if [ "$COVERITY_SCAN_BRANCH" != 1 ]; then cd build && cmake .. && make && ./unittest; fi
 after_success:
-	- if [ "$CODECOV_RUN" == 1 ]; then bash <(curl -s https://codecov.io/bash); fi
+  - if [ "$CODECOV_RUN" == 1 ]; then bash <(curl -s https://codecov.io/bash); fi
 
 matrix:
   include:
