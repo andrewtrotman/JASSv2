@@ -10,6 +10,8 @@
 	#include <io.h>
 #else
 	#include <unistd.h>
+	#include <sys/types.h>
+	#include <sys/stat.h>
 #endif
 
 #include "assert.h"
@@ -86,7 +88,7 @@ namespace JASS
 			_mktemp(filename);
 		#else
 			umask(umask(0));				// This sets the umask to its current value, and prevents Coverity from producing a warning
-			int file_descriptor = mkstemp(filename));
+			int file_descriptor = mkstemp(filename);
 			if (file_descriptor >= 0)
 				close(file_descriptor);
 		#endif
