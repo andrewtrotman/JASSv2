@@ -35,7 +35,7 @@ namespace JASS
 			if (alignment == 1)
 				padding = 0;
 			else
-				padding = realign((uint8_t *)already_used, alignment);
+				padding = realign(buffer + already_used, alignment);
 
 			/*
 				If we don't have capacity to succeed then fail
@@ -103,7 +103,20 @@ namespace JASS
 		memory.malloc(1);
 		JASS_assert(memory.size() == 432);
 		JASS_assert(memory.capacity() == 1024);
-		
+
+		/*
+			check padding
+		*/
+		void *pad_on_10 = memory.malloc(1, 10);
+		JASS_assert((uintptr_t)pad_on_10 % 10 == 0);
+
+		/*
+			check the comparison operators
+		*/
+		allocator_memory second("this", 5);
+		JASS_assert(memory == memory);
+		JASS_assert(memory != second);
+
 		/*
 			free up all the memory
 		*/

@@ -226,6 +226,24 @@ namespace JASS
 				JASS_assert(index.get_highest_document_id() == 1);
 				
 				/*
+					Call the methods that do nothing for code-coverage purposes
+				*/
+				std::ostringstream into;
+				index.text_render(into);
+				JASS_assert(into.str().size() == 0);
+
+				class delegate_test : public delegate
+					{
+					public:
+						virtual void operator()(const slice &term, const index_postings &postings)
+							{
+							// Nothing
+							}
+					};
+				delegate_test callback;
+				index.iterate(callback);
+
+				/*
 					Done.
 				*/
 				puts("index_manager::PASSED");

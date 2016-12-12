@@ -143,6 +143,13 @@ namespace JASS
 		integer decoded_buffer[2048];											// sequences are decoded into this buffer
 		
 		/*
+			Check what happens if it won't fit
+		*/
+		const integer too_big[] = {1 << 21,  (1 << 28) - 1};		// the bounds on 4-byte encodings
+		bytes_used = codex.encode(encoded_buffer, 1, too_big, sizeof(too_big) / sizeof(*too_big));
+		JASS_assert(bytes_used == 0);
+		
+		/*
 			Check the upper and lower bounds of 1-byte encodings
 		*/
 		const integer one_byte[] = {0, (1 << 7) - 1};					// the bounds on 1-byte encodings

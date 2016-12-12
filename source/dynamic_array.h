@@ -306,10 +306,18 @@ namespace JASS
 			*/
 			/*!
 				@brief Return a reference to the given element (counting from 0).
-				@details This method must walk the linked list to find the requested element and then returns a reference to it.  Since the growth factor might be 1 and the initial
-				allocation size might be 1, the worst case for requesting the final element is O(n) where n is the number of elements in the array.  Walking through the array accessing
-				each element is therefore O(n^2) - so don't do this.  The preferred method for iterating over the array is to use a for each iterator (i.e. through begin() and end()).
-				The C++ std::array has "undefined behavior" if the given index is out-of-range.  This, too, has undefined behaviour in that case.
+				@details This method must walk the linked list to find
+				the requested element and then returns a reference to it.
+				Since the growth factor might be 1 and the initial
+				allocation size might be 1, the worst case for requesting
+				the final element is O(n) where n is the number of
+				elements in the array.  Walking through the array
+				accessing each element is therefore O(n^2) - so don't do
+				this.  The preferred method for iterating over the array
+				is to use a for each iterator (i.e. through begin() and
+				end()). The C++ std::array has "undefined behavior" if
+				the given index is out-of-range.  This, too, has
+				undefined behaviour in that case.
 				@param element [in] The element to find.
 			*/
 			TYPE &operator[](size_t element)
@@ -419,6 +427,11 @@ namespace JASS
 					another.push_back(which);
 					JASS_assert(another.back() == which);
 					}
+
+				/*
+					Check out-of-range behaviour
+				*/
+				JASS_assert(&another[1024] == &another[0]);
 
 				/*
 					Passed!

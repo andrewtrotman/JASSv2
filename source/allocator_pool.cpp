@@ -220,7 +220,14 @@ namespace JASS
 		memory.malloc(1, sizeof(void *));
 		JASS_assert(memory.size() == 432);
 		JASS_assert(memory.capacity() != 0);
-		
+
+		/*
+			check the comparison operators
+		*/
+		allocator_pool second(default_allocation_size);
+		JASS_assert(memory == memory);
+		JASS_assert(memory != second);
+
 		/*
 			free up all the memory
 		*/
