@@ -193,7 +193,7 @@ namespace JASS
 			/*!
 				@brief Compare for equality two objects of this class type.
 				@details Any two unused allocator_pool objects are equal until one or the other is first used.
-				@param that [in] The object to compare to.
+				@param with [in] The object to compare to.
 				@return True if this == that, else false.
 			*/
 			virtual bool operator==(const allocator &with)
@@ -219,7 +219,7 @@ namespace JASS
 			/*!
 				@brief Compare for inequlity two objects of this class type.
 				@details Any two unused allocator_pool objects are equal until one or the other is first used.
-				@param that [in] The object to compare to.
+				@param with [in] The object to compare to.
 				@return True if this != that, else false.
 			*/
 			virtual bool operator!=(const allocator &with)

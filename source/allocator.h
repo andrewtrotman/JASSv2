@@ -76,7 +76,7 @@ namespace JASS
 			*/
 			/*!
 				@brief Compare for equality two objects of this class type.
-				@param that [in] The object to compare to.
+				@param with [in] The object to compare to.
 				@return True if this == that, else false.
 			*/
 			virtual bool operator==(const allocator &with) = 0;
@@ -87,7 +87,7 @@ namespace JASS
 			*/
 			/*!
 				@brief Compare for inequlity two objects of this class type.
-				@param that [in] The object to compare to.
+				@param with [in] The object to compare to.
 				@return True if this != that, else false.
 			*/
 			virtual bool operator!=(const allocator &with) = 0;

@@ -199,7 +199,8 @@ namespace JASS
 			if (_fseeki64(fp, 0, SEEK_END) < 0)
 				return 0;
 			int64_t file_size = _ftelli64(fp);
-			_fseeki64(fp, current_position, SEEK_SET);
+			if (_fseeki64(fp, current_position, SEEK_SET) < 0)
+				return 0;
 		#else
 			off_t current_position = ftello(fp);
 			if (current_position < 0)
@@ -207,7 +208,8 @@ namespace JASS
 			if (fseeko(fp, 0, SEEK_END) < 0)
 				return 0;
 			off_t file_size = ftello(fp);
-			fseeko(fp, current_position, SEEK_SET);
+			if (fseeko(fp, current_position, SEEK_SET) < 0)
+				return 0;
 		#endif
 		
 		/*

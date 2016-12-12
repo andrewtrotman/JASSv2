@@ -131,7 +131,7 @@ namespace JASS
 			*/
 			/*!
 				@brief Return the length of the file as it currently stands
-				@return File size in bytes.
+				@return File size in bytes.  0 is returned either on error or non-existant file (or 0-length file).
 			*/
 			size_t size(void) const;
 
