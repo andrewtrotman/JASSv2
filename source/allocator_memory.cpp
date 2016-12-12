@@ -113,7 +113,9 @@ namespace JASS
 		/*
 			check the comparison operators
 		*/
-		allocator_memory second("this", 5);
+		uint8_t *second_buffer = new uint8_t[1024];
+
+		allocator_memory second(second_buffer, 1024);
 		JASS_assert(memory == memory);
 		JASS_assert(memory != second);
 
