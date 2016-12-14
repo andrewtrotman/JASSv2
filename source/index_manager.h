@@ -168,7 +168,9 @@ namespace JASS
 				/*
 					This method exists simply to increase code coverage. It should never get called in an "ordinary" program.
 				*/
-				callback(slice(), index_postings(allocator_pool()));
+				allocator_pool pool;
+				index_postings postings(pool);
+				callback(slice(), postings);
 				}
 
 			/*
