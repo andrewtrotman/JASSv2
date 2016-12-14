@@ -55,20 +55,20 @@ namespace JASS
 		instream_memory reader(example_file, strlen(example_file));
 
 		document document;
-		document.contents = slice(document.contenst_allocator, 15);
+		document.contents = slice(document.contenst_allocator, 16);
 		
 		/*
 			read twice from it making sure we got what we should have
 		*/
 		reader.read(document);
-		JASS_assert(document.contents.size() == 15);
+		JASS_assert(document.contents.size() == 16);
 		for (size_t index = 0; index < document.contents.size(); index++)
 			JASS_assert(document.contents[index] == example_file[index]);
 		
 		reader.read(document);
-		JASS_assert(document.contents.size() == 15);
+		JASS_assert(document.contents.size() == 14);
 		for (size_t index = 0; index < document.contents.size(); index++)
-			JASS_assert(document.contents[index] == example_file[index + 15]);
+			JASS_assert(document.contents[index] == example_file[index + 16]);
 
 		reader.read(document);
 		JASS_assert(document.contents.size() == 0);

@@ -28,4 +28,7 @@ namespace JASS
 	std::string unittest_data::ten_document_8 = "<DOC><DOCNO>8</DOCNO>ten nine eight seven six five four three</DOC>";
 	std::string unittest_data::ten_document_9 = "<DOC><DOCNO>9</DOCNO>ten nine eight seven six five four three two</DOC>";
 	std::string unittest_data::ten_document_10 ="<DOC><DOCNO>10</DOCNO>ten nine eight seven six five four three two one</DOC>";
+	std::string unittest_data::ten_document_11_broken ="<DOC><DOCNO>11";
+	std::string unittest_data::ten_document_12_broken ="<DOC><DOCNO>12</DOCNO>twelve eleven ten nine eight seven six five four three two one";
+	std::string unittest_data::ten_document_13_broken ="<DOC><DOCNO>13 thirteen twelve eleven ten nine eight seven six five four three two one</DOC>";
 	}

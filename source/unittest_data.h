@@ -32,5 +32,8 @@ namespace JASS
 			static std::string ten_document_8;	///< The eightth of the 10 ten_documents.
 			static std::string ten_document_9;	///< The ninth of the 10 ten_documents.
 			static std::string ten_document_10;	///< The tenth of the 10 ten_documents.
+			static std::string ten_document_11_broken;	///< a broken document that has a DOC and DOCNO but no close tags
+			static std::string ten_document_12_broken;	///< a broken document that has a DOC and DOCNO but no close DOC tag
+			static std::string ten_document_13_broken;	///< a broken document that has a DOC and DOCNO but no close DOCNO tag
 		};
 	}

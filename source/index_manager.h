@@ -166,8 +166,9 @@ namespace JASS
 			virtual void iterate(delegate &callback) const
 				{
 				/*
-					Nothing
+					This method exists simply to increase code coverage. It should never get called in an "ordinary" program.
 				*/
+				callback(slice(), index_postings(allocator_pool()));
 				}
 
 			/*

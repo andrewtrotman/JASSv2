@@ -204,10 +204,37 @@ namespace JASS
 		
 		slicer.read(indexable_object);
 		JASS_assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_10);
-		
+
 		slicer.read(indexable_object);
 		JASS_assert(indexable_object.contents.size() == 0);
-		
+
+
+		/*
+			Now check the failure states
+		*/
+		/*
+			Missing </DOC>
+		*/
+		buffer = new instream_memory((uint8_t *)unittest_data::ten_document_11_broken.c_str(), unittest_data::ten_document_11_broken.size());
+		first_slice = new instream_document_trec(*buffer, 128, "DOC", "DOCNO");
+		instream_document_trec slicer_11(*first_slice, 128, "DOC", "DOCNO");
+		slicer_11.read(indexable_object);
+		printf("SIZE:%d\n", (int)indexable_object.contents.size());
+		JASS_assert(indexable_object.contents.size() == 0);
+
+		/*
+			Missing </DOCNO>
+		*/
+		buffer = new instream_memory((uint8_t *)unittest_data::ten_document_13_broken.c_str(), unittest_data::ten_document_13_broken.size());
+		first_slice = new instream_document_trec(*buffer, 128, "DOC", "DOCNO");
+		instream_document_trec slicer_13(*first_slice, 128, "DOC", "DOCNO");
+		slicer_13.read(indexable_object);
+		printf("SIZE:%d\n", (int)indexable_object.contents.size());
+		JASS_assert(indexable_object.contents.size() == 92);
+
+		/*
+			Success
+		*/	
 		puts("instream_document_trec::PASSED");
 		}
 

@@ -100,26 +100,26 @@ namespace JASS
 		
 		/*
 			create an instream_file and test it.
-			NOTE: The score is created so that the object is deleted before removal of the temporary file.
+			NOTE: The scope is created so that the object is deleted before removal of the temporary file.
 		*/
 		do
 			{
 			instream_file reader(filename);
 			document document;
-			document.contents = slice(document.contenst_allocator, 15);
+			document.contents = slice(document.contenst_allocator, 16);
 		
 			/*
 				read twice from it making sure we got what we should have
 			*/
 			reader.read(document);
-			JASS_assert(document.contents.size() == 15);
+			JASS_assert(document.contents.size() == 16);
 			for (size_t index = 0; index < document.contents.size(); index++)
 				JASS_assert(document.contents[index] == example_file[index]);
 		
 			reader.read(document);
-			JASS_assert(document.contents.size() == 15);
+			JASS_assert(document.contents.size() == 14);
 			for (size_t index = 0; index < document.contents.size(); index++)
-				JASS_assert(document.contents[index] == example_file[index + 15]);
+				JASS_assert(document.contents[index] == example_file[index + 16]);
 
 			reader.read(document);
 			JASS_assert(document.contents.size() == 0);
@@ -129,7 +129,7 @@ namespace JASS
 			*/
 			}
 		while (0);
-		(void)remove(filename);			// delete the file.  Case to void to remove Coverity warning if remove() fails.
+		(void)remove(filename);			// delete the file.  Cast to void to remove Coverity warning if remove() fails.
 		/*
 			Yay, we passed
 		*/
