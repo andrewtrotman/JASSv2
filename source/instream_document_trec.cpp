@@ -140,9 +140,9 @@ namespace JASS
 		/*
 			Extract the document's primary key.
 		*/
-		uint8_t *document_id_end = NULL;
+		uint8_t *document_id_end = document_end;
 		uint8_t *document_id_start = std::search(document_start, document_end, primary_key_start_tag.c_str(), primary_key_start_tag.c_str() + primary_key_start_tag.size());
-		if (document_id_start != NULL)
+		if (document_id_start != document_end)
 			{
 			document_id_start += primary_key_start_tag.size();
 			document_id_end = std::search(document_id_start, document_end, primary_key_end_tag.c_str(), primary_key_end_tag.c_str() + primary_key_end_tag.size());
@@ -152,7 +152,7 @@ namespace JASS
 			Copy the id into the document object and get the document
 		*/
 		object.contents = slice(object.contenst_allocator, document_start, document_end);
-		if (document_id_end == NULL)
+		if (document_id_end == document_end)
 			object.primary_key = slice(object.primary_key_allocator, "Unknown");
 		else
 			object.primary_key = slice(object.primary_key_allocator, document_id_start, document_id_end);
@@ -219,7 +219,6 @@ namespace JASS
 		first_slice = new instream_document_trec(*buffer, 128, "DOC", "DOCNO");
 		instream_document_trec slicer_11(*first_slice, 128, "DOC", "DOCNO");
 		slicer_11.read(indexable_object);
-		printf("SIZE:%d\n", (int)indexable_object.contents.size());
 		JASS_assert(indexable_object.contents.size() == 0);
 
 		/*
@@ -229,7 +228,6 @@ namespace JASS
 		first_slice = new instream_document_trec(*buffer, 128, "DOC", "DOCNO");
 		instream_document_trec slicer_13(*first_slice, 128, "DOC", "DOCNO");
 		slicer_13.read(indexable_object);
-		printf("SIZE:%d\n", (int)indexable_object.contents.size());
 		JASS_assert(indexable_object.contents.size() == 92);
 
 		/*

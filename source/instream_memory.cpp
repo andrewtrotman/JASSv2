@@ -74,6 +74,12 @@ namespace JASS
 		JASS_assert(document.contents.size() == 0);
 
 		/*
+			Now read past end of file to make sure it fails
+		*/
+		reader.read(document);
+		JASS_assert(document.contents.size() == 0);
+
+		/*
 			Yay, we passed
 		*/
 		puts("instream_memory::PASSED");

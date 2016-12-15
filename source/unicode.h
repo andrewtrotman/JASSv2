@@ -569,6 +569,7 @@ namespace JASS
 				const uint8_t sequence_2[] = {0xC2, 0xA2, 0x00, 0x00};
 				const uint8_t sequence_3[] = {0xE2, 0x82, 0xAC, 0x00};
 				const uint8_t sequence_4[] = {0xF0, 0x90, 0x8D, 0x88};
+				const uint8_t sequence_bad[] = {0xF8, 0x00, 0x00, 0x00, 0x00};
 				
 				/*				
 					Check that the lengths are correctly decoded
@@ -577,6 +578,8 @@ namespace JASS
 				JASS_assert(utf8_bytes(sequence_2) == 2);
 				JASS_assert(utf8_bytes(sequence_3) == 3);
 				JASS_assert(utf8_bytes(sequence_4) == 4);
+				JASS_assert(utf8_bytes(sequence_bad) == 0);			// fail case
+				JASS_assert(isutf8(sequence_bad, sequence_bad + sizeof(sequence_bad)) == false);
 				
 				/*
 					Check that the lengths are correctly encoded
@@ -585,6 +588,8 @@ namespace JASS
 				JASS_assert(utf8_bytes(0xA2) == 2);
 				JASS_assert(utf8_bytes(0x20AC) == 3);
 				JASS_assert(utf8_bytes(0x10348) == 4);
+				JASS_assert(utf8_bytes(0x200000 == 0);				// fail case
+
 				
 				/*
 					Check that it can decode UTF-8 correctly
@@ -594,6 +599,8 @@ namespace JASS
 				JASS_assert(utf8_to_codepoint(sequence_2, sequence_2 + sizeof(sequence_2), consumed) == 0xA2 && consumed == 2);
 				JASS_assert(utf8_to_codepoint(sequence_3, sequence_3 + sizeof(sequence_3), consumed) == 0x20AC && consumed == 3);
 				JASS_assert(utf8_to_codepoint(sequence_4, sequence_4 + sizeof(sequence_4), consumed) == 0x10348 && consumed == 4);
+				JASS_assert(utf8_to_codepoint(sequence_bad, sequence_bad + sizeof(sequence_bad), consumed) == unicode::replacement_character && consumed == 0);				// fail case
+
 				
 				/*
 					Check that it can encode UTF-8 correctly
@@ -607,6 +614,8 @@ namespace JASS
 				JASS_assert(memcmp(buffer, sequence_3, 3) == 0);
 				JASS_assert(codepoint_to_utf8(buffer, buffer + sizeof(buffer), 0x10348) == 4);
 				JASS_assert(memcmp(buffer, sequence_4, 4) == 0);
+				JASS_assert(codepoint_to_utf8(buffer, buffer + sizeof(buffer), 0x200000) == 0);			// failure case
+				JASS_assert(codepoint_to_utf8(buffer, buffer + 1, 0x10348) == 0);						// failure case
 
 				/*
 					Test the ctype-like methods
@@ -639,6 +648,14 @@ namespace JASS
 						JASS_assert(casefold.size() == 1 && casefold[0] == (size_t)::tolower(character));
 						}
 					}
+				/*
+					Check the methods whose answer is either not in ASCII or differ from ASCII
+				*/
+				JASS_assert(unicode::ispunct(','));
+				JASS_assert(unicode::isspace(' '));
+				JASS_assert(unicode::ismark(0x300));
+				JASS_assert(unicode::issymbol(0x2600));
+
 				puts("unicode::PASSED");
 				}
 		};

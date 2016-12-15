@@ -238,6 +238,7 @@ namespace JASS
 			dot must be a directory
 		*/
 		JASS_assert(is_directory("."));
+		JASS_assert(is_directory(".JASS."));		// should fail on a file that dosn't exist (but this might, no easy way to check).
 		
 		/*
 			something we know is not a directory.  In this case we'll use this very file.  Yes, this assumes
@@ -276,15 +277,18 @@ namespace JASS
 		JASS_assert(example_file == reread);
 		
 		/*
-			Also check that read works
+			Check that read works
 		*/
 		file *disk_object = new file(filename, "rb");
 		std::vector<uint8_t> disk_object_contents;
 		disk_object_contents.resize(example_file.size() + 1024);
 		disk_object->read(disk_object_contents);
 		std::string disk_object_as_string(disk_object_contents.begin(), disk_object_contents.end());
-		delete disk_object;
 		JASS_assert(example_file == disk_object_as_string);
+		
+		disk_object->read(disk_object_contents);			// read past end of file
+		JASS_assert(disk_object_contents.size() == 0);
+		delete disk_object;
 
 		(void)remove(filename);								// delete the file once we're done with it (cast to void to remove Coverity warning)
 	
