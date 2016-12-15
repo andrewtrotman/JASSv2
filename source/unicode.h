@@ -588,7 +588,7 @@ namespace JASS
 				JASS_assert(utf8_bytes(0xA2) == 2);
 				JASS_assert(utf8_bytes(0x20AC) == 3);
 				JASS_assert(utf8_bytes(0x10348) == 4);
-				JASS_assert(utf8_bytes(0x200000 == 0);				// fail case
+				JASS_assert(utf8_bytes(0x200000) == 0);				// fail case
 
 				
 				/*
