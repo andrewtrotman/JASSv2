@@ -238,7 +238,7 @@ namespace JASS
 			dot must be a directory
 		*/
 		JASS_assert(is_directory("."));
-		JASS_assert(is_directory(".JASS."));		// should fail on a file that dosn't exist (but this might, no easy way to check).
+		JASS_assert(!is_directory(".JASS."));		// should fail on a file that dosn't exist (but this might, no easy way to check).
 		
 		/*
 			something we know is not a directory.  In this case we'll use this very file.  Yes, this assumes
