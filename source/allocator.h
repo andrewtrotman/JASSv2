@@ -33,7 +33,7 @@ namespace JASS
 	class allocator
 		{
 		protected:
-			#ifdef __arm__
+			#ifdef __aarch64__
 				static constexpr size_t alignment_boundary = sizeof(void *);		///< On ARM its necessary to align all memory allocations on word boundaries
 			#else
 				static constexpr size_t alignment_boundary = 1;							///< Elsewhere don't bother with alignment (align on byte boundaries)

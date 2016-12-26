@@ -101,7 +101,7 @@ namespace JASS
 			Re-allign the allocator to a word boundary
 		*/
 		memory.malloc(1);
-		JASS_assert(memory.size() == 432);
+		JASS_assert(memory.size() == 432 || memory.size() == 433);	// might be padded to an 8-byte boundary
 		JASS_assert(memory.capacity() == 1024);
 
 		/*
