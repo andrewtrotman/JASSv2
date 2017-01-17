@@ -14,6 +14,8 @@
 #       data file that describes all the Unicode characters - which is used for the isalpha() and similar
 #       methods.
 
+project(JASS)
+
 cmake_minimum_required (VERSION 2.8.0)
 
 # set(CMAKE_VERBOSE_MAKEFILE on)
@@ -30,8 +32,6 @@ if(WIN32)
 else()
 	add_definitions("-Wall")
 endif()
-
-project(JASS)
 
 set(CMAKE_CXX_STANDARD 11)
 
