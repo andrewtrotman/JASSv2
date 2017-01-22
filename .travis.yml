@@ -2,21 +2,16 @@ language: cpp
 sudo: required
 dist: trusty
 
-before_install:
-  # Early exit coverity if we're in the wrong build
-  - if [ "$TRAVIS_BRANCH" == "coverity_scan" -a -z "$COVERITY_SCAN_TOKEN" ]; then echo "Done. Early exit with 0." && sleep 1 && exit 0; fi
-  # Install dependencies
-  - if [ "$TRAVIS_OS_NAME" == linux ]; then ./tools/travis_dependencies.sh; export CXX=g++-5; fi
-  # Inject gcov debug flags into all CMakeLists.txt
-  - if [ "$CODECOV_RUN" == 1 ]; then find . -name 'CMakeLists.txt' -exec sh -c "echo '\nSET(CMAKE_CXX_FLAGS \"-g -O0 -fprofile-arcs -ftest-coverage\")\nSET(CMAKE_C_FLAGS \"-g -O0 -fprofile-arcs -ftest-coverage\")' >> {}" \;; fi
+# Early exit coverity if we're in the wrong build
+before_install: if [ "$TRAVIS_BRANCH" == "coverity_scan" -a -z "$COVERITY_SCAN_TOKEN" ]; then echo "Done. Early exit with 0." && sleep 1 && exit 0; fi
+install: if [ "$TRAVIS_OS_NAME" == linux ]; then ./tools/travis_dependencies.sh; fi
+# Inject gcov debug flags into all CMakeLists.txt
+before_script: if [ "$CODECOV_RUN" == 1 ]; then find . -name 'CMakeLists.txt' -exec sh -c "echo '\nSET(CMAKE_CXX_FLAGS \"-g -O0 -fprofile-arcs -ftest-coverage\")\nSET(CMAKE_C_FLAGS \"-g -O0 -fprofile-arcs -ftest-coverage\")' >> {}" \;; fi
 script:
-  # Normal type build
   - if [ "$COVERITY_SCAN_BRANCH" != 1 -a "$VALGRIND_RUN" != 1 ]; then cd build && cmake .. && make && ./unittest; fi
-  # Valgrind type build
   - if [ "$VALGRIND_RUN" == 1 ]; then cd build && cmake .. && make && valgrind -q --error-exitcode=42 ./unittest; fi
 after_success:
-  # Codecov build (follows a Normal type build)
-  - if [ "$CODECOV_RUN" == 1 ]; then bash <(curl -s https://codecov.io/bash); fi
+- if [ "$CODECOV_RUN" == 1 ]; then bash <(curl -s https://codecov.io/bash); fi
 matrix:
   include:
     - os: linux
@@ -48,7 +43,6 @@ addons:
     project:
       name: andrewtrotman/JASSv2
     notification_email: andrew@trotman.com
-    # COVERITY finds the compiler itself. Help it out
-    build_command_prepend: "unset CXX; sudo ln -sf /usr/bin/g++-5 /usr/bin/c++; cd build && cmake .."
+    build_command_prepend: "cd build && cmake .."
     build_command: "make"
     branch_pattern: coverity_scan
