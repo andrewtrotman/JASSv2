@@ -15,6 +15,7 @@
 #include "bitstring.h"
 #include "hash_table.h"
 #include "binary_tree.h"
+#include "serialise_ci.h"
 #include "hash_pearson.h"
 #include "dynamic_array.h"
 #include "allocator_cpp.h"
@@ -22,13 +23,13 @@
 #include "index_manager.h"
 #include "allocator_pool.h"
 #include "index_postings.h"
+#include "accumulator_2d.h"
 #include "instream_memory.h"
 #include "allocator_memory.h"
 #include "serialise_jass_ci.h"
 #include "instream_document_trec.h"
 #include "index_manager_sequential.h"
 #include "compress_integer_variable_byte.h"
-
 
 /*
 	MAIN()
@@ -123,8 +124,14 @@ int main(void)
 		puts("serialise_jass_ci");
 		JASS::serialise_jass_ci::unittest();
 
+		puts("serialise_ci");
+		JASS::serialise_ci::unittest();
+
 		puts("compress_integer_variable_byte");
 		JASS::compress_integer_variable_byte::unittest();
+
+		puts("accumulator_2d");
+		JASS::accumulator_2d<uint32_t>::unittest();
 
 		puts("ALL UNIT TESTS HAVE PASSED");
 		}

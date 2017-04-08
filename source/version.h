@@ -1,14 +1,14 @@
 /*
 	VERISON.H
 	---------
-	Copyright (c) 2016 Andrew Trotman
+	Copyright (c) 2016-2017 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 /*!
 	@file
 	@brief Details about the current executing version of JASS
 	@author Andrew Trotman
-	@copyright 2016 Andrew Trotman
+	@copyright 2016-2017 Andrew Trotman
 */
 
 #pragma once
@@ -48,7 +48,7 @@ namespace JASS
 			*/
 			static std::string build(void)
 				{
-				return std::string("JASS Version ") + std::string(version_string) + std::string(" ") + std::to_string(bitness) + std::string("-bit ") + std::string(debugness) + std::string("\nWritten (w) 2016 Andrew Trotman, University of Otago\n");
+				return std::string("JASS Version ") + std::string(version_string) + std::string(" ") + std::to_string(bitness) + std::string("-bit ") + std::string(debugness) + std::string("\nWritten (w) 2016-2017 Andrew Trotman, University of Otago\n");
 				}
 
 

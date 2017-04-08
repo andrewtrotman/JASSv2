@@ -126,6 +126,22 @@ namespace JASS
 				}
 
 			/*
+				FILE::WRITE()
+				-------------
+			*/
+			/*!
+				@brief Write bytes number of bytes to the give file at the current cursor position.
+				@param buffer [in] the byte sequence to write.
+				@param bytes [in] The number of bytes of data to write.
+				@return The number of bytes of data that were written to the file.
+			*/
+			size_t write(const std::string &buffer)
+				{
+				return ::fwrite(buffer.c_str(), 1, buffer.size(), fp);
+				}
+
+
+			/*
 				FILE::SIZE()
 				------------
 			*/

@@ -71,6 +71,11 @@ add_executable(index tools/index.cpp)
 target_link_libraries(index JASSlib ${CMAKE_THREAD_LIBS_INIT})
 
 #
+# build the compiled_indexes stubs
+#
+add_subdirectory(compiled_index)
+
+#
 # build the checksummer
 #
 add_executable(hash tools/hash.cpp)

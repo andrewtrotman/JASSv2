@@ -11,6 +11,7 @@
 	@author Andrew Trotman
 	@copyright 2016 Andrew Trotman
 */
+#include <limits>
 
 #include <stdio.h>
 
@@ -113,7 +114,7 @@ namespace JASS
 				{
 				return min(min(first, second), third);
 				}
-			
+
 			/*
 				MATHS::UNITTEST()
 				-----------------
