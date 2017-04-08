@@ -71,6 +71,7 @@ namespace JASS
 						data = new (pool.malloc(size * sizeof(TYPE))) TYPE[size];
 						}
 				};
+		public:
 			/*
 				CLASS DYNAMIC_ARRAY::ITERATOR
 				-----------------------------
@@ -216,7 +217,7 @@ namespace JASS
 			*/
 			/*!
 				@brief Return an iterator pointing to the start of the array.
-				@return Iterator pointing to start of array
+				@return Iterator pointing to start of array.
 			*/
 			iterator begin(void) const
 				{
@@ -229,7 +230,7 @@ namespace JASS
 			*/
 			/*!
 				@brief Return an iterator pointing to the end of the array.
-				@return Iterator pointing to end of array
+				@return Iterator pointing to end of array.
 			*/
 			iterator end(void) const
 				{

@@ -12,7 +12,9 @@
 */
 #pragma once
 
+#include <tuple>
 #include <sstream>
+#include <iostream>
 
 #include "dynamic_array.h"
 #include "allocator_pool.h"
@@ -39,6 +41,116 @@ namespace JASS
 			dynamic_array<uint32_t> document_ids;			///< Array holding the document IDs
 			dynamic_array<uint16_t> term_frequencies;		///< Array holding the term frequencies
 			dynamic_array<uint32_t> positions;				///< Array holding the term positions
+
+		protected:
+			typedef std::tuple<uint32_t, uint32_t, uint32_t> posting;
+
+			/*
+				CLASS INDEX_POSTINGS::ITERATOR
+				------------------------------
+			*/
+			/*!
+				@brief C++ iterator for iterating over an index_postings object.
+				@details See http://www.cprogramming.com/c++11/c++11-ranged-for-loop.html for details on how to write a C++11 iterator.
+			*/
+			class iterator
+				{
+				public:
+					/*
+						ENUM INDEX_POSTINGS::ITERATOR::WHERE
+						------------------------------------
+					*/
+					/*!
+						@brief Whether the iterator is at the start of the end of the postings lists
+					*/
+					enum where
+						{
+						START = 0,			///< Iterator is from the start of the postings
+						END = 1				///< Iterator is from the end of the postings
+						};
+
+				private:
+					dynamic_array<uint32_t>::iterator document;			///< The iterator for the documents (1 per document).
+					dynamic_array<uint16_t>::iterator frequency;			///< The iterator for the frequencies (1 per document).
+					dynamic_array<uint32_t>::iterator position;			///< The iterator for the word positions (frequency times per document).
+					dynamic_array<uint16_t>::iterator frequency_end;	///< Use to know when we've walked past the end of the pstings.
+					uint32_t frequencies_remaining;							///< The numner of word positions that have not yet been returned for this document.
+
+				public:
+					/*
+						INDEX_POSTINGS::ITERATOR::ITERATOR()
+						------------------------------------
+					*/
+					/*!
+						@brief Constructor
+						@param parent [in] The object that this iterator is iterating over
+						@param start [in] Whether this is an iterator for the START or END of the postings lists
+					*/
+					iterator(const index_postings &parent, where start):
+						document(start == START ? parent.document_ids.begin() : parent.document_ids.end()),
+						frequency(start == START ? parent.term_frequencies.begin() : parent.term_frequencies.end()),
+						position(start == START ? parent.positions.begin() : parent.positions.end()),
+						frequency_end(parent.term_frequencies.end()),
+						frequencies_remaining(start == START ? *frequency : 0)
+						{
+						/*
+							Nothing.
+						*/
+						}
+
+					/*
+						INDEX_POSTINGS::ITERATOR::OPERATOR!+()
+						--------------------------------------
+					*/
+					/*!
+						@brief Compare two iterator objects for non-equality.
+						@param other [in] The iterator object to compare to.
+						@return true if they differ, else false.
+					*/
+
+					bool operator!=(const iterator &other) const
+						{
+						if (other.position != position)
+							return true;
+						else if (other.document != document)
+							return true;
+						else if (other.position != position)
+							return true;
+						return false;
+						}
+
+					/*
+						INDEX_POSTINGS::ITERATOR::OPERATOR*()
+						-------------------------------------
+					*/
+					/*!
+						@brief Return a reference to the element pointed to by this iterator.
+					*/
+					const posting operator*() const
+						{
+						return std::make_tuple(*document, *frequency, *position);
+						}
+
+					/*
+						INDEX_POSTINGS::ITERATOR::OPERATOR++()
+						--------------------------------------
+					*/
+					/*!
+						@brief Increment this iterator.
+					*/
+					const iterator &operator++()
+						{
+						frequencies_remaining--;
+						if (frequencies_remaining <= 0)
+							{
+							++document;
+							++frequency;
+							frequencies_remaining = frequency != frequency_end ? *frequency : 0;
+							}
+						++position;
+						return *this;
+						}
+				};
 			
 		private:
 			/*
@@ -73,6 +185,33 @@ namespace JASS
 				/*
 					Nothing
 				*/
+				}
+
+			/*
+				INDEX_POSTINGS::BEGIN()
+				-----------------------
+			*/
+			/*!
+				@brief Return an iterator pointing to the start of the postings.
+				@return Iterator pointing to start of the postings.
+			*/
+			iterator begin(void) const
+				{
+				return iterator(*this, iterator::START);
+				}
+
+			/*
+				INDEX_POSTINGS::END()
+				---------------------
+			*/
+			/*!
+				@brief Return an iterator pointing to the end of the postings.
+				@return Iterator pointing to end of tne postings.
+			*/
+
+			iterator end(void) const
+				{
+				return iterator(*this, iterator::END);
 				}
 
 			/*
@@ -120,36 +259,20 @@ namespace JASS
 			*/
 			void text_render(std::ostream &stream) const
 				{
-				/*
-					Walk all three lists at once, keying on the document_id list
-					for which there is 1 term_frequency and term_frequency positions
-				*/
-				auto frequency = term_frequencies.begin();			// increment with each document_id
-				auto position = positions.begin();						// increment by frequency with each document_id
-				
-				/*
-					Key on the document_ids
-				*/
-				for (const auto &id : document_ids)
+				uint32_t previous_document_id = std::numeric_limits<uint32_t>::max();
+				for (const auto &posting : *this)
 					{
-					stream << '<' << id << ',' << *frequency;
-					
-					/*
-						Walk the position list
-					*/
-					for (size_t which = 0; which < *frequency; which++)
+					if (std::get<0>(posting) != previous_document_id)
 						{
-						stream << ',' << *position;
-						++position;
+						if (previous_document_id != std::numeric_limits<uint32_t>::max())
+							stream << '>';
+						stream << '<' << std::get<0>(posting) << ',' << std::get<1>(posting) << ',' << std::get<2>(posting);
+						previous_document_id = std::get<0>(posting);
 						}
-
-					stream << '>';
-						
-					/*
-						Move on to the next frequencym, as the next document_id happens in the for loop
-					*/
-					++frequency;
+					else
+						stream << ',' << std::get<2>(posting);
 					}
+				stream << '>';
 				}
 			
 			/*
@@ -174,7 +297,7 @@ namespace JASS
 				postings.text_render(result);
 				
 				JASS_assert(strcmp(result.str().c_str(), "<1,2,100,101><2,2,102,103>") == 0);
-				
+
 				puts("index_postings::PASSED");
 				}
 		};
