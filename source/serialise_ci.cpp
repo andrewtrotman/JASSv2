@@ -27,7 +27,7 @@ namespace JASS
 		vocab_file.write("#include\"JASS_postings.h\"\n");
 		vocab_file.write("JASS_ci_vocab dictionary[] = {\n");
 
-		postings_file.write("extern void add_rsv(uint64_t document_id, uint64_t impact);\n\n");
+		postings_file.write("extern void add_rsv(size_t document_id, uint16_t impact);\n\n");
 		}
 
 	/*
