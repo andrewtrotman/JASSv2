@@ -8,8 +8,9 @@
 #include <algorithm>
 
 #include "JASS_vocabulary.h"
+#include "accumulator_2d.h"
 
-JASS::accumulator_2d<uint16_t> accumulators;
+JASS::accumulator_2d<uint16_t> accumulators(1024);
 
 /*
 	MAIN()
