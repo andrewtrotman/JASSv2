@@ -16,6 +16,7 @@
 
 #include <math.h>
 #include <stdint.h>
+#include <stdio.h>
 
 namespace JASS
 	{

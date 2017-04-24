@@ -7,6 +7,8 @@
 */
 #include <algorithm>
 
+#include <stdint.h>
+
 #include "JASS_vocabulary.h"
 #include "accumulator_2d.h"
 

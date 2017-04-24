@@ -378,9 +378,9 @@ namespace JASS
 				------------------
 			*/
 			/*!
-				@brief Returns the bit position of the whitch-th set bit.
+				@brief Returns the bit position of the which-th set bit.
 				@param [in] which set bit we're looking for.
-				@return The bit positon of the given set bit.
+				@return The bit positon of the given set bit or std::numeric_limits<size_t>::max() if which is greater than the number of set bits.
 			*/
 			size_t index(size_t which);
 
