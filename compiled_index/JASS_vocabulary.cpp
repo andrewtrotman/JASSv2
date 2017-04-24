@@ -1,4 +1,7 @@
+#include <stdint.h>
+
 #include"JASS_postings.h"
+#include"JASS_vocabulary.h"
 JASS_ci_vocab dictionary[] = {
 {"6",T_6},
 {"1",T_1},

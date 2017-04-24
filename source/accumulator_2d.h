@@ -11,6 +11,7 @@
 	@copyright 2017 Andrew Trotman
 */
 #include <new>
+#include <vector>
 #include <numeric>
 
 #include <math.h>

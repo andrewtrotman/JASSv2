@@ -24,9 +24,13 @@ namespace JASS
 		vocab_file("JASS_vocabulary.cpp", "w+b"),
 		terms(0)
 		{
+		vocab_file.write("#include <stdint.h>\n\n");
 		vocab_file.write("#include\"JASS_postings.h\"\n");
+		vocab_file.write("#include\"JASS_vocabulary.h\"\n");
 		vocab_file.write("JASS_ci_vocab dictionary[] = {\n");
 
+		postings_file.write("#include <stddef.h>\n");
+		postings_file.write("#include <stdint.h>\n\n");
 		postings_file.write("extern void add_rsv(size_t document_id, uint16_t impact);\n\n");
 		}
 

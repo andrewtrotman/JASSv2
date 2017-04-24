@@ -1,3 +1,8 @@
+#include <stddef.h>
+#include <stdint.h>
+
+extern void add_rsv(size_t document_id, uint16_t impact);
+
 void T_6()
 {
 add_rsv(6,1);

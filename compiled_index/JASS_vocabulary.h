@@ -11,6 +11,8 @@
 	@copyright 2017 Andrew Trotman
  */
 
+#include <string.h>
+
 /*
 	CLASS JASS_CI_VOCAB
 	-------------------
@@ -29,7 +31,7 @@ class JASS_ci_vocab
 			JASS_CI_VOCAB::OPERATOR<()
 			--------------------------
 		*/
-		operator<(const JASS_ci_vocab &other)
+		bool operator<(const JASS_ci_vocab &other) const
 			{
 			return strcmp(term, other.term) < 0 ? true : false;
 			}
