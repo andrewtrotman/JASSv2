@@ -57,7 +57,7 @@ namespace JASS
 		do
 			{
 			/*
-				Case fold.  Yes, its necessary to casefile numerics.  Some Unicode codepoints turn into more than
+				Case fold.  Yes, its necessary to casefold numerics.  Some Unicode codepoints turn into more than
 				one digit when normalised.  For example, the sumbol for a half (1/2) becomes a 1 and a 2.
 			*/
 			for (const uint32_t *folded = unicode::tocasefold(codepoint); *folded != 0; folded++)
