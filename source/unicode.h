@@ -56,6 +56,8 @@ namespace JASS
 		{
 		public:
 			static constexpr uint32_t replacement_character = 0xFFFD;		///< bad UTF-8 characters become codepoint U+FFFD (the Unicode replacement character designed for that purpose).
+			static constexpr size_t max_casefold_expansion_factor = 18;			///< The maximum number of codepoints a case-folded codepoint can take.
+			static constexpr size_t max_utf8_bytes = 4;							///< The maximum number of bytes that a UTF8 codepoint can take.
 			
 		public:
 			/*

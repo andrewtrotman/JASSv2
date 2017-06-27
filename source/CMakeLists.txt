@@ -48,6 +48,8 @@ set(JASSlib_FILES
 	maths.h
 	parser.h
 	parser.cpp
+	parser_query.h
+	query_term.h
 	serialise_ci.cpp
 	serialise_ci.h
 	serialise_jass_ci.cpp

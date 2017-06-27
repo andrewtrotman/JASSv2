@@ -66,7 +66,7 @@ namespace JASS
 						used(0)						// the data array is empty.
 						{
 						/*
-							Allocate the data this node controlls.
+							Allocate the data this node controls.
 						*/
 						data = new (pool.malloc(size * sizeof(TYPE))) TYPE[size];
 						}

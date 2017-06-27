@@ -17,6 +17,7 @@
 #include "binary_tree.h"
 #include "serialise_ci.h"
 #include "hash_pearson.h"
+#include "parser_query.h"
 #include "dynamic_array.h"
 #include "allocator_cpp.h"
 #include "instream_file.h"
@@ -51,6 +52,10 @@ int main(void)
 
 	try
 		{
+		puts("parser_query");
+		JASS::parser_query::unittest();
+		return;
+
 		puts("checksum");
 		JASS::checksum::unittest();
 
