@@ -12,6 +12,9 @@
 */
 #pragma once
 
+#include <string.h>
+
+#include "slice.h"
 #include "unicode.h"
 #include "allocator.h"
 #include "dynamic_array.h"
@@ -37,8 +40,8 @@ namespace JASS
 
 		public:
 			/*
-				QUERY_TERM
-				----------
+				QUERY_TERM::QUERY_TERM()
+				------------------------
 			*/
 			/*!
 				@brief Constructor for an empty object.
@@ -50,8 +53,8 @@ namespace JASS
 				}
 
 			/*
-				QUERY_TERM
-				----------
+				QUERY_TERM::QUERY_TERM()
+				------------------------
 			*/
 			/*!
 				@brief Copy constructor.
@@ -65,8 +68,8 @@ namespace JASS
 				}
 
 			/*
-				QUERY_TERM
-				----------
+				QUERY_TERM::QUERY_TERM()
+				------------------------
 			*/
 			/*!
 				@brief Constructor.
@@ -82,6 +85,28 @@ namespace JASS
 				query_frequency(query_frequency)
 				{
 				/* Nothing */
+				}
+
+			/*
+				QUERY_TERM::UNITTEST()
+				----------------------
+			*/
+			/*!
+				@brief Unit test this class
+			*/
+			static void unittest(void)
+				{
+				slice text("string");
+				query_term first;
+				query_term second(text, 2);
+				query_term third(second);
+
+				JASS_assert(first.term.address() == NULL);
+				JASS_assert(strncmp((char *)second.term.address(), "string", second.term.size()) == 0);
+				JASS_assert(second.term.size() == 6);
+				JASS_assert(third.query_frequency == second.query_frequency);
+				JASS_assert(third.term.address() == second.term.address());
+				puts("query_term::PASSED");
 				}
 		};
 
@@ -111,5 +136,4 @@ namespace JASS
 		stream << "(" << term.term << "," << term.query_frequency << ")";
 		return stream;
 		}
-
 	}

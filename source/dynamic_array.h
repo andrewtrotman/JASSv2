@@ -16,7 +16,7 @@
 #include <atomic>
 #include <thread>
 
-#include "allocator.h"
+#include "allocator_pool.h"
 
 namespace JASS
 	{
@@ -221,7 +221,13 @@ namespace JASS
 			*/
 			iterator begin(void) const
 				{
-				return iterator(head, 0);
+				/*
+					If there's nothing in the array then we're at the end, else we're at the head.
+				*/
+				if (head->used == 0)
+					return end();
+				else
+					return iterator(head, 0);
 				}
 			
 			/*

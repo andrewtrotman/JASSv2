@@ -91,7 +91,7 @@ namespace JASS
 						frequency(start == START ? parent.term_frequencies.begin() : parent.term_frequencies.end()),
 						position(start == START ? parent.positions.begin() : parent.positions.end()),
 						frequency_end(parent.term_frequencies.end()),
-						frequencies_remaining(start == START ? *frequency : 0)
+						frequencies_remaining(frequency != parent.term_frequencies.end() ? *frequency : 0)
 						{
 						/*
 							Nothing.
@@ -99,7 +99,7 @@ namespace JASS
 						}
 
 					/*
-						INDEX_POSTINGS::ITERATOR::OPERATOR!+()
+						INDEX_POSTINGS::ITERATOR::OPERATOR!=()
 						--------------------------------------
 					*/
 					/*!
@@ -295,7 +295,7 @@ namespace JASS
 				std::ostringstream result;
 				
 				postings.text_render(result);
-				
+
 				JASS_assert(strcmp(result.str().c_str(), "<1,2,100,101><2,2,102,103>") == 0);
 
 				puts("index_postings::PASSED");

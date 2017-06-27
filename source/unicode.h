@@ -23,7 +23,7 @@
 
 #include <vector>
 
-#include "assert.h"
+#include "asserts.h"
 
 extern unsigned char JASS_unicode_isalpha_data[];	///< is the given codepoint alphabetic
 extern unsigned char JASS_unicode_isalnum_data[];	///< is the given codepoint alphanumeric

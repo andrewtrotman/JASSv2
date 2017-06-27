@@ -52,10 +52,6 @@ int main(void)
 
 	try
 		{
-		puts("parser_query");
-		JASS::parser_query::unittest();
-		return;
-
 		puts("checksum");
 		JASS::checksum::unittest();
 
@@ -104,6 +100,12 @@ int main(void)
 		
 		puts("parser");
 		JASS::parser::unittest();
+
+		puts("query_term");
+		JASS::query_term::unittest();
+		
+		puts("parser_query");
+		JASS::parser_query::unittest();
 		
 		puts("hash_pearson");
 		JASS::hash_pearson::unittest();
@@ -119,7 +121,7 @@ int main(void)
 
 		puts("index_postings");
 		JASS::index_postings::unittest();
-		
+
 		puts("index_manager");
 		JASS::index_manager::unittest();
 
