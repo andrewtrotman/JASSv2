@@ -154,17 +154,16 @@ namespace JASS
 		got = unittest_test_one(parser, memory, "   Example Query   ");
 		JASS_assert(got == "(example,1)(query,1)");
 
-		got = unittest_test_one(parser, memory, std::string((char *)sequence_1));
+		got = unittest_test_one(parser, memory, std::string((char *)sequence_1, 1));
 		JASS_assert(got == "(a,1)");
 
-		got = unittest_test_one(parser, memory, std::string((char *)sequence_2));
+		got = unittest_test_one(parser, memory, std::string((char *)sequence_2, 2));
 		JASS_assert(got == "(a,1)");
 
-		got = unittest_test_one(parser, memory, std::string((char *)sequence_3));
+		got = unittest_test_one(parser, memory, std::string((char *)sequence_3, 3));
 		JASS_assert(got == "(我,1)");
 
-		got = unittest_test_one(parser, memory, std::string((char *)sequence_4));
-		std::cout << got << std::endl;
+		got = unittest_test_one(parser, memory, std::string((char *)sequence_4, 4));
 		JASS_assert(got == "(𩸽,1)");
 
 		got = unittest_test_one(parser, memory, std::string((char *)sequence_bad));
