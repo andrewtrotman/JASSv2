@@ -20,7 +20,7 @@ JASS::accumulator_2d<uint16_t> accumulators(1024);
 int main(int argc, char *argv[])
 	{
 	/*
-		Sort the dictionary - because it was probable generated in the
+		Sort the dictionary - because it was probably generated in the
 		order of the hash-table which isn't alphabetical.
 	*/
 	std::sort(&dictionary[0], &dictionary[dictionary_length]);

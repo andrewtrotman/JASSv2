@@ -23,6 +23,9 @@ set(JASSlib_FILES
 	binary_tree.h
 	bitstring.h
 	bitstring.cpp
+    channel.h
+    channel_file.h
+    channel_file.cpp
 	checksum.h
 	checksum.cpp
 	compress_integer.h
@@ -43,6 +46,7 @@ set(JASSlib_FILES
 	instream_document_trec.cpp
 	instream_file.h
 	instream_file.cpp
+	instream_file_star.h
 	instream_memory.h
 	instream_memory.cpp
 	maths.h

@@ -188,8 +188,14 @@ namespace JASS
 	size_t file::size(void) const
 		{
 		/*
+			If we're standard in (stdin) then the file is of infinite length
+		*/
+		if (fp == stdin)
+			return std::numeric_limits<size_t>::max();
+			
+		/*
 			Since we already have a handle to the file, we just remember where we are,
-			seek to the end and heck where we are now, and seek back.  This will probably
+			seek to the end and check where that is, and seek back.  This will probably
 			be very fast as it doesn't (normally) need to do and I/O to compute the answer
 		*/
 		#ifdef WIN32

@@ -38,20 +38,19 @@ namespace JASS
 		protected:
 			FILE *fp;				///< The underlying representation is a FILE *  from C (as they appear to be fast).
 			
-		private:
+		public:
 			/*
 				FILE::FILE()
 				------------
 			*/
 			/*!
-				@brief Private constructor to prevent the construction of an object without opening a file.
+				@brief Constructor used for stdin.
 			*/
 			file()
 				{
-				/* Nothing */
+				fp = stdin;
 				}
-			
-		public:
+		
 			/*
 				FILE::FILE()
 				------------

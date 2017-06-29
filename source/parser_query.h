@@ -71,7 +71,11 @@ namespace JASS
 				@param memory [in] all allocations happen in the memory object.
 			*/
 			parser_query(allocator &memory) :
-				memory(memory)
+				memory(memory),
+                current(nullptr),
+                end_of_query(nullptr),
+                buffer_pos(nullptr),
+                buffer_end(nullptr)
 				{
 				/*
 					Nothing
