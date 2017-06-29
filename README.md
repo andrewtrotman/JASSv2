@@ -31,3 +31,10 @@ Open a VS2015 x64 Native Tools CMD, then perform these steps:
 2. cmake -G "NMake Makefiles" ..
 3. nmake
 4. unittest
+
+## Get GitHub to call CoverityScan
+1. git checkout coverity_scan
+2. git merge master
+3. git commit
+4. git push
+5. git checkout master
