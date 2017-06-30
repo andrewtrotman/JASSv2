@@ -2,9 +2,18 @@
 	CHANNEL_FILE.CPP
 	---------------
 */
-#include "memory.h"
+#include <stdio.h>
+
+#ifdef WIN32
+	#include <io.h>
+#else
+	#include <unistd.h>
+	#include <sys/types.h>
+	#include <sys/stat.h>
+#endif
+
 #include "channel_file.h"
-#include "instream_file.h"
+#include "instream_file_star.h"
 
 namespace JASS
 	{
@@ -13,141 +22,136 @@ namespace JASS
 		----------------------------
 	*/
 	channel_file::channel_file() :
-		filename("<stdin>")
-	{
-	if (filename.size() == 0)
+		filename("<stdin>"),
+		infile(new instream_file_star(stdin)),			// use stdin
+		outfile(stdout),										// use stdout
+		eof(false)
 		{
-		outfile = stdout;
-		infile = new ANT_instream_file_star(stdin);
-		eof = false;
+		/* Nothing */
 		}
-	}
 
 	/*
 		CHANNEL_FILE::CHANNEL_FILE()
 		----------------------------
 	*/
 	channel_file::channel_file(const std::string &filename) :
-		filename(filename)
-	{
+		filename(filename),
+		infile(new instream_file(filename)),			// use the named file
+		outfile(nullptr),
+		eof(false)
 		{
-		outfile = NULL;
-		infile = NULL;
-		eof = true;
+		/* Nothing */
 		}
-	}
 
 	/*
 		CHANNEL_FILE::~CHANNEL_FILE()
 		-----------------------------
 	*/
 	channel_file::~channel_file()
-	{
-	if (outfile != stdout && outfile != NULL)
-		fclose(outfile);
+		{
+		if (outfile != stdout && outfile != nullptr)
+			::fclose(outfile);
+		}
 
-	delete infile;
+	/*
+		CHANNEL_FILE::BLOCK_WRITE()
+		---------------------------
+	*/
+	size_t channel_file::block_write(const void *buffer, size_t length)
+	{
+	/*
+		Use delayed open (for append) so that we don't create a zero-length file if there is no output.
+	*/
+	if (outfile == nullptr)
+		{
+		outfile = ::fopen(filename.c_str(), "a+b");
+		rewind(outfile);
+		}
+	/*
+		write
+	*/
+	return ::fwrite(buffer, length, 1, outfile);
 	}
 
 	/*
-		ANT_CHANNEL_FILE::BLOCK_WRITE()
-		-------------------------------
+		CHANNEL_FILE::BLOCK_READ()
+		--------------------------
 	*/
-	long long ANT_channel_file::block_write(char *source, long long length)
+	size_t channel_file::block_read(void *into, size_t length)
 	{
-	if (outfile == NULL)
-		{
-		outfile = fopen(filename, "a+b");		// open for append
-		fseek(outfile, 0L, SEEK_SET);
-		}
-	return fwrite(source, (size_t)length, 1, outfile);
-	}
+	size_t bytes_read;
 
 	/*
-		ANT_CHANNEL_FILE::BLOCK_READ()
-		------------------------------
+		at end of file so fail
 	*/
-	char *ANT_channel_file::block_read(char *into, long long length)
-	{
-	if (infile == NULL)
-		{
-		memory = new ANT_memory(1024 * 1024);		// use a 1MB buffer;
-
-		if (strrcmp(filename, ".gz") == 0)
-			infile = new ANT_instream_deflate(memory, new ANT_instream_file(memory, filename));
-		else if (strrcmp(filename, ".zip") == 0)
-			infile = new ANT_instream_pkzip(memory, filename);
-		else
-			infile = new ANT_instream_file(memory, filename);
-		eof = false;
-		}
-
 	if (eof)
-		return NULL;
+		return 0;
 
-	if (infile->read(into, (size_t)length) == length)
-		return into;
+	/*
+		read from the file
+	*/
+	if ((bytes_read = infile->fetch(into, length)) != length)
+		eof = true;
 
-	eof = true;
-	return NULL;
+	/*
+		return the number of bytes read
+	*/
+	return bytes_read;
 	}
 
 	/*
-		ANT_CHANNEL_FILE::GETSZ()
-		-------------------------
+		CHANNEL_FILE::UNITTEST()
+		------------------------
 	*/
-	char *ANT_channel_file::getsz(char terminator)
-	{
-	char *buffer = NULL;
-	long bytes_read, buffer_length, used, old_length, block_size = 1024;
-	char next, *got;
-
-	bytes_read = buffer_length = used = 0;
-
-	buffer = new char [old_length = block_size + 2];
-	*buffer = '\0';
-	/*
-		Else we do a gets() and stop when we hit the terminator
-	*/
-	while ((got = block_read(&next, 1)) != NULL)
+	void channel_file::unittest(void)
 		{
-		bytes_read++;
-		if (next == terminator)
-			break;
-		if  (got == NULL)
-			if (used == 0)
-				{
-				delete [] buffer;
-				return NULL;
-				}
-			else
-				break;
-			
-		if (used >= buffer_length)
-			{
-			old_length = buffer_length;
-			buffer_length += block_size;
-			buffer = strrenew(buffer, old_length, buffer_length + 2);		// +1 for terminator and +1 for the '\0' on the end
-			}
-		buffer[used] = (char)next;
-		used++;
-		}
+		char filename[11];
+		strcpy(filename, "jassXXXXXX");
 
-	if (buffer != NULL)
-		{
 		/*
-			We got line of stuff so terminate it with the terminator then null terminate that.
+			Create a temporary filename.  Windows does not appear to have mkstemp so we use _mktemp().
 		*/
-		buffer[used] = (char)next;
-		buffer[used + 1] = '\0';
-		}
+		#ifdef WIN32
+			_mktemp(filename);
+		#else
+			umask(umask(0));				// This sets the umask to its current value, and prevents Coverity from producing a warning
+			int file_descriptor = mkstemp(filename);
+			if (file_descriptor >= 0)
+				close(file_descriptor);
+		#endif
 
-	if (bytes_read == 0)
-		{
-		delete [] buffer;
-		return NULL;
-		}
+		/*
+			create an output channel and write to it
+		*/
+		do
+			{
+			channel_file outfile(filename);
+			outfile << "bytes:";
+			outfile << "7";
+			outfile << ((const unsigned char *)"\nLine2\n");
+			}
+		while (0);
 
-	return buffer;
-	}
+		/*
+			create an input channel for the same file and read from it
+		*/
+		do
+			{
+			channel_file infile(filename);
+			std::string answer;
+			answer.resize(8);
+			infile.read(answer);
+			JASS_assert(answer == "bytes:7\n");
+			infile.gets(answer);
+			JASS_assert(answer == "Line2\n");
+			}
+		while (0);
+
+		/*
+			Delete the file.  Cast to void to remove Coverity warning if remove() fails.
+		*/
+		(void)remove(filename);
+
+		::puts("channel_file::PASS");
+		}
 }

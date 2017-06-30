@@ -32,6 +32,17 @@ namespace JASS
 			size_t file_length;		///< The length of the file.
 			size_t bytes_read;		///< The number of bytes that have been read from the file.
 
+		protected:
+			/*
+				INSTREAM_FILE::INSTREAM_FILE()
+				------------------------------
+			*/
+			/*!
+				@brief Constructor
+				@param file [in] the FILE * object that this instream_file object should use (see instream_file_star.h)
+			*/
+			instream_file(FILE *file);
+
 		public:
 			/*
 				INSTREAM_FILE::INSTREAM_FILE()

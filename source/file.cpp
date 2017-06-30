@@ -199,13 +199,13 @@ namespace JASS
 			be very fast as it doesn't (normally) need to do and I/O to compute the answer
 		*/
 		#ifdef WIN32
-			int64_t current_position = _ftelli64(fp);
+			int64_t current_position = _ftelli64(fp.get());
 			if (current_position < 0)
 				return 0;							// this only happens on _ftelli64() failing
-			if (_fseeki64(fp, 0, SEEK_END) < 0)
+			if (_fseeki64(fp.get(), 0, SEEK_END) < 0)
 				return 0;
-			int64_t file_size = _ftelli64(fp);
-			if (_fseeki64(fp, current_position, SEEK_SET) < 0)
+			int64_t file_size = _ftelli64(fp.get());
+			if (_fseeki64(fp.get(), current_position, SEEK_SET) < 0)
 				return 0;
 		#else
 			off_t current_position = ftello(fp);

@@ -14,6 +14,7 @@
 */
 #pragma once
 
+#include <stdio.h>
 #include <stddef.h>
 
 #include <string>
@@ -36,21 +37,38 @@ namespace JASS
 	class file
 		{
 		protected:
-			FILE *fp;				///< The underlying representation is a FILE *  from C (as they appear to be fast).
+			FILE *fp; 		///< The underlying representation is a FILE *  from C (as they appear to be fast).
 			
-		public:
+		private:
 			/*
 				FILE::FILE()
 				------------
 			*/
 			/*!
-				@brief Constructor used for stdin.
+				@brief Private constructor to prevent creation of empty objects
 			*/
-			file()
+			file() :
+				fp(nullptr)
 				{
-				fp = stdin;
+				/* Nothing */
 				}
-		
+
+		public:
+
+			/*
+				FILE::FILE()
+				------------
+			*/
+			/*!
+				@brief Constructor with a C FILE * object
+				@param fp [in] The FILE * object this object should use.  This class takes ownership and closes the file on destruction.
+			*/
+			file(FILE *fp) :
+				fp(fp)
+				{
+				/* Nothing */
+				}
+
 			/*
 				FILE::FILE()
 				------------
@@ -60,7 +78,8 @@ namespace JASS
 				@param filename [in] the name of the file.
 				@param mode [in] The file open mode.  See C's fopen() for details on possible modes.
 			*/
-			file(const char *filename, const char *mode)
+			file(const char *filename, const char *mode) :
+				fp(nullptr)
 				{
 				/*
 					Open the given file in the given mode
@@ -77,11 +96,12 @@ namespace JASS
 				-------------
 			*/
 			/*!
-				@brief Destructor that closes any open file
+				@brief Destructor
 			*/
 			~file()
 				{
-				fclose(fp);
+				if (fp != nullptr)
+					fclose(fp);
 				}
 			
 			/*

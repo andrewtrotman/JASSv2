@@ -23,9 +23,9 @@ set(JASSlib_FILES
 	binary_tree.h
 	bitstring.h
 	bitstring.cpp
-    channel.h
-    channel_file.h
-    channel_file.cpp
+	channel.h
+	channel_file.h
+	channel_file.cpp
 	checksum.h
 	checksum.cpp
 	compress_integer.h

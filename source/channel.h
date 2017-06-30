@@ -1,12 +1,21 @@
 /*
 	CHANNEL.H
 	---------
+	Copyright (c) 2017 Andrew Trotman
+	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
+*/
+/*!
+	@file
+	@brief Input and output channels so that JASS i/o is device independant.
+	@author Andrew Trotman
+	@copyright 2017 Andrew Trotman
 */
 #pragma once
 
 #include <stdio.h>
 #include <string.h>
 
+#include <string>
 
 namespace JASS
 	{
@@ -14,56 +23,203 @@ namespace JASS
 		CLASS CHANNEL
 		-------------
 	*/
+	/*!
+		@brief General purpose device independant I/O class
+		@details So that the search engine can read and write to either a file or stdin/stdout or a socket (or othereise)
+		it uses a channel rather than a specific device to do the I/O.  To create a new channel, overload the constructor, destructor
+		as well as block_write() and block_read().  It is not necessary to overload getsz(), but for efficiency reasons it might be desired.
+	*/
 	class channel
-	{
-	protected:
-		virtual long long block_write(char *source, long long length) = 0;		// returns bytes written
-		virtual long long block_write(const char *source, long long length) { return block_write((char *)source, length); }
-		virtual char *block_read(char *into, long long length) = 0;
-		virtual char *getsz(char terminator = '\0') = 0;
+		{
+		protected:
+			/*
+				CHANNEL::BLOCK_WRITE()
+				----------------------
+			*/
+			/*!
+				@brief All output happens via the block_write method.
+				@param buffer [in] write length number of bytes from buffer
+				@param length [in] The number of bytes go write.
+				@return The number of bytes written (usually equal to length).
+			*/
+			virtual size_t block_write(const void *buffer, size_t length) = 0;
 
-	public:
-		static const char endl = '\n';
-		static const char ends = '\0';
+			/*
+				CHANNEL::BLOCK_READ()
+				---------------------
+			*/
+			/*!
+				@brief All input happens via the block_read method.
+				@param into [out] length number of bytes are written into here
+				@param length [in] The number of bytes go write.
+				@return The number of buyes read (usually equal to length).
+			*/
+			virtual size_t block_read(void *into, size_t length) = 0;
 
-	public:
-		ANT_channel() {}
-		virtual ~ANT_channel() {}
+			/*
+				CHANNEL::GETSZ()
+				----------------
+			*/
+			/*!
+				@brief Read up-to and including a terminator terminated string of bytes from the channel.
+				@details This method calls block_read byte at a time until a byte of value terminator is seen.
+				these bytes (including the terminator) are writen to into.  The size of into is set to the 
+				number of bytes read.
+				@param into [out] bytes are read from the channel until a bytes equal to terminator is found.
+				@param terminator [in] Stop when this byte is seen in the channel and after it is written to into.
+			*/
+			virtual void getsz(std::string &into, char terminator = '\0')
+				{
+				char next;								// the byte being read
+				size_t used = 0;						// the number of bytes that have been copied so far
+				size_t buffer_length = 0;			// the current length of the string buffer
+				size_t growth_factor = 1024;		// how much larger the buffer should get when it runs out.
 
-		long long write(char *source, long long length) 			{ return block_write(source, length); }
-		long long write(unsigned char *source, long long length) { return write((char *)source, length); }
+				/*
+					In case of failure set the size to 0.
+				*/
+				into.resize(0);
 
-		long long write(char *source) 							{ return block_write(source, strlen(source)); }
-		long long write(unsigned char *source) 					{ return write((char*)source); }
+				/*
+					For as long as we can read, add to the end of the string so far.
+				*/
+				while (block_read(&next, 1) != 1)
+					{
+					used++;
 
-		long long write(char source) 							{ return block_write(&source, 1); }
-		long long write(short source) 							{ return write((long long)source); }
-		long long write(int source) 								{ return write((long long)source); }
-		long long write(long source) 							{ return write((long long)source); }
-		long long write(long long source) 						{ char buffer[32]; sprintf(buffer, "%lld", source); return write(buffer); }
+					/*
+						check to see if we need to extend the length of the string buffer
+					*/
+					if (used >= buffer_length)
+						{
+						buffer_length += growth_factor;
+						into.reserve(buffer_length);
+						}
 
-		long long write(unsigned char source) 					{ return write((char)source); }
-		long long write(unsigned short source) 					{ return write((unsigned long long)source); }
-		long long write(unsigned int source) 					{ return write((unsigned long long)source); }
-		long long write(unsigned long source) 					{ return write((unsigned long long)source); }
-		long long write(unsigned long long source) 				{ char buffer[32]; sprintf(buffer, "%llu", source); return write(buffer); }
+					/*
+						shove the next byte on the end
+					*/
+					into.push_back(next);
 
-		char *read(char *destination, long long length) 	{ return block_read(destination, length); }
-		char *gets(void) 									{ return getsz('\n'); }
-		long long puts(char *string) 							{ return block_write(string, strlen(string)) < 0 ? 0 : block_write("\n", 1); }
+					/*
+						if we match terminator then we're done so set the correct string length
+					*/
+					if (next == terminator)
+						{
+						into.resize(used);
+						return;
+						}
+					}
+				/*
+					at eof so set the string length and return.
+				*/
+				into.resize(used);
+				}
 
-		ANT_channel &operator<<(char source)				{ write(source); return *this; }
-		ANT_channel &operator<<(short source)				{ write(source); return *this; }
-		ANT_channel &operator<<(int source)					{ write(source); return *this; }
-		ANT_channel &operator<<(long source)				{ write(source); return *this; }
-		ANT_channel &operator<<(long long source)			{ write(source); return *this; }
+		public:
+			/*
+				CHANNEL::CHANNEL()
+				------------------
+			*/
+			/*!
+				@brief Constructor
+			*/
+			channel()
+				{
+				/* Nothing */
+				}
 
-		ANT_channel &operator<<(unsigned short source)		{ write(source); return *this; }
-		ANT_channel &operator<<(unsigned int source)		{ write(source); return *this; }
-		ANT_channel &operator<<(unsigned long source)		{ write(source); return *this; }
-		ANT_channel &operator<<(unsigned long long source)	{ write(source); return *this; }
+			/*
+				CHANNEL::~CHANNEL()
+				-------------------
+			*/
+			/*!
+				@brief Destructor
+			*/
+			virtual ~channel()
+				{
+				/* Nothing */
+				}
 
-		ANT_channel &operator<<(char *source) 				{ write(source); return *this; }
-		ANT_channel &operator<<(unsigned char *source) 		{ write(source); return *this; }
-	} ;
-}
+			/*
+				CHANNEL::READ()
+				---------------
+			*/
+			/*!
+				@brief Read into.size() bytes into the string.
+				@param into [out] Read into.size() bytes into this string.
+			*/
+			void read(std::string &into)
+				{
+				into.resize(block_read(const_cast<char *>(into.c_str()), into.size()));
+				}
+
+			/*
+				CHANNEL::GETS()
+				---------------
+			*/
+			/*!
+				@brief Read a '\n' terminated string from the channel into the parameter.
+				@param into [out] Read into this string.
+			*/
+			void gets(std::string &into)
+				{
+				getsz(into, '\n');
+				}
+
+			/*
+				CHANNEL::PUTS()
+				---------------
+			*/
+			/*!
+				@brief write buffer to the channel followed by a '\n' character.
+				@param buffer [in] Byte sequence to write.
+			*/
+			void puts(std::string &buffer)
+				{
+				block_write(buffer.c_str(), buffer.size());
+				block_write("\n", 1);
+				}
+
+			/*
+				CHANNEL::OPERATOR<<()
+				---------------------
+			*/
+			/*!
+				@brief Catch-all for writing base-types to a channel.
+				@param source [in] data to write.
+			*/
+			template <typename T> channel &operator<<(T source)
+				{
+				block_write(&source, sizeof(source));
+				return *this;
+				}
+
+			/*
+				CHANNEL::OPERATOR<<()
+				---------------------
+			*/
+			/*!
+				@brief write a string to this channel.
+				@param source [in] data to write.
+			*/
+			channel &operator<<(const char *source)
+				{
+				block_write(source, strlen(source));
+				return *this;
+				}
+			/*
+				CHANNEL::OPERATOR<<()
+				---------------------
+			*/
+			/*!
+				@brief write a string to this channel.
+				@param source [in] data to write.
+			*/
+			channel &operator<<(const unsigned char *source)
+				{
+				block_write(source, sizeof(source));
+				return *this;
+				}
+		} ;
+	}

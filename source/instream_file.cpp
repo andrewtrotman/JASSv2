@@ -23,14 +23,24 @@ namespace JASS
 		INSTREAM_FILE::INSTREAM_FILE()
 		------------------------------
 	*/
-	instream_file::instream_file(const std::string &filename) :
-		disk_file(filename.c_str(), "rb")				// use RAII to open and close the file
+	instream_file::instream_file(FILE *file) :
+		disk_file(file),
+		file_length(std::numeric_limits<size_t>::max()),
+		bytes_read(0)
 		{
-		/*
-			Get the file length and note that we've not read any of it yet
-		*/
-		file_length = disk_file.size();
-		bytes_read = 0;
+		/* Nothing */
+		}
+
+	/*
+		INSTREAM_FILE::INSTREAM_FILE()
+		------------------------------
+	*/
+	instream_file::instream_file(const std::string &filename) :
+		disk_file(filename.c_str(), "rb"),
+		file_length(disk_file.size()),
+		bytes_read(0)
+		{
+		/* Nothing */
 		}
 
 	/*

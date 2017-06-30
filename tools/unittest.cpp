@@ -18,6 +18,7 @@
 #include "serialise_ci.h"
 #include "hash_pearson.h"
 #include "parser_query.h"
+#include "channel_file.h"
 #include "dynamic_array.h"
 #include "allocator_cpp.h"
 #include "instream_file.h"
@@ -28,6 +29,7 @@
 #include "instream_memory.h"
 #include "allocator_memory.h"
 #include "serialise_jass_ci.h"
+#include "instream_file_star.h"
 #include "instream_document_trec.h"
 #include "index_manager_sequential.h"
 #include "compress_integer_variable_byte.h"
@@ -52,6 +54,11 @@ int main(void)
 
 	try
 		{
+		// JASS::channel does not have a unittest because it is a virtual base class
+
+		puts("channel_file");
+		JASS::channel_file::unittest();
+
 		puts("checksum");
 		JASS::checksum::unittest();
 
@@ -91,7 +98,10 @@ int main(void)
 		
 		puts("instream_file");
 		JASS::instream_file::unittest();
-		
+
+		puts("instream_file_star");
+		JASS::instream_file_star::unittest();
+
 		puts("instream_memory");
 		JASS::instream_memory::unittest();
 

@@ -4,6 +4,14 @@
 	Copyright (c) 2017 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
+/*!
+	@file
+	@brief Simple parser for queries
+	@details This parser is a bare-bones parser that generates a list of terms in the query
+	@author Andrew Trotman
+	@copyright 2017 Andrew Trotman
+*/
+
 #pragma once
 
 #include "allocator.h"
