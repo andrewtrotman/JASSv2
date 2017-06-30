@@ -83,7 +83,7 @@ namespace JASS
 				/*
 					For as long as we can read, add to the end of the string so far.
 				*/
-				while (block_read(&next, 1) != 1)
+				while (block_read(&next, 1) == 1)
 					{
 					used++;
 

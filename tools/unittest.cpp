@@ -54,11 +54,6 @@ int main(void)
 
 	try
 		{
-		// JASS::channel does not have a unittest because it is a virtual base class
-
-		puts("channel_file");
-		JASS::channel_file::unittest();
-
 		puts("checksum");
 		JASS::checksum::unittest();
 
@@ -107,7 +102,12 @@ int main(void)
 
 		puts("instream_document_trec");
 		JASS::instream_document_trec::unittest();
-		
+
+		// JASS::channel does not have a unittest because it is a virtual base class
+
+		puts("channel_file");
+		JASS::channel_file::unittest();
+
 		puts("parser");
 		JASS::parser::unittest();
 

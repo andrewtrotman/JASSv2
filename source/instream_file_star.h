@@ -66,7 +66,7 @@ namespace JASS
 				/*
 					Example test string to read / write
 				*/
-				const char *example = "123456789012345678901234567890";			// sample to be written and read back
+				const char example[] = "123456789012345678901234567890";			// sample to be written and read back
 
 				/*
 					create the file
