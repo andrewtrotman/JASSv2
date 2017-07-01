@@ -15,8 +15,8 @@
 #pragma once
 
 #include "allocator.h"
-#include "query_term.h"
 #include "dynamic_array.h"
+#include "query_term_list.h"
 
 namespace JASS
 	{
@@ -99,7 +99,7 @@ namespace JASS
 				@param parsed_query [out] The parsed query once parsed.
 				@param query [in] The query to be parsed.
 			*/
-			void parse(token_list &parsed_query, const std::string &query)
+			void parse(query_term_list &parsed_query, const std::string &query)
 				{
 				current = (uint8_t *)(const_cast<char *>(query.c_str()));							// get a pointer to the start of the query string
 				end_of_query = current + query.size();			// get a pointer to the end of the query string

@@ -13,6 +13,10 @@
 
 #include <string.h>
 
+#include <string>
+
+#include "slice.h"
+
 /*
 	CLASS JASS_CI_VOCAB
 	-------------------
@@ -27,6 +31,28 @@ class JASS_ci_vocab
 		void (*method)(void);					///< The method to call when that term is seen in the query
 
 	public:
+		/*
+			JASS_CI_VOCAB::JASS_CI_VOCAB()
+			------------------------------
+		*/
+		JASS_ci_vocab(const char *term, void (*method)(void)) :
+			term(term),
+			method(method)
+			{
+			/* Nothing */
+			}
+
+		/*
+			JASS_CI_VOCAB::JASS_CI_VOCAB()
+			------------------------------
+		*/
+		JASS_ci_vocab(const JASS::slice &token) :
+			term((const char *)token.address()),
+			method(nullptr)
+			{
+			/* Nothing */
+			}
+
 		/*
 			JASS_CI_VOCAB::OPERATOR<()
 			--------------------------

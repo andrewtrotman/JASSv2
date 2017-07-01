@@ -16,6 +16,7 @@
 #include <string.h>
 
 #include <string>
+#include <type_traits>
 
 namespace JASS
 	{
@@ -186,10 +187,10 @@ namespace JASS
 				---------------------
 			*/
 			/*!
-				@brief Catch-all for writing base-types to a channel.
+				@brief Catch-all for writing arithmetic types (itegral and floating) to a channel.
 				@param source [in] data to write.
 			*/
-			template <typename T> channel &operator<<(T source)
+			template <typename T, typename = typename std::enable_if<std::is_arithmetic<T>::value, T>::type> channel &operator<<(T source)
 				{
 				block_write(&source, sizeof(source));
 				return *this;
@@ -208,6 +209,7 @@ namespace JASS
 				block_write(source, strlen(source));
 				return *this;
 				}
+
 			/*
 				CHANNEL::OPERATOR<<()
 				---------------------
@@ -221,5 +223,20 @@ namespace JASS
 				block_write(source, sizeof(source));
 				return *this;
 				}
+
+			/*
+				CHANNEL::OPERATOR<<()
+				---------------------
+			*/
+			/*!
+				@brief write a string to this channel.
+				@param source [in] data to write.
+			*/
+			channel &operator<<(const std::string &source)
+				{
+				block_write(source.c_str(), source.size());
+				return *this;
+				}
+
 		} ;
 	}

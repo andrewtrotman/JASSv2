@@ -24,5 +24,6 @@ set(COMPILED_INDEX_FILES
 	)
 
 add_executable(JASS_compiled_index ${COMPILED_INDEX_FILES})
+target_link_libraries(JASS_compiled_index JASSlib ${CMAKE_THREAD_LIBS_INIT})
 
 source_group("Source Files" FILES ${COMPILED_INDEX_FILES})

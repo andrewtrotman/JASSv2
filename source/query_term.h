@@ -14,10 +14,11 @@
 
 #include <string.h>
 
+#include <sstream>
+
 #include "slice.h"
 #include "unicode.h"
 #include "allocator.h"
-#include "dynamic_array.h"
 
 namespace JASS
 	{
@@ -88,6 +89,35 @@ namespace JASS
 				}
 
 			/*
+				QUERY_TERM::OPERATOR STD::STRING()
+				----------------------------------
+			*/
+			/*!
+				@brief Convert to a std::string.  Useful for serialising.
+			*/
+			operator std::string() const
+				{
+				std::ostringstream result;
+
+				result << *this;
+
+				return result.str();
+				}
+
+			/*
+				QUERY_TERM::TOKEN()
+				-------------------
+			*/
+			/*!
+				@brief Return the token as a slice.
+				@return The token.
+			*/
+			slice token(void) const
+				{
+				return term;
+				}
+
+			/*
 				QUERY_TERM::UNITTEST()
 				----------------------
 			*/
@@ -109,17 +139,6 @@ namespace JASS
 				puts("query_term::PASSED");
 				}
 		};
-
-
-	/*
-		TYPEDEF TOKEN_LIST
-		------------------
-	*/
-	/*!
-		@typedef 
-		@brief A list of tokens (i.e. a query).
-	*/
-	typedef dynamic_array<query_term> token_list;
 
 	/*
 		OPERATOR<<()

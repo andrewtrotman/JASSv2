@@ -100,8 +100,9 @@ namespace JASS
 			}
 
 		/*
-			Write to the slice
+			'\0' terminate then write to the slice
 		*/
+		*buffer_pos++ = '\0';
 		token = slice(start_of_token, buffer_pos - start_of_token);
 		return valid_token;
 		}
@@ -113,7 +114,7 @@ namespace JASS
 	std::string parser_query::unittest_test_one(parser_query &parser, allocator &memory, const std::string &query)
 		{
 		std::ostringstream buffer;
-		token_list tokens(memory);
+		query_term_list tokens(memory);
 
 		parser.parse(tokens, query);
 		for (const auto &term : tokens)
