@@ -14,6 +14,7 @@
 #include "checksum.h"
 #include "bitstring.h"
 #include "hash_table.h"
+#include "top_k_heap.h"
 #include "binary_tree.h"
 #include "serialise_ci.h"
 #include "hash_pearson.h"
@@ -54,6 +55,10 @@ int main(void)
 
 	try
 		{
+		puts("");
+		JASS::top_k_heap<int>::unittest();
+		return;
+
 		puts("checksum");
 		JASS::checksum::unittest();
 

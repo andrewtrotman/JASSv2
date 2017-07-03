@@ -10,7 +10,6 @@
 	@author Andrew Trotman
 	@copyright 2016 Andrew Trotman
 */
-
 #pragma once
 
 #include <atomic>

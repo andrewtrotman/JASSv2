@@ -61,6 +61,7 @@ set(JASSlib_FILES
 	serialise_jass_ci.cpp
 	serialise_jass_ci.h
 	slice.h
+	top_k_heap.h
 	unicode.h
 	unicode.cpp
 	unittest_data.h
