@@ -102,8 +102,8 @@ namespace JASS
 		/*
 			'\0' terminate then write to the slice
 		*/
-		*buffer_pos++ = '\0';
 		token = slice(start_of_token, buffer_pos - start_of_token);
+		*buffer_pos++ = '\0';
 		return valid_token;
 		}
 

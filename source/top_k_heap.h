@@ -6,7 +6,7 @@
 */
 /*!
 	@file
-	@brief Implementation of a top-k keeper uwing a heap
+	@brief Implementation of a top-k keeper using a heap
 	@author Andrew Trotman
 	@copyright 2017 Andrew Trotman
 */
@@ -14,74 +14,435 @@
 
 #include <array>
 #include <random>
+#include <sstream>
 #include <algorithm>
+
+#include "asserts.h"
 
 namespace JASS
 	{
-	template <typename HEAP_ELEMENT>
+	/*
+		CLASS TOP_K_HEAP
+		----------------
+	*/
+
+	/*!
+		@brief A heap that keeps the top-k elements and discards the remainder.
+		@details A heap that keeps at most the top K elements. Comparison is done using operator>().  The underlying data structure is
+		a std::vector.  Elements are added to the vector using std::vector::push_back() and removed using std::vector::pop_back().  To add
+		an element to a top-k heap call top_k_heap::push_back().
+		@tparam ELEMENT The heap is a heap of these elements.
+		@tparam K The maximum number of elements to keep in the heap.
+	*/
+	template <typename ELEMENT, size_t K>
 	class top_k_heap
 		{
-		private:
-			std::vector<HEAP_ELEMENT> members;
-			size_t maximum_members;
-			size_t current_members;
-			size_t total_insertions;
+		/*!
+			@brief Output a human readable serialisation to an ostream
+			@relates top_k_heap
+		*/
+		template<typename A, size_t B> friend std::ostream &operator<<(std::ostream &stream, const top_k_heap<A, B> &data);
 
+		private:
+			std::vector<ELEMENT> members;			///< The array over which the heap is constructed
+			size_t total_insertions;				///< Total number of calls to insert
+			bool heap_ordered;						///< is this heap ordered as a heap yet, or not (i.e. has top_k_heap::sort() or top_k_heap::move() been called?).
+			bool front_correct;						///< Is the front of the heap correct (which it might not be if its never been heap ordered)
+			
 		public:
-			top_k_heap(size_t maximum_members) :
-				maximum_members(maximum_members),
-				current_members(0),
-				total_insertions(0)
+			/*
+				TOP_K_HEAP::TOP_K_HEAP()
+				------------------------
+			*/
+			/*!
+				@brief Constructor
+			*/
+			top_k_heap() :
+				total_insertions(0),
+				heap_ordered(false),
+				front_correct(false)
 				{
 				}
 
-			void push_back(const HEAP_ELEMENT &element)
+			/*
+				TOP_K_HEAP::PUSH_BACK()
+				-----------------------
+			*/
+			/*!
+				@brief Add and element to the heap
+				@param element [in] The element to add to the heap
+			*/
+			void push_back(const ELEMENT &element)
 				{
+				/*
+					Count the number of calls to this method
+				*/
 				total_insertions++;
-
-				current_members++;
-
-				if (current_members ==	maximum_members)
+				
+				if (total_insertions < K)
 					{
+					/*
+						If adding this element hasn't yet filled the heap then don't make a heap
+					*/
 					members.push_back(element);
-					make_heap(members.begin(), members.end());
 					}
-				else if (current_members > maximum_members)
+				else if (total_insertions == K)
 					{
-					if (element < members.front())
+					/*
+						If adding this element causes the array to fill then make a heap
+					*/
+					members.push_back(element);
+					make_heap(members.begin(), members.end(), std::greater<ELEMENT>());
+					front_correct = heap_ordered = true;
+					}
+				else if (total_insertions > K)
+					{
+					/*
+						If adding this element will overflow the heap then check to see it it belongs
+					*/
+					if (element > members.front())
 						{
-						pop_heap(members.begin(), members.end());
+						/*
+							make sure we have a heap before we manipulate it
+						*/
+						if (!heap_ordered)
+							{
+							make_heap(members.begin(), members.end(), std::greater<ELEMENT>());
+							front_correct = heap_ordered = true;
+							}
+						
+						/*
+							This element belongs in the heap so remove the smallest (according to operator>()) element and insert this element
+						*/
+						pop_heap(members.begin(), members.end(), std::greater<ELEMENT>());
 						members.pop_back();
 						members.push_back(element);
-						push_heap(members.begin(), members.end());
+						push_heap(members.begin(), members.end(), std::greater<ELEMENT>());
 						}
 					}
-				else
-					members.push_back(element);
 				}
-
-			void text_render(void) const
+			
+			/*
+				TOP_K_HEAP::MOVE()
+				------------------
+			*/
+			/*!
+				@brief Move an element within the heap.
+				@details This method provides the illusion that an element within the heap has moved, which it does
+				by making sure front() is correct, but shuffling the remainder of the heap (which is no longer a heap). The
+				heap will be correctly ordered on a call to push_back() that results in a eviction or many other methods.
+				This is used whe, for exmaple, a heap of pointers is being used and the value at the pointer has become larger (but not smaller).
+				@param element [in] The element to move within the heap.
+			*/
+			void move(const ELEMENT &element)
 				{
-				for (size_t element = 0; element < maximum_members; element++)
-					std::cout << members[element] << " ";
-				std::cout << "\n" << std::ends;
+				/*
+					If we're the front element of the heap then we might get a new front so we need to make the heap
+				*/
+				if (element == members.front())
+					{
+					make_heap(members.begin(), members.end(), std::greater<ELEMENT>());
+					front_correct = heap_ordered = true;
+					}
+				else
+					{
+					front_correct = true;
+					heap_ordered = false;
+					}
 				}
 
+			/*
+				TOP_K_HEAP::FRONT()
+				-------------------
+			*/
+			/*!
+				@brief Return a reference to the first (i.e. smallest by operator>()) element in the heap.
+				@return Reference to the first element.
+			*/
+			typename std::vector<ELEMENT>::reference front()
+				{
+				/*
+					If we're sorted then turn it back into a heap
+				*/
+				if (!front_correct)
+					{
+					make_heap(members.begin(), members.end(), std::greater<ELEMENT>());
+					front_correct = heap_ordered = true;
+					}
+
+				return members.front();
+				}
+
+			/*
+				TOP_K_HEAP::FRONT()
+				-------------------
+			*/
+			/*!
+				@brief Return a const_reference to the first (i.e. smallest by operator>()) element in the heap.
+				@return Const_reference to the first element.
+			*/
+			typename std::vector<ELEMENT>::const_reference front() const
+				{
+				/*
+					If we're sorted then turn it back into a heap
+				*/
+				if (!front_correct)
+					{
+					make_heap(members.begin(), members.end(), std::greater<ELEMENT>());
+					front_correct = heap_ordered = true;
+					}
+
+				return members.front();
+				}
+			
+			/*
+				TOP_K_HEAP::BEGIN()
+				-------------------
+			*/
+			/*!
+				@brief Return an iterator pointing to start of the heap
+				@return Iterator pointing to start of the heap.
+			*/
+			typename std::vector<ELEMENT>::iterator begin()
+				{
+				return members.begin();
+				}
+			
+			/*
+				TOP_K_HEAP::BEGIN()
+				-------------------
+			*/
+			/*!
+				@brief Return a const_iterator pointing to start of the heap
+				@return Const_terator pointing to start of the heap.
+			*/
+			typename std::vector<ELEMENT>::const_iterator begin() const
+				{
+				return members.begin();
+				}
+
+			/*
+				TOP_K_HEAP::END()
+				-----------------
+			*/
+			/*!
+				@brief Return an iterator pointing past the end of the heap.
+				@return Iterator pointing past the end of the heap.
+			*/
+			typename std::vector<ELEMENT>::iterator end()
+				{
+				return members.end();
+				}
+			
+			/*
+				TOP_K_HEAP::END()
+				-----------------
+			*/
+			/*!
+				@brief Return a const_iterator pointing past the end of the heap.
+				@return Const_terator pointing past the end of the heap.
+			*/
+			typename std::vector<ELEMENT>::const_iterator end() const
+				{
+				return members.end();
+				}
+
+			/*
+				TOP_K_HEAP::SORT()
+				------------------
+			*/
+			/*!
+				@brief Sort the heap so that an iteration over it will produce the results in sorted (rather than heap) order.
+			*/
+			void sort(void)
+				{
+				if (heap_ordered)
+					sort_heap(members.begin(), members.end(), std::greater<ELEMENT>());
+				else
+					std::sort(members.begin(), members.end(), std::greater<ELEMENT>());
+				front_correct = heap_ordered = false;				// because we're not ordered high to low rather than min-heap low to high
+				}
+			
+			/*
+				TOP_K_HEAP::SIZE()
+				------------------
+			*/
+			/*!
+				@brief Return the numner of element in the heap (which might be smaller than k, but never larger).
+				@return The number of elements in the heap.
+			*/
+			size_t size(void) const
+				{
+				return members.size();
+				}
+
+			/*
+				TOP_K_HEAP::CAPICITY()
+				----------------------
+			*/
+			/*!
+				@brief Return the maximum number of elements the heap can hold (i.e. k)
+				@return k (from top-k).
+			*/
+			size_t capacity(void) const
+				{
+				return K;
+				}
+			
+			/*
+				TOP_K_HEAP::UNITTEST()
+				----------------------
+			*/
+			/*!
+				@brief Unit test this class
+			*/
 			static void unittest(void)
 				{
-				int sequence[] =  {0,1,2,3,4,5,6,7,8,9};
+				/*
+					Start with an ordered sequence of numbers
+				*/
+				int sequence[] =  {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+				
+				/*
+					Seed the random number generator
+				*/
+				std::srand(unsigned(std::time(0)));
 
+				/*
+					Some relatively small number of times, we're going to shuffle the sequence then add elements to the heap
+					then sort the heap then make sure we got the right answer
+				*/
 				for (auto iteration = 0; iteration < 5; iteration++)
 					{
+					/*
+						Shuffle the sequence of numbers
+					*/
 					std::random_shuffle(&sequence[0], &sequence[10]);
-					top_k_heap<int> heap(5);
 
+					/*
+						Add them to a heap that keeps a top-k of less than the number of elements in the sequence
+					*/
+					top_k_heap<int, 5> heap;
 					for (const auto &element : sequence)
 						heap.push_back(element);
+					
+					/*
+						Make sure we have a heap and its the right size
+					*/
+					JASS_assert(heap.end() - heap.begin() == heap.size());
+					JASS_assert(std::is_heap(heap.begin(), heap.end(), std::greater<ELEMENT>()));
 
-					heap.text_render();
+					/*
+						Sort the heap
+					*/
+					heap.sort();
+		
+					/*
+						Serialise and compare to the known correct result
+					*/
+					std::ostringstream result;
+					result << heap;
+					JASS_assert(result.str() == "9 8 7 6 5");
 					}
+
+				/*
+					Add fewer elements to the heap than the heap size to make sure short answer lists work too,
+				*/
+				top_k_heap<int, 20> big_heap;
+				for (const auto &element : sequence)
+					big_heap.push_back(element);
+
+
+				/*
+					Make sure the heap's stats are correct.
+				*/
+				JASS_assert(big_heap.size() == 10);
+				JASS_assert(big_heap.capacity() == 20);
+				JASS_assert(big_heap.end() - big_heap.begin() == big_heap.size());
+				
+				/*
+					as size() is less than capacity() its unlikely (but possible) that we have a heap, so either is correct (so there's nothing to check)
+				*/
+				//JASS_assert(std::is_heap(big_heap.begin(), big_heap.end()));
+					
+				/*
+					Sort the heap
+				*/
+				big_heap.sort();
+	
+				/*
+					Serialise and compare to the known correct result
+				*/
+				std::ostringstream big_result;
+				big_result << big_heap;
+				JASS_assert(big_result.str() == "9 8 7 6 5 4 3 2 1 0");
+
+				/*
+					Add exactly the correct number of elements to the heap to make sure that works
+				*/
+				top_k_heap<int, 10> exact_heap;
+				for (const auto &element : sequence)
+					exact_heap.push_back(element);
+					
+				/*
+					Make sure the heap's stats are correct.
+				*/
+				JASS_assert(exact_heap.size() == exact_heap.capacity());
+				JASS_assert(exact_heap.end() - exact_heap.begin() == exact_heap.size());
+				JASS_assert(std::is_heap(exact_heap.begin(), exact_heap.end(), std::greater<ELEMENT>()));
+
+				/*
+					Check the front() methods
+				*/
+				const int const_got = exact_heap.front();
+				int got = exact_heap.front();
+				JASS_assert(got == const_got);
+				JASS_assert(got == 0);
+
+				/*
+					Sort the heap
+				*/
+				exact_heap.sort();
+	
+				/*
+					Serialise and compaie to the known correct result
+				*/
+				std::ostringstream exact_result;
+				exact_result << exact_heap;
+				JASS_assert(exact_result.str() == "9 8 7 6 5 4 3 2 1 0");
+
+
+				/*
+					We passed!
+				*/
 				puts("top_k_heap::PASS");
 				}
 		};
+		
+	/*
+		OPERATOR<<()
+		------------
+	*/
+	/*!
+		@brief Dump the contents of a heap down an output stream.
+		@param stream [in] The stream to write to.
+		@param data [in] The heap to write.
+		@tparam ELEMENT The type used as the key to the element (must include KEY(allocator, KEY) copy constructor)
+		@tparam K The element data returned given the key (must include ELEMENT(allocator) constructur)
+		@return The stream once the tree has been written.
+	*/
+	template <typename ELEMENT, size_t K>
+	inline std::ostream &operator<<(std::ostream &stream, const top_k_heap<ELEMENT, K> &data)
+		{
+		bool first_time = true;
+		
+		for (const auto &element : data)
+			{
+			if (!first_time)
+				stream << " ";
+			stream << element;
+			first_time = false;
+			}
+		return stream;
+		}
 	}

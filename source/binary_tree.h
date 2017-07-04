@@ -413,5 +413,4 @@ namespace JASS
 		tree.text_render(stream);
 		return stream;
 		}
-
 	}

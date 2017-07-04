@@ -55,10 +55,6 @@ int main(void)
 
 	try
 		{
-		puts("");
-		JASS::top_k_heap<int>::unittest();
-		return;
-
 		puts("checksum");
 		JASS::checksum::unittest();
 
@@ -154,6 +150,9 @@ int main(void)
 
 		puts("accumulator_2d");
 		JASS::accumulator_2d<uint32_t>::unittest();
+
+		puts("top_k_heap");
+		JASS::top_k_heap<int, 0>::unittest();
 
 		puts("ALL UNIT TESTS HAVE PASSED");
 		}
