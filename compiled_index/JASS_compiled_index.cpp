@@ -96,6 +96,6 @@ void add_rsv(size_t document_id, uint16_t weight)
 		/*
 			We're already in the heap but we might have moved spots
 		*/
-		heap.move(accumulators[document_id] += weight);
+		heap.promote(accumulators[document_id] += weight);
 		}
 	}

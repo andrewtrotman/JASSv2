@@ -30,6 +30,7 @@
 #include "instream_memory.h"
 #include "allocator_memory.h"
 #include "serialise_jass_ci.h"
+#include "pointer_container.h"
 #include "instream_file_star.h"
 #include "instream_document_trec.h"
 #include "index_manager_sequential.h"
@@ -55,6 +56,10 @@ int main(void)
 
 	try
 		{
+		puts("pointer_container");
+		JASS::pointer_container<int>::unittest();
+		return;
+
 		puts("checksum");
 		JASS::checksum::unittest();
 

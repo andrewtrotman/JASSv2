@@ -123,18 +123,18 @@ namespace JASS
 				}
 			
 			/*
-				TOP_K_HEAP::MOVE()
-				------------------
+				TOP_K_HEAP::PROMOTE()
+				---------------------
 			*/
 			/*!
-				@brief Move an element within the heap.
+				@brief Promote an element within the heap.
 				@details This method provides the illusion that an element within the heap has moved, which it does
 				by making sure front() is correct, but shuffling the remainder of the heap (which is no longer a heap). The
 				heap will be correctly ordered on a call to push_back() that results in a eviction or many other methods.
 				This is used whe, for exmaple, a heap of pointers is being used and the value at the pointer has become larger (but not smaller).
 				@param element [in] The element to move within the heap.
 			*/
-			void move(const ELEMENT &element)
+			void promote(const ELEMENT &element)
 				{
 				/*
 					If we're the front element of the heap then we might get a new front so we need to make the heap
