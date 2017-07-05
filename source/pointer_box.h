@@ -59,6 +59,7 @@ namespace JASS
 			/*!
 				@brief Compare for less than.
 				@param to [in] The object we are Compareing to.
+				@return true or false.
 			*/
 			bool operator<(const pointer_box<POINTER> &to) const
 				{
@@ -66,25 +67,13 @@ namespace JASS
 				}
 
 			/*
-				POINTER_BOX::OPERATOR<()
-				------------------------
-			*/
-			/*!
-				@brief Compare for less than.
-				@param to [in] The value we are Compareing to.
-			*/
-			bool operator<(const POINTER *to) const
-				{
-				return *element < *to;
-				}
-
-			/*
 				POINTER_BOX::OPERATOR<=()
 				-------------------------
 			*/
 			/*!
 				@brief Compare for less than or equal to.
 				@param to [in] The object we are Compareing to.
+				@return true or false.
 			*/
 			bool operator<=(const pointer_box<POINTER> &to) const
 				{
@@ -92,25 +81,13 @@ namespace JASS
 				}
 
 			/*
-				POINTER_BOX::OPERATOR<=()
-				-------------------------
-			*/
-			/*!
-				@brief Compare for less than or equal to.
-				@param to [in] The value we are Compareing to.
-			*/
-			bool operator<=(const POINTER *to) const
-				{
-				return *element <= *to;
-				}
-
-			/*
 				POINTER_BOX::OPERATOR>()
 				-------------------------
 			*/
 			/*!
 				@brief Compare for greater than.
 				@param to [in] The object we are Compareing to.
+				@return true or false.
 			*/
 			bool operator>(const pointer_box<POINTER> &to) const
 				{
@@ -118,25 +95,13 @@ namespace JASS
 				}
 
 			/*
-				POINTER_BOX::OPERATOR>()
-				-------------------------
-			*/
-			/*!
-				@brief Compare for greater than.
-				@param to [in] The value we are Compareing to.
-			*/
-			bool operator>(const POINTER *to) const
-				{
-				return *element > *to;
-				}
-
-			/*
 				POINTER_BOX::OPERATOR>=()
 				--------------------------
 			*/
 			/*!
 				@brief Compare for greater than or equal to.
 				@param to [in] The object we are Compareing to.
+				@return true or false.
 			*/
 			bool operator>=(const pointer_box<POINTER> &to) const
 				{
@@ -144,25 +109,13 @@ namespace JASS
 				}
 
 			/*
-				POINTER_BOX::OPERATOR>=()
-				--------------------------
-			*/
-			/*!
-				@brief Compare for greater than or equal to.
-				@param to [in] The value we are Compareing to.
-			*/
-			bool operator>=(const POINTER *to) const
-				{
-				return *element >= *to;
-				}
-
-			/*
 				POINTER_BOX::OPERATOR==()
 				--------------------------
 			*/
 			/*!
 				@brief Compare for equal to.
 				@param to [in] The object we are Compareing to.
+				@return true or false.
 			*/
 			bool operator==(const pointer_box<POINTER> &to) const
 				{
@@ -170,42 +123,17 @@ namespace JASS
 				}
 
 			/*
-				POINTER_BOX::OPERATOR==()
-				--------------------------
-			*/
-			/*!
-				@brief Compare for equal to.
-				@param to [in] The value we are Compareing to.
-			*/
-			bool operator==(const POINTER *to) const
-				{
-				return *element == *to;
-				}
-
-			/*
 				POINTER_BOX::OPERATOR!=()
 				--------------------------
 			*/
 			/*!
 				@brief Compare for not equal to.
 				@param to [in] The object we are Compareing to.
+				@return true or false.
 			*/
 			bool operator!=(const pointer_box<POINTER> &to) const
 				{
 				return *element != *to.element;
-				}
-
-			/*
-				POINTER_BOX::OPERATOR!=()
-				--------------------------
-			*/
-			/*!
-				@brief Compare for not equal to.
-				@param to [in] The value we are Compareing to.
-			*/
-			bool operator!=(const POINTER *to) const
-				{
-				return *element != *to;
 				}
 
 			/*
@@ -258,6 +186,7 @@ namespace JASS
 				JASS_assert(c == a);
 				JASS_assert(a != b);
 
+				JASS_assert(*ap > *b);
 				JASS_assert(*b < *ap);
 				JASS_assert(*b <= *ap);
 				JASS_assert(*a > *bp);

@@ -56,10 +56,6 @@ int main(void)
 
 	try
 		{
-		puts("pointer_box");
-		JASS::pointer_box<int>::unittest();
-		return;
-
 		puts("checksum");
 		JASS::checksum::unittest();
 
@@ -155,6 +151,9 @@ int main(void)
 
 		puts("accumulator_2d");
 		JASS::accumulator_2d<uint32_t>::unittest();
+
+		puts("pointer_box");
+		JASS::pointer_box<int>::unittest();
 
 		puts("top_k_heap");
 		JASS::top_k_heap<int, 0>::unittest();
