@@ -16,6 +16,7 @@
 #include "hash_table.h"
 #include "top_k_heap.h"
 #include "binary_tree.h"
+#include "pointer_box.h"
 #include "serialise_ci.h"
 #include "hash_pearson.h"
 #include "parser_query.h"
@@ -30,7 +31,6 @@
 #include "instream_memory.h"
 #include "allocator_memory.h"
 #include "serialise_jass_ci.h"
-#include "pointer_container.h"
 #include "instream_file_star.h"
 #include "instream_document_trec.h"
 #include "index_manager_sequential.h"
@@ -56,8 +56,8 @@ int main(void)
 
 	try
 		{
-		puts("pointer_container");
-		JASS::pointer_container<int>::unittest();
+		puts("pointer_box");
+		JASS::pointer_box<int>::unittest();
 		return;
 
 		puts("checksum");

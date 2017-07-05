@@ -54,7 +54,7 @@ set(JASSlib_FILES
 	parser.cpp
 	parser_query.h
 	parser_query.cpp
-	pointer_container.h
+	pointer_box.h
 	query_term.h
 	query_term_list.h
 	serialise_ci.cpp
