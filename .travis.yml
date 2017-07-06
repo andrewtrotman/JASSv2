@@ -13,7 +13,7 @@ script:
   - if [ "$VALGRIND_RUN" == 1 ]; then cd build && cmake .. && make && valgrind -q --error-exitcode=42 ./unittest; fi
 after_success:
   - if [ "$CODECOV_RUN" == 1 ]; then bash <(curl -s https://codecov.io/bash); fi
-  - if [ "$CODECOV_RUN" == 1 ]; then coveralls; fi
+  - if [ "$CODECOV_RUN" == 1 ]; then coveralls --verbose; fi
 matrix:
   include:
     - os: linux
