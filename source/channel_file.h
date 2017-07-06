@@ -14,6 +14,8 @@
 
 #include <stdio.h>
 
+#include  <memory>
+
 #include "file.h"
 #include "channel.h"
 #include "instream_file.h"
