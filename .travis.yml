@@ -11,7 +11,7 @@ install:
 script:
   - if [ "$COVERITY_SCAN_BRANCH" != 1 -a "$VALGRIND_RUN" != 1 ]; then cd build && cmake .. && make && ./unittest; fi
   - if [ "$VALGRIND_RUN" == 1 ]; then cd build && cmake .. && make && valgrind -q --error-exitcode=42 ./unittest; fi
-  - if [ "$CODECOV_RUN" == 1 ]; then /configure --enable-gcov && make && make check; fi
+  - if [ "$CODECOV_RUN" == 1 ]; then configure --enable-gcov && make && make check; fi
 after_success:
   - if [ "$CODECOV_RUN" == 1 ]; then bash <(curl -s https://codecov.io/bash); fi
   - if [ "$CODECOV_RUN" == 1 ]; then overalls --exclude lib --exclude tests --gcov-options '\-lp'; fi
