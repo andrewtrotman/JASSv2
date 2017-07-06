@@ -17,6 +17,7 @@
 #else
 	#include <unistd.h>
 #endif
+#include <limits>
 
 #include "file.h"
 #include "asserts.h"
