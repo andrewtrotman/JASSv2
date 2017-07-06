@@ -178,7 +178,7 @@ namespace JASS
 			*/
 			auto end(void)
 				{
-				return iterator(heap.end());
+				return iterator{heap.end()};
 				}
 			
 			
