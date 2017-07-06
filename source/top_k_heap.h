@@ -14,6 +14,7 @@
 
 #include <array>
 #include <random>
+#include <chrono>
 #include <sstream>
 #include <algorithm>
 
@@ -258,8 +259,8 @@ namespace JASS
 				/*
 					Seed the random number generator
 				*/
-				std::srand(unsigned(std::time(0)));
-
+				std::default_random_engine random(std::chrono::system_clock::now().time_since_epoch().count());
+				
 				/*
 					Some relatively small number of times, we're going to shuffle the sequence then add elements to the heap
 					then sort the heap then make sure we got the right answer
@@ -269,7 +270,7 @@ namespace JASS
 					/*
 						Shuffle the sequence of numbers
 					*/
-					std::random_shuffle(&sequence[0], &sequence[10]);
+					std::shuffle(&sequence[0], &sequence[10], random);
 
 					/*
 						Add them to a heap that keeps a top-k of less than the number of elements in the sequence
