@@ -17,6 +17,7 @@
 #include <chrono>
 #include <sstream>
 #include <algorithm>
+#include <functional>
 
 #include "asserts.h"
 

@@ -91,7 +91,7 @@ namespace JASS
 						@param at [in] An iterator over the heap
 						@param accumulator_base [in] The base address of the accumulators used to compute document ids through pointer subtraction
 					*/
-					iterator(heap_iterator at, uint16_t *accumulator_base) :
+					iterator(heap_iterator &at, uint16_t *accumulator_base) :
 						at(at),
 						accumulator_base(accumulator_base)
 						{
@@ -206,7 +206,8 @@ namespace JASS
 			auto begin(void)
 				{
 				heap.sort();
-				return iterator(heap.begin(), &accumulators[0]);
+				auto heap_looper = heap.begin();
+				return iterator (heap_looper, &accumulators[0]);
 				}
 				
 			/*
@@ -219,7 +220,8 @@ namespace JASS
 			*/
 			auto end(void)
 				{
-				return iterator(heap.end(), &accumulators[0]);
+				auto heap_looper = heap.end();
+				return iterator(heap_looper, &accumulators[0]);
 				}
 
 			/*
