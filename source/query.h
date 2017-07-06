@@ -179,7 +179,7 @@ namespace JASS
 					/*
 						we weren't in the heap, but we might become so
 					*/
-					if (accumulators[document_id] += weight > *heap.front());
+					if (accumulators[document_id] += weight > *heap.front())
 						{
 						accumulators[document_id] += weight;
 						heap.push_back(JASS::pointer_box<uint16_t>(&accumulators[document_id]));
