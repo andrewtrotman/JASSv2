@@ -30,8 +30,12 @@ namespace JASS
 		vocab_file.write("JASS_ci_vocab dictionary[] = {\n");
 
 		postings_file.write("#include <stddef.h>\n");
-		postings_file.write("#include <stdint.h>\n\n");
-		postings_file.write("extern void add_rsv(size_t document_id, uint16_t impact);\n\n");
+		postings_file.write("#include <stdint.h>\n");
+		postings_file.write("#include\"query.h\"\n\n");
+		postings_file.write("using namespace JASS;\n");
+
+		postings_header_file.write("#include\"query.h\"\n\n");
+		postings_header_file.write("using namespace JASS;\n");
 		}
 
 	/*
@@ -57,13 +61,13 @@ namespace JASS
 		std::ostringstream code;
 		uint64_t previous_document_id = std::numeric_limits<uint64_t>::max();
 
-		code << "void T_" << term << "()\n";
+		code << "void T_" << term << "(query &q)\n";
 		code << "{\n";
 		for (const auto &posting : postings)
 			{
 			if (std::get<0>(posting) != previous_document_id)
 				{
-				code << "add_rsv(" << std::get<0>(posting) << ',' << std::get<1>(posting) << ");\n";
+				code << "q.add_rsv(" << std::get<0>(posting) << ',' << std::get<1>(posting) << ");\n";
 				previous_document_id = std::get<0>(posting);
 				}
 			}
@@ -78,7 +82,7 @@ namespace JASS
 
 		postings_header_file.write("void T_");
 		postings_header_file.write(term.address(), term.size());
-		postings_header_file.write("();\n");
+		postings_header_file.write("(query &q);\n");
 
 		terms++;
 		}
@@ -104,7 +108,7 @@ namespace JASS
 		}
 
 		/*
-			Checksum the inde to make sure its correct.
+			Checksum the index to make sure its correct.
 		*/
 		std::cout << "=====\n";
 		auto checksum = checksum::fletcher_16_file("JASS_postings.cpp");

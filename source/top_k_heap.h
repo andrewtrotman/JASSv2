@@ -33,22 +33,22 @@ namespace JASS
 		a std::vector.  Elements are added to the vector using std::vector::push_back() and removed using std::vector::pop_back().  To add
 		an element to a top-k heap call top_k_heap::push_back().
 		@tparam ELEMENT The heap is a heap of these elements.
-		@tparam K The maximum number of elements to keep in the heap.
 	*/
-	template <typename ELEMENT, size_t K>
+	template <typename ELEMENT>
 	class top_k_heap
 		{
 		/*!
 			@brief Output a human readable serialisation to an ostream
 			@relates top_k_heap
 		*/
-		template<typename A, size_t B> friend std::ostream &operator<<(std::ostream &stream, const top_k_heap<A, B> &data);
+		template<typename A> friend std::ostream &operator<<(std::ostream &stream, const top_k_heap<A> &data);
 
 		private:
 			std::vector<ELEMENT> members;			///< The array over which the heap is constructed
 			size_t total_insertions;				///< Total number of calls to insert
 			bool heap_ordered;						///< is this heap ordered as a heap yet, or not (i.e. has top_k_heap::sort() or top_k_heap::move() been called?).
 			bool front_correct;						///< Is the front of the heap correct (which it might not be if its never been heap ordered)
+			size_t k;								///< The k in top-k
 			
 		public:
 			/*
@@ -58,10 +58,11 @@ namespace JASS
 			/*!
 				@brief Constructor
 			*/
-			top_k_heap() :
+			top_k_heap(size_t k) :
 				total_insertions(0),
 				heap_ordered(false),
-				front_correct(false)
+				front_correct(false),
+				k(k)
 				{
 				}
 
@@ -80,14 +81,14 @@ namespace JASS
 				*/
 				total_insertions++;
 				
-				if (total_insertions < K)
+				if (total_insertions < k)
 					{
 					/*
 						If adding this element hasn't yet filled the heap then don't make a heap
 					*/
 					members.push_back(element);
 					}
-				else if (total_insertions == K)
+				else if (total_insertions == k)
 					{
 					/*
 						If adding this element causes the array to fill then make a heap
@@ -96,7 +97,7 @@ namespace JASS
 					make_heap(members.begin(), members.end(), std::greater<ELEMENT>());
 					front_correct = heap_ordered = true;
 					}
-				else if (total_insertions > K)
+				else if (total_insertions > k)
 					{
 					/*
 						If adding this element will overflow the heap then check to see it it belongs
@@ -239,7 +240,7 @@ namespace JASS
 			*/
 			size_t capacity(void) const
 				{
-				return K;
+				return k;
 				}
 			
 			/*
@@ -275,7 +276,7 @@ namespace JASS
 					/*
 						Add them to a heap that keeps a top-k of less than the number of elements in the sequence
 					*/
-					top_k_heap<int, 5> heap;
+					top_k_heap<int> heap(5);
 					for (const auto &element : sequence)
 						heap.push_back(element);
 					
@@ -301,7 +302,7 @@ namespace JASS
 				/*
 					Add fewer elements to the heap than the heap size to make sure short answer lists work too,
 				*/
-				top_k_heap<int, 20> big_heap;
+				top_k_heap<int> big_heap(20);
 				for (const auto &element : sequence)
 					big_heap.push_back(element);
 
@@ -333,7 +334,7 @@ namespace JASS
 				/*
 					Add exactly the correct number of elements to the heap to make sure that works
 				*/
-				top_k_heap<int, 10> exact_heap;
+				top_k_heap<int> exact_heap(10);
 				for (const auto &element : sequence)
 					exact_heap.push_back(element);
 					
@@ -384,8 +385,8 @@ namespace JASS
 		@tparam K The element data returned given the key (must include ELEMENT(allocator) constructur)
 		@return The stream once the tree has been written.
 	*/
-	template <typename ELEMENT, size_t K>
-	inline std::ostream &operator<<(std::ostream &stream, const top_k_heap<ELEMENT, K> &data)
+	template <typename ELEMENT>
+	inline std::ostream &operator<<(std::ostream &stream, const top_k_heap<ELEMENT> &data)
 		{
 		bool first_time = true;
 		

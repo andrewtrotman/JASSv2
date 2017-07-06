@@ -156,7 +156,7 @@ int main(void)
 		JASS::pointer_box<int>::unittest();
 
 		puts("top_k_heap");
-		JASS::top_k_heap<int, 0>::unittest();
+		JASS::top_k_heap<int>::unittest();
 
 		puts("ALL UNIT TESTS HAVE PASSED");
 		}

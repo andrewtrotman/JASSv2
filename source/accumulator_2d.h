@@ -10,6 +10,8 @@
 	@author Andrew Trotman
 	@copyright 2017 Andrew Trotman
 */
+#pragma once
+
 #include <new>
 #include <vector>
 #include <numeric>

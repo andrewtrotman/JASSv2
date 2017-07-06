@@ -28,14 +28,14 @@ class JASS_ci_vocab
 	{
 	public:
 		const char *term;							///< The search engine vocabulary term
-		void (*method)(void);					///< The method to call when that term is seen in the query
+		void (*method)(JASS::query &q);				///< The method to call when that term is seen in the query
 
 	public:
 		/*
 			JASS_CI_VOCAB::JASS_CI_VOCAB()
 			------------------------------
 		*/
-		JASS_ci_vocab(const char *term, void (*method)(void)) :
+		JASS_ci_vocab(const char *term, void (*method)(JASS::query &q)) :
 			term(term),
 			method(method)
 			{
