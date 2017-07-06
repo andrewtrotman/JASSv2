@@ -9,6 +9,7 @@
 #include <stdint.h>
 
 #include "top_k_heap.h"
+#include "pointer_box.h"
 #include "channel_file.h"
 #include "parser_query.h"
 #include "allocator_pool.h"
@@ -16,7 +17,7 @@
 #include "JASS_vocabulary.h"
 
 JASS::accumulator_2d<uint16_t> accumulators(1024);
-JASS::top_k_heap<uint16_t, 10> heap;
+JASS::top_k_heap<JASS::pointer_box<uint16_t>, 10> heap;
 
 /*
 	MAIN()
@@ -63,9 +64,14 @@ int main(int argc, char *argv[])
 			else
 				output << "NotFound\n";
 			}
+		heap.sort();
+		
+		for (const auto &element : heap)
+			std::cout << element.pointer() - &accumulators[0] << ":" << *element << std::endl;
+
 		}
 	while (query.compare(0, 5, ".quit"));
-
+	
 	return 0;
 	}
 
@@ -81,21 +87,26 @@ void add_rsv(size_t document_id, uint16_t weight)
 		/*
 			If we're not in the heap then put is there if need-be
 		*/
-		heap.push_back(accumulators[document_id] += weight);
+		accumulators[document_id] += weight;
+		heap.push_back(JASS::pointer_box<uint16_t>(&accumulators[document_id]));
 		}
-	else if (accumulators[document_id] < heap.front())
+	else if (accumulators[document_id] < *heap.front())
 		{
 		/*
 			we weren't in the heap, but we might become so
 		*/
-		if (accumulators[document_id] += weight > heap.front());
-			heap.push_back(accumulators[document_id] += weight);
+		if (accumulators[document_id] += weight > *heap.front());
+			{
+			accumulators[document_id] += weight;
+			heap.push_back(JASS::pointer_box<uint16_t>(&accumulators[document_id]));
+			}
 		}
 	else
 		{
 		/*
 			We're already in the heap but we might have moved spots
 		*/
-		heap.promote(accumulators[document_id] += weight);
+		accumulators[document_id] += weight;
+		heap.promote(JASS::pointer_box<uint16_t>(&accumulators[document_id]));
 		}
 	}

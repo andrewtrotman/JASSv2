@@ -159,7 +159,7 @@ namespace JASS
 				@brief Return a reference to the first (i.e. smallest by operator>()) element in the heap.
 				@return Reference to the first element.
 			*/
-			typename std::vector<ELEMENT>::reference front()
+			auto front()
 				{
 				/*
 					If we're sorted then turn it back into a heap
@@ -173,28 +173,6 @@ namespace JASS
 				return members.front();
 				}
 
-			/*
-				TOP_K_HEAP::FRONT()
-				-------------------
-			*/
-			/*!
-				@brief Return a const_reference to the first (i.e. smallest by operator>()) element in the heap.
-				@return Const_reference to the first element.
-			*/
-			typename std::vector<ELEMENT>::const_reference front() const
-				{
-				/*
-					If we're sorted then turn it back into a heap
-				*/
-				if (!front_correct)
-					{
-					make_heap(members.begin(), members.end(), std::greater<ELEMENT>());
-					front_correct = heap_ordered = true;
-					}
-
-				return members.front();
-				}
-			
 			/*
 				TOP_K_HEAP::BEGIN()
 				-------------------
@@ -203,24 +181,11 @@ namespace JASS
 				@brief Return an iterator pointing to start of the heap
 				@return Iterator pointing to start of the heap.
 			*/
-			typename std::vector<ELEMENT>::iterator begin()
+			auto begin() const
 				{
 				return members.begin();
 				}
 			
-			/*
-				TOP_K_HEAP::BEGIN()
-				-------------------
-			*/
-			/*!
-				@brief Return a const_iterator pointing to start of the heap
-				@return Const_terator pointing to start of the heap.
-			*/
-			typename std::vector<ELEMENT>::const_iterator begin() const
-				{
-				return members.begin();
-				}
-
 			/*
 				TOP_K_HEAP::END()
 				-----------------
@@ -229,24 +194,11 @@ namespace JASS
 				@brief Return an iterator pointing past the end of the heap.
 				@return Iterator pointing past the end of the heap.
 			*/
-			typename std::vector<ELEMENT>::iterator end()
+			auto end() const
 				{
 				return members.end();
 				}
 			
-			/*
-				TOP_K_HEAP::END()
-				-----------------
-			*/
-			/*!
-				@brief Return a const_iterator pointing past the end of the heap.
-				@return Const_terator pointing past the end of the heap.
-			*/
-			typename std::vector<ELEMENT>::const_iterator end() const
-				{
-				return members.end();
-				}
-
 			/*
 				TOP_K_HEAP::SORT()
 				------------------

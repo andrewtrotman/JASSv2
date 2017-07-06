@@ -29,7 +29,9 @@ namespace JASS
 		@details All the usual pointer operations should work, except for comparisons which compare to the
 		value pointed to rather than the pointer itself.  This is useful when, for example, an ordered conatiner
 		is being used to store pointers (or, for example, std::sort() an array of pointers based on the values
-		those pointers point to).
+		those pointers point to).  Note, ties are broken on the value of the pointer - that means that if the
+		pointers are into an array then the earlier memeber of the array compares to less than the
+		
 */
 	template <typename POINTER>
 	class pointer_box
@@ -51,6 +53,32 @@ namespace JASS
 				{
 				/* Nothing */
 				}
+			
+			/*
+				POINTER_BOX::COMPARE()
+				----------------------
+			*/
+			/*!
+				@brief Compare for less than, equal, or greater than
+				@param to [in] The object we are Compareing to.
+				@return -ve for less, 0 for equal, +ve for greater.
+			*/
+			int compare(const pointer_box<POINTER> &to) const
+				{
+				if (*element < *to.element)
+					return -1;
+				else if (*element > *to.element)
+					return 1;
+				else
+					{
+					if (element < to.element)
+						return -1;
+					else if (element > to.element)
+						return 1;
+					else
+						return 0;
+					}
+				}
 
 			/*
 				POINTER_BOX::OPERATOR<()
@@ -63,7 +91,7 @@ namespace JASS
 			*/
 			bool operator<(const pointer_box<POINTER> &to) const
 				{
-				return *element < *to.element;
+				return *element < *to.element || (*element == *to.element && element < to.element);
 				}
 
 			/*
@@ -77,7 +105,7 @@ namespace JASS
 			*/
 			bool operator<=(const pointer_box<POINTER> &to) const
 				{
-				return *element <= *to.element;
+				return *element <= *to.element || (*element == *to.element && element <= to.element);
 				}
 
 			/*
@@ -91,7 +119,7 @@ namespace JASS
 			*/
 			bool operator>(const pointer_box<POINTER> &to) const
 				{
-				return *element > *to.element;
+				return *element > *to.element || (*element == *to.element && element > to.element);
 				}
 
 			/*
@@ -105,7 +133,7 @@ namespace JASS
 			*/
 			bool operator>=(const pointer_box<POINTER> &to) const
 				{
-				return *element >= *to.element;
+				return *element >= *to.element || (*element == *to.element && element >= to.element);
 				}
 
 			/*
@@ -119,7 +147,7 @@ namespace JASS
 			*/
 			bool operator==(const pointer_box<POINTER> &to) const
 				{
-				return *element == *to.element;
+				return element == to.element && *element == *to.element;
 				}
 
 			/*
@@ -133,9 +161,22 @@ namespace JASS
 			*/
 			bool operator!=(const pointer_box<POINTER> &to) const
 				{
-				return *element != *to.element;
+				return element != to.element || *element != *to.element;
 				}
 
+			/*
+				POINTER_BOX::POINTER()
+				----------------------
+			*/
+			/*!
+				@brief Return the pointer this box holds.
+				@return The boxed pointer
+			*/
+			POINTER *pointer() const
+				{
+				return element;
+				}
+			
 			/*
 				POINTER_BOX::OPERATOR->()
 				-------------------------
@@ -179,11 +220,13 @@ namespace JASS
 				int *ap = &array[0];
 				int *bp = &array[1];
 
+				JASS_assert(a.pointer() == &array[0]);
+
 				JASS_assert(b < a);
 				JASS_assert(b <= a);
 				JASS_assert(a > b);
 				JASS_assert(a >= b);
-				JASS_assert(c == a);
+				JASS_assert(c > a);
 				JASS_assert(a != b);
 
 				JASS_assert(*ap > *b);
@@ -206,6 +249,11 @@ namespace JASS
 				pointer_box<int_pair> pair_container(&pair);
 				JASS_assert(pair_container->a == 2);
 				JASS_assert(pair_container->b == 4);
+				
+				JASS_assert(a.compare(b) > 0);
+				JASS_assert(a.compare(c) < 0);
+				JASS_assert(a.compare(a) == 0);
+				JASS_assert(b.compare(a) < 0);
 
 				puts("pointer_box::PASS");
 				}

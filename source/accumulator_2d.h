@@ -126,7 +126,7 @@ namespace JASS
 
 				return accumulator[which];
 				}
-
+			
 			/*
 				ACCUMULATOR_2D::SIZE()
 				----------------------
