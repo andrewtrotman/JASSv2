@@ -6,6 +6,8 @@ Coverity Scan (static analysis): [![Coverity Scan Build Status](https://scan.cov
 
 CodeCov (code coverage): [![codecov](https://codecov.io/gh/andrewtrotman/JASSv2/branch/master/graph/badge.svg)](https://codecov.io/gh/andrewtrotman/JASSv2)
 
+Coveralls (code coverage): [![Coverage Status](https://coveralls.io/repos/github/andrewtrotman/JASSv2/badge.svg?branch=master)](https://coveralls.io/github/andrewtrotman/JASSv2?branch=master)
+
 CodeDocs.xyx (documentation): [![Documentation Status](https://codedocs.xyz/andrewtrotman/JASSv2.svg)](https://codedocs.xyz/andrewtrotman/JASSv2/)
 
 # JASSv2
