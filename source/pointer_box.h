@@ -14,6 +14,8 @@
 	@author Andrew Trotman
 	@copyright 2017 Andrew Trotman
 */
+#pragma once
+
 #include <stdio.h>
 
 #include "asserts.h"

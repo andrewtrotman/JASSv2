@@ -62,7 +62,9 @@ int main(int argc, char *argv[])
 			else
 				output << "NotFound\n";
 			}
-		jass_query.text_render();
+
+		for (const auto &element : jass_query)
+			std::cout << element.document_id << ":" << element.rsv << std::endl;
 		}
 	while (query.compare(0, 5, ".quit"));
 	

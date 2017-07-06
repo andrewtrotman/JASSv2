@@ -7,6 +7,7 @@
 #include "file.h"
 #include "ascii.h"
 #include "maths.h"
+#include "query.h"
 #include "slice.h"
 #include "parser.h"
 #include "unicode.h"
@@ -157,6 +158,9 @@ int main(void)
 
 		puts("top_k_heap");
 		JASS::top_k_heap<int>::unittest();
+
+		puts("query");
+		JASS::query::unittest();
 
 		puts("ALL UNIT TESTS HAVE PASSED");
 		}

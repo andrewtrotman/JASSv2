@@ -31,21 +31,37 @@ namespace JASS
 	class query
 		{
 		private:
-			typedef typename top_k_heap<pointer_box<uint16_t>>::iterator heap_iterator;
+			typedef typename top_k_heap<const pointer_box<uint16_t>>::iterator heap_iterator;			///< The heap object's begin() returns objects of this type
 
 		private:
-			accumulator_2d<uint16_t> accumulators;					///< The array of accumulators
+			accumulator_2d<uint16_t> accumulators;						///< The array of accumulators
 			top_k_heap<pointer_box<uint16_t>> heap;					///< The top-k heap containing the best results so far
 
 		public:
-			class pair
+			/*
+				CLASS QUERY::DOCID_RSV_PAIR()
+				-----------------------------
+			*/
+			/*!
+				@brief Literally a <document_id, rsv> ordered pair.
+			*/
+			class docid_rsv_pair
 				{
 				public:
-					size_t document_id;
-					uint16_t rsv;
+					size_t document_id;				///< The document identifier
+					uint16_t rsv;						///< The rsv (Retrieval Status Value) relevance score
 					
 				public:
-					pair(size_t document_id, uint16_t rsv) :
+					/*
+						QUERYL::DOCID_RSV_PAIR::DOCID_RSV_PAIR()
+						----------------------------------------
+					*/
+					/*!
+						@Brief Constructor.
+						@param document_id [in] The document Identifier.
+						@param rsv [in] The rsv (Retrieval Status Value) relevance score.
+					*/
+					docid_rsv_pair(size_t document_id, uint16_t rsv) :
 						document_id(document_id),
 						rsv(rsv)
 						{
@@ -53,45 +69,70 @@ namespace JASS
 						}
 				};
 			/*
-				CLASS ITERATOR
-				--------------
+				CLASS QUERYL::ITERATOR
+				----------------------
+			*/
+			/*!
+				@brief Iterate over the top-l
 			*/
 			class iterator
 				{
 				private:
-					heap_iterator &at;
+					heap_iterator at;									///< This iterator's current location
+					uint16_t *accumulator_base;					///< The accumulators array used to compute document ids through pointer subtraction
 					
 				public:
 					/*
 						QUERY::ITERATOR::ITERATOR()
 						---------------------------
 					*/
-					iterator(heap_iterator &at) :
-						at(at)
+					/*!
+						@brief Constructor
+						@param at [in] An iterator over the heap
+						@param accumulator_base [in] The base address of the accumulators used to compute document ids through pointer subtraction
+					*/
+					iterator(heap_iterator &&at, uint16_t *accumulator_base) :
+						at(at),
+						accumulator_base(accumulator_base)
 						{
 						/* Nothing */
 						}
+
 					/*
 						QUERY::ITERATOR::OPERATOR!=()
 						-----------------------------
 					*/
-					bool operator!=(const heap_iterator &other) const
+					/*!
+						@brief Compare two iterator objects for non-equality.
+						@param other [in] The iterator object to compare to.
+						@return true if they differ, else false.
+					*/
+					bool operator!=(const iterator &other) const
 						{
-						return at != other;
+						return at != other.at;
 						}
  
 					/*
 						QUERY::ITERATOR::OPERATOR*()
 						----------------------------
 					*/
-					pair operator*() const
+					/*!
+						@brief Return a reference to the <document_id,rsv> pair at the current location.
+						@details This method uses ppointer arithmatic to work out the document id from a pointer to the rsv, and
+						having done so it constructs an orderer pair <document_id,rsv> to return to the caller.
+						@return The current object.
+					*/
+					docid_rsv_pair operator*() const
 						{
-						return pair(6,6);
+						return docid_rsv_pair(at->pointer() - accumulator_base, *at->pointer());
 						}
  
 					/*
 						QUERY::ITERATOR::OPERATOR++()
 						-----------------------------
+					*/
+					/*!
+						@brief Increment this iterator.
 					*/
 					const iterator &operator++()
 						{
@@ -165,7 +206,7 @@ namespace JASS
 			auto begin(void)
 				{
 				heap.sort();
-				return iterator{heap.begin()};
+				return iterator(heap.begin(), &accumulators[0]);
 				}
 				
 			/*
@@ -178,17 +219,29 @@ namespace JASS
 			*/
 			auto end(void)
 				{
-				return iterator{heap.end()};
+				return iterator(heap.end(), &accumulators[0]);
 				}
-			
-			
-			
-			void text_render(void)
+
+			/*
+				QUERY::UNITTEST()
+				-----------------
+			*/
+			/*!
+				@brief Unit test this class
+			*/
+			static void unittest(void)
 				{
-				heap.sort();
-				
-				for (const auto &element : *this)
-					std::cout << element.pointer() - &accumulators[0] << ":" << *element << std::endl;
+				query query_object;
+				std::ostringstream string;
+
+				query_object.add_rsv(10, 10);
+				query_object.add_rsv(20, 20);
+
+				for (const auto &rsv : query_object)
+					string << "<" << rsv.document_id << "," << rsv.rsv << ">";
+
+				JASS_assert(string.str() == "<20,20><10,10>");
+				puts("query::PASS");
 				}
 		};
 	}
