@@ -49,6 +49,9 @@ namespace JASS
 			bool heap_ordered;						///< is this heap ordered as a heap yet, or not (i.e. has top_k_heap::sort() or top_k_heap::move() been called?).
 			bool front_correct;						///< Is the front of the heap correct (which it might not be if its never been heap ordered)
 			size_t k;								///< The k in top-k
+		
+		public:
+			typedef typename std::vector<ELEMENT>::iterator iterator;
 			
 		public:
 			/*
