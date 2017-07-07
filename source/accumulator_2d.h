@@ -20,6 +20,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "maths.h"
+
 namespace JASS
 	{
 	/*
@@ -76,11 +78,11 @@ namespace JASS
 					Simply taking log2(sqrt(element)) can result in massive disparity in width vs height (63->4x16) so we try to ballane this
 					by checking if they are closer together if we take the ceiling of the log rather than the floor.
 				*/
-				auto square_root = sqrt(elements);
-				shift = log2(square_root);
-				width = 1 << shift;
-				if (((size_t)square_root & (1 << (shift - 1))) != 0)
-					width = 1 << ++shift;
+				size_t square_root = (size_t)sqrt(elements);
+				shift = maths::floor_log2(square_root);
+				width = (size_t)1 << shift;
+				if (((size_t)square_root & ((size_t)1 << (shift - 1))) != 0)
+					width = (size_t)1 << ++shift;
 
 				/*
 					Round up the number of dirty flags so that if the number of accumulators isn't a square that we don't miss the last row
@@ -178,7 +180,7 @@ namespace JASS
 			/*!
 				@brief Unit test a single 2D accumulator instance making sure its correct
 			*/
-			static void unittest_example(accumulator_2d &instance)
+			static void unittest_example(accumulator_2d<size_t> &instance)
 				{
 				/*
 					Populate an array with the shuffled sequence 0..instance.size()
@@ -221,7 +223,7 @@ namespace JASS
 				/*
 					Allocate an array of 64 accumulators and make sure the width and height are correct
 				*/
-				accumulator_2d array(64, memory);
+				accumulator_2d<size_t> array(64, memory);
 				JASS_assert(array.width == 8);
 				JASS_assert(array.shift == 3);
 				JASS_assert(array.number_of_dirty_flags == 8);
@@ -231,7 +233,7 @@ namespace JASS
 				/*
 					Make sure it all works right when there is a single accumulator in the last row
 				*/
-				accumulator_2d array_hangover(65, memory);
+				accumulator_2d<size_t> array_hangover(65, memory);
 				JASS_assert(array_hangover.width == 8);
 				JASS_assert(array_hangover.shift == 3);
 				JASS_assert(array_hangover.number_of_dirty_flags == 9);
@@ -241,7 +243,7 @@ namespace JASS
 				/*
 					Make sure it all works right when there is a single accumulator missing from the last row
 				*/
-				accumulator_2d array_hangunder(63, memory);
+				accumulator_2d<size_t> array_hangunder(63, memory);
 				JASS_assert(array_hangunder.width == 8);
 				JASS_assert(array_hangunder.shift == 3);
 				JASS_assert(array_hangunder.number_of_dirty_flags == 8);

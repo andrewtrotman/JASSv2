@@ -51,6 +51,7 @@ set(JASSlib_FILES
 	instream_memory.h
 	instream_memory.cpp
 	maths.h
+	maths.cpp
 	parser.h
 	parser.cpp
 	parser_query.h

@@ -31,7 +31,7 @@ namespace JASS
 	class query
 		{
 		private:
-			typedef typename top_k_heap<const pointer_box<uint16_t>>::iterator heap_iterator;			///< The heap object's begin() returns objects of this type
+			typedef typename top_k_heap<pointer_box<uint16_t>>::iterator heap_iterator;			///< The heap object's begin() returns objects of this type
 
 		private:
 			allocator_pool memory;									///< All memory allocation happens in this "arena"
@@ -239,8 +239,7 @@ namespace JASS
 			auto begin(void)
 				{
 				heap.sort();
-				auto heap_looper = heap.begin();
-				return iterator (heap_looper, &accumulators[0]);
+				return iterator(heap.begin(), &accumulators[0]);
 				}
 				
 			/*
@@ -253,8 +252,7 @@ namespace JASS
 			*/
 			auto end(void)
 				{
-				auto heap_looper = heap.end();
-				return iterator(heap_looper, &accumulators[0]);
+				return iterator(heap.end(), &accumulators[0]);
 				}
 
 			/*

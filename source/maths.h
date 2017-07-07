@@ -11,9 +11,12 @@
 	@author Andrew Trotman
 	@copyright 2016 Andrew Trotman
 */
+#pragma once
+
 #include <limits>
 
 #include <stdio.h>
+#include <stdint.h>
 
 #include "asserts.h"
 
@@ -28,6 +31,10 @@ namespace JASS
 	*/
 	class maths
 		{
+		private:
+			static const uint8_t ceiling_log2_answer[];
+			static const uint8_t floor_log2_answer[];
+
 		private:
 			/*
 				MATHS()
@@ -115,6 +122,46 @@ namespace JASS
 				return min(min(first, second), third);
 				}
 
+
+			/*
+				MATHS::FLOOR_LOG2()
+				-------------------
+			*/
+			static size_t floor_log2(size_t x)
+				{
+				size_t sum, mult = 0;
+
+				do
+					{
+					sum = floor_log2_answer[x & 0xFF] + mult;
+					mult += 8;
+					x >>= 8;
+					}
+				while (x != 0);
+
+				return sum;
+				}
+
+			/*
+				MATHS::CEILING_LOG2()
+				---------------------
+			*/
+			static size_t ceiling_log2(size_t x)
+				{
+				size_t sum, mult = 0;
+
+				do
+					{
+					sum = ceiling_log2_answer[x & 0xFF] + mult;
+					mult += 8;
+					x >>= 8;
+					}
+				while (x != 0);
+
+				return sum;
+				}
+
+
 			/*
 				MATHS::UNITTEST()
 				-----------------
@@ -143,6 +190,10 @@ namespace JASS
 				JASS_assert(min(2, 3, 1) == 1);
 				JASS_assert(min(3, 1, 2) == 1);
 				JASS_assert(min(3, 2, 1) == 1);
+
+				JASS_assert(floor_log2(10) == 3);
+				JASS_assert(ceiling_log2(10) == 3);
+
 				puts("maths::PASSED");
 				}
 		};

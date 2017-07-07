@@ -190,11 +190,37 @@ namespace JASS
 				@brief Return an iterator pointing to start of the heap
 				@return Iterator pointing to start of the heap.
 			*/
+			auto begin()
+				{
+				return members.begin();
+				}
+
+			/*
+				TOP_K_HEAP::BEGIN()
+				-------------------
+			*/
+			/*!
+				@brief Return an iterator pointing to start of the heap
+				@return Iterator pointing to start of the heap.
+			*/
 			auto begin() const
 				{
 				return members.begin();
 				}
 			
+			/*
+				TOP_K_HEAP::END()
+				-----------------
+			*/
+			/*!
+				@brief Return an iterator pointing past the end of the heap.
+				@return Iterator pointing past the end of the heap.
+			*/
+			auto end()
+				{
+				return members.end();
+				}
+
 			/*
 				TOP_K_HEAP::END()
 				-----------------
@@ -271,7 +297,8 @@ namespace JASS
 				/*
 					Seed the random number generator
 				*/
-				std::default_random_engine random(std::chrono::system_clock::now().time_since_epoch().count());
+				auto seed = std::chrono::system_clock::now().time_since_epoch().count();
+			    std::default_random_engine random((unsigned int)seed);
 				
 				/*
 					Some relatively small number of times, we're going to shuffle the sequence then add elements to the heap
