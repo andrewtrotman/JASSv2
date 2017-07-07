@@ -239,7 +239,8 @@ namespace JASS
 			auto begin(void)
 				{
 				heap.sort();
-				return iterator(heap.begin(), &accumulators[0]);
+				heap_iterator it = heap.begin();
+				return iterator(it, &accumulators[0]);
 				}
 				
 			/*
@@ -252,7 +253,8 @@ namespace JASS
 			*/
 			auto end(void)
 				{
-				return iterator(heap.end(), &accumulators[0]);
+				heap_iterator it = heap.end();
+				return iterator(it, &accumulators[0]);
 				}
 
 			/*

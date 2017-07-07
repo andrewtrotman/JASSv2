@@ -30,11 +30,12 @@ set(CMAKE_CONFIGURATION_TYPES Debug)
 
 #
 #	Set the debug flags based on the compiler
+#	_GLIBCXX_USE_CXX11_ABI=1 is necessary for g++ to allow C++ stateful custom allocators in std::string
 #
 if(WIN32)
  	add_definitions( "/W3 /wd4005 /wd4996 /wd4514 /wd4996 /wd4820 /nologo" )
 else()
-	add_definitions("-Wall")
+	add_definitions("-Wall -D_GLIBCXX_USE_CXX11_ABI=1")
 endif()
 
 set(CMAKE_CXX_STANDARD 14)

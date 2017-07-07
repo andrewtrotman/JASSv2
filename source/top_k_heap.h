@@ -54,7 +54,7 @@ namespace JASS
 			size_t k;								///< The k in top-k
 		
 		public:
-			typedef typename std::vector<ELEMENT>::iterator iterator;
+			typedef typename std::vector<ELEMENT, allocator_cpp<ELEMENT>>::iterator iterator;
 			
 		public:
 			/*
