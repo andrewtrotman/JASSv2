@@ -57,6 +57,8 @@ int main(void)
 
 	try
 		{
+		//	JASS::string is a typedef so nothing to test.
+		
 		puts("checksum");
 		JASS::checksum::unittest();
 

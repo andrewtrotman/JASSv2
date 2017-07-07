@@ -20,6 +20,8 @@
 #include <functional>
 
 #include "asserts.h"
+#include "allocator_cpp.h"
+#include "allocator_pool.h"
 
 namespace JASS
 	{
@@ -45,7 +47,7 @@ namespace JASS
 		template<typename A> friend std::ostream &operator<<(std::ostream &stream, const top_k_heap<A> &data);
 
 		private:
-			std::vector<ELEMENT> members;			///< The array over which the heap is constructed
+			std::vector<ELEMENT, allocator_cpp<ELEMENT>> members;			///< The array over which the heap is constructed
 			size_t total_insertions;				///< Total number of calls to insert
 			bool heap_ordered;						///< is this heap ordered as a heap yet, or not (i.e. has top_k_heap::sort() or top_k_heap::move() been called?).
 			bool front_correct;						///< Is the front of the heap correct (which it might not be if its never been heap ordered)
@@ -62,7 +64,8 @@ namespace JASS
 			/*!
 				@brief Constructor
 			*/
-			top_k_heap(size_t k) :
+			top_k_heap(size_t k, allocator &allocator) :
+				members(allocator_cpp<ELEMENT>(allocator)),
 				total_insertions(0),
 				heap_ordered(false),
 				front_correct(false),
@@ -257,6 +260,10 @@ namespace JASS
 			static void unittest(void)
 				{
 				/*
+					Memory to allocate into
+				*/
+				allocator_pool memory;
+				/*
 					Start with an ordered sequence of numbers
 				*/
 				int sequence[] =  {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
@@ -280,7 +287,7 @@ namespace JASS
 					/*
 						Add them to a heap that keeps a top-k of less than the number of elements in the sequence
 					*/
-					top_k_heap<int> heap(5);
+					top_k_heap<int> heap(5, memory);
 					for (const auto &element : sequence)
 						heap.push_back(element);
 					
@@ -306,7 +313,7 @@ namespace JASS
 				/*
 					Add fewer elements to the heap than the heap size to make sure short answer lists work too,
 				*/
-				top_k_heap<int> big_heap(20);
+				top_k_heap<int> big_heap(20, memory);
 				for (const auto &element : sequence)
 					big_heap.push_back(element);
 
@@ -338,7 +345,7 @@ namespace JASS
 				/*
 					Add exactly the correct number of elements to the heap to make sure that works
 				*/
-				top_k_heap<int> exact_heap(10);
+				top_k_heap<int> exact_heap(10, memory);
 				for (const auto &element : sequence)
 					exact_heap.push_back(element);
 					

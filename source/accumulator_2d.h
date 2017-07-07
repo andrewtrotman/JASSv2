@@ -36,22 +36,25 @@ namespace JASS
 		be found wiht a bit shit rather than a mod.
 		@tparam ELEMENT The type of accumulator being used (default is uint16_t)
 	*/
-	template <typename ELEMENT = uint16_t>
+	template <typename ELEMENT = uint16_t, typename = typename std::enable_if<std::is_arithmetic<ELEMENT>::value, ELEMENT>::type>
 	class accumulator_2d
 		{
 		/*
 			This somewhat bizar line is so that unittest() can see the private members of another instance of the class.
 			Does anyone know what the actual syntax is to make it only unittest() that can see the private members?
 		*/
-		template<typename A> friend class accumulator_2d;
+		template<typename A, typename B> friend class accumulator_2d;
 
 		private:
+			allocator_cpp<ELEMENT> allocator_element;		///< Used to allocate elements ensuring construction and destruction
+			allocator_cpp<uint8_t> allocator_uint8_t;		///< Used to allocate elements ensuring construction and destruction
 			ELEMENT *accumulator;							///< The accumulators are kept in an array
 			uint8_t *dirty_flag;								///< The dirty flags are kept as bytes for faster lookup
 			size_t width;										///< Each dirty flag represents this number of accumulators in a "row"
 			size_t number_of_dirty_flags;					///< The numnber of "rows" (i.e. dirty flags).
 			size_t shift;										///< How far we need to shift right the index to get the index of the dirty flag
 			size_t number_of_accumulators;				///< The number of accumulators as asked for by the user (more may be allocated)
+			size_t number_of_accumulators_allocated;		///< The numner of accumulators that were actually allocated (recall that this is a 2D array)
 
 		public:
 			/*
@@ -62,7 +65,9 @@ namespace JASS
 				@brief Constructor.
 				@param elements [in] The numnber of elements in the array being managed.
 			*/
-			accumulator_2d(size_t elements) :
+			accumulator_2d(size_t elements, allocator &memory) :
+				allocator_element(memory),
+				allocator_uint8_t(memory),
 				number_of_accumulators(elements)
 				{
 				/*
@@ -81,12 +86,18 @@ namespace JASS
 					Round up the number of dirty flags so that if the number of accumulators isn't a square that we don't miss the last row
 				*/
 				number_of_dirty_flags = (elements + width - 1) / width;
+				
+				/*
+					Round up the number of accumulators to make a rectangle (we're a 2D array)
+				*/
+				number_of_accumulators_allocated = width * number_of_dirty_flags;
 
 				/*
 					Allocate the dirty flags and the accumulators making sure to allocate a true square number of accumulators so that the last row is full.
+					Note that we do not need to construct these because they must be arithmatic (see the template definition)
 				*/
-				dirty_flag = new (std::nothrow) uint8_t [number_of_dirty_flags];
-				accumulator = new (std::nothrow) ELEMENT [width * number_of_dirty_flags];
+				dirty_flag = allocator_uint8_t.allocate(number_of_dirty_flags);
+				accumulator = allocator_element.allocate(number_of_accumulators_allocated);
 
 				/*
 					Clear the dirty flags ready for use.
@@ -103,8 +114,11 @@ namespace JASS
 			*/
 			~accumulator_2d()
 				{
-				delete [] accumulator;
-				delete [] dirty_flag;
+				/*
+					Its unnecessary to call destroy() on arithmatic types, so just free up the memory.
+				*/
+				allocator_uint8_t.deallocate(dirty_flag, number_of_dirty_flags);
+				allocator_element.deallocate(accumulator, number_of_accumulators_allocated);
 				}
 
 			/*
@@ -200,9 +214,14 @@ namespace JASS
 			static void unittest(void)
 				{
 				/*
+					Memory to use
+				*/
+				allocator_pool memory;
+				
+				/*
 					Allocate an array of 64 accumulators and make sure the width and height are correct
 				*/
-				accumulator_2d array(64);
+				accumulator_2d array(64, memory);
 				JASS_assert(array.width == 8);
 				JASS_assert(array.shift == 3);
 				JASS_assert(array.number_of_dirty_flags == 8);
@@ -212,7 +231,7 @@ namespace JASS
 				/*
 					Make sure it all works right when there is a single accumulator in the last row
 				*/
-				accumulator_2d array_hangover(65);
+				accumulator_2d array_hangover(65, memory);
 				JASS_assert(array_hangover.width == 8);
 				JASS_assert(array_hangover.shift == 3);
 				JASS_assert(array_hangover.number_of_dirty_flags == 9);
@@ -222,7 +241,7 @@ namespace JASS
 				/*
 					Make sure it all works right when there is a single accumulator missing from the last row
 				*/
-				accumulator_2d array_hangunder(63);
+				accumulator_2d array_hangunder(63, memory);
 				JASS_assert(array_hangunder.width == 8);
 				JASS_assert(array_hangunder.shift == 3);
 				JASS_assert(array_hangunder.number_of_dirty_flags == 8);

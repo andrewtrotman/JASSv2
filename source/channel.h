@@ -18,6 +18,8 @@
 #include <string>
 #include <type_traits>
 
+#include "strings.h"
+
 namespace JASS
 	{
 	/*
@@ -69,7 +71,8 @@ namespace JASS
 				@param into [out] bytes are read from the channel until a bytes equal to terminator is found.
 				@param terminator [in] Stop when this byte is seen in the channel and after it is written to into.
 			*/
-			virtual void getsz(std::string &into, char terminator = '\0')
+			template<typename STRING_TYPE>
+			void getsz(STRING_TYPE &into, char terminator = '\0')
 				{
 				char next;								// the byte being read
 				size_t used = 0;						// the number of bytes that have been copied so far
@@ -165,7 +168,20 @@ namespace JASS
 			*/
 			void gets(std::string &into)
 				{
-				getsz(into, '\n');
+				getsz<std::string>(into, '\n');
+				}
+			
+			/*
+				CHANNEL::GETS()
+				---------------
+			*/
+			/*!
+				@brief Read a '\n' terminated string from the channel into the parameter.
+				@param into [out] Read into this string.
+			*/
+			void gets(JASS::string &into)
+				{
+				getsz<JASS::string>(into, '\n');
 				}
 
 			/*
@@ -237,6 +253,19 @@ namespace JASS
 				block_write(source.c_str(), source.size());
 				return *this;
 				}
-
+			
+			/*
+				CHANNEL::OPERATOR<<()
+				---------------------
+			*/
+			/*!
+				@brief write a string to this channel.
+				@param source [in] data to write.
+			*/
+			channel &operator<<(const JASS::string &source)
+				{
+				block_write(source.c_str(), source.size());
+				return *this;
+				}
 		} ;
 	}

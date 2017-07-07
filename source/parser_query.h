@@ -96,10 +96,12 @@ namespace JASS
 			*/
 			/*!
 				@brief parse and return the list of query tokens.
+				@nparam STRING_TYPE either a std::string or JASS::string (or other string type)
 				@param parsed_query [out] The parsed query once parsed.
 				@param query [in] The query to be parsed.
 			*/
-			void parse(query_term_list &parsed_query, const std::string &query)
+			template <typename STRING_TYPE>
+			void parse(query_term_list &parsed_query, const STRING_TYPE &query)
 				{
 				current = (uint8_t *)(const_cast<char *>(query.c_str()));							// get a pointer to the start of the query string
 				end_of_query = current + query.size();			// get a pointer to the end of the query string

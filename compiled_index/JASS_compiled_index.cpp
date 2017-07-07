@@ -9,12 +9,23 @@
 #include <stdint.h>
 
 #include "query.h"
+#include "strings.h"
 #include "channel_file.h"
 #include "parser_query.h"
 #include "allocator_pool.h"
 #include "accumulator_2d.h"
 #include "JASS_vocabulary.h"
 
+/*
+	If the line below is enabled then the global operator new and operator delete methods are overwridden
+	to check whether any memory is allocated during the processing of a query.  If the line is commented
+	out then the checks are disabled and the global operators are not overridden. 
+*/
+//#define ENSURE_NO_ALLOCATIONS false				// uncomment this line to check for spurious memory allocations
+
+#ifdef ENSURE_NO_ALLOCATIONS
+	#include "global_new_delete.h"
+#endif
 
 /*
 	MAIN()
@@ -29,45 +40,69 @@ int main(int argc, char *argv[])
 	std::sort(&dictionary[0], &dictionary[dictionary_length]);
 
 	/*
-		Use a JASS channel to read the inpiut query
+		Use a JASS channel to read the input query
 	*/
-	JASS::channel_file input;
-	JASS::channel_file output;
-	std::string query;
+	JASS::channel_file input;							// read from here
+	JASS::channel_file output;							// write to here.
 
-	do
+	while (1)
 		{
-		JASS::allocator_pool memory;
-		JASS::parser_query parser(memory);
-		JASS::query_term_list parsed_query(memory);
-		JASS::query jass_query;
+		/*
+			If we're checking to make sure that no memory allocation (outside JASS custom allocation) then turn
+			off checking for the sole purpose of allocating the arena.
+		*/
+		#ifdef ENSURE_NO_ALLOCATIONS
+			global_new_delete_return();					// disable checking
+			JASS::allocator_pool memory;				// allocate memory
+			global_new_delete_replace();				// enable checking
+		#else
+			JASS::allocator_pool memory;				// allocate memory
+		#endif
+		
+		JASS::string query(memory);						// allocate a string to read into
+		JASS::query jass_query;							// allocate a JASS query object
 
+		/*
+			Read a query from a user
+		*/
 		std::cout << "]";
 		input.gets(query);
+
+		/*
+			Check to see if we're at the end of the query stream
+		*/
+		if (query.compare(0, 5, ".quit") == 0)
+			break;
+
+		/*
+			Echo the query
+		*/
 		output << query;
-		parser.parse(parsed_query, query);
 
-		for (const auto &term : parsed_query)
+		/*
+			Parse the query then iterate over the terms
+		*/
+		jass_query.parse(query);
+		for (const auto &term : jass_query.terms())
 			{
-			output << term;
+			/*
+				Search the vocabulary for the query term and if we find it all the attached method to process the postings.
+			*/
 			auto low = std::lower_bound (&dictionary[0], &dictionary[dictionary_length], JASS_ci_vocab(term.token()));
-
-			bool found = (low != &dictionary[dictionary_length] && !(JASS_ci_vocab(term.token()) < *low));
-
-			if (found)
-				{
-				output << "[" << low->term << "]\n";
+			if ((low != &dictionary[dictionary_length] && !(JASS_ci_vocab(term.token()) < *low)))
 				low->method(jass_query);
-				}
-			else
-				output << "NotFound\n";
 			}
 
+		/*
+			Dump the top-k to the output channel
+		*/
 		for (const auto &element : jass_query)
-			std::cout << element.document_id << ":" << element.rsv << std::endl;
+			output << element.document_id << ":" << element.rsv << "\n";
 		}
-	while (query.compare(0, 5, ".quit"));
 	
+	#ifdef ENSURE_NO_ALLOCATIONS
+		global_new_delete_return();					// disable memorty checking (so that the memory object can be deallocated without fuss).
+	#endif
 	return 0;
 	}
 

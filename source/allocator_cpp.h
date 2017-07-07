@@ -18,8 +18,9 @@
 #include <new>
 #include <memory>
 
-#include "assert.h"
+#include "asserts.h"
 #include "allocator.h"
+#include "allocator_pool.h"
 
 namespace JASS
 	{
@@ -37,7 +38,7 @@ namespace JASS
 			allocator &pool;							///< This is the memory pool from which this C++ allocator allocated.
 			
 		public:
-			typedef TYPE value_type;				///< This is an allocator for objects of type allocator_cpp::value_type.
+			using value_type = TYPE;					///< This is an allocator for objects of type allocator_cpp::value_type.
 
 			/*
 				ALLOCATOR_CPP::ALLOCATOR_CPP()
@@ -49,9 +50,7 @@ namespace JASS
 			*/
 			allocator_cpp(allocator &pool) : pool(pool)
 			 {
-			 /*
-				Nothing
-			 */
+			 /* Nothing */
 			 }
 
 			/*
@@ -65,9 +64,7 @@ namespace JASS
 			template<class OTHER_TYPE>
 			allocator_cpp(const allocator_cpp<OTHER_TYPE> &other) : pool(other.pool)
 				{
-				/*
-					Nothing
-				*/
+				/* Nothing */
 				}
 			
 			/*

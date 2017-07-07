@@ -16,8 +16,8 @@
 
 #include "top_k_heap.h"
 #include "pointer_box.h"
+#include "parser_query.h"
 #include "accumulator_2d.h"
-
 
 namespace JASS
 	{
@@ -34,8 +34,12 @@ namespace JASS
 			typedef typename top_k_heap<const pointer_box<uint16_t>>::iterator heap_iterator;			///< The heap object's begin() returns objects of this type
 
 		private:
-			accumulator_2d<uint16_t> accumulators;						///< The array of accumulators
+			allocator_pool memory;									///< All memory allocation happens in this "arena"
+			parser_query parser;									///< Parser responsible for converting text into a parsed query
+			query_term_list parsed_query;							///< The parsed query
+			accumulator_2d<uint16_t> accumulators;					///< The array of accumulators
 			top_k_heap<pointer_box<uint16_t>> heap;					///< The top-k heap containing the best results so far
+		
 
 		public:
 			/*
@@ -48,7 +52,7 @@ namespace JASS
 			class docid_rsv_pair
 				{
 				public:
-					size_t document_id;				///< The document identifier
+					size_t document_id;					///< The document identifier
 					uint16_t rsv;						///< The rsv (Retrieval Status Value) relevance score
 					
 				public:
@@ -149,12 +153,41 @@ namespace JASS
 				@brief Constructor
 			*/
 			query() :
-				accumulators(1024),
-				heap(10)
+				parser(memory),
+				parsed_query(memory),
+				accumulators(1024, memory),
+				heap(10, memory)
 				{
 				/* Nothing */
 				}
 
+			/*
+				QUERY::PARSE()
+				--------------
+			*/
+			/*!
+				@brief Take the given query and parse it.
+				@param query [in] The query to parse.
+			*/
+			template <typename STRING_TYPE>
+			void parse(const STRING_TYPE &query)
+				{
+				parser.parse(parsed_query, query);
+				}
+			
+			/*
+				QUERY::TERMS()
+				--------------
+			*/
+			/*!
+				@brief Return a reference to the parsed query.
+				@return A reference to the parsed query.
+			*/
+			query_term_list &terms(void)
+				{
+				return parsed_query;
+				}
+			
 			/*
 				QUERY::ADD_RSV()
 				----------------

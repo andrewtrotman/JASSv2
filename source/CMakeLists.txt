@@ -35,6 +35,7 @@ set(JASSlib_FILES
 	dynamic_array.h
 	file.h
 	file.cpp
+	global_new_delete.h
 	hash_table.h
 	hash_pearson.h
 	hash_pearson.cpp
@@ -63,6 +64,7 @@ set(JASSlib_FILES
 	serialise_jass_ci.cpp
 	serialise_jass_ci.h
 	slice.h
+	strings.h
 	top_k_heap.h
 	unicode.h
 	unicode.cpp
