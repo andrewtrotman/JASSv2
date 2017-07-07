@@ -4,6 +4,7 @@ dist: trusty
 
 # Early exit coverity if we're in the wrong build
 before_install:
+  - eval "${MATRIX_EVAL}"
   - if [ "$CODECOV_RUN" == 1 ]; then pip install --user cpp-coveralls; fi
   - if [ "$TRAVIS_BRANCH" == "coverity_scan" -a -z "$COVERITY_SCAN_TOKEN" ]; then echo "Done. Early exit with 0." && sleep 1 && exit 0; fi
 #install:
