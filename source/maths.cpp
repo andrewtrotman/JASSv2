@@ -54,4 +54,36 @@ namespace JASS
 		8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 
 		8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8
 		} ;
+
+	/*
+		MATHS::UNITTEST()
+		-----------------
+	*/
+	void maths::unittest(void)
+		{
+		JASS_assert(max(2, 1) == 2);
+		JASS_assert(max(1, 2) == 2);
+		
+		JASS_assert(max(1, 2, 3) == 3);
+		JASS_assert(max(2, 1, 3) == 3);
+		JASS_assert(max(1, 3, 2) == 3);
+		JASS_assert(max(2, 3, 1) == 3);
+		JASS_assert(max(3, 1, 2) == 3);
+		JASS_assert(max(3, 2, 1) == 3);
+
+		JASS_assert(min(2, 1) == 1);
+		JASS_assert(min(1, 2) == 1);
+		
+		JASS_assert(min(1, 2, 3) == 1);
+		JASS_assert(min(2, 1, 3) == 1);
+		JASS_assert(min(1, 3, 2) == 1);
+		JASS_assert(min(2, 3, 1) == 1);
+		JASS_assert(min(3, 1, 2) == 1);
+		JASS_assert(min(3, 2, 1) == 1);
+
+		JASS_assert(floor_log2(10) == 3);
+		JASS_assert(ceiling_log2(10) == 4);
+
+		puts("maths::PASSED");
+		}
 	}

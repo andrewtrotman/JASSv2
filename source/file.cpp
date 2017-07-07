@@ -193,7 +193,12 @@ namespace JASS
 		*/
 		if (fp == stdin)
 			return std::numeric_limits<size_t>::max();
-			
+
+		/*
+			If we don't exist then we must be 0 in size
+		*/
+		if (fp == nullptr)
+			return 0;
 		/*
 			Since we already have a handle to the file, we just remember where we are,
 			seek to the end and check where that is, and seek back.  This will probably
