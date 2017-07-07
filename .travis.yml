@@ -7,8 +7,7 @@ before_install:
   - if [ "$CODECOV_RUN" == 1 ]; then pip install --user cpp-coveralls; fi
   - if [ "$TRAVIS_BRANCH" == "coverity_scan" -a -z "$COVERITY_SCAN_TOKEN" ]; then echo "Done. Early exit with 0." && sleep 1 && exit 0; fi
 install:
-   - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-6 90
-#  - if [ "$CXX" = "g++" ]; then export CXX="g++-6" CC="gcc-6" CXXFLAGS="-D_GLIBCXX_USE_CXX11_ABI=1"; fi
+   - if [ "$CXX" = "g++" ]; then export CXX="g++-6" CC="gcc-6" CXXFLAGS="-D_GLIBCXX_USE_CXX11_ABI=1"; fi
 #  - if [ "$TRAVIS_OS_NAME" == linux ]; then ./tools/travis_dependencies.sh; fi
 script:
   - if [ "$COVERITY_SCAN_BRANCH" != 1 -a "$VALGRIND_RUN" != 1 ]; then cd build && cmake .. && make && ./unittest; fi
