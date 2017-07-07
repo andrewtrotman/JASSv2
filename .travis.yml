@@ -8,7 +8,7 @@ before_install:
   - if [ "$TRAVIS_BRANCH" == "coverity_scan" -a -z "$COVERITY_SCAN_TOKEN" ]; then echo "Done. Early exit with 0." && sleep 1 && exit 0; fi
 install:
    - if [ "$CXX" = "g++" ]; then export CXX="g++-6" CC="gcc-6" CXXFLAGS="-D_GLIBCXX_USE_CXX11_ABI=1"; fi
-   - cpp -v
+   - gcc -xc++ -E -v -
 #  - if [ "$TRAVIS_OS_NAME" == linux ]; then ./tools/travis_dependencies.sh; fi
 script:
   - if [ "$COVERITY_SCAN_BRANCH" != 1 -a "$VALGRIND_RUN" != 1 ]; then cd build && cmake .. && make && ./unittest; fi
