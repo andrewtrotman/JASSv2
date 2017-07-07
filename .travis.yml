@@ -19,6 +19,7 @@ matrix:
     - os: linux
       compiler: gcc
       env:
+        MATRIX_EVAL="CC=gcc-5 && CXX=g++-5"
         # COVERITY TOKEN
         - secure: "Vj49la7ApuC2IVb+2cU563BPVHUbmXlcQ6W91wb8BAGQNOtsmm9KlXTS3mIQ4NxZJgfHxW5Pnx/H6VNBaG21QGK2J7/DB8NMmmmOQwF6vDSULFt8cOXmjLqvblPOnqfvTQbWxNmX3toOZJN1719k5csdNKHKsZTEj6nQT13fsGar+lcQhf+wsKmmEOMzN0Wo0jiqj4naLqaxs0NhUKldsfI8LrswxxW0CUBmvBeVB3ZnxPyKoPMkLASYosxNI0tsr0teuny5s53DwgUW5kBjMZPNLWitkiyJFeFKjQOEhyJ07zEbm4e0bhWd5QUKFIsRI8paY8vo3OQzP1s04A64zv1fP2PqbvDLmm/5z0jVUql4AzcSmXOCeK4mzaGMFC6a4FLPeSJDTj0HkkoJIo3dpOGJ4BQFueSKatsBB2bc9uEugFl2hV6/nrHHEmVkjFbZzFpWnZC7ovX8jGasqC2+iffWB8Lp3hAAqDMIeqUVLnHinJzv8VGJd9gJivqX1iIO6rY5Vys3pb0TJfjKc8xF5NvxPPko7HP9U1fvqcegnTbuhYqlVNxnRNLt2qGracNRXDu1SE3RFk8rFxJ+GP/rGX4b1WXjtr9f6ob7+jp7QAh0hijcjVSxu8FdB2P3r6AKEy83D5JyHqRglI5g3NWSHDvxJ/p3XlUV5mYLGoly5CE="
 
@@ -28,6 +29,7 @@ matrix:
     - os: linux
       compiler: gcc
       env:
+          MATRIX_EVAL="CC=gcc-5 && CXX=g++-5"
           CODECOV_RUN=1
           CFLAGS="-g -O0 -fprofile-arcs -ftest-coverage"
           CXXFLAGS="-g -O0 -fprofile-arcs -ftest-coverage"
@@ -36,6 +38,7 @@ matrix:
       compiler: gcc
       env:
           VALGRIND_RUN=1
+          MATRIX_EVAL="CC=gcc-5 && CXX=g++-5"
 
 branches:
   only:
