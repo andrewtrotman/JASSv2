@@ -95,7 +95,7 @@ namespace JASS
 						@param at [in] An iterator over the heap
 						@param accumulator_base [in] The base address of the accumulators used to compute document ids through pointer subtraction
 					*/
-					iterator(heap_iterator &at, uint16_t *accumulator_base) :
+					iterator(heap_iterator at, uint16_t *accumulator_base) :
 						at(at),
 						accumulator_base(accumulator_base)
 						{
