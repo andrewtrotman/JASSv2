@@ -7,7 +7,7 @@ before_install:
   - if [ "$CODECOV_RUN" == 1 ]; then pip install --user cpp-coveralls; fi
   - if [ "$TRAVIS_BRANCH" == "coverity_scan" -a -z "$COVERITY_SCAN_TOKEN" ]; then echo "Done. Early exit with 0." && sleep 1 && exit 0; fi
 install:
-   - if [ "$CXX" = "g++" ]; then export CXX="g++-5" CC="gcc-5"; fi
+   - if [ "$CXX" = "g++" ]; then export CXX="g++-6" CC="gcc-6"; fi
 #  - if [ "$TRAVIS_OS_NAME" == linux ]; then ./tools/travis_dependencies.sh; fi
 script:
   - if [ "$COVERITY_SCAN_BRANCH" != 1 -a "$VALGRIND_RUN" != 1 ]; then cd build && cmake .. && make && ./unittest; fi
@@ -56,5 +56,5 @@ addons:
     sources:
     - ubuntu-toolchain-r-test
     packages:
-    - gcc-5
-    - g++-5
+    - gcc-6
+    - g++-6
