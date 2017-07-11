@@ -3,12 +3,17 @@ sudo: required
 dist: trusty
 
 # Early exit coverity if we're in the wrong build
-before_install: if [ "$TRAVIS_BRANCH" == "coverity_scan" -a -z "$COVERITY_SCAN_TOKEN" ]; then echo "Done. Early exit with 0." && sleep 1 && exit 0; fi
-install: if [ "$TRAVIS_OS_NAME" == linux ]; then ./tools/travis_dependencies.sh; fi
+before_install:
+  - if [ "$CODECOV_RUN" == 1 ]; then pip install --user cpp-coveralls; fi
+  - if [ "$TRAVIS_BRANCH" == "coverity_scan" -a -z "$COVERITY_SCAN_TOKEN" ]; then echo "Done. Early exit with 0." && sleep 1 && exit 0; fi
+install:
+   - if [ "$CXX" = "g++" ]; then export CXX="g++-6" CC="gcc-6" CXXFLAGS="-D_GLIBCXX_USE_CXX11_ABI=1"; fi
+#  - if [ "$TRAVIS_OS_NAME" == linux ]; then ./tools/travis_dependencies.sh; fi
 script:
   - if [ "$COVERITY_SCAN_BRANCH" != 1 -a "$VALGRIND_RUN" != 1 ]; then cd build && cmake .. && make && ./unittest; fi
   - if [ "$VALGRIND_RUN" == 1 ]; then cd build && cmake .. && make && valgrind -q --error-exitcode=42 ./unittest; fi
 after_success:
+  - if [ "$CODECOV_RUN" == 1 ]; then coveralls; fi
   - if [ "$CODECOV_RUN" == 1 ]; then bash <(curl -s https://codecov.io/bash); fi
 matrix:
   include:
@@ -24,14 +29,14 @@ matrix:
     - os: linux
       compiler: gcc
       env:
-        - CODECOV_RUN=1
+          CODECOV_RUN=1
           CFLAGS="-g -O0 -fprofile-arcs -ftest-coverage"
           CXXFLAGS="-g -O0 -fprofile-arcs -ftest-coverage"
 
     - os: linux
       compiler: gcc
       env:
-        - VALGRIND_RUN=1
+          VALGRIND_RUN=1
 
 branches:
   only:
@@ -46,3 +51,13 @@ addons:
     build_command_prepend: "cd build && cmake .."
     build_command: "make"
     branch_pattern: coverity_scan
+
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+      - george-edison55-precise-backports
+    packages:
+      - gcc-6
+      - g++-6
+      - cmake-data
+      - cmake
