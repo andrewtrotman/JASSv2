@@ -4,7 +4,8 @@ dist: trusty
 
 # Early exit coverity if we're in the wrong build
 before_install:
-  - ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/master/install)" < yes ''
+  - yes '' | ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/master/install)"
+  - PATH="/home/linuxbrew/.linuxbrew/bin:$PATH"
   - brew install gcc
   - if [ "$CODECOV_RUN" == 1 ]; then pip install --user cpp-coveralls; fi
   - if [ "$TRAVIS_BRANCH" == "coverity_scan" -a -z "$COVERITY_SCAN_TOKEN" ]; then echo "Done. Early exit with 0." && sleep 1 && exit 0; fi
