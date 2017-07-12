@@ -14,7 +14,6 @@ template <class TYPE> class my_allocator
 	public:
 		using value_type = TYPE;
 
-		my_allocator() : instance(0) { }
 		my_allocator(int val) : instance(val) { }
 		my_allocator(const my_allocator<TYPE> &other) : instance(other.instance) { }
 
