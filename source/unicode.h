@@ -181,7 +181,7 @@ namespace JASS
 					case 4:
 						return ((*bytes & 0x07) << 18) | ((*(bytes + 1) & 0x3F) << 12) | ((*(bytes + 2) & 0x3F) << 6) | (*(bytes + 3) & 0x3F);
 					default:
-						return replacement_character;							// Cannot happen, but Xcode gives a warning if this line is missing.
+						return replacement_character;		// LCOV_EXCL_LINE	// Cannot happen, but Xcode gives a warning if this line is missing.
 					}
 				}
 

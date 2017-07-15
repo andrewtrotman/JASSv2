@@ -241,7 +241,7 @@ namespace JASS
 		{
 		prefix = prefix + "xxxxxx";
 		#ifdef WIN32
-			::_mktemp(prefix.c_str());
+			::_mktemp(const_cast<char *>(prefix.c_str()));
 		#else
 			::umask(::umask(0));				// This sets the umask to its current value, and prevents Coverity from producing a warning
 			int file_descriptor = ::mkstemp(const_cast<char *>(prefix.c_str()));
