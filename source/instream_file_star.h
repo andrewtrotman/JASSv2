@@ -13,6 +13,9 @@
 #pragma once
 
 #include <stdio.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include "instream_file.h"
 
@@ -68,10 +71,13 @@ namespace JASS
 				*/
 				const char example[] = "123456789012345678901234567890";			// sample to be written and read back
 
+
 				/*
-					create the file
+					create the file  Note that ::tmpfile() cannot be calle because its insecure (according to Coverity)
 				*/
-				FILE *fp = ::tmpfile();
+				auto filename = file::mkstemp("jass");
+				FILE *fp = ::fopen(filename.c_str(), "w+b");
+				(void)::remove(filename.c_str());								// delete the file once we're done with it (cast to void to remove Coverity warning)
 
 				/*
 					write to the file and rewind to the start

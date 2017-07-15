@@ -6,14 +6,6 @@
 */
 #include <string.h>
 
-#ifdef WIN32
-	#include <io.h>
-#else
-	#include <unistd.h>
-	#include <sys/types.h>
-	#include <sys/stat.h>
-#endif
-
 #include "assert.h"
 #include "instream_file.h"
 
@@ -88,20 +80,7 @@ namespace JASS
 		/*
 			create a temporary filename.  There doesn't appear to be a clean way of doing this.
 		*/
-		char filename[11];
-		strcpy(filename, "jassXXXXXX");
-
-		/*
-			Create a temporary filename.  Windows does not appear to have mkstemp so we use _mktemp().
-		*/
-		#ifdef WIN32
-			_mktemp(filename);
-		#else
-			umask(umask(0));				// This sets the umask to its current value, and prevents Coverity from producing a warning
-			int file_descriptor = mkstemp(filename);
-			if (file_descriptor >= 0)
-				close(file_descriptor);
-		#endif
+		auto filename = file::mkstemp("jass");
 
 		/*
 			write to the file
@@ -139,7 +118,7 @@ namespace JASS
 			*/
 			}
 		while (0);
-		(void)remove(filename);			// delete the file.  Cast to void to remove Coverity warning if remove() fails.
+		(void)remove(filename.c_str());			// delete the file.  Cast to void to remove Coverity warning if remove() fails.
 		/*
 			Yay, we passed
 		*/

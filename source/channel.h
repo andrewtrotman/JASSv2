@@ -236,7 +236,7 @@ namespace JASS
 			*/
 			channel &operator<<(const unsigned char *source)
 				{
-				block_write(source, sizeof(source));
+				block_write(source, strlen(reinterpret_cast<const char *>(source)));
 				return *this;
 				}
 

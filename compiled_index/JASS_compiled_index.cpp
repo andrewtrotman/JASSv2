@@ -5,6 +5,7 @@
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 #include <algorithm>
+#include <exception>
 
 #include <stdint.h>
 
@@ -33,76 +34,87 @@
 */
 int main(int argc, char *argv[])
 	{
-	/*
-		Sort the dictionary - because it was probably generated in the
-		order of the hash-table which isn't alphabetical.
-	*/
-	std::sort(&dictionary[0], &dictionary[dictionary_length]);
-
-	/*
-		Use a JASS channel to read the input query
-	*/
-	JASS::channel_file input;							// read from here
-	JASS::channel_file output;							// write to here.
-
-	while (1)
+	try
 		{
 		/*
-			If we're checking to make sure that no memory allocation (outside JASS custom allocation) then turn
-			off checking for the sole purpose of allocating the arena.
+			Sort the dictionary - because it was probably generated in the
+			order of the hash-table which isn't alphabetical.
 		*/
-		#ifdef ENSURE_NO_ALLOCATIONS
-			global_new_delete_return();					// disable checking
-			JASS::allocator_pool memory;				// allocate memory
-			global_new_delete_replace();				// enable checking
-		#else
-			JASS::allocator_pool memory;				// allocate memory
-		#endif
-		
-		JASS::string query(memory);						// allocate a string to read into
-		JASS::query jass_query;							// allocate a JASS query object
+		std::sort(&dictionary[0], &dictionary[dictionary_length]);
 
 		/*
-			Read a query from a user
+			Use a JASS channel to read the input query
 		*/
-		std::cout << "]";
-		input.gets(query);
+		JASS::channel_file input;							// read from here
+		JASS::channel_file output;							// write to here.
 
-		/*
-			Check to see if we're at the end of the query stream
-		*/
-		if (query.compare(0, 5, ".quit") == 0)
-			break;
-
-		/*
-			Echo the query
-		*/
-		output << query;
-
-		/*
-			Parse the query then iterate over the terms
-		*/
-		jass_query.parse(query);
-		for (const auto &term : jass_query.terms())
+		while (1)
 			{
 			/*
-				Search the vocabulary for the query term and if we find it all the attached method to process the postings.
+				If we're checking to make sure that no memory allocation (outside JASS custom allocation) then turn
+				off checking for the sole purpose of allocating the arena.
 			*/
-			auto low = std::lower_bound (&dictionary[0], &dictionary[dictionary_length], JASS_ci_vocab(term.token()));
-			if ((low != &dictionary[dictionary_length] && !(JASS_ci_vocab(term.token()) < *low)))
-				low->method(jass_query);
-			}
+			#ifdef ENSURE_NO_ALLOCATIONS
+				global_new_delete_return();					// disable checking
+				JASS::allocator_pool memory;				// allocate memory
+				global_new_delete_replace();				// enable checking
+			#else
+				JASS::allocator_pool memory;				// allocate memory
+			#endif
+			
+			JASS::string query(memory);						// allocate a string to read into
+			JASS::query jass_query;							// allocate a JASS query object
 
-		/*
-			Dump the top-k to the output channel
-		*/
-		for (const auto &element : jass_query)
-			{
-			std::cout << element.document_id << ":" << element.rsv << "\n";
-			//output << element.document_id << ":" << element.rsv << "\n";
+			/*
+				Read a query from a user
+			*/
+			std::cout << "]";
+			input.gets(query);
+
+			/*
+				Check to see if we're at the end of the query stream
+			*/
+			if (query.compare(0, 5, ".quit") == 0)
+				break;
+
+			/*
+				Echo the query
+			*/
+			output << query;
+
+			/*
+				Parse the query then iterate over the terms
+			*/
+			jass_query.parse(query);
+			for (const auto &term : jass_query.terms())
+				{
+				/*
+					Search the vocabulary for the query term and if we find it all the attached method to process the postings.
+				*/
+				auto low = std::lower_bound (&dictionary[0], &dictionary[dictionary_length], JASS_ci_vocab(term.token()));
+				if ((low != &dictionary[dictionary_length] && !(JASS_ci_vocab(term.token()) < *low)))
+					low->method(jass_query);
+				}
+
+			/*
+				Dump the top-k to the output channel
+			*/
+			for (const auto &element : jass_query)
+				{
+				std::cout << element.document_id << ":" << element.rsv << "\n";
+				//output << element.document_id << ":" << element.rsv << "\n";
+				}
 			}
 		}
-	
+	catch (std::exception error)
+		{
+		printf("CAUGHT AN EXCEPTION OF TYPE std::exception (%s)\n", error.what());
+		}
+	catch (...)
+		{
+		printf("CAUGHT AN EXCEPTION OF UNKNOEN TYPE)\n");
+		}
+
 	#ifdef ENSURE_NO_ALLOCATIONS
 		global_new_delete_return();					// disable memorty checking (so that the memory object can be deallocated without fuss).
 	#endif

@@ -16,6 +16,8 @@
 	#include <io.h>
 #else
 	#include <unistd.h>
+	#include <sys/types.h>
+	#include <sys/stat.h>
 #endif
 #include <limits>
 
@@ -231,6 +233,24 @@ namespace JASS
 		return file_size < 0 ? 0 : file_size;
 		}
 
+	/*
+		FILE::MKSTEMP()
+		---------------
+	*/
+	std::string file::mkstemp(std::string prefix)
+		{
+		prefix = prefix + "xxxxxx";
+		#ifdef WIN32
+			::_mktemp(prefix.c_str());
+		#else
+			::umask(::umask(0));				// This sets the umask to its current value, and prevents Coverity from producing a warning
+			int file_descriptor = ::mkstemp(const_cast<char *>(prefix.c_str()));
+			if (file_descriptor >= 0)
+				close(file_descriptor);
+		#endif
+		
+		return std::string(prefix.c_str());
+		}
 
 
 	/*
@@ -266,21 +286,7 @@ namespace JASS
 		/*
 			create a temporary filename.  There doesn't appear to be a clean way of doing this.
 		*/
-		char filename[11];
-		strcpy(filename, "jassXXXXXX");
-
-		/*
-			Create a temporary filename.  Windows does not appear to have mkstemp so we use mktemp().
-		*/
-		#ifdef WIN32
-			_mktemp(filename);
-		#else
-			umask(umask(0));				// This sets the umask to its current value, and prevents Coverity from producing a warning
-			int file_descriptor = mkstemp(filename);
-			if (file_descriptor >= 0)
-				close(file_descriptor);
-		#endif
-
+		auto filename = file::mkstemp("jass");
 		/*
 			write, read back, and check we didn't lose anything along the way.
 		*/
@@ -302,7 +308,7 @@ namespace JASS
 		JASS_assert(disk_object_contents.size() == 0);
 		delete disk_object;
 
-		(void)remove(filename);								// delete the file once we're done with it (cast to void to remove Coverity warning)
+		(void)remove(filename.c_str());								// delete the file once we're done with it (cast to void to remove Coverity warning)
 	
 		/*
 			CHECK BUFFER_TO_LIST()

@@ -92,6 +92,21 @@ namespace JASS
 				}
 
 			/*
+				FILE::FILE()
+				------------
+			*/
+			/*!
+				@brief Constructor used for opening files.
+				@param filename [in] the name of the file.
+				@param mode [in] The file open mode.  See C's fopen() for details on possible modes.
+			*/
+			file(const std::string &filename, const std::string &mode) :
+				file(filename.c_str(), mode.c_str())
+				{
+				/* Nothing */
+				}
+
+			/*
 				FILE::~FILE()
 				-------------
 			*/
@@ -220,7 +235,21 @@ namespace JASS
 				@return True if the given path is a directory, false if it is not (or does not exist).
 			*/
 			static bool is_directory(const std::string &filename);
-			
+
+			/*
+				FILE::MKSTEMP()
+				---------------
+			*/
+			/*!
+				@brief Generate a temporary filename containing the given prefix
+				@details This metho is a wrapper for ::mkstemp() on Linux / MacOS and _mktemp() on windows.  These methods are renounds for
+				having the problem that the fiklename may not be unique once it has been generated and therefore opening a file with this
+				name may fail.  However, there are times when this doesn't matter (such as unit tests).
+				@param prefix [in] The prefix to the unique filenane,
+				@return A unique filename at the time the method is called.
+			*/
+			static std::string mkstemp(std::string prefix);
+
 			/*
 				FILE::UNITTEST()
 				----------------

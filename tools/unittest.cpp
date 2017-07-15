@@ -43,7 +43,7 @@
 */
 int main(void)
 	{
-	int failed = false;			// main() returns 0 on success
+	int failed = true;			// main() returns 0 on success
 
 	/*
 		Output basic statistics about JASS as it stands
@@ -165,12 +165,19 @@ int main(void)
 		JASS::query::unittest();
 
 		puts("ALL UNIT TESTS HAVE PASSED");
+		failed = false;
 		}
-
 	catch (std::bad_array_new_length error)
 		{
-		failed = true;
 		printf("CAUGHT AN EXCEPTION OF TYPE std::bad_array_new_length (%s)\n", error.what());
+		}
+	catch (std::exception error)
+		{
+		printf("CAUGHT AN EXCEPTION OF TYPE std::exception (%s)\n", error.what());
+		}
+	catch (...)
+		{
+		printf("CAUGHT AN EXCEPTION OF UNKNOEN TYPE)\n");
 		}
 
 	return failed;
