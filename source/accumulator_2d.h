@@ -250,6 +250,15 @@ namespace JASS
 
 				unittest_example(array_hangunder);
 
+				/*
+					Make sure it all works right when there is a single accumulator
+				*/
+				accumulator_2d<size_t> array_one(1, memory);
+				JASS_assert(array_one.width == 1);
+				JASS_assert(array_one.shift == 0);
+				JASS_assert(array_one.number_of_dirty_flags == 1);
+
+				unittest_example(array_one);
 
 				puts("accumulator_2d::PASSED");
 				}

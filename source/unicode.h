@@ -656,6 +656,7 @@ namespace JASS
 				*/
 				JASS_assert(unicode::ispunct(','));
 				JASS_assert(unicode::isspace(' '));
+				JASS_assert(unicode::isuspace(' '));
 				JASS_assert(unicode::ismark(0x300));
 				JASS_assert(unicode::issymbol(0x2600));
 

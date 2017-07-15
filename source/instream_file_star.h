@@ -68,7 +68,6 @@ namespace JASS
 				*/
 				const char example[] = "123456789012345678901234567890";			// sample to be written and read back
 
-
 				/*
 					create the file  Note that ::tmpfile() cannot be calle because its insecure (according to Coverity)
 				*/
