@@ -239,9 +239,10 @@ namespace JASS
 	*/
 	std::string file::mkstemp(std::string prefix)
 		{
-		prefix = prefix + "xxxxxx";
+		prefix = prefix + "XXXXXX";
 		#ifdef WIN32
-			::_mktemp(const_cast<char *>(prefix.c_str()));
+		auto filename = const_cast<char *>(prefix.c_str());
+			::_mktemp(filename);
 		#else
 			::umask(::umask(0));				// This sets the umask to its current value, and prevents Coverity from producing a warning
 			int file_descriptor = ::mkstemp(const_cast<char *>(prefix.c_str()));
