@@ -13,9 +13,6 @@
 #pragma once
 
 #include <stdio.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 
 #include "instream_file.h"
 
