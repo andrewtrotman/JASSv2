@@ -9,8 +9,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <array>
+#include <thread>
+#include <iostream>
+
 #include "maths.h"
 #include "assert.h"
+#include "dynamic_array.h"
 #include "allocator_pool.h"
 
 namespace JASS
@@ -57,7 +62,7 @@ namespace JASS
 		*/
 		chunk *chain;
 		if ((chain = (allocator_pool::chunk *)alloc(request)) == nullptr)
-			return nullptr;					// This can rarely happen because of delayed allocation strategies of Linux and other Operating Systems.
+			return nullptr; //	LCOV_EXCL_LINE		// This can rarely happen because of delayed allocation strategies of Linux and other Operating Systems.
 
 		/*
 			Initialise the chunk
@@ -133,7 +138,7 @@ namespace JASS
 				else
 					{
 	//				#ifdef NEVER
-						exit(printf("file:%s line:%d: Out of memory:%lld bytes requested %lld bytes used %lld bytes allocated.\n",  __FILE__, __LINE__, (long long)bytes, (long long)used, (long long)allocated));
+						exit(printf("file:%s line:%d: Out of memory:%lld bytes requested %lld bytes used %lld bytes allocated.\n",  __FILE__, __LINE__, (long long)bytes, (long long)used, (long long)allocated));	// LCOV_EXCL_LINE
 	//				#endif
 					return nullptr;		// out of memory
 					}
@@ -189,6 +194,26 @@ namespace JASS
 		}
 
 	/*
+		ALLOCATOR_POOL::UNITTEST_THREAD()
+		---------------------------------
+	*/
+	 void allocator_pool::unittest_thread(dynamic_array<uint8_t *> &answer, allocator_pool &memory, uint8_t bytes)
+		{
+		/*
+			Allocate bytes of memory.
+		*/
+		uint8_t *block = (uint8_t *)memory.malloc(bytes);
+
+		/*
+			Write that valuye into the memory (for later checking).
+		*/
+		for (uint8_t *byte = block; byte < block + bytes; byte++)
+			*byte = bytes;
+
+		answer.push_back(block);
+		}
+
+	/*
 		ALLOCATOR_POOL::UNITTEST()
 		--------------------------
 	*/
@@ -234,7 +259,44 @@ namespace JASS
 		memory.rewind();
 		JASS_assert(memory.size() == 0);
 		JASS_assert(memory.capacity() == 0);
-	
+
+
+		/*
+			Thread test this class.  This calls a seperate routine 255 times, each allocates n bytes of memory
+			and fills it will that value, returning the pointer in a dynamic_array for checking.
+		*/
+		constexpr size_t thread_count = 0xF0;
+		std::array<std::thread, thread_count> thread_pool;			// a thread pool used to ensure all the threads are done.
+		dynamic_array<uint8_t *> pointer_set(memory);			// keeo a list of pointers for later checking
+
+		/*
+			Start each thread
+		*/
+		for (uint8_t instance = 1; instance < thread_count; instance++)
+			thread_pool[instance] = std::thread(&allocator_pool::unittest_thread, std::ref(pointer_set), std::ref(memory), instance);
+
+		/*
+			Wait until they are all done
+		*/
+		for (size_t instance = 1; instance < thread_count; instance++)
+			thread_pool[instance].join();
+
+		/*
+			Now check that it worked
+		*/
+		uint8_t hit[thread_count + 1] = {0};									// count the number of allocatsions of the given index (should be 1).
+		for (const auto &pointer : pointer_set)
+			{
+			uint8_t *from = pointer;
+			uint8_t value = *from;
+			for (uint8_t byte = 0; byte <  value; byte++)					// there should be n bytes of value n
+				JASS_assert(*from++ == value);
+			hit[value]++;
+			}
+		for (size_t instance = 1; instance < thread_count; instance++)	// everyr value of n should exist
+			JASS_assert(hit[instance] == 1);
+
+
 		/*
 			Yay, we passed
 		*/

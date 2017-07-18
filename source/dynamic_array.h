@@ -358,7 +358,7 @@ namespace JASS
 				for (size_t counter = 0; counter < high; counter++)
 					push_back(counter);
 				}
-			
+
 			/*
 				DYNAMIC_ARRAY::UNITTEST()
 				-------------------------

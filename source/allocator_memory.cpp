@@ -43,9 +43,9 @@ namespace JASS
 			if (already_used + bytes + padding > allocated)
 				{
 	//			#ifdef NEVER
-					exit(printf("file:%s line:%d: Out of memory:%lld bytes requested %lld bytes used %lld bytes allocated of %lld bytes available.\n", __FILE__, __LINE__, (long long)bytes, (long long)used, (long long)allocated, (long long)allocated));
+					exit(printf("file:%s line:%d: Out of memory:%lld bytes requested %lld bytes used %lld bytes allocated of %lld bytes available.\n", __FILE__, __LINE__, (long long)bytes, (long long)used, (long long)allocated, (long long)allocated));					// LCOV_EXCL_LINE		// highly unlikely to happen
 	//			#endif
-				return nullptr;
+				return nullptr;					//	LCOV_EXCL_LINE		// highly unlikely to happen
 				}
 
 			/*

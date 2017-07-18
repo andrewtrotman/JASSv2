@@ -117,7 +117,7 @@ namespace JASS
 				TYPE *pointer = (TYPE *)pool.malloc(number * sizeof(TYPE));
 				
 				if (pointer == nullptr)
-					throw std::bad_alloc();
+					throw std::bad_alloc();			//LCOV_EXCL_LINE		// Out of memory
 
 				return pointer;
 				}
@@ -181,6 +181,12 @@ namespace JASS
 				*/
 				JASS_assert(memory_1 == memory_1);
 				JASS_assert(!(memory_1 != memory_2));
+
+				/*
+					Check copy constructor
+				*/
+				allocator_cpp memory_3 = memory_1;
+				JASS_assert(memory_3.pool == memory_1.pool);
 					
 				puts("allocator_cpp::PASSED");
 				}

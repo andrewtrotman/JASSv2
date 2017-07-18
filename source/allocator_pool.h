@@ -24,6 +24,7 @@
 
 namespace JASS
 	{
+	template <typename TYPE> class dynamic_array;			// forward declare as its used in allocator_pool::_unittest()
 	/*
 		CLASS ALLOCATOR_POOL
 		--------------------
@@ -260,7 +261,18 @@ namespace JASS
 				(or operating system).  delete is not called for any objects allocated in this space, the memory is simply re-claimed.
 			*/
 			virtual void rewind(void);
-			
+
+			/*
+				ALLOCATOR_POOL::UNITTEST_THREAD()
+				---------------------------------
+			*/
+			/*!
+				@brief Unit test this class - thread manager
+				@param memory [in] The object to thread-test
+				@param bytes [in] The size of this thread's allocation.
+			*/
+			static void unittest_thread(dynamic_array<uint8_t *> &answer, allocator_pool &memory, uint8_t bytes);
+
 			/*
 				ALLOCATOR_POOL::UNITTEST()
 				--------------------------
