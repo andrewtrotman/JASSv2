@@ -13,5 +13,5 @@
 #
 include_directories(../source)
 add_executable(parser_use parser_use.h parser_use.cpp)
-target_link_libraries(parser_use JASSlib)
+target_link_libraries(parser_use JASSlib ${CMAKE_THREAD_LIBS_INIT})
 
