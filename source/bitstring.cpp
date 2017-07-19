@@ -281,7 +281,27 @@ namespace JASS
 		*/
 		b1.one();
 		JASS_assert(b1.popcount() == b1.size());
-		
+
+		/*
+			Check the popcount() methods that aren't already checked
+		*/
+		JASS_assert(bitstring::popcount(static_cast<uint64_t>(0xF103050701030507)) == 20);
+		JASS_assert(bitstring::popcount(static_cast<uint32_t>(0xF1030507)) == 12);
+		JASS_assert(bitstring::popcount(static_cast<uint16_t>(0xF103)) == 7);
+		JASS_assert(bitstring::popcount(static_cast<uint8_t>(0xF7)) == 7);
+
+		/*
+			Check the safe methods
+		*/
+		bitstring b4;
+		b4.resize(100);
+		JASS_assert(b4.popcount() == 0);
+		b4.setbit(22);
+		JASS_assert(b4.popcount() == 1);
+		JASS_assert(b4.getbit(22) == 1);
+		b4.unsetbit(22);
+		JASS_assert(b4.popcount() == 0);
+
 		/*
 			Yay, we passed
 		*/

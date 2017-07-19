@@ -163,9 +163,14 @@ namespace JASS
 			*/
 			inline static size_t popcount(uint16_t value)
 				{
-				value = value - ((value >> 1) & 0x5555u);
-				value = (value & 0x3333u) + ((value >> 2) & 0x3333u);
-				return (((value + (value >> 4)) & 0xF0Fu) * 0x101u) >> 8;
+				value = value - ((value >> 1) & 0x5555);
+				value = (value & 0x3333) + ((value >> 2) & 0x3333);
+				/*
+					Is this a compiler bug?  we can't do a single line return and must instead do a two line return on Xcode 8.3.3
+				*/
+//				return (((value + (value >> 4)) & 0xF0F) * 0x101) >> 8;
+				value = (((value + (value >> 4)) & 0xF0F) * 0x101);
+				return value >> 8;
 				}
 
 			/*
