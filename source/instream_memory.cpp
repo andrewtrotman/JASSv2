@@ -1,6 +1,6 @@
 /*
-	INSTREAM_MEMORY.C
-	-----------------
+	INSTREAM_MEMORY.CPP
+	-------------------
 	Copyright (c) 2016 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
@@ -23,7 +23,7 @@ namespace JASS
 		/*
 			If we're past EOF then return nothing
 		*/
-		if (bytes_read > file_length)
+		if (bytes_read >= file_length)
 			{
 			buffer.contents = slice();
 			return;

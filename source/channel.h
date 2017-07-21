@@ -16,6 +16,7 @@
 #include <string.h>
 
 #include <string>
+#include <sstream>
 #include <type_traits>
 
 #include "strings.h"
@@ -206,9 +207,13 @@ namespace JASS
 				@brief Catch-all for writing arithmetic types (itegral and floating) to a channel.
 				@param source [in] data to write.
 			*/
-			template <typename T, typename = typename std::enable_if<std::is_arithmetic<T>::value, T>::type> channel &operator<<(T source)
+			template <typename T, typename = typename std::enable_if<std::is_arithmetic<T>::value, T>::type>
+			channel &operator<<(T source)
 				{
-				block_write(&source, sizeof(source));
+				std::ostringstream output;
+
+				output << source;
+				*this << output.str();
 				return *this;
 				}
 

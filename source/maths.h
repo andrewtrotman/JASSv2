@@ -125,11 +125,16 @@ namespace JASS
 				MATHS::FLOOR_LOG2()
 				-------------------
 			*/
+			/*!
+				@brief return the floor of log2(x)
+				@param x [in] the value to compute the log of.
+				@return floor(log2(x));
+			*/
 			static size_t floor_log2(size_t x)
 				{
 				size_t sum, mult = 0;
 
-				do
+				do					// LCOV_EXCL_LINE			// gcov thinks this line isn't called (but it must be)
 					{
 					sum = floor_log2_answer[x & 0xFF] + mult;
 					mult += 8;
@@ -144,11 +149,16 @@ namespace JASS
 				MATHS::CEILING_LOG2()
 				---------------------
 			*/
+			/*!
+				@brief return the ceiling of log2(x)
+				@param x [in] the value to compute the log of.
+				@return ceiling(log2(x));
+			*/
 			static size_t ceiling_log2(size_t x)
 				{
 				size_t sum, mult = 0;
 
-				do
+				do					// LCOV_EXCL_LINE			// gcov thinks this line isn't called (but it must be)
 					{
 					sum = ceiling_log2_answer[x & 0xFF] + mult;
 					mult += 8;
