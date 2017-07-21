@@ -193,7 +193,7 @@ namespace JASS
 		/*
 			If we're standard in (stdin) then the file is of infinite length
 		*/
-		if (fp == ::stdin)
+		if (fp == stdin)
 			return std::numeric_limits<size_t>::max();
 
 		/*
