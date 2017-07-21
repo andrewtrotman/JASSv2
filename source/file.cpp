@@ -51,7 +51,7 @@ namespace JASS
 					{
 					into.resize(file_length);
 					if (fread(&into[0], details.st_size, 1, fp) != 1)
-						into.resize(0);
+						into.resize(0);				// LCOV_EXCL_LINE	// happens when reading the file_size buyes failes (i.e. disk or file failure).
 					}
 			fclose(fp);
 			}
@@ -193,7 +193,7 @@ namespace JASS
 		/*
 			If we're standard in (stdin) then the file is of infinite length
 		*/
-		if (fp == stdin)
+		if (fp == ::stdin)
 			return std::numeric_limits<size_t>::max();
 
 		/*
@@ -218,12 +218,12 @@ namespace JASS
 		#else
 			off_t current_position = ftello(fp);
 			if (current_position < 0)
-				return 0;							// this only happens on ftello() failing
+				return 0;							// LCOV_EXCL_LINE // this only happens on ftello() failing
 			if (fseeko(fp, 0, SEEK_END) < 0)
-				return 0;
+				return 0;							// LCOV_EXCL_LINE	// when seek fails
 			off_t file_size = ftello(fp);
 			if (fseeko(fp, current_position, SEEK_SET) < 0)
-				return 0;
+				return 0;							// LCOV_EXCL_LINE	// seek has failed.
 		#endif
 		
 		/*
@@ -268,7 +268,7 @@ namespace JASS
 			CHECK IS_DIRECTORY()
 		*/
 		/*
-			dot must be a directory
+			Dot must be a directory (on Linux and Windows and OS X)
 		*/
 		JASS_assert(is_directory("."));
 		JASS_assert(!is_directory(".JASS."));		// should fail on a file that dosn't exist (but this might, no easy way to check).
@@ -291,6 +291,8 @@ namespace JASS
 		/*
 			write, read back, and check we didn't lose anything along the way.
 		*/
+		std::string bad_filename = "";
+		write_entire_file(bad_filename, example_file);
 		write_entire_file(filename, example_file);
 		read_entire_file(filename, reread);
 		JASS_assert(example_file == reread);
@@ -353,6 +355,19 @@ namespace JASS
 		JASS_assert(lines.size() == 2);
 		JASS_assert(std::string((char *)lines[0]) == "one");
 		JASS_assert(std::string((char *)lines[1]) == "two");
+
+		/*
+			Try stdin
+		*/
+		file stdio(stdin);
+		JASS_assert(stdio.size() == std::numeric_limits<size_t>::max());
+
+		/*
+			Try with a FILE *
+		*/
+		file star(nullptr);
+		JASS_assert(stdio.size() == std::numeric_limits<size_t>::max());
+
 
 		/*
 			Yay, we passed

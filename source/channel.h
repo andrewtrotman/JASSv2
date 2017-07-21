@@ -192,7 +192,7 @@ namespace JASS
 				@brief write buffer to the channel followed by a '\n' character.
 				@param buffer [in] Byte sequence to write.
 			*/
-			void puts(std::string &buffer)
+			void puts(const std::string &buffer)
 				{
 				block_write(buffer.c_str(), buffer.size());
 				block_write("\n", 1);

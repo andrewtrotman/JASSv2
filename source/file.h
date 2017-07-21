@@ -15,6 +15,7 @@
 #pragma once
 
 #include <stdio.h>
+#include <errno.h>
 #include <stddef.h>
 
 #include <string>
@@ -88,6 +89,7 @@ namespace JASS
 					fopen_s(&fp, filename, mode);
 				#else
 					fp = fopen(filename, mode);
+//					printf("fp:%p stdin:%p stsdout:%p errno:%d\n", fp, stdin, stdout, errno);
 				#endif
 				}
 
@@ -115,7 +117,7 @@ namespace JASS
 			*/
 			~file()
 				{
-				if (fp != nullptr)
+				if (fp != nullptr && fp != stdin && fp != stdout)
 					fclose(fp);
 				}
 			

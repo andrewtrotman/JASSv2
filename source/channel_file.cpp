@@ -97,6 +97,9 @@ namespace JASS
 	*/
 	void channel_file::unittest(void)
 		{
+		allocator_pool memory;
+		allocator_cpp<char> allocator(memory);
+
 		auto filename = file::mkstemp("jass");
 
 		/*
@@ -108,6 +111,10 @@ namespace JASS
 			outfile << "bytes:";
 			outfile << "7";
 			outfile << ((const unsigned char *)"\nLine2\n");
+			outfile.puts(std::string("1234567"));
+
+			allocator_cpp<char> allocator(memory);
+			outfile << JASS::string("Three\n", allocator);
 			}
 		while (0);
 
@@ -123,8 +130,28 @@ namespace JASS
 			JASS_assert(answer == "bytes:7\n");
 			infile.gets(answer);
 			JASS_assert(answer == "Line2\n");
+
+			/*
+				JASS strings
+			*/
+			JASS::string into(allocator);
+			into.resize(8);
+			infile.gets(into);
+			JASS_assert(into == "1234567\n");
+
+			/*
+				read past eof should return up to eof.
+			*/
+			infile.read(answer);
+			JASS_assert(answer.size() == 6);
+			JASS_assert(answer == "Three\n");
 			}
 		while (0);
+
+		/*
+			stdin / stdout
+		*/
+		channel_file stdio;
 
 		/*
 			Delete the file.  Cast to void to remove Coverity warning if remove() fails.

@@ -7,6 +7,7 @@
 	CACM Volume 33, No. 6 (June 1990),  pp. 677-680
 */
 
+#include "slice.h"
 #include "asserts.h"
 #include "hash_pearson.h"
 
@@ -89,7 +90,17 @@ namespace JASS
 		thirtytwo = hash_pearson::hash_32("here there and everywhere", 21);
 		JASS_assert(thirtytwo == 2062191587);
 
-		
+		slice string = "here";
+		eight = hash_pearson::hash<8>(string);
+		sixteen = hash_pearson::hash<16>(string);
+		twentyfour = hash_pearson::hash<24>(string);
+		thirtytwo = hash_pearson::hash<32>(string);
+
+		JASS_assert(eight == 83);
+		JASS_assert(sixteen == 3846);
+		JASS_assert(twentyfour == 9412455);
+		JASS_assert(thirtytwo == 2676989822);
+
 		puts("hash_pearson::PASSED");
 		}
 	}
