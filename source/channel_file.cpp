@@ -108,7 +108,7 @@ namespace JASS
 		do
 			{
 			channel_file outfile(filename);
-			outfile << std::string("bytes:");
+			outfile << "bytes:";
 			outfile << 7;
 			outfile << ((const unsigned char *)"\nLine2\n");
 			outfile.puts(std::string("1234567"));
