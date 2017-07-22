@@ -158,6 +158,29 @@ namespace JASS
 		*/
 		(void)remove(filename.c_str());
 
+		/*
+			Try gets past end of file
+		*/
+		/*
+			create an output channel and write to it
+		*/
+		do
+			{
+			channel_file outfile(filename);
+			outfile << "word";
+			}
+		while (0);
+
+		do
+			{
+			channel_file infile(filename);
+			JASS::string into(allocator);
+			into.resize(8);
+			infile.gets(into);
+			JASS_assert(into == "word");
+			}
+		while (0);
+
 		::puts("channel_file::PASS");
 		}
 }
