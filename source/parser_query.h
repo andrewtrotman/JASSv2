@@ -85,9 +85,7 @@ namespace JASS
                 buffer_pos(nullptr),
                 buffer_end(nullptr)
 				{
-				/*
-					Nothing
-				*/
+				/* Nothing */
 				}
 
 			/*
@@ -111,6 +109,8 @@ namespace JASS
 				*/
 				size_t worse_case_normalised_query_length = unicode::max_casefold_expansion_factor * unicode::max_utf8_bytes * query.size();		// might be as much as (18 * 4) times the size iof the input string (worst case0
 				buffer_pos = (uint8_t *)memory.malloc(worse_case_normalised_query_length);
+				if (buffer_pos == nullptr)
+					return;
 				buffer_end = buffer_pos + worse_case_normalised_query_length;
 
 				slice term;												// Each term as returned by the parser.

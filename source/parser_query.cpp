@@ -8,6 +8,7 @@
 
 #include "unicode.h"
 #include "parser_query.h"
+#include "allocator_memory.h"
 
 namespace JASS
 	{
@@ -54,7 +55,7 @@ namespace JASS
 					size_t rewrite_bytes = unicode::codepoint_to_utf8(buffer_pos, buffer_end, *folded);						// won't write on overflow
 					buffer_pos += rewrite_bytes;
 					if (rewrite_bytes == 0)
-						return bad_token;
+						return bad_token;	 // LCOV_EXCL_LINE				// I don't think this can happen because the character must be a valid alpha and there must be enough room to store it.
 					}
 
 				/*
@@ -82,11 +83,10 @@ namespace JASS
 				*/
 				for (const uint32_t *folded = unicode::tocasefold(codepoint); *folded != 0; folded++)
 					{
-					buffer_pos += unicode::codepoint_to_utf8(buffer_pos, buffer_end, *folded);						// won't write on overflow
 					size_t rewrite_bytes = unicode::codepoint_to_utf8(buffer_pos, buffer_end, *folded);						// won't write on overflow
 					buffer_pos += rewrite_bytes;
 					if (rewrite_bytes == 0)
-						return bad_token;
+						return bad_token;	// LCOV_EXCL_LINE			// I don't think this can happen because the character must be a valid numeric and there must be enough room to store it.
 					}
 
 				/*
@@ -169,6 +169,18 @@ namespace JASS
 
 		got = unittest_test_one(parser, memory, std::string((char *)sequence_bad));
 		JASS_assert(got == "");			// this should be the fail state
+
+		got = unittest_test_one(parser, memory, "12345");
+		JASS_assert(got == "(12345,1)");
+
+		/*
+			Test with a static buffer.
+		*/
+		uint8_t buffer[1024];
+		allocator_memory restricted_memory(buffer, sizeof(buffer));
+		parser_query restricted_parser(restricted_memory);
+		got = unittest_test_one(restricted_parser, restricted_memory, "12345");
+		JASS_assert(got == "(12345,1)");
 
 		puts("parser_query::PASSED");
 		}

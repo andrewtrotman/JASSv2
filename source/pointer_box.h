@@ -230,6 +230,7 @@ namespace JASS
 				JASS_assert(a >= b);
 				JASS_assert(c > a);
 				JASS_assert(a != b);
+				JASS_assert(!(a == b));
 
 				JASS_assert(*ap > *b);
 				JASS_assert(*b < *ap);
@@ -256,6 +257,7 @@ namespace JASS
 				JASS_assert(a.compare(c) < 0);
 				JASS_assert(a.compare(a) == 0);
 				JASS_assert(b.compare(a) < 0);
+				JASS_assert(c.compare(a) > 0);
 
 				puts("pointer_box::PASS");
 				}

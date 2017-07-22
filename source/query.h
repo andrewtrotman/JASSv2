@@ -152,11 +152,11 @@ namespace JASS
 			/*!
 				@brief Constructor
 			*/
-			query() :
+			query(size_t documents = 1024, size_t top_k = 10) :
 				parser(memory),
 				parsed_query(memory),
-				accumulators(1024, memory),
-				heap(10, memory)
+				accumulators(documents, memory),
+				heap(top_k, memory)
 				{
 				/* Nothing */
 				}
@@ -212,11 +212,8 @@ namespace JASS
 					/*
 						we weren't in the heap, but we might become so
 					*/
-					if (accumulators[document_id] += weight > *heap.front())
-						{
-						accumulators[document_id] += weight;
+					if ((accumulators[document_id] += weight) > *heap.front())
 						heap.push_back(JASS::pointer_box<uint16_t>(&accumulators[document_id]));
-						}
 					}
 				else
 					{
@@ -266,16 +263,38 @@ namespace JASS
 			*/
 			static void unittest(void)
 				{
-				query query_object;
+				query query_object(1024, 2);
 				std::ostringstream string;
 
+				/*
+					Check the rsv stuff
+				*/
 				query_object.add_rsv(10, 10);
 				query_object.add_rsv(20, 20);
+				query_object.add_rsv(10, 2);
+				query_object.add_rsv(5, 1);
+				query_object.add_rsv(5, 14);
 
 				for (const auto &rsv : query_object)
 					string << "<" << rsv.document_id << "," << rsv.rsv << ">";
+				JASS_assert(string.str() == "<20,20><5,15>");
 
-				JASS_assert(string.str() == "<20,20><10,10>");
+				/*
+					Check the parser
+				*/
+				size_t times = 0;
+				query_object.parse(std::string("one two three"));
+				for (const auto &term : query_object.terms())
+					{
+					times++;
+					if (times == 1)
+						JASS_assert(term.token() == "one");
+					else if (times == 2)
+						JASS_assert(term.token() == "two");
+					else if (times == 3)
+						JASS_assert(term.token() == "three");
+					}
+
 				puts("query::PASS");
 				}
 		};

@@ -136,6 +136,10 @@ namespace JASS
 				JASS_assert(second.term.size() == 6);
 				JASS_assert(third.query_frequency == second.query_frequency);
 				JASS_assert(third.term.address() == second.term.address());
+
+				JASS_assert(static_cast<std::string>(second) == std::string("(string,2)"));
+
+				JASS_assert(::strncmp((char *)second.token().address(), (char *)text.address(), text.size()) == 0);
 				puts("query_term::PASSED");
 				}
 		};

@@ -107,7 +107,7 @@ namespace JASS
 				else if (total_insertions > k)
 					{
 					/*
-						If adding this element will overflow the heap then check to see it it belongs
+						If adding this element will overflow the heap then check to see if it belongs
 					*/
 					if (element > members.front())
 						{

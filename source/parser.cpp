@@ -542,20 +542,18 @@ namespace JASS
 		/*
 			Check broken UTF-8 at end of file and inside tag name - all of which are graceful (i.e. non-crashing) "undefined behaviour".
 		*/
-		const uint8_t broken[] = "<DOC\xc3></DOC\xc3>\xc3";
+		const uint8_t broken[] = "<DOC\xc3></DOC\xc3>\xc3 3\xc3\xE2\x80\x8C";
 		example.contents = slice((void *)broken, sizeof(broken) - 1);
 		tokenizer.set_document(example);
 		count = 0;
 		do
 			{
 			const auto &token = tokenizer.get_next_token();
-//			if (token.type != token::eof)
-//				printf("%*.*s\n", (int)token.token.size(), (int)token.token.size(), token.token.address());
 			count++;
 			type = token.type;
 			}
 		while (type != token::eof);
-		JASS_assert(count == 4);
+		JASS_assert(count == 7);
 
 		/*
 			Yay, we passed
