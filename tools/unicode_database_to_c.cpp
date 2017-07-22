@@ -153,11 +153,13 @@ std::vector<size_t> xmlnamechar;
 	@brief Tell the user how to use this program.
 	@param filename [in] the name of this executable (normally argv[0]).
 */
+// LCOV_EXCL_START
 void usage(char *filename)
 	{
 	printf("Usage:%s <UnicodeData.txt> <PropList.txt> <CaseFolding.txt>\n", filename);
 	exit(0);
 	}
+// LCOV_EXCL_STOP
 
 /*
 	SERIALISE()
@@ -290,9 +292,9 @@ unsigned process_unicodedata(const char *line, unsigned last_codepoint)
 	*/
 	const char *semicolon;
 	if ((semicolon = strchr(line, ';')) == nullptr)
-		exit(printf("Badly formed line:%s\n", line));
+		exit(printf("Badly formed line:%s\n", line));				// LCOV_EXCL_LINE
 	if ((semicolon = strchr(semicolon + 1, ';')) == nullptr)
-		exit(printf("Badly formed line:%s\n", line));
+		exit(printf("Badly formed line:%s\n", line));				// LCOV_EXCL_LINE
 		
 	/*
 		The third parameter is the type
@@ -486,12 +488,12 @@ if (sscanf(line, "%x..%x", &range_start, &range_end) == 1)
 const char *semicolon;
 
 if ((semicolon = strchr(line, ';')) == nullptr)
-	exit(printf("badly formed line:%s\n", line));
+	exit(printf("badly formed line:%s\n", line));				// LCOV_EXCL_LINE
 	
 const char *hash;
 
 if ((hash = strchr(line, '#')) == nullptr)
-	exit(printf("badly formed line:%s\n", line));
+	exit(printf("badly formed line:%s\n", line));				// LCOV_EXCL_LINE
 
 for (size_t codepoint = (size_t)range_start; codepoint <= (size_t)range_end; codepoint++)
 	{
@@ -617,7 +619,7 @@ sscanf(line, "%x", &codepoint);
 const char *semicolon = line;
 for (uint32_t which_semicolon = 0; which_semicolon < 5; which_semicolon++)
 	if ((semicolon = strchr(semicolon + 1, ';')) == nullptr)
-		return;
+		return;			// LCOV_EXCL_LINE
 
 /*
 	Get the normalisation rules
@@ -665,7 +667,7 @@ void normalize(void)
 		while (answer.size() >= 1 && answer[0] == 0x20)
 			answer.erase(answer.begin());
 		while (answer.size() >= 1 && answer[answer.size() - 1] == 0x20)
-			answer.pop_back();
+			answer.pop_back();					// LCOV_EXCL_LINE
 
 		/*
 			Only write it out if it isn't an empty string (as most are empty and we only need to store that once).
@@ -757,7 +759,7 @@ int main(int argc, char *argv[])
 		Check we have the right number of parameters
 	*/
 	if (argc != 4)
-		usage(argv[0]);
+		usage(argv[0]);						// LCOV_EXCL_LINE
 		
 	/*
 		get the name of the UnicodeData.txt file

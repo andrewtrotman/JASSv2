@@ -168,6 +168,7 @@ int main(void)
 		puts("ALL UNIT TESTS HAVE PASSED");
 		failed = false;
 		}
+	// LCOV_EXCL_START
 	catch (std::bad_array_new_length error)
 		{
 		printf("CAUGHT AN EXCEPTION OF TYPE std::bad_array_new_length (%s)\n", error.what());
@@ -180,6 +181,7 @@ int main(void)
 		{
 		printf("CAUGHT AN EXCEPTION OF UNKNOEN TYPE)\n");
 		}
+	// LCOV_EXCL_STOP
 
 	return failed;
 	}
