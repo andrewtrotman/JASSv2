@@ -423,6 +423,31 @@ namespace JASS
 		current_token.lexeme = slice((void *)current_token.buffer, (void *)buffer_pos);
 		return current_token;
 		}
+
+	/*
+		PARSER::UNITTEST_COUNT()
+		------------------------
+	*/
+	size_t parser::unittest_count(const char *string)
+		{
+		parser tokenizer;				// declare a tokenizer
+		document example;				// declare an object to pass to the tokenizer
+		size_t count;
+		parser::token::token_type type;
+
+		example.contents = slice((void *)string, strlen(string));
+		tokenizer.set_document(example);
+		count = 0;
+		do
+			{
+			const auto &token = tokenizer.get_next_token();
+			count++;
+			type = token.type;
+			}
+		while (type != token::eof);
+
+		return count - 1;
+		}
 		
 	/*
 		PARSER::UNITTEST()
@@ -494,7 +519,7 @@ namespace JASS
 		/*
 			Check a whole load of XML stuff
 		*/
-		const uint8_t xml_data[] = "<![ INCLUDE [<!DOCTYPE note SYSTEM \"Note.dtd\"><DOC a=\"'h\"><?JASS ignore?><!--rem--><![CDATA[<t>text</t>]]><empty/>< notopen></ notclose>< notempty/></DOC>]]>";
+		const uint8_t xml_data[] = "<![ INCLUDE [<!DOCTYPE note SYSTEM \"Note.dtd\"><DOC a=\"'h\"><?JASS ignore?><!--rem--><![CDATA[<t>text</t>]]><empty/>< notopen></ notclose>< notempty/></DOC>]]> ";
 		std::string xml_data_answer[] =
 			{
 			" INCLUDE ",
@@ -542,18 +567,27 @@ namespace JASS
 		/*
 			Check broken UTF-8 at end of file and inside tag name - all of which are graceful (i.e. non-crashing) "undefined behaviour".
 		*/
-		const uint8_t broken[] = "<DOC\xc3></DOC\xc3>\xc3 3\xc3\xE2\x80\x8C";
-		example.contents = slice((void *)broken, sizeof(broken) - 1);
-		tokenizer.set_document(example);
-		count = 0;
-		do
-			{
-			const auto &token = tokenizer.get_next_token();
-			count++;
-			type = token.type;
-			}
-		while (type != token::eof);
-		JASS_assert(count == 7);
+		JASS_assert(unittest_count("<DOC\xc3></DOC\xc3>\xc3 3\xc3\xE2\x80\x8C") == 6);
+
+		/*
+			Check unicode whitespace at end of string
+		*/
+		JASS_assert(unittest_count(" Z \xE2\x80\x87") == 1);
+
+		/*
+			Check alphas and numerics at end of string
+		*/
+		JASS_assert(unittest_count("Zap") == 1);
+		JASS_assert(unittest_count("123") == 1);
+		JASS_assert(unittest_count("Zap\xE1\x8E\xA0") == 1);
+		JASS_assert(unittest_count("123\xE2\x85\xA9") == 1);
+
+		/*
+			Check unusual cases
+		*/
+		JASS_assert(unittest_count("<name at='val'>") == 1);
+		JASS_assert(unittest_count("<![t]>") == 5);
+		JASS_assert(unittest_count("\xE1\xAC\xBB") == 1);
 
 		/*
 			Yay, we passed

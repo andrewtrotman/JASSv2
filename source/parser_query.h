@@ -110,7 +110,7 @@ namespace JASS
 				size_t worse_case_normalised_query_length = unicode::max_casefold_expansion_factor * unicode::max_utf8_bytes * query.size();		// might be as much as (18 * 4) times the size iof the input string (worst case0
 				buffer_pos = (uint8_t *)memory.malloc(worse_case_normalised_query_length);
 				if (buffer_pos == nullptr)
-					return;
+					return;				// LCOV_EXCL_LINE			// At time of writing this can't happen because either malloc will assert or delatyed allocation will not return nullptr!
 				buffer_end = buffer_pos + worse_case_normalised_query_length;
 
 				slice term;												// Each term as returned by the parser.

@@ -175,7 +175,18 @@ namespace JASS
 				@return A reference to a token object that is valid until either the next call to get_next_token() or the parser is destroyed.
 			*/
 			virtual const class parser::token &get_next_token(void);
-			
+
+			/*
+				PARSER::UNITTEST_COUNT()
+				------------------------
+			*/
+			/*!
+				@brief count the numner of tokens in the given string.
+				@param string [in] The string to count characters in.
+				@return The number of tokens in string.
+			*/
+			static size_t unittest_count(const char *string);
+
 			/*
 				PARSER::UNITTEST()
 				------------------

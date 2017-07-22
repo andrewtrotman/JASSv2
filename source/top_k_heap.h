@@ -109,7 +109,7 @@ namespace JASS
 					/*
 						If adding this element will overflow the heap then check to see if it belongs
 					*/
-					if (element > members.front())
+					if (element > front())
 						{
 						/*
 							make sure we have a heap before we manipulate it
@@ -298,7 +298,7 @@ namespace JASS
 					Seed the random number generator
 				*/
 				auto seed = std::chrono::system_clock::now().time_since_epoch().count();
-			    std::default_random_engine random((unsigned int)seed);
+				std::default_random_engine random((unsigned int)seed);
 				
 				/*
 					Some relatively small number of times, we're going to shuffle the sequence then add elements to the heap
@@ -317,7 +317,7 @@ namespace JASS
 					top_k_heap<int> heap(5, memory);
 					for (const auto &element : sequence)
 						heap.push_back(element);
-					
+
 					/*
 						Make sure we have a heap and its the right size
 					*/
@@ -403,6 +403,22 @@ namespace JASS
 				exact_result << exact_heap;
 				JASS_assert(exact_result.str() == "9 8 7 6 5 4 3 2 1 0");
 
+				/*
+					Check insetion once we've sorted the heap
+				*/
+				top_k_heap<int> small_heap(5, memory);
+				for (const auto &element : sequence)
+					{
+					small_heap.sort();
+					small_heap.push_back(element);
+					}
+				small_heap.sort();
+				auto front = small_heap.front();
+				JASS_assert(front == 5);
+				small_heap.sort();
+				std::ostringstream small_result;
+				small_result << small_heap;
+				JASS_assert(small_result.str() == "9 8 7 6 5");
 
 				/*
 					We passed!

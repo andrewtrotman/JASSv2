@@ -178,6 +178,8 @@ namespace JASS
 			into.resize(8);
 			infile.gets(into);
 			JASS_assert(into == "word");
+
+			infile.block_read(const_cast<char *>(into.c_str()), into.size());
 			}
 		while (0);
 
