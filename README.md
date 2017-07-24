@@ -8,6 +8,8 @@ CodeCov (code coverage): [![codecov](https://codecov.io/gh/andrewtrotman/JASSv2/
 
 CodeDocs.xyx (documentation): [![Documentation Status](https://codedocs.xyz/andrewtrotman/JASSv2.svg)](https://codedocs.xyz/andrewtrotman/JASSv2/)
 
+Codacy (Static Analysis): [![Codacy Badge](https://api.codacy.com/project/badge/Grade/01c46a3d10e440f9b54a237889f8326b)](https://www.codacy.com/app/andrewtrotman/JASSv2?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=andrewtrotman/JASSv2&amp;utm_campaign=Badge_Grade)
+
 # JASSv2
 
 ## Building JASSv2 (Linux/OSX)
