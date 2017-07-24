@@ -223,7 +223,7 @@ namespace JASS
 				instream_document_trec source(*file);	// Set up the instream
 				
 				/*
-					Build an indes
+					Build an index
 				*/
 				do
 					{
@@ -242,7 +242,7 @@ namespace JASS
 					index.begin_document();
 
 					/*
-						for each document, read the token stream and add to the hash table.
+						For each document, read the token stream and add to the hash table.
 					*/
 					bool finished = false;
 					do
@@ -253,7 +253,7 @@ namespace JASS
 						const auto &token = parser.get_next_token();
 						
 						/*
-							different behaviour based on its type.
+							Different behaviour based on its type.
 						*/
 						switch (token.type)
 							{

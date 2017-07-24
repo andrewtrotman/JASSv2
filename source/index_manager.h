@@ -150,9 +150,7 @@ namespace JASS
 			*/
 			virtual void text_render(std::ostream &stream) const
 				{
-				/*
-					Nothing
-				*/
+				/* Nothing */
 				}
 
 			/*

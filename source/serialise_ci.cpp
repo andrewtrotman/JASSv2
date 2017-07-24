@@ -24,6 +24,9 @@ namespace JASS
 		vocab_file("JASS_vocabulary.cpp", "w+b"),
 		terms(0)
 		{
+		/*
+			Write out the headers of each file
+		*/
 		vocab_file.write("#include <stdint.h>\n\n");
 		vocab_file.write("#include\"JASS_postings.h\"\n");
 		vocab_file.write("#include\"JASS_vocabulary.h\"\n");
@@ -44,6 +47,9 @@ namespace JASS
 	*/
 	serialise_ci::~serialise_ci()
 		{
+		/*
+			Terminate each file so that they are syntacticly correct
+		*/
 		vocab_file.write("};\n");
 
 		std::ostringstream length;
@@ -61,6 +67,9 @@ namespace JASS
 		std::ostringstream code;
 		uint64_t previous_document_id = std::numeric_limits<uint64_t>::max();
 
+		/*
+			Construct the method and write it out
+		*/
 		code << "void T_" << term << "(query &q)\n";
 		code << "{\n";
 		for (const auto &posting : postings)
@@ -74,12 +83,19 @@ namespace JASS
 		code << "}\n";
 
 		postings_file.write(code.str());
+
+		/*
+			Add this term to the vocabulary
+		*/
 		vocab_file.write("{\"");
 		vocab_file.write(term.address(), term.size());
 		vocab_file.write("\",T_");
 		vocab_file.write(term.address(), term.size());
 		vocab_file.write("},\n");
 
+		/*
+			Add to the header file
+		*/
 		postings_header_file.write("void T_");
 		postings_header_file.write(term.address(), term.size());
 		postings_header_file.write("(query &q);\n");
