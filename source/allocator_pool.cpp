@@ -290,7 +290,10 @@ namespace JASS
 			uint8_t *from = pointer;
 			uint8_t value = *from;
 			for (uint8_t byte = 0; byte <  value; byte++)					// there should be n bytes of value n
-				JASS_assert(*from++ == value);
+				{
+				JASS_assert(*from == value);
+				from++;
+				}
 			hit[value]++;
 			}
 		for (size_t instance = 1; instance < thread_count; instance++)	// everyr value of n should exist
