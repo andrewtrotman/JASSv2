@@ -1,3 +1,4 @@
+#!/bin/bash
 #
 # TEST_UNICODE_DATABASE_TO_C.SH
 # -----------------------------

@@ -23,8 +23,8 @@ int main(int argc, char *argv[])
 	/*
 		build a pipeline - recall that deletes cascade so file is deleted when source goes out of scope.
 	*/
-	JASS::instream_file *file = new JASS::instream_file(argv[1]);
-	JASS::instream_document_trec source(*file);
+	JASS::instream_file file(argv[1]);
+	JASS::instream_document_trec source(file);
 
 	/*
 		this program counts document and alphbetic tokens in those documents.

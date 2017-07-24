@@ -28,8 +28,8 @@ int main(int argc, char *argv[])
 	{
 	JASS::parser parser;
 	JASS::document document;
-	JASS::instream_file *file = new JASS::instream_file(argv[1]);
-	JASS::instream_document_trec source(*file);
+	JASS::instream_file file(argv[1]);
+	JASS::instream_document_trec source(file);
 	JASS::index_manager_sequential index;
 	
 	size_t total_documents = 0;
