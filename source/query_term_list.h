@@ -22,7 +22,7 @@ namespace JASS
 		-----------------------
 	*/
 	/*!
-		@typedef 
+		@typedef query_term_list
 		@brief A list of query tokens (i.e. a query).
 	*/
 	typedef dynamic_array<query_term> query_term_list;

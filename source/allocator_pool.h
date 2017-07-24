@@ -268,7 +268,8 @@ namespace JASS
 			*/
 			/*!
 				@brief Unit test this class - thread manager
-				@param memory [in] The object to thread-test
+				@param answer [out] A pointer to the allocated memory.
+				@param memory [in] The object to thread-test.
 				@param bytes [in] The size of this thread's allocation.
 			*/
 			static void unittest_thread(dynamic_array<uint8_t *> &answer, allocator_pool &memory, uint8_t bytes);

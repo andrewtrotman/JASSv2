@@ -66,6 +66,7 @@ namespace JASS
 			/*!
 				@brief Constructor.
 				@param elements [in] The numnber of elements in the array being managed.
+				@param memory [in] All memory allocated will be through this parameter.
 			*/
 			accumulator_2d(size_t elements, allocator &memory) :
 				allocator_element(memory),

@@ -31,7 +31,7 @@ namespace JASS
 		{
 		private:
 			/*!
-				@enum parser_query::token_status
+				@enum token_status
 				@brief the parser returns whether the next token is valid or not.
 			*/
 			enum token_status
@@ -94,7 +94,7 @@ namespace JASS
 			*/
 			/*!
 				@brief parse and return the list of query tokens.
-				@nparam STRING_TYPE either a std::string or JASS::string (or other string type)
+				@tparam STRING_TYPE either a std::string or JASS::string (or other string type)
 				@param parsed_query [out] The parsed query once parsed.
 				@param query [in] The query to be parsed.
 			*/

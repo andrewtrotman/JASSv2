@@ -12,6 +12,10 @@
 */
 #include <stdlib.h>
 
+/*!
+	@var replace
+	@brief If replace is true then the global new and delete operators are overridden with versions that abort() when called.
+*/
 static bool replace = false;
 
 /*

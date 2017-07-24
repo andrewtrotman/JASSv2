@@ -16,5 +16,9 @@
 
 namespace JASS
 	{
+	/*!
+		@typedef string
+		@brief A JASS string that uses a JASS allocator_cpp for storage
+	*/
 	typedef std::basic_string<char, std::char_traits<char>, allocator_cpp<char>>string;
 	}
