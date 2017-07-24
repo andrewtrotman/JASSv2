@@ -168,7 +168,6 @@ namespace JASS
 			/*!
 				@brief Write bytes number of bytes to the give file at the current cursor position.
 				@param buffer [in] the byte sequence to write.
-				@param bytes [in] The number of bytes of data to write.
 				@return The number of bytes of data that were written to the file.
 			*/
 			size_t write(const std::string &buffer)
@@ -244,8 +243,8 @@ namespace JASS
 			*/
 			/*!
 				@brief Generate a temporary filename containing the given prefix
-				@details This metho is a wrapper for ::mkstemp() on Linux / MacOS and _mktemp() on windows.  These methods are renounds for
-				having the problem that the fiklename may not be unique once it has been generated and therefore opening a file with this
+				@details This method is a wrapper for mkstemp on Linux / MacOS and _mktemp on windows.  These methods are renounds for
+				having the problem that the filename may not be unique once it has been generated and therefore opening a file with this
 				name may fail.  However, there are times when this doesn't matter (such as unit tests).
 				@param prefix [in] The prefix to the unique filenane,
 				@return A unique filename at the time the method is called.

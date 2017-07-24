@@ -32,8 +32,8 @@ namespace JASS
 	class maths
 		{
 		private:
-			static const uint8_t ceiling_log2_answer[];
-			static const uint8_t floor_log2_answer[];
+			static const uint8_t ceiling_log2_answer[];		///< Lookup table for ceiling(log2(x));
+			static const uint8_t floor_log2_answer[];		///< Lookup table for floor(log2(x));
 
 		private:
 			/*

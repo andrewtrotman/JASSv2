@@ -43,6 +43,10 @@ namespace JASS
 			dynamic_array<uint32_t> positions;				///< Array holding the term positions
 
 		protected:
+			/*!
+				@typedef posting
+				@brief The representation of a single postings as a tuple of docid, term frequency and position.
+			*/
 			typedef std::tuple<uint32_t, uint32_t, uint32_t> posting;
 
 			/*

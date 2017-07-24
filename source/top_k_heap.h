@@ -54,6 +54,10 @@ namespace JASS
 			size_t k;								///< The k in top-k
 		
 		public:
+			/*!
+				@typedef iterator
+				@brief Type representing an iterator over an object of this type.
+			*/
 			typedef typename std::vector<ELEMENT, allocator_cpp<ELEMENT>>::iterator iterator;
 			
 		public:

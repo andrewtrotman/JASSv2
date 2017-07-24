@@ -61,7 +61,7 @@ namespace JASS
 						----------------------------------------
 					*/
 					/*!
-						@Brief Constructor.
+						@brief Constructor.
 						@param document_id [in] The document Identifier.
 						@param rsv [in] The rsv (Retrieval Status Value) relevance score.
 					*/
