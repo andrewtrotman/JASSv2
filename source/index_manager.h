@@ -13,6 +13,7 @@
 #pragma once
 
 #include "parser.h"
+#include "strings.h"
 #include "index_postings.h"
 
 namespace JASS
@@ -107,8 +108,9 @@ namespace JASS
 			*/
 			/*!
 				@brief Tell this object that you're about to start indexing a new object.
+				@param external_id [in] The primary key (i.e. external dociment identifier) of this document.
 			*/
-			virtual void begin_document(void)
+			virtual void begin_document(const slice &external_id)
 				{
 				highest_document_id++;
 				}
@@ -135,9 +137,7 @@ namespace JASS
 			*/
 			virtual void end_document(void)
 				{
-				/*
-					Nothing
-				*/
+				/* Nothing */
 				}
 			
 			/*
@@ -216,7 +216,7 @@ namespace JASS
 					Add a token
 				*/
 				parser::token token;
-				index.begin_document();
+				index.begin_document(slice("id"));
 				index.term(token);
 				index.end_document();
 

@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
 					index.term(token);
 					break;
 				case JASS::parser::token::xml_start_tag:
-					index.begin_document();
+					index.begin_document(document.primary_key);
 					break;
 				case JASS::parser::token::xml_end_tag:
 					index.end_document();

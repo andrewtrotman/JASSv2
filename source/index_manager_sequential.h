@@ -38,6 +38,7 @@ namespace JASS
 		private:
 			allocator_pool memory;											///< All memory in allocatged from this allocator.
 			hash_table<slice, index_postings, 24> index;				///< The index is a hash table of index_postings keyed on the term (a slice).
+			dynamic_array<slice> primary_key;							///< The list of primary keys (i.e. external document identifiers) allocated in memory.
 			
 		public:
 			/*
@@ -64,9 +65,7 @@ namespace JASS
 					delegate(std::ostream &into) :
 						into(into)
 						{
-						/*
-							Nothing
-						*/
+						/* Nothing */
 						}
 
 					/*
@@ -78,9 +77,7 @@ namespace JASS
 					*/
 					virtual ~delegate()
 						{
-						/*
-							Nothing
-						*/
+						/* Nothing */
 						}
 
 					/*
@@ -106,11 +103,10 @@ namespace JASS
 			*/
 			index_manager_sequential() :
 				index_manager(),
-				index(memory)
+				index(memory),
+				primary_key(memory)
 				{
-				/*
-					Nothing
-				*/
+				/* Nothing */
 				}
 			
 			/*
@@ -122,9 +118,7 @@ namespace JASS
 			*/
 			virtual ~index_manager_sequential()
 				{
-				/*
-					Nothing
-				*/
+				/* Nothing */
 				}
 			
 			
@@ -134,13 +128,15 @@ namespace JASS
 			*/
 			/*!
 				@brief Tell this object that you're about to start indexing a new object.
+				@param external_id [in] The document's primary key (or external document identifier).
 			*/
-			virtual void begin_document(void)
+			virtual void begin_document(const slice &external_id)
 				{
 				/*
 					Tell index_manager that we have started a new document
 				*/
-				index_manager::begin_document();
+				index_manager::begin_document(external_id);
+				primary_key.push_back(slice(memory, external_id));
 				}
 			
 			/*
@@ -239,7 +235,7 @@ namespace JASS
 					/*
 						Mark the start of a new document.
 					*/
-					index.begin_document();
+					index.begin_document(document.primary_key);
 
 					/*
 						For each document, read the token stream and add to the hash table.

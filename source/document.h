@@ -34,7 +34,7 @@ namespace JASS
 			static const size_t default_allocation_size = 8192;		///< The default size of the allocation unit within the document.
 			
 		protected:
-			allocator_pool default_allocator;	///< If a document is created without a specified allocator then use a pool allocator
+			allocator_pool default_allocator;		///< If a document is created without a specified allocator then use a pool allocator
 
 		public:
 			allocator &primary_key_allocator;		///< If memory is needed for the primary key then allocate from here.
