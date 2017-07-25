@@ -12,6 +12,17 @@ coverage:
     patch: yes
     changes: no
 
+coverage:
+  notify:
+    slack:
+      default:
+        url: "https://hooks.slack.com/services/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"
+        threshold: 1%
+        only_pulls: false
+        branches: null
+        flags: null
+        paths: null
+
 parsers:
   gcov:
     branch_detection:
