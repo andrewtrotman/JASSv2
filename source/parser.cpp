@@ -260,7 +260,7 @@ namespace JASS
 					/*
 						copy the tag into the token buffer
 					*/
-					size_t bytes = maths::min((size_t)(end - start), sizeof(current_token.buffer));
+					size_t bytes = maths::minimum((size_t)(end - start), sizeof(current_token.buffer));
 					memcpy(current_token.buffer, start, bytes);
 					buffer_pos += bytes;
 					current++;
@@ -275,7 +275,7 @@ namespace JASS
 						{
 						current++;
 						uint8_t *found = std::find(current, end_of_document, '>');
-						size_t bytes = maths::min((size_t)(found - current), sizeof(current_token.buffer));
+						size_t bytes = maths::minimum((size_t)(found - current), sizeof(current_token.buffer));
 						memcpy(current_token.buffer, current, bytes);
 						buffer_pos = current_token.buffer + bytes;
 						current = found + 1;
@@ -295,7 +295,7 @@ namespace JASS
 					static uint8_t close_pi[] = "?>";
 					current++;
 					uint8_t *found = std::search(current, end_of_document, close_pi, close_pi + sizeof(close_pi) - 1);
-					size_t bytes = maths::min((size_t)(found - current), sizeof(current_token.buffer));
+					size_t bytes = maths::minimum((size_t)(found - current), sizeof(current_token.buffer));
 					memcpy(current_token.buffer, current, bytes);
 					buffer_pos = current_token.buffer + bytes;
 					current = found + sizeof(close_pi) - 1;
@@ -312,7 +312,7 @@ namespace JASS
 						static uint8_t close_comment[] = "-->";
 						current += 2;
 						uint8_t *found = std::search(current, end_of_document, close_comment, close_comment + sizeof(close_comment) - 1);
-						size_t bytes = maths::min((size_t)(found - current), sizeof(current_token.buffer));
+						size_t bytes = maths::minimum((size_t)(found - current), sizeof(current_token.buffer));
 						memcpy(current_token.buffer, current, bytes);
 						buffer_pos = current_token.buffer + bytes;
 						current = found + sizeof(close_comment) - 1;
@@ -329,7 +329,7 @@ namespace JASS
 							[82]     NotationDecl::= '<!NOTATION' S Name S (ExternalID | PublicID) S? '>'
 						*/
 						uint8_t *found = std::find(current, end_of_document, '>');
-						size_t bytes = maths::min((size_t)(found - current), sizeof(current_token.buffer));
+						size_t bytes = maths::minimum((size_t)(found - current), sizeof(current_token.buffer));
 						memcpy(current_token.buffer, current, bytes);
 						buffer_pos = current_token.buffer + bytes;
 						current = found + 1;
@@ -346,7 +346,7 @@ namespace JASS
 						static uint8_t close_block[] = "]]>";
 						current += 7;
 						uint8_t *found = std::search(current, end_of_document, close_block, close_block + sizeof(close_block) - 1);
-						size_t bytes = maths::min((size_t)(found - current), sizeof(current_token.buffer));
+						size_t bytes = maths::minimum((size_t)(found - current), sizeof(current_token.buffer));
 						memcpy(current_token.buffer, current, bytes);
 						buffer_pos = current_token.buffer + bytes;
 						current = found + sizeof(close_block) - 1;
@@ -367,7 +367,7 @@ namespace JASS
 						*/
 						current++;
 						uint8_t *found = std::find(current, end_of_document, '[');
-						size_t bytes = maths::min((size_t)(found - current), sizeof(current_token.buffer));
+						size_t bytes = maths::minimum((size_t)(found - current), sizeof(current_token.buffer));
 						memcpy(current_token.buffer, current, bytes);
 						buffer_pos = current_token.buffer + bytes;
 						current = found + 1;
@@ -514,8 +514,7 @@ namespace JASS
 		*/
 		JASS_assert(count == 13);
 		
-		
-		
+
 		/*
 			Check a whole load of XML stuff
 		*/
@@ -562,7 +561,6 @@ namespace JASS
 		while (type != token::eof);
 		JASS_assert(count == 23);
 		
-
 		
 		/*
 			Check broken UTF-8 at end of file and inside tag name - all of which are graceful (i.e. non-crashing) "undefined behaviour".

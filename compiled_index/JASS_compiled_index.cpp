@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
 				}
 			}
 		}
-	catch (std::exception error)
+	catch (std::exception &error)
 		{
 		printf("CAUGHT AN EXCEPTION OF TYPE std::exception (%s)\n", error.what());
 		}

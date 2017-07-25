@@ -114,20 +114,13 @@ namespace JASS
 
 					bool operator!=(const iterator &other) const
 						{
+						/*
+							If the positions are the same then the document and term frequency must be the same.
+						*/
 						if (other.position != position)
 							return true;
-
-						/*
-							These cases can't happen because if the positions are the same then the document and term frequency must be the same.
-						*/
-						#ifdef NEVER
-						else if (other.document != document)
-							return true;
-						else if (other.position != position)
-							return true;
-						#endif
-						
-						return false;
+						else
+							return false;
 						}
 
 					/*

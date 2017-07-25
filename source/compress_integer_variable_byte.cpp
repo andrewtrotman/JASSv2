@@ -251,4 +251,4 @@ namespace JASS
 		*/
 		puts("compress_integer_variable_byte::PASSED");
 		}
-}
+	}

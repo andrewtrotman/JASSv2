@@ -103,7 +103,7 @@ namespace JASS
 		/*
 			Make sure all the bitstrings are the same length
 		*/
-		size_t longest = maths::max(b.size(), c.size());
+		size_t longest = maths::maximum(b.size(), c.size());
 		a.resize(longest);
 		b.resize(longest);
 		c.resize(longest);

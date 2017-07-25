@@ -24,11 +24,10 @@ namespace JASS
 		ALLOCATOR_POOL::ALLOCATOR_POOL()
 		--------------------------------
 	*/
-	allocator_pool::allocator_pool(size_t block_size_for_allocation)
+	allocator_pool::allocator_pool(size_t block_size_for_allocation) :
+		block_size(block_size_for_allocation),
+		current_chunk(nullptr)
 		{
-		block_size = block_size_for_allocation;
-		current_chunk = nullptr;
-
 		rewind();		// set up ready for the initial allocation
 		}
 
@@ -55,7 +54,7 @@ namespace JASS
 		/*
 			work out the size of the request to the C++ free store or Operating System.
 		*/
-		request = maths::max(block_size, bytes) + sizeof(allocator_pool::chunk);
+		request = maths::maximum(block_size, bytes) + sizeof(allocator_pool::chunk);
 
 		/*
 			Get a new block of memory for the C++ free store or the Operating System

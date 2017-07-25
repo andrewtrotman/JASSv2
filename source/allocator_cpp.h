@@ -171,7 +171,7 @@ namespace JASS
 					*/
 					JASS_assert(memory_1.allocate(-1));
 					}
-				catch (std::bad_array_new_length error)
+				catch (std::bad_array_new_length &error)
 					{
 					//puts("EXCEPTION CORRECT");				// It is correct that an exception happened, so we ignore it.
 					}

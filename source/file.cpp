@@ -153,7 +153,7 @@ namespace JASS
 		{
 		struct stat st;				// file system details
 
-		if(stat(filename.c_str(), &st) == 0)
+		if (stat(filename.c_str(), &st) == 0)
 			{
 			#ifdef WIN32
 				return (st.st_mode & _S_IFDIR) == 0 ? false : true;		// check the _S_IFDIR flag as there is no S_ISDIR() on Windows
@@ -178,7 +178,7 @@ namespace JASS
 		/*
 			If we got a short read then resize the buffer to signal back to the caller that we failed to read (probably EOF).
 		*/
-		if (bytes_read <= 0)
+		if (bytes_read == 0)
 			buffer.resize(0);
 		else if (bytes_read != buffer.size())
 			buffer.resize(bytes_read);
@@ -194,7 +194,7 @@ namespace JASS
 			If we're standard in (stdin) then the file is of infinite length
 		*/
 		if (fp == stdin)
-			return std::numeric_limits<size_t>::max();
+			return (std::numeric_limits<size_t>::max)();
 
 		/*
 			If we don't exist then we must be 0 in size
@@ -360,13 +360,13 @@ namespace JASS
 			Try stdin
 		*/
 		file stdio(stdin);
-		JASS_assert(stdio.size() == std::numeric_limits<size_t>::max());
+		JASS_assert(stdio.size() == (std::numeric_limits<size_t>::max)());
 
 		/*
 			Try with a FILE *
 		*/
 		file star(nullptr);
-		JASS_assert(stdio.size() == std::numeric_limits<size_t>::max());
+		JASS_assert(stdio.size() == (std::numeric_limits<size_t>::max)());
 
 
 		/*
@@ -374,4 +374,4 @@ namespace JASS
 		*/
 		puts("file::PASSED");
 		}
-}
+	}

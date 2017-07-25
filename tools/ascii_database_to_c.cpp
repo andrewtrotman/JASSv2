@@ -22,7 +22,7 @@
 /*
 	List of characteristics about a character.
 */
-enum 
+enum charaxter_type
 	{ 
 	UPPER = 1,			///< character is uppercase
 	LOWER = 2, 			///< character is lowercase
@@ -45,7 +45,7 @@ const char *names[] =
 	"PUNC",
 	"SPACE",
 	"HEX"
-	} ;
+	};
 
 /*
 	PRINT_THIS()
@@ -83,7 +83,6 @@ while (ch > 0)
 */
 int main(void)
 {
-uint32_t bits;		///< What is the current truth for this character?
 int ch;		///< The character currently being examined.
 
 /*
@@ -107,6 +106,8 @@ printf("#include \"ascii.h\"\n");
 printf("const uint16_t JASS::ascii::ctype[] =\n\t{");
 for (ch = 0; ch <= 0xFF; ch++)
 	{
+	uint32_t bits;		///< What is the current truth for this character?
+
 	bits = 0;
 
 	/*

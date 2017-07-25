@@ -124,4 +124,4 @@ namespace JASS
 		*/
 		puts("instream_file::PASSED");
 		}
-}
+	}

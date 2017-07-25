@@ -169,11 +169,11 @@ int main(void)
 		failed = false;
 		}
 	// LCOV_EXCL_START
-	catch (std::bad_array_new_length error)
+	catch (std::bad_array_new_length &error)
 		{
 		printf("CAUGHT AN EXCEPTION OF TYPE std::bad_array_new_length (%s)\n", error.what());
 		}
-	catch (std::exception error)
+	catch (std::exception &error)
 		{
 		printf("CAUGHT AN EXCEPTION OF TYPE std::exception (%s)\n", error.what());
 		}

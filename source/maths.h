@@ -51,73 +51,73 @@ namespace JASS
 			
 		public:
 			/*
-				MATHS::MAX()
-				------------
+				MATHS::MAXIMUM()
+				----------------
 			*/
 			/*!
 				@brief Return the maximum of the two parameters.
-				@details This method is order-preserving - that is, if a == b then a is returned as the max.
+				@details This method is order-preserving - that is, if a == b then a is returned as the max.  This method is not called max to avoid macro substitution issues.
 				@param first [in] First of the two.
 				@param second [in] Second of the two.
 				@return The largest of the two (as compated using operator>=())
 			*/
 			template <typename TYPE>
-			static const TYPE &max(const TYPE &first, const TYPE &second)
+			static const TYPE &maximum(const TYPE &first, const TYPE &second)
 				{
 				return first >= second ? first : second;
 				}
 			
 			/*
-				MATHS::MAX()
-				------------
+				MATHS::MAXIMUM()
+				----------------
 			*/
 			/*!
 				@brief Return the maximum of the three parameters.
-				@details This method is order-preserving (if a == b == c then a is returned, etc.).
+				@details This method is order-preserving (if a == b == c then a is returned, etc.).  This method is not called max to avoid macro substitution issues.
 				@param first [in] First of the three.
 				@param second [in] Second of the three.
 				@param third [in] Third of the three.
 			*/
 			template <typename TYPE>
-			static const TYPE &max(const TYPE &first, const TYPE &second, const TYPE &third)
+			static const TYPE &maximum(const TYPE &first, const TYPE &second, const TYPE &third)
 				{
-				return max(max(first, second), third);
+				return maximum(maximum(first, second), third);
 				}
 
 			/*
-				MATHS::MIN()
-				------------
+				MATHS::MINIMUM()
+				----------------
 			*/
 			/*!
 				@brief Return the minimum of the two parameters.
-				@details This method is order-preserving - that is, if a == b then a is returned.
+				@details This method is order-preserving - that is, if a == b then a is returned.  This method is not called min to avoid macro substitution issues.
 				@param first [in] First of the two.
 				@param second [in] Second of the two.
 				@return The smallest of the two (as compated using operator<=())
 			*/
 			template <typename TYPE>
-			static const TYPE &min(const TYPE &first, const TYPE &second)
+			static const TYPE &minimum(const TYPE &first, const TYPE &second)
 				{
 				return first <= second ? first : second;
 				}
 				
 			/*
-				MATHS::MIN()
-				------------
+				MATHS::MINIMUM()
+				----------------
 				Return the minimum of three integers (order preserving)
 			*/
 			/*!
 				@brief Return the minimum of the three parameters.
-				@details This method is order-preserving (if a == b == c then a is returned, etc.).
+				@details This method is order-preserving (if a == b == c then a is returned, etc.).  This method is not called min to avoid macro substitution issues.
 				@param first [in] First of the three.
 				@param second [in] Second of the three.
 				@param third [in] Third of the three.
 				@return The smallest of the three (as compated using operator<=())
 			*/
 			template <typename TYPE>
-			static const TYPE &min(const TYPE &first, const TYPE &second, const TYPE &third)
+			static const TYPE &minimum(const TYPE &first, const TYPE &second, const TYPE &third)
 				{
-				return min(min(first, second), third);
+				return minimum(minimum(first, second), third);
 				}
 
 

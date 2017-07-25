@@ -1,6 +1,9 @@
 /*
 	HASH_PEARSON.CPP
 	----------------
+	Copyright (c) 2016 Andrew Trotman
+	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
+
 	Pearson's random hash
 
 	Pearson, Peter K., Fast hashing of variable-length text strings,
@@ -118,17 +121,16 @@ namespace JASS
 
 	int main(void)
 	{
-	int x, y, val, tmp;
+	int x, y, tmp;
 
 	srand((unsigned)time(NULL));
-	rand();
 
 	for (x = 0; x < 0x100; x++)
 		table[x] = x;
 
 	for (x = 0; x < 0x100; x++)
 		{
-		val = (int)((double)rand() / (double)RAND_MAX * (double)(0x100 - x));
+		int val = (int)((double)rand() / (double)RAND_MAX * (double)(0x100 - x));
 		if (x + val > 0x100)
 			printf("oops\n");
 		tmp = table[x];

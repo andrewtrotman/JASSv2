@@ -479,8 +479,8 @@ void process_proplist(const char *line)
 if (*line == '#')
 	return;
 
-int range_start;
-int range_end;
+unsigned int range_start;
+unsigned int range_end;
 
 if (sscanf(line, "%x..%x", &range_start, &range_end) == 1)
 	range_end = range_start;
@@ -610,7 +610,7 @@ void process_JASS_normalization(const char *line)
 /*
 	get the codepoint for this line
 */
-int codepoint;
+unsigned int codepoint;
 sscanf(line, "%x", &codepoint);
 
 /*
@@ -718,7 +718,7 @@ void process_casefolding(const char *line)
 	/*
 		get the codepoint
 	*/
-	int codepoint;
+	unsigned int codepoint;
 	char type;
 	sscanf(line, "%X; %c;", &codepoint, &type);
 	if (type != 'C' && type != 'F')
@@ -737,7 +737,7 @@ void process_casefolding(const char *line)
 		if (*digit == ';')
 			break;
 
-		int fold;
+		unsigned int fold;
 		sscanf(digit, "%x", &fold);
 		folded.push_back(fold);
 		digit = strpbrk(digit, " ;");

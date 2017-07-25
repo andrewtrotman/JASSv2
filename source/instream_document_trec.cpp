@@ -236,4 +236,4 @@ namespace JASS
 		puts("instream_document_trec::PASSED");
 		}
 
-}
+	}
