@@ -13,8 +13,10 @@ test_script:
   - "unittest"
 
 notifications:
-  - provider: Slack
-    incoming_webhook: https://hooks.slack.com/services/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
-    
-
+- provider: Slack
+  incoming_webhook: https://hooks.slack.com/services/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
+  channel: builds
+  on_build_success: true
+  on_build_failure: true
+  on_build_status_changed: false
 
