@@ -121,7 +121,7 @@ namespace JASS
 
 	int main(void)
 	{
-	int x, y, tmp;
+	int x;
 
 	srand((unsigned)time(NULL));
 
@@ -133,7 +133,7 @@ namespace JASS
 		int val = (int)((double)rand() / (double)RAND_MAX * (double)(0x100 - x));
 		if (x + val > 0x100)
 			printf("oops\n");
-		tmp = table[x];
+		int tmp = table[x];
 		table[x] = table[x + val];
 		table[x + val] = tmp;
 		}
@@ -141,7 +141,7 @@ namespace JASS
 	printf("uint8_t hash_pearson::random_walk[] = \n{\n");
 	for (x = 0; x < 16; x++)
 		{
-		for (y = 0; y < 16; y++)
+		for (int y = 0; y < 16; y++)
 			printf("0x%02X, ", table[x * 16 + y]);
 		printf("\n");
 		}

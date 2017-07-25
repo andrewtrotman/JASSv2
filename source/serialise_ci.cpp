@@ -65,7 +65,7 @@ namespace JASS
 	void serialise_ci::operator()(const slice &term, const index_postings &postings)
 		{
 		std::ostringstream code;
-		uint64_t previous_document_id = std::numeric_limits<uint64_t>::max();
+		uint64_t previous_document_id = (std::numeric_limits<uint64_t>::max)();
 
 		/*
 			Construct the method and write it out

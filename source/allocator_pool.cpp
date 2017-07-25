@@ -304,4 +304,4 @@ namespace JASS
 		*/
 		puts("allocator_pool::PASSED");
 		}
-}
+	}

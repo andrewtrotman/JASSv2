@@ -173,7 +173,7 @@ namespace JASS
 			ch++;
 			}
 
-		return std::numeric_limits<size_t>::max();		// no such bit set.
+		return (std::numeric_limits<size_t>::max)();		// no such bit set.
 		}
 	
 	/*
@@ -221,10 +221,10 @@ namespace JASS
 		/*
 			does index() work?
 		*/
-		JASS_assert(b3.index(0) == std::numeric_limits<size_t>::max());
+		JASS_assert(b3.index(0) == (std::numeric_limits<size_t>::max)());
 		JASS_assert(b3.index(1) == 99);
 		JASS_assert(b3.index(2) == 999);
-		JASS_assert(b3.index(1024) == std::numeric_limits<size_t>::max());
+		JASS_assert(b3.index(1024) == (std::numeric_limits<size_t>::max)());
 
 		/*
 			Check that XOR words
@@ -307,4 +307,4 @@ namespace JASS
 		*/
 		puts("bitstring::PASSED");
 		}
-}
+	}

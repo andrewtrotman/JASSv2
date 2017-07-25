@@ -234,7 +234,7 @@ namespace JASS
 					*/
 					uint16_t &frequency = term_frequencies.back();
 					if (frequency <= 0xFFFE)
-						frequency++;
+						frequency++; 						// cppcheck-suppress unreadVariable
 					}
 				else
 					{

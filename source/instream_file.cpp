@@ -17,7 +17,7 @@ namespace JASS
 	*/
 	instream_file::instream_file(FILE *file) :
 		disk_file(file),
-		file_length(std::numeric_limits<size_t>::max()),
+		file_length((std::numeric_limits<size_t>::max)()),
 		bytes_read(0)
 		{
 		/* Nothing */

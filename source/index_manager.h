@@ -233,20 +233,16 @@ namespace JASS
 				index.text_render(into);
 				JASS_assert(into.str().size() == 0);
 
-				do					// in a do-while because cppcheck (in codacy) thinks the class definition is a label.
+				struct delegate_test : public delegate
 					{
-					class delegate_test : public delegate
+					virtual void operator()(const slice &term, const index_postings &postings)
 						{
-						public:
-							virtual void operator()(const slice &term, const index_postings &postings)
-								{
-								/* Nothing */
-								}
-						};
-					delegate_test callback;
-					index.iterate(callback);
-					}
-				while (0);
+						/* Nothing */
+						}
+					};
+				delegate_test callback;
+				index.iterate(callback);
+
 				/*
 					Done.
 				*/
