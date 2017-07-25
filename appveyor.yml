@@ -14,9 +14,7 @@ test_script:
 
 notifications:
   - provider: Slack
-    auth_token:
-      secure: rR3Q6oCvnKL1PnwtUqJ5k5Ml
-    channel: #builds
+    incoming_webhook: https://hooks.slack.com/services/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
     
 
 
