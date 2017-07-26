@@ -12,7 +12,6 @@ coverage:
     patch: yes
     changes: no
 
-coverage:
   notify:
     slack:
       default:
