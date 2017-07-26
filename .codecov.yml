@@ -1,6 +1,7 @@
 codecov:
   notify:
     require_ci_to_pass: yes
+    after_n_builds: 1
 
 coverage:
   precision: 2
@@ -16,11 +17,8 @@ coverage:
     slack:
       default:
         url: "https://hooks.slack.com/services/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"
-        threshold: 1%
-        only_pulls: false
         branches: null
-        flags: null
-        paths: null
+        threshold: null
 
 parsers:
   gcov:
