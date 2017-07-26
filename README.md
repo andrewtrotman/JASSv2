@@ -1,3 +1,5 @@
+Slack: https://join.slack.com/t/jassv2/shared_invite/MjE3NzUwNjA2ODM2LTE1MDEwMzQ0NjItMTdiMWFjMjYyNg 
+
 Travis (Linux / Mac build): [![Build Status](https://travis-ci.org/andrewtrotman/JASSv2.svg?branch=master)](https://travis-ci.org/andrewtrotman/JASSv2)
 
 Appveyor (Windows build): [![Build status](https://ci.appveyor.com/api/projects/status/sbrjp3l39qf16h2x?svg=true)](https://ci.appveyor.com/project/andrewtrotman/jassv2-rjk8n)
