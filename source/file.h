@@ -89,7 +89,6 @@ namespace JASS
 					fopen_s(&fp, filename, mode);
 				#else
 					fp = fopen(filename, mode);
-//					printf("fp:%p stdin:%p stsdout:%p errno:%d\n", fp, stdin, stdout, errno);
 				#endif
 				}
 
@@ -117,7 +116,7 @@ namespace JASS
 			*/
 			~file()
 				{
-				if (fp != nullptr && fp != stdin && fp != stdout)
+				if (fp != nullptr && fp != stdin && fp != stdout && fp != stderr)
 					fclose(fp);
 				}
 			

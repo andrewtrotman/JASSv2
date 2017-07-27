@@ -40,8 +40,10 @@ namespace JASS
 
 		postings_header_file.write("#include\"query.h\"\n\n");
 		postings_header_file.write("using namespace JASS;\n");
-		
-		primary_key_file.write("const char *primary_key[] =\n{\n");
+
+		primary_key_file.write("#include <string>\n");
+		primary_key_file.write("#include <vector>\n");
+		primary_key_file.write("std::vector<std::string> primary_key =\n{\n");
 		}
 
 	/*
@@ -60,7 +62,7 @@ namespace JASS
 		length << "uint64_t dictionary_length = " << terms << ";\n";
 		vocab_file.write(length.str());
 
-		primary_key_file.write("}\n");
+		primary_key_file.write("};\n");
 		}
 
 	/*
@@ -114,8 +116,9 @@ namespace JASS
 	*/
 	void serialise_ci::operator()(size_t document_id, const slice &primary_key)
 		{
+		primary_key_file.write("\"");
 		primary_key_file.write(primary_key.address(), primary_key.size());
-		primary_key_file.write(",\n");
+		primary_key_file.write("\",\n");
 		}
 
 	/*

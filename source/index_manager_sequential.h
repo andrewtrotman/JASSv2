@@ -62,6 +62,7 @@ namespace JASS
 					/*!
 						@brief Constructor
 						@param postings [out] data is written into this object.
+						@param primary_keys [in] primary key data is ertten into this object.
 					*/
 					delegate(std::ostream &postings, std::ostream &primary_keys) :
 						postings_out(postings),
@@ -218,6 +219,15 @@ namespace JASS
 				*/
 				for (const auto &listing : index)
 					callback(listing.first, listing.second);
+
+				/*
+					Iterate over the primary keys calling the callback function with each docid->key pair.
+					Note that the search engine counts documents from 1, not from 0.
+				*/
+				size_t instance = 0;
+				callback(instance, slice("-"));
+				for (const auto term : primary_key)
+					callback(++instance, term);
 				}
 
 			/*
@@ -302,7 +312,7 @@ namespace JASS
 			static void unittest(void)
 				{
 				/*
-					This is the answer that is expected
+					This is the postings answer that is expected
 				*/
 				std::string answer
 					(
@@ -326,6 +336,23 @@ namespace JASS
 					"one-><10,1,65>\n"
 					"nine-><2,1,5><3,1,8><4,1,12><5,1,17><6,1,23><7,1,30><8,1,38><9,1,47><10,1,57>\n"
 					"ten-><1,1,2><2,1,4><3,1,7><4,1,11><5,1,16><6,1,22><7,1,29><8,1,37><9,1,46><10,1,56>\n"
+					);
+				/*
+					This is the docid to primary_key answer
+				*/
+				std::string primary_key_answer
+					(
+					"0->-\n"
+					"1->1\n"
+					"2->2\n"
+					"3->3\n"
+					"4->4\n"
+					"5->5\n"
+					"6->6\n"
+					"7->7\n"
+					"8->8\n"
+					"9->9\n"
+					"10->10\n"
 					);
 
 				/*
@@ -354,10 +381,7 @@ namespace JASS
 				index.iterate(callback);
 
 				JASS_assert(postings_result.str() == answer);
-				
-				std::cout << "\n" << primary_key_result.str() << "\n\n";
-				
-				JASS_assert(primary_key_result.str() == "");
+				JASS_assert(primary_key_result.str() == primary_key_answer);
 
 				/*
 					Done

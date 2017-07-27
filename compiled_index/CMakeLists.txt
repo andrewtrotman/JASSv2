@@ -19,6 +19,7 @@ set(COMPILED_INDEX_FILES
 	JASS_compiled_index.cpp
 	JASS_postings.h
 	JASS_postings.cpp
+	JASS_primary_keys.cpp
 	JASS_vocabulary.h
 	JASS_vocabulary.cpp
 	)

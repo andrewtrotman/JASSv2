@@ -29,6 +29,11 @@
 #endif
 
 /*
+	Table that converts internal document IDs to external primary keys.
+*/
+extern const std::vector<std::string> primary_key;
+
+/*
 	MAIN()
 	------
 */
@@ -55,15 +60,15 @@ int main(int argc, char *argv[])
 				off checking for the sole purpose of allocating the arena.
 			*/
 			#ifdef ENSURE_NO_ALLOCATIONS
-				global_new_delete_return();					// disable checking
+				global_new_delete_return();				// disable checking
 				JASS::allocator_pool memory;				// allocate memory
 				global_new_delete_replace();				// enable checking
 			#else
 				JASS::allocator_pool memory;				// allocate memory
 			#endif
 			
-			JASS::string query(memory);						// allocate a string to read into
-			JASS::query jass_query;							// allocate a JASS query object
+			JASS::string query(memory);					// allocate a string to read into
+			JASS::query jass_query(primary_key, 1024, 10);	// allocate a JASS query object
 
 			/*
 				Read a query from a user
@@ -101,7 +106,7 @@ int main(int argc, char *argv[])
 			*/
 			for (const auto &element : jass_query)
 				{
-				std::cout << element.document_id << ":" << element.rsv << "\n";
+				std::cout << element.document_id << ":" <<element.document_id << "::" << element.rsv << "\n";
 				//output << element.document_id << ":" << element.rsv << "\n";
 				}
 			}

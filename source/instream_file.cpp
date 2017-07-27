@@ -112,13 +112,13 @@ namespace JASS
 
 			reader.read(document);
 			JASS_assert(document.contents.size() == 0);
-
-			/*
-				Delete the temporary file.
-			*/
 			}
 		while (0);
+		/*
+			Delete the temporary file.
+		*/
 		(void)remove(filename.c_str());			// delete the file.  Cast to void to remove Coverity warning if remove() fails.
+		
 		/*
 			Yay, we passed
 		*/

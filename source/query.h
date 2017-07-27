@@ -35,10 +35,11 @@ namespace JASS
 
 		private:
 			allocator_pool memory;									///< All memory allocation happens in this "arena"
-			parser_query parser;									///< Parser responsible for converting text into a parsed query
+			parser_query parser;										///< Parser responsible for converting text into a parsed query
 			query_term_list parsed_query;							///< The parsed query
-			accumulator_2d<uint16_t> accumulators;					///< The array of accumulators
-			top_k_heap<pointer_box<uint16_t>> heap;					///< The top-k heap containing the best results so far
+			accumulator_2d<uint16_t> accumulators;				///< The array of accumulators
+			top_k_heap<pointer_box<uint16_t>> heap;			///< The top-k heap containing the best results so far
+			const std::vector<std::string> &primary_keys;	///< A vector of strings, each the primary key for the document with an id equal to the vector index
 		
 
 		public:
@@ -53,27 +54,30 @@ namespace JASS
 				{
 				public:
 					size_t document_id;					///< The document identifier
-					uint16_t rsv;						///< The rsv (Retrieval Status Value) relevance score
+					const std::string &primary_key;			///< The external identifier of the document (the primary key)
+					uint16_t rsv;							///< The rsv (Retrieval Status Value) relevance score
 					
 				public:
 					/*
-						QUERYL::DOCID_RSV_PAIR::DOCID_RSV_PAIR()
-						----------------------------------------
+						QUERY::DOCID_RSV_PAIR::DOCID_RSV_PAIR()
+						---------------------------------------
 					*/
 					/*!
 						@brief Constructor.
 						@param document_id [in] The document Identifier.
+						@param key [in] The external identifier of the document (the primary key).
 						@param rsv [in] The rsv (Retrieval Status Value) relevance score.
 					*/
-					docid_rsv_pair(size_t document_id, uint16_t rsv) :
+					docid_rsv_pair(size_t document_id, const std::string &key, uint16_t rsv) :
 						document_id(document_id),
+						primary_key(key),
 						rsv(rsv)
 						{
 						/* Nothing */
 						}
 				};
 			/*
-				CLASS QUERYL::ITERATOR
+				CLASS QUERY::ITERATOR
 				----------------------
 			*/
 			/*!
@@ -82,8 +86,9 @@ namespace JASS
 			class iterator
 				{
 				private:
-					heap_iterator at;									///< This iterator's current location
-					uint16_t *accumulator_base;					///< The accumulators array used to compute document ids through pointer subtraction
+					heap_iterator at;											///< This iterator's current location
+					uint16_t *accumulator_base;							///< The accumulators array used to compute document ids through pointer subtraction
+					const std::vector<std::string> primary_keys;		///< The array of primary keys used to resolve document ids into external document identifiers.
 					
 				public:
 					/*
@@ -94,10 +99,12 @@ namespace JASS
 						@brief Constructor
 						@param at [in] An iterator over the heap
 						@param accumulator_base [in] The base address of the accumulators used to compute document ids through pointer subtraction
+						@param primary_keys [in] The vector of primary keys
 					*/
-					iterator(heap_iterator at, uint16_t *accumulator_base) :
+					iterator(heap_iterator at, uint16_t *accumulator_base, const std::vector<std::string> &primary_keys) :
 						at(at),
-						accumulator_base(accumulator_base)
+						accumulator_base(accumulator_base),
+						primary_keys(primary_keys)
 						{
 						/* Nothing */
 						}
@@ -128,7 +135,7 @@ namespace JASS
 					*/
 					docid_rsv_pair operator*() const
 						{
-						return docid_rsv_pair(at->pointer() - accumulator_base, *at->pointer());
+						return docid_rsv_pair(at->pointer() - accumulator_base, primary_keys[at->pointer() - accumulator_base], *at->pointer());
 						}
  
 					/*
@@ -151,12 +158,16 @@ namespace JASS
 			*/
 			/*!
 				@brief Constructor
+				@param primary_keys [in] Vector of the document primary keys used to convert from internal document ids to external primary keys.
+				@param documents [in] The number of documents in the collection.
+				@param top_k [in]	The top-k documents to return from the query once executed.
 			*/
-			query(size_t documents = 1024, size_t top_k = 10) :
+			query(const std::vector<std::string> &primary_keys, size_t documents = 1024, size_t top_k = 10) :
 				parser(memory),
 				parsed_query(memory),
 				accumulators(documents, memory),
-				heap(top_k, memory)
+				heap(top_k, memory),
+				primary_keys(primary_keys)
 				{
 				/* Nothing */
 				}
@@ -167,6 +178,7 @@ namespace JASS
 			*/
 			/*!
 				@brief Take the given query and parse it.
+				@tparam STRING_TYPE Either a std::string or JASS::string.
 				@param query [in] The query to parse.
 			*/
 			template <typename STRING_TYPE>
@@ -237,7 +249,7 @@ namespace JASS
 				{
 				heap.sort();
 				heap_iterator it = heap.begin();
-				return iterator(it, &accumulators[0]);
+				return iterator(it, &accumulators[0], primary_keys);
 				}
 				
 			/*
@@ -251,7 +263,7 @@ namespace JASS
 			auto end(void)
 				{
 				heap_iterator it = heap.end();
-				return iterator(it, &accumulators[0]);
+				return iterator(it, &accumulators[0], primary_keys);
 				}
 
 			/*
@@ -263,21 +275,22 @@ namespace JASS
 			*/
 			static void unittest(void)
 				{
-				query query_object(1024, 2);
+				std::vector<std::string> keys = {"one", "two", "three", "four"};
+				query query_object(keys, 1024, 2);
 				std::ostringstream string;
 
 				/*
 					Check the rsv stuff
 				*/
-				query_object.add_rsv(10, 10);
-				query_object.add_rsv(20, 20);
-				query_object.add_rsv(10, 2);
-				query_object.add_rsv(5, 1);
-				query_object.add_rsv(5, 14);
+				query_object.add_rsv(2, 10);
+				query_object.add_rsv(3, 20);
+				query_object.add_rsv(2, 2);
+				query_object.add_rsv(1, 1);
+				query_object.add_rsv(1, 14);
 
 				for (const auto &rsv : query_object)
 					string << "<" << rsv.document_id << "," << rsv.rsv << ">";
-				JASS_assert(string.str() == "<20,20><5,15>");
+				JASS_assert(string.str() == "<3,20><1,15>");
 
 				/*
 					Check the parser

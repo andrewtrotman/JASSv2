@@ -185,6 +185,11 @@ namespace JASS
 			}
 		while (0);
 
+		/*
+			Delete the file.  Cast to void to remove Coverity warning if remove() fails.
+		*/
+		(void)remove(filename.c_str());
+
 		::puts("channel_file::PASS");
 		}
 	}
