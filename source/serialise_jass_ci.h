@@ -62,9 +62,7 @@ namespace JASS
 				vocabulary("CIvocab.bin", "w+b"),
 				postings("CIpostings.bin", "w+b")
 				{
-				/*
-					Nothing
-				*/
+				/* Nothing */
 				}
 
 			/*
@@ -76,18 +74,29 @@ namespace JASS
 			*/
 			virtual ~serialise_jass_ci()
 				{
-				/*
-					Nothing
-				*/
+				/* Nothing */
 				}
 			/*
-				SERIALISE_JASS_CI::~OPERATOR()()
-				--------------------------------
+				SERIALISE_JASS_CI::DELEGATE::OPERATOR()()
+				-----------------------------------------
 			*/
 			/*!
-				@brief Callback called when serialising an index using an index_manager object.
+				@brief The callback function to serialise the postings (given the term) is operator().
+				@param term [in] The term name.
+				@param postings [in] The postings lists.
 			*/
 			virtual void operator()(const slice &term, const index_postings &postings);
+
+			/*
+				SERIALISE_JASS_CI::DELEGATE::OPERATOR()()
+				-----------------------------------------
+			*/
+			/*!
+				@brief The callback function to serialise the primary keys (external document ids) is operator().
+				@param document_id [in] The internal document identfier.
+				@param primary_key [in] This document's primary key (external document identifier).
+			*/
+			virtual void operator()(size_t document_id, const slice &primary_key);
 
 			/*
 				SERIALISE_JASS_CI::~UNITTEST()

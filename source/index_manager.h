@@ -66,9 +66,22 @@ namespace JASS
 						-------------------------------------
 					*/
 					/*!
-						@brief The callback function is operator().
+						@brief The callback function to serialise the postings (given the term) is operator().
+						@param term [in] The term name.
+						@param postings [in] The postings lists.
 					*/
 					virtual void operator()(const slice &term, const index_postings &postings) = 0;
+
+					/*
+						INDEX_MANAGER::DELEGATE::OPERATOR()()
+						-------------------------------------
+					*/
+					/*!
+						@brief The callback function to serialise the primary keys (external document ids) is operator().
+						@param document_id [in] The internal document identfier.
+						@param primary_key [in] This document's primary key (external document identifier).
+					*/
+					virtual void operator()(size_t document_id, const slice &primary_key) = 0;
 				};
 
 		public:
@@ -236,6 +249,10 @@ namespace JASS
 				struct delegate_test : public delegate
 					{
 					virtual void operator()(const slice &term, const index_postings &postings)
+						{
+						/* Nothing */
+						}
+					virtual void operator()(size_t document_id, const slice &primary_key)
 						{
 						/* Nothing */
 						}

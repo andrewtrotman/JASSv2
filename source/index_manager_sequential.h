@@ -51,7 +51,8 @@ namespace JASS
 			class delegate : public index_manager::delegate
 				{
 				private:
-					std::ostream &into;					///< The unit test iterates into this.
+					std::ostream &postings_out;				///< The unit test iterates into this.
+					std::ostream &primary_keys_out;			///< The unit test iterates into this.
 
 				public:
 					/*
@@ -60,10 +61,11 @@ namespace JASS
 					*/
 					/*!
 						@brief Constructor
-						@param into [out] data is written into this object.
+						@param postings [out] data is written into this object.
 					*/
-					delegate(std::ostream &into) :
-						into(into)
+					delegate(std::ostream &postings, std::ostream &primary_keys) :
+						postings_out(postings),
+						primary_keys_out(primary_keys)
 						{
 						/* Nothing */
 						}
@@ -85,11 +87,27 @@ namespace JASS
 						------------------------------------------------
 					*/
 					/*!
-						@brief The callback function is operator().
+						@brief The callback function to serialise the postings (given the term) is operator().
+						@param term [in] The term name.
+						@param postings [in] The postings lists.
 					*/
 					virtual void operator()(const slice &term, const index_postings &postings)
 						{
-						into << term << "->" << postings << std::endl;
+						postings_out << term << "->" << postings << std::endl;
+						}
+
+					/*
+						INDEX_MANAGER_SEQUENTIAL::DELEGATE::OPERATOR()()
+						------------------------------------------------
+					*/
+					/*!
+						@brief The callback function to serialise the primary keys (external document ids) is operator().
+						@param document_id [in] The internal document identfier.
+						@param primary_key [in] This document's primary key (external document identifier).
+					*/
+					virtual void operator()(size_t document_id, const slice &primary_key)
+						{
+						primary_keys_out << document_id << "->" << primary_key << std::endl;
 						}
 				};
 
@@ -330,11 +348,16 @@ namespace JASS
 				/*
 					Test the iterating callback mechanism
 				*/
-				std::ostringstream callback_result;
-				delegate callback(callback_result);
+				std::ostringstream postings_result;
+				std::ostringstream primary_key_result;
+				delegate callback(postings_result, primary_key_result);
 				index.iterate(callback);
 
-				JASS_assert(callback_result.str() == answer);
+				JASS_assert(postings_result.str() == answer);
+				
+				std::cout << "\n" << primary_key_result.str() << "\n\n";
+				
+				JASS_assert(primary_key_result.str() == "");
 
 				/*
 					Done

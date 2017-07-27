@@ -22,6 +22,7 @@ namespace JASS
 		postings_file("JASS_postings.cpp", "w+b"),
 		postings_header_file("JASS_postings.h", "w+b"),
 		vocab_file("JASS_vocabulary.cpp", "w+b"),
+		primary_key_file("JASS_primary_keys.cpp", "w+b"),
 		terms(0)
 		{
 		/*
@@ -39,6 +40,8 @@ namespace JASS
 
 		postings_header_file.write("#include\"query.h\"\n\n");
 		postings_header_file.write("using namespace JASS;\n");
+		
+		primary_key_file.write("const char *primary_key[] =\n{\n");
 		}
 
 	/*
@@ -56,6 +59,8 @@ namespace JASS
 
 		length << "uint64_t dictionary_length = " << terms << ";\n";
 		vocab_file.write(length.str());
+
+		primary_key_file.write("}\n");
 		}
 
 	/*
@@ -102,6 +107,16 @@ namespace JASS
 
 		terms++;
 		}
+		
+	/*
+		SERIALISE_CI::DELEGATE::OPERATOR()()
+		------------------------------------
+	*/
+	void serialise_ci::operator()(size_t document_id, const slice &primary_key)
+		{
+		primary_key_file.write(primary_key.address(), primary_key.size());
+		primary_key_file.write(",\n");
+		}
 
 	/*
 		SERIALISE_CI::UNITTEST()
@@ -134,7 +149,10 @@ namespace JASS
 		std::cout << "JASS_postings.h:" << checksum << '\n';
 
 		checksum = checksum::fletcher_16_file("JASS_vocabulary.cpp");
-		std::cout << "JASS_vocabulary.c:" << checksum << '\n';
+		std::cout << "JASS_vocabulary.cpp:" << checksum << '\n';
+
+		checksum = checksum::fletcher_16_file("JASS_primary_keys.cpp");
+		std::cout << "JASS_primary_keys.cpp:" << checksum << '\n';
 		std::cout << "=====\n";
 		}
 	}

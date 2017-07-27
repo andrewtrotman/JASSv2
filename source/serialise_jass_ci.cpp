@@ -22,6 +22,17 @@ namespace JASS
 		vocabulary_strings.write(term.address(), term.size());
 		vocabulary_strings.write("\0", 1);
 		}
+	/*
+		SERIALISE_JASS_CI::DELEGATE::OPERATOR()()
+		-----------------------------------------
+	*/
+	void serialise_jass_ci::operator()(size_t document_id, const slice &primary_key)
+		{
+		/*
+			To do.
+		*/
+		}
+
 
 	/*
 		SERIALISE_JASS_CI::UNITTEST()

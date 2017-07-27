@@ -32,7 +32,8 @@ namespace JASS
 		private:
 			file postings_file;						///< The postings file
 			file postings_header_file;				///< The header file for the postings file (so that the vocab can point to the methods)
-			file vocab_file;							///< The vocabulary file (also know as the dictionary file)
+			file vocab_file;						///< The vocabulary file (also know as the dictionary file)
+			file primary_key_file;					///< The list of primary keys.
 			uint64_t terms;							///< The number of terms in the vocabulary file.
 
 		public:
@@ -55,14 +56,26 @@ namespace JASS
 			~serialise_ci();
 
 			/*
-				SERIALISE_CI::OPERATOR()()
-				--------------------------
+				SERIALISE_CI::DELEGATE::OPERATOR()()
+				------------------------------------
 			*/
 			/*!
-				@brief Callback for each term and its postings list.
-				@details This method is responsible for serialising the posings as source code.
+				@brief The callback function to serialise the postings (given the term) is operator().
+				@param term [in] The term name.
+				@param postings [in] The postings lists.
 			*/
 			virtual void operator()(const slice &term, const index_postings &postings);
+
+			/*
+				SERIALISE_CI::DELEGATE::OPERATOR()()
+				------------------------------------
+			*/
+			/*!
+				@brief The callback function to serialise the primary keys (external document ids) is operator().
+				@param document_id [in] The internal document identfier.
+				@param primary_key [in] This document's primary key (external document identifier).
+			*/
+			virtual void operator()(size_t document_id, const slice &primary_key);
 
 			/*
 				SERIALISE_CI::UNITTEST()
