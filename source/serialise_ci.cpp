@@ -152,19 +152,19 @@ namespace JASS
 //		std::cout << "=====\n";
 		auto checksum = checksum::fletcher_16_file("JASS_postings.cpp");
 //		std::cout << "JASS_postings.c:" << checksum << '\n';
-		JASS_assert(checksum == 63766);
+		JASS_assert(checksum == 26767 || checksum == 23421);			// release build || debug build
 
 		checksum = checksum::fletcher_16_file("JASS_postings.h");
 //		std::cout << "JASS_postings.h:" << checksum << '\n';
-		JASS_assert(checksum == 5525);
+		JASS_assert(checksum == 23055 || checksum == 36092);			// release build || debug build
 
 		checksum = checksum::fletcher_16_file("JASS_vocabulary.cpp");
 //		std::cout << "JASS_vocabulary.cpp:" << checksum << '\n';
-		JASS_assert(checksum == 31429);
+		JASS_assert(checksum == 32575 || checksum == 10029);			// release build || debug build
 
 		checksum = checksum::fletcher_16_file("JASS_primary_keys.cpp");
 //		std::cout << "JASS_primary_keys.cpp:" << checksum << '\n';
-		JASS_assert(checksum == 8897);
+		JASS_assert(checksum == 28987 || checksum == 18729);			// release build || debug build
 
 //		std::cout << "=====\n";
 		}

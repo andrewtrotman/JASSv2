@@ -38,6 +38,13 @@ else()
 	add_definitions("-Wall -D_GLIBCXX_USE_CXX11_ABI=1")
 endif()
 
+#
+# If we're in Debug mode then enble the DEBUG macro'
+#
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+	add_definitions(-DDEBUG)
+endif()
+
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 

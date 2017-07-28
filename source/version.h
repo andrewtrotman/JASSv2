@@ -43,7 +43,7 @@ namespace JASS
 				#ifdef NDEBUG
 					#error "NDEBUG is defined in a DEBUG build - Can't proceed without know which is true"
 				#else
-					static constexpr const char *debugness = "DEBUGGING-build";		///< String declairing whether or not this is a debug build
+					static constexpr const char *debugness = "DEBUGGING-build ";		///< String declairing whether or not this is a debug build
 					static constexpr bool debug = true;							///< Is this a debug build or not?
 				#endif
 			#else
@@ -61,7 +61,7 @@ namespace JASS
 			*/
 			static std::string build(void)
 				{
-				return std::string("JASS Version ") + std::string(version_string) + std::string(" ") + std::to_string(bitness) + std::string("-bit ") + std::string(debugness) + std::string("Copright (c) 2016-2017 Andrew Trotman, University of Otago");
+				return std::string("JASS Version ") + std::string(version_string) + std::string(" ") + std::to_string(bitness) + std::string("-bit ") + std::string(debugness) + std::string("Copyright (c) 2016-2017 Andrew Trotman, University of Otago");
 				}
 
 
