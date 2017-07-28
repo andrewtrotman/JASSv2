@@ -61,7 +61,7 @@ namespace JASS
 			*/
 			static std::string build(void)
 				{
-				return std::string("JASS Version ") + std::string(version_string) + std::string(" ") + std::to_string(bitness) + std::string("-bit ") + std::string(debugness) + std::string("\nWritten (w) 2016-2017 Andrew Trotman, University of Otago\n");
+				return std::string("JASS Version ") + std::string(version_string) + std::string(" ") + std::to_string(bitness) + std::string("-bit ") + std::string(debugness) + std::string("Copright (c) 2016-2017 Andrew Trotman, University of Otago");
 				}
 
 
@@ -76,9 +76,9 @@ namespace JASS
 			static std::string credits(void)
 				{
 				return
-					build() + "\n" + 
-					"DESIGN & IMPLEMENTATION\n" +
-					"-----------------------\n" +
+					build() + "\n"
+					"DESIGN & IMPLEMENTATION\n"
+					"-----------------------\n"
 					"Andrew Trotman\n";
 				}
 		};

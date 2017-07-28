@@ -31,7 +31,7 @@
 /*
 	Table that converts internal document IDs to external primary keys.
 */
-extern const std::vector<std::string> primary_key;
+extern std::vector<std::string> primary_key;
 
 /*
 	MAIN()
