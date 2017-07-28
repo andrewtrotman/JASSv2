@@ -244,7 +244,7 @@ namespace JASS
 				parser parser;								// We need a parser
 				document document;						// That creates documents
 				instream *file = new instream_memory(unittest_data::ten_documents.c_str(), unittest_data::ten_documents.size());			// From this stream (the standard 10 document stream).
-				instream_document_trec source(*file);	// Set up the instream
+				instream_document_trec *source = new instream_document_trec(file);	// Set up the instream
 				
 				/*
 					Build an index
@@ -255,7 +255,7 @@ namespace JASS
 						Read the next document and give it to the parser (until eof).
 					*/
 					document.rewind();
-					source.read(document);
+					source->read(document);
 					if (document.isempty())
 						break;
 					parser.set_document(document);

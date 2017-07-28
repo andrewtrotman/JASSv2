@@ -28,8 +28,8 @@ int main(int argc, char *argv[])
 	{
 	JASS::parser parser;
 	JASS::document document;
-	JASS::instream_file file(argv[1]);
-	JASS::instream_document_trec source(file);
+	std::shared_ptr<JASS::instream> file(new JASS::instream_file(argv[1]));
+	std::shared_ptr<JASS::instream> source(new JASS::instream_document_trec(file));
 	JASS::index_manager_sequential index;
 	
 	size_t total_documents = 0;
@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
 	do
 		{
 		document.rewind();
-		source.read(document);
+		source->read(document);
 		if (document.isempty())
 			break;
 		total_documents++;

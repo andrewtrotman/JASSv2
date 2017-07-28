@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include <new>
+#include <memory>
 #include <algorithm>
 
 #include "assert.h"
@@ -21,8 +22,8 @@ namespace JASS
 		INSTREAM_DOCUMENT_TREC::INSTREAM_DOCUMENT_TREC()
 		------------------------------------------------
 	*/
-	instream_document_trec::instream_document_trec(instream &source, size_t buffer_size, const std::string &document_tag, const std::string &document_primary_key_tag) :
-		instream(nullptr, &source),
+	instream_document_trec::instream_document_trec(std::shared_ptr<instream> source, size_t buffer_size, const std::string &document_tag, const std::string &document_primary_key_tag) :
+		instream(source, nullptr),
 		buffer_size(buffer_size)
 		{
 		/*
@@ -43,7 +44,7 @@ namespace JASS
 		INSTREAM_DOCUMENT_TREC::INSTREAM_DOCUMENT_TREC()
 		------------------------------------------------
 	*/
-	instream_document_trec::instream_document_trec(instream &source, const std::string &document_tag, const std::string &document_primary_key_tag) :
+	instream_document_trec::instream_document_trec(std::shared_ptr<instream> source, const std::string &document_tag, const std::string &document_primary_key_tag) :
 		instream_document_trec(source, 16 * 1024 * 1024, document_tag, document_primary_key_tag)
 		{
 		/*
@@ -168,8 +169,8 @@ namespace JASS
 			Set up a pipeline that is an instream_document_trec reading from a instream_document_trec reading from a instream_memory reading from the unittest_data::ten_documents string.
 		*/
 		instream_memory *buffer = new instream_memory((uint8_t *)unittest_data::ten_documents.c_str(), unittest_data::ten_documents.size());
-		instream_document_trec *first_slice = new instream_document_trec(*buffer, 80, "DOC", "DOCNO");				// call the protected constructor and tell it to use an unusually small buffer
-		instream_document_trec slicer(*first_slice, 80, "DOC", "DOCNO");				// call the protected constructor and tell it to use an unusually small buffer
+		instream_document_trec *first_slice = new instream_document_trec(buffer, 80, "DOC", "DOCNO");				// call the protected constructor and tell it to use an unusually small buffer
+		instream_document_trec slicer(first_slice, 80, "DOC", "DOCNO");				// call the protected constructor and tell it to use an unusually small buffer
 		document indexable_object;
 
 		/*
@@ -216,8 +217,8 @@ namespace JASS
 			Missing </DOC>
 		*/
 		buffer = new instream_memory((uint8_t *)unittest_data::ten_document_11_broken.c_str(), unittest_data::ten_document_11_broken.size());
-		first_slice = new instream_document_trec(*buffer, 128, "DOC", "DOCNO");
-		instream_document_trec slicer_11(*first_slice, 128, "DOC", "DOCNO");
+		first_slice = new instream_document_trec(buffer, 128, "DOC", "DOCNO");
+		instream_document_trec slicer_11(first_slice, 128, "DOC", "DOCNO");
 		slicer_11.read(indexable_object);
 		JASS_assert(indexable_object.contents.size() == 0);
 
@@ -225,8 +226,8 @@ namespace JASS
 			Missing </DOCNO>
 		*/
 		buffer = new instream_memory((uint8_t *)unittest_data::ten_document_13_broken.c_str(), unittest_data::ten_document_13_broken.size());
-		first_slice = new instream_document_trec(*buffer, 128, "DOC", "DOCNO");
-		instream_document_trec slicer_13(*first_slice, 128, "DOC", "DOCNO");
+		first_slice = new instream_document_trec(buffer, 128, "DOC", "DOCNO");
+		instream_document_trec slicer_13(first_slice, 128, "DOC", "DOCNO");
 		slicer_13.read(indexable_object);
 		JASS_assert(indexable_object.contents.size() == 92);
 

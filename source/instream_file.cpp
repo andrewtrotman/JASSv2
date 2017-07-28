@@ -16,6 +16,7 @@ namespace JASS
 		------------------------------
 	*/
 	instream_file::instream_file(FILE *file) :
+		instream(nullptr),
 		disk_file(file),
 		file_length((std::numeric_limits<size_t>::max)()),
 		bytes_read(0)
@@ -28,6 +29,7 @@ namespace JASS
 		------------------------------
 	*/
 	instream_file::instream_file(const std::string &filename) :
+		instream(nullptr),
 		disk_file(filename.c_str(), "rb"),
 		file_length(disk_file.size()),
 		bytes_read(0)

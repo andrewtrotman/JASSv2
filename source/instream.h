@@ -14,6 +14,7 @@
 #pragma once
 
 #include <vector>
+#include <memory>
 
 #include "document.h"
 #include "allocator_memory.h"
@@ -44,8 +45,8 @@ namespace JASS
 	class instream
 		{
 		protected:
-			allocator *memory;				///< Any and all memory allocation must happen using this object.
-			instream *source;					///< If this object is reading from another instream then this is that instream.
+			allocator *memory;						///< Any and all memory allocation must happen using this object.
+			std::shared_ptr<instream> source;		///< If this object is reading from another instream then this is that instream.
 
 		public:
 			/*
@@ -57,11 +58,12 @@ namespace JASS
 				@param memory [in] If this object needs to allocate memory (for example, a buffer) then it should be allocated from this pool.
 				@param source [in] This object reads data from source before processing and passingin via read().
 			*/
-			instream(allocator *memory = nullptr, instream *source = nullptr) :
+			instream(std::shared_ptr<instream> source, allocator *memory = nullptr) :
 				memory(memory),				// store the memory pointer (which this object does not free on deletion)
 				source(source)					// store the instream (which this object does free on deletion)
 				{
 				}
+				
 			/*
 				INSTREAM::~INSTREAM()
 				---------------------
@@ -73,7 +75,7 @@ namespace JASS
 			*/
 			virtual ~instream()
 				{
-				delete source;
+				/* Nothing */
 				}
 	
 			/*
