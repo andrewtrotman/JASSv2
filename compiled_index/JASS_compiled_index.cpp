@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
 				off checking for the sole purpose of allocating the arena.
 			*/
 			#ifdef ENSURE_NO_ALLOCATIONS
-				global_new_delete_return();				// disable checking
+				global_new_delete_return();					// disable checking
 				JASS::allocator_pool memory;				// allocate memory
 				global_new_delete_replace();				// enable checking
 			#else
