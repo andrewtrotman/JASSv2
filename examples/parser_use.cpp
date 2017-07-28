@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
 	/*
 		build a pipeline - recall that deletes cascade so file is deleted when source goes out of scope.
 	*/
-	JASS::instream_file file(argv[1]);
+	std::shared_ptr<JASS::instream> file(new JASS::instream_file(argv[1]));
 	JASS::instream_document_trec source(file);
 
 	/*
