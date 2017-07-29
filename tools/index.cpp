@@ -32,7 +32,10 @@ int main(int argc, char *argv[])
 	std::shared_ptr<JASS::instream> file(new JASS::instream_file(argv[1]));
 	std::shared_ptr<JASS::instream> source(new JASS::instream_document_trec(file));
 	JASS::index_manager_sequential index;
-	
+
+	const JASS::slice document_start_token = "DOC";
+	const JASS::slice document_end_token = "DOC";
+
 	size_t total_documents = 0;
 	
 	do
@@ -61,10 +64,12 @@ int main(int argc, char *argv[])
 					index.term(token);
 					break;
 				case JASS::parser::token::xml_start_tag:
-					index.begin_document(document.primary_key);
+					if (token.get() == document_start_token)
+						index.begin_document(document.primary_key);
 					break;
 				case JASS::parser::token::xml_end_tag:
-					index.end_document();
+					if (token.get() == document_end_token)
+						index.end_document();
 					break;
 				default:
 					break;

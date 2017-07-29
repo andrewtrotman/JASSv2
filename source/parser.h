@@ -82,6 +82,20 @@ namespace JASS
 					uint8_t buffer[max_token_length];	///< The token manages its memory through this buffer
 					slice lexeme;								///< The token itself, stored as a slice (pointer / length pair)
 					token_type type;							///< The type of this token (See token_type)
+
+				public:
+					/*
+						PARSER::TOKEN::GET()
+						--------------------
+					*/
+					/*!
+						@brief Return a reference to the token as a slice.  The life of the slice is the life of the object.
+						@return The token.
+					*/
+					const slice &get(void) const
+						{
+						return lexeme;
+						}
 				};
 			
 		protected:
