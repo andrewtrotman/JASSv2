@@ -15,6 +15,7 @@
 #include <string.h>
 
 #include "parser.h"
+#include "serialise_ci.h"
 #include "instream_file.h"
 #include "instream_memory.h"
 #include "instream_document_trec.h"
@@ -74,6 +75,9 @@ int main(int argc, char *argv[])
 	while (!document.isempty());
 	
 	printf("Documents:%lld\n", (long long)total_documents);
+
+	JASS::serialise_ci serialiser;
+	index.iterate(serialiser);
 
 	return 0;
 	}
