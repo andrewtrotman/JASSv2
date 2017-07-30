@@ -68,7 +68,7 @@ int main(int argc, char *argv[])
 			#endif
 			
 			JASS::string query(memory);					// allocate a string to read into
-			JASS::query jass_query(primary_key, 1024, 10);	// allocate a JASS query object
+			JASS::query16_t jass_query(primary_key, 1024, 10);	// allocate a JASS query object
 
 			/*
 				Read a query from a user

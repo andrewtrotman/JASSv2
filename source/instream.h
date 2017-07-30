@@ -45,8 +45,8 @@ namespace JASS
 	class instream
 		{
 		protected:
-			allocator *memory;						///< Any and all memory allocation must happen using this object.
 			std::shared_ptr<instream> source;		///< If this object is reading from another instream then this is that instream.
+			std::shared_ptr<allocator> memory;		///< Any and all memory allocation must happen using this object.
 
 		public:
 			/*
@@ -55,15 +55,39 @@ namespace JASS
 			*/
 			/*!
 				@brief Constructor.
+				@details either of the parameters can be a nullptr as this class doens't use either.  Its provided as a holder for derived classes.
+				@param source [in] This object reads data from source before processing and passingin via read().
 				@param memory [in] If this object needs to allocate memory (for example, a buffer) then it should be allocated from this pool.
+			*/
+			instream(std::shared_ptr<instream> source, std::shared_ptr<allocator> memory) :
+				source(std::move(source)),				// store the instream
+				memory(std::move(memory))				// store the memory pointer
+				{
+				/* Nothing */
+				}
+
+			/*!
+				@brief Constructor.
 				@param source [in] This object reads data from source before processing and passingin via read().
 			*/
-			instream(std::shared_ptr<instream> source, allocator *memory = nullptr) :
-				memory(memory),				// store the memory pointer (which this object does not free on deletion)
-				source(source)					// store the instream (which this object does free on deletion)
+			instream(std::shared_ptr<instream> source) :
+				source(std::move(source))					// store the instream
 				{
+				/* Nothing */
 				}
-				
+
+			/*
+				INSTREAM::INSTREAM()
+				--------------------
+			*/
+			/*!
+				@brief Constructor.
+			*/
+			instream(void)
+				{
+				/* Nothing */
+				}
+
 			/*
 				INSTREAM::~INSTREAM()
 				---------------------
@@ -107,7 +131,6 @@ namespace JASS
 				read(into);
 				return into.contents.size();
 				}
-
 		} ;
 	}
 

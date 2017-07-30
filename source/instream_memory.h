@@ -43,7 +43,7 @@ namespace JASS
 				@param length [in] The length of the buffer
 			*/
 			instream_memory(const void *memory, size_t length):
-				instream(nullptr),
+				instream(),
 				bytes_read(0),
 				file((uint8_t *)memory),
 				file_length(length)

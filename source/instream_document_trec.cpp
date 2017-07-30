@@ -23,7 +23,7 @@ namespace JASS
 		------------------------------------------------
 	*/
 	instream_document_trec::instream_document_trec(std::shared_ptr<instream> source, size_t buffer_size, const std::string &document_tag, const std::string &document_primary_key_tag) :
-		instream(source, nullptr),
+		instream(source),
 		buffer_size(buffer_size)
 		{
 		/*

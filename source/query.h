@@ -27,18 +27,20 @@ namespace JASS
 	*/
 	/*!
 		@brief Everything necessary to process a query is encapsulated in an object of this type
+		@tparam ACCUMULATOR_TYPE The value-type for an accumulator (normally uint16_t or double).
 	*/
+	template <typename ACCUMULATOR_TYPE>
 	class query
 		{
 		private:
-			typedef typename top_k_heap<pointer_box<uint16_t>>::iterator heap_iterator;			///< The heap object's begin() returns objects of this type
+			typedef typename top_k_heap<pointer_box<ACCUMULATOR_TYPE>>::iterator heap_iterator;			///< The heap object's begin() returns objects of this type
 
 		private:
 			allocator_pool memory;									///< All memory allocation happens in this "arena"
 			parser_query parser;										///< Parser responsible for converting text into a parsed query
 			query_term_list parsed_query;							///< The parsed query
-			accumulator_2d<uint16_t> accumulators;				///< The array of accumulators
-			top_k_heap<pointer_box<uint16_t>> heap;			///< The top-k heap containing the best results so far
+			accumulator_2d<ACCUMULATOR_TYPE> accumulators;				///< The array of accumulators
+			top_k_heap<pointer_box<ACCUMULATOR_TYPE>> heap;			///< The top-k heap containing the best results so far
 			const std::vector<std::string> &primary_keys;	///< A vector of strings, each the primary key for the document with an id equal to the vector index
 		
 
@@ -276,7 +278,7 @@ namespace JASS
 			static void unittest(void)
 				{
 				std::vector<std::string> keys = {"one", "two", "three", "four"};
-				query query_object(keys, 1024, 2);
+				query<uint16_t> query_object(keys, 1024, 2);
 				std::ostringstream string;
 
 				/*

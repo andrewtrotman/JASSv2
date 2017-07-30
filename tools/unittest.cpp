@@ -162,7 +162,7 @@ int main(void)
 		JASS::top_k_heap<int>::unittest();
 
 		puts("query");
-		JASS::query::unittest();
+		JASS::query<uint16_t>::unittest();
 
 		puts("ALL UNIT TESTS HAVE PASSED");
 		failed = false;
