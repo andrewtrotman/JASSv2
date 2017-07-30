@@ -59,7 +59,7 @@ namespace JASS
 				@param document_tag [in] The name of the tag used to delineate docments.
 				@param document_primary_key_tag [in] The name of the element that contans the document's primary key.
 			*/
-			instream_document_trec(std::shared_ptr<instream> source, size_t buffer_size, const std::string &document_tag, const std::string &document_primary_key_tag);
+			instream_document_trec(std::shared_ptr<instream> &source, size_t buffer_size, const std::string &document_tag, const std::string &document_primary_key_tag);
 			
 			/*
 				INSTREAM_DOCUMENT_TREC::SET_TAGS()
@@ -97,7 +97,7 @@ namespace JASS
 				@param document_tag [in] The name of the tag used to delineate docments (default = "DOC").
 				@param document_primary_key_tag [in] The name of the element that contans the document's primary key (default = "DOCNO").
 			*/
-			instream_document_trec(std::shared_ptr<instream> source, const std::string &document_tag = "DOC", const std::string &document_primary_key_tag = "DOCNO");
+			instream_document_trec(std::shared_ptr<instream> &source, const std::string &document_tag = "DOC", const std::string &document_primary_key_tag = "DOCNO");
 			
 			/*
 				INSTREAM_DOCUMENT_TREC::INSTREAM_DOCUMENT_TREC()

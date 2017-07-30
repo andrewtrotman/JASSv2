@@ -59,9 +59,9 @@ namespace JASS
 				@param source [in] This object reads data from source before processing and passingin via read().
 				@param memory [in] If this object needs to allocate memory (for example, a buffer) then it should be allocated from this pool.
 			*/
-			instream(std::shared_ptr<instream> source, std::shared_ptr<allocator> memory) :
-				source(std::move(source)),				// store the instream
-				memory(std::move(memory))				// store the memory pointer
+			instream(std::shared_ptr<instream> &source, std::shared_ptr<allocator> &memory) :
+				source(source),				// store the instream
+				memory(memory)				// store the memory pointer
 				{
 				/* Nothing */
 				}
@@ -70,8 +70,8 @@ namespace JASS
 				@brief Constructor.
 				@param source [in] This object reads data from source before processing and passingin via read().
 			*/
-			instream(std::shared_ptr<instream> source) :
-				source(std::move(source))					// store the instream
+			instream(std::shared_ptr<instream> &source) :
+				source(source)					// store the instream
 				{
 				/* Nothing */
 				}

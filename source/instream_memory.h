@@ -48,9 +48,7 @@ namespace JASS
 				file((uint8_t *)memory),
 				file_length(length)
 				{
-				/*
-					Nothing
-				*/
+				/* Nothing */
 				}
 			/*
 				INSTREAM_MEMORY::READ()

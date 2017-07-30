@@ -22,7 +22,7 @@ namespace JASS
 		INSTREAM_DOCUMENT_TREC::INSTREAM_DOCUMENT_TREC()
 		------------------------------------------------
 	*/
-	instream_document_trec::instream_document_trec(std::shared_ptr<instream> source, size_t buffer_size, const std::string &document_tag, const std::string &document_primary_key_tag) :
+	instream_document_trec::instream_document_trec(std::shared_ptr<instream> &source, size_t buffer_size, const std::string &document_tag, const std::string &document_primary_key_tag) :
 		instream(source),
 		buffer_size(buffer_size)
 		{
@@ -44,7 +44,7 @@ namespace JASS
 		INSTREAM_DOCUMENT_TREC::INSTREAM_DOCUMENT_TREC()
 		------------------------------------------------
 	*/
-	instream_document_trec::instream_document_trec(std::shared_ptr<instream> source, const std::string &document_tag, const std::string &document_primary_key_tag) :
+	instream_document_trec::instream_document_trec(std::shared_ptr<instream> &source, const std::string &document_tag, const std::string &document_primary_key_tag) :
 		instream_document_trec(source, 16 * 1024 * 1024, document_tag, document_primary_key_tag)
 		{
 		/*
