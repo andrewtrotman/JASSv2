@@ -1,12 +1,12 @@
 /*
-	SERIALISE_JASS_CI.H
+	SERIALISE_JASS_V1.H
 	-------------------
 	Copyright (c) 2016 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 /*!
 	@file
-	@brief Serialise an index in the experimental JASS-CI format used in the RIGOR workshop.
+	@brief Serialise an index in the experimental JASS-CI format used (by JASS version 1) in the RIGOR workshop.
 	@author Andrew Trotman
 	@copyright 2016 Andrew Trotman
 */
@@ -20,11 +20,11 @@
 namespace JASS
 	{
 	/*
-		CLASS SERIALISE_JASS_CI
+		CLASS SERIALISE_JASS_V1
 		-----------------------
 	*/
 	/*!
-		@brief Serialise an index in the experimental JASS-CI format used in the RIGOR workshop.
+		@brief Serialise an index in the experimental JASS-CI format used (by JASS version 1) in the RIGOR workshop.
 		@details The original version of JASS was an experimental hack in reducing the complexity of the ATIRE search engine,
 		that resulted in an index that was large, but easy to process.  The intent was to go back and "fix" the index to be smaller
 		and faster.  That never happened.  Instead it was used as the basis of other work.  In an effort to bring up this re-write of
@@ -42,7 +42,7 @@ namespace JASS
 		sequence of '\0' terminated UTF-8 strings.  So, if the vocabularty contains three terms, "a", "bb" and "cc",
 		then the contents of CIvocab_terms.bin will be "a\0bb\0cc\0".
 	*/
-	class serialise_jass_ci : public index_manager::delegate
+	class serialise_jass_v1 : public index_manager::delegate
 		{
 		private:
 			file vocabulary_strings;					///< The concatination of UTS-8 encoded unique tokens in the collection.
@@ -51,13 +51,13 @@ namespace JASS
 
 		public:
 			/*
-				SERIALISE_JASS_CI::SERIALISE_JASS_CI()
+				SERIALISE_JASS_V1::SERIALISE_JASS_V1()
 				--------------------------------------
 			*/
 			/*!
 				@brief Constructor
 			*/
-			serialise_jass_ci() :
+			serialise_jass_v1() :
 				vocabulary_strings("CIvocab_terms.bin", "w+b"),
 				vocabulary("CIvocab.bin", "w+b"),
 				postings("CIpostings.bin", "w+b")
@@ -66,18 +66,18 @@ namespace JASS
 				}
 
 			/*
-				SERIALISE_JASS_CI::~SERIALISE_JASS_CI()
+				SERIALISE_JASS_V1::~SERIALISE_JASS_V1()
 				--------------------------------------
 			*/
 			/*!
 				@brief Destructor
 			*/
-			virtual ~serialise_jass_ci()
+			virtual ~serialise_jass_v1()
 				{
 				/* Nothing */
 				}
 			/*
-				SERIALISE_JASS_CI::DELEGATE::OPERATOR()()
+				SERIALISE_JASS_V1::DELEGATE::OPERATOR()()
 				-----------------------------------------
 			*/
 			/*!
@@ -88,7 +88,7 @@ namespace JASS
 			virtual void operator()(const slice &term, const index_postings &postings);
 
 			/*
-				SERIALISE_JASS_CI::DELEGATE::OPERATOR()()
+				SERIALISE_JASS_V1::DELEGATE::OPERATOR()()
 				-----------------------------------------
 			*/
 			/*!
@@ -99,7 +99,7 @@ namespace JASS
 			virtual void operator()(size_t document_id, const slice &primary_key);
 
 			/*
-				SERIALISE_JASS_CI::~UNITTEST()
+				SERIALISE_JASS_V1::~UNITTEST()
 				------------------------------
 			*/
 			/*!

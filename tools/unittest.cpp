@@ -31,7 +31,7 @@
 #include "accumulator_2d.h"
 #include "instream_memory.h"
 #include "allocator_memory.h"
-#include "serialise_jass_ci.h"
+#include "serialise_jass_v1.h"
 #include "instream_file_star.h"
 #include "instream_document_trec.h"
 #include "index_manager_sequential.h"
@@ -144,7 +144,7 @@ int main(void)
 		JASS::index_manager_sequential::unittest();
 
 		puts("serialise_jass_ci");
-		JASS::serialise_jass_ci::unittest();
+		JASS::serialise_jass_v1::unittest();
 
 		puts("serialise_ci");
 		JASS::serialise_ci::unittest();

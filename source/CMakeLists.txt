@@ -63,8 +63,8 @@ set(JASSlib_FILES
 	query_term_list.h
 	serialise_ci.cpp
 	serialise_ci.h
-	serialise_jass_ci.cpp
-	serialise_jass_ci.h
+	serialise_jass_v1.cpp
+	serialise_jass_v1.h
 	slice.h
 	strings.h
 	top_k_heap.h

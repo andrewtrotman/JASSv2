@@ -1,20 +1,20 @@
 /*
-	SERIALISE_JASS_CI.CPP
+	SERIALISE_JASS_V1.CPP
 	---------------------
 	Copyright (c) 2016 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 #include "checksum.h"
-#include "serialise_jass_ci.h"
+#include "serialise_jass_v1.h"
 #include "index_manager_sequential.h"
 
 namespace JASS
 	{
 	/*
-		SERIALISE_JASS_CI::OPERATOR()()
+		SERIALISE_JASS_V1::OPERATOR()()
 		-------------------------------
 	*/
-	void serialise_jass_ci::operator()(const slice &term, const index_postings &postings)
+	void serialise_jass_v1::operator()(const slice &term, const index_postings &postings)
 		{
 		/*
 			Write the vocabulary term to CIvocab_terms.bin
@@ -23,10 +23,10 @@ namespace JASS
 		vocabulary_strings.write("\0", 1);
 		}
 	/*
-		SERIALISE_JASS_CI::DELEGATE::OPERATOR()()
+		SERIALISE_JASS_V1::DELEGATE::OPERATOR()()
 		-----------------------------------------
 	*/
-	void serialise_jass_ci::operator()(size_t document_id, const slice &primary_key)
+	void serialise_jass_v1::operator()(size_t document_id, const slice &primary_key)
 		{
 		/*
 			To do.
@@ -35,10 +35,10 @@ namespace JASS
 
 
 	/*
-		SERIALISE_JASS_CI::UNITTEST()
+		SERIALISE_JASS_V1::UNITTEST()
 		-----------------------------
 	*/
-	void serialise_jass_ci::unittest(void)
+	void serialise_jass_v1::unittest(void)
 		{
 		/*
 			Build an index.
@@ -50,7 +50,7 @@ namespace JASS
 			Serialise the index.
 		*/
 		{
-		serialise_jass_ci serialiser;
+		serialise_jass_v1 serialiser;
 		index.iterate(serialiser);
 		}
 
@@ -60,6 +60,6 @@ namespace JASS
 		auto checksum = checksum::fletcher_16_file("CIvocab_terms.bin");
 		JASS_assert(checksum == 0x61E1);
 
-		puts("\t\tserialise_jass_ci::INCOMPLETE - not all implemented");
+		puts("\tserialise_jass_v1::INCOMPLETE - not all implemented");
 		}
 	}
