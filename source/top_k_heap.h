@@ -325,7 +325,8 @@ namespace JASS
 					/*
 						Make sure we have a heap and its the right size
 					*/
-					JASS_assert(heap.end() - heap.begin() == heap.size());
+					JASS_assert(heap.end() - heap.begin() > 0);
+					JASS_assert(static_cast<size_t>(heap.end() - heap.begin()) == heap.size());
 					JASS_assert(std::is_heap(heap.begin(), heap.end(), std::greater<ELEMENT>()));
 
 					/*
@@ -354,7 +355,7 @@ namespace JASS
 				*/
 				JASS_assert(big_heap.size() == 10);
 				JASS_assert(big_heap.capacity() == 20);
-				JASS_assert(big_heap.end() - big_heap.begin() == big_heap.size());
+				JASS_assert(static_cast<size_t>(big_heap.end() - big_heap.begin()) == big_heap.size());
 				
 				/*
 					as size() is less than capacity() its unlikely (but possible) that we have a heap, so either is correct (so there's nothing to check)
@@ -384,7 +385,7 @@ namespace JASS
 					Make sure the heap's stats are correct.
 				*/
 				JASS_assert(exact_heap.size() == exact_heap.capacity());
-				JASS_assert(exact_heap.end() - exact_heap.begin() == exact_heap.size());
+				JASS_assert(static_cast<size_t>(exact_heap.end() - exact_heap.begin()) == exact_heap.size());
 				JASS_assert(std::is_heap(exact_heap.begin(), exact_heap.end(), std::greater<ELEMENT>()));
 
 				/*
