@@ -57,3 +57,13 @@ add_executable(ascii_database_to_c
 	)
 
 
+
+#
+# JASSv1_to_human
+#
+
+add_executable(JASSv1_to_human
+	JASSv1_to_human.cpp
+	../source/asserts.cpp
+	../source/file.cpp)
+
