@@ -233,6 +233,33 @@ namespace JASS
 		return file_size < 0 ? 0 : file_size;
 		}
 
+
+	/*
+		FILE::TELL()
+		------------
+	*/
+	size_t file::tell(void)
+		{
+		#ifdef WIN32
+			return _ftelli64(fp);
+		#else
+			return ftello(fp);
+		#endif
+		}
+
+	/*
+		FILE::SEEK()
+		------------
+	*/
+	void file::seek(size_t offset)
+		{
+		#ifdef WIN32
+			_fseeki64(fp, offset, SEEK_END);
+		#else
+			fseeko(fp, offset, SEEK_SET);
+		#endif
+		}
+		
 	/*
 		FILE::MKSTEMP()
 		---------------

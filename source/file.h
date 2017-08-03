@@ -174,7 +174,6 @@ namespace JASS
 				return ::fwrite(buffer.c_str(), 1, buffer.size(), fp);
 				}
 
-
 			/*
 				FILE::SIZE()
 				------------
@@ -184,6 +183,26 @@ namespace JASS
 				@return File size in bytes.  0 is returned either on error or non-existant file (or 0-length file).
 			*/
 			size_t size(void) const;
+
+			/*
+				FILE::TELL()
+				------------
+			*/
+			/*!
+				@brief Return the byte offset of the file pointer in the current file.
+				@return byte offset.  0 is returned either on error or non-existant file (or actually at 0).
+			*/
+			size_t tell(void);
+			
+			/*
+				FILE::SEEK()
+				------------
+			*/
+			/*!
+				@brief Seek to the given offset in the file.
+				@param offset [in] The location to seek to.
+			*/
+			void seek(size_t offset);
 
 			/*
 				FILE::READ_ENTIRE_FILE()

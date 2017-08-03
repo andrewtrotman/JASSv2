@@ -40,14 +40,62 @@ namespace JASS
 
 		CIvocab_terms.bin: This is a list of all the unique terms in the collection (the closure of the vocabulary).  It is stored as a
 		sequence of '\0' terminated UTF-8 strings.  So, if the vocabularty contains three terms, "a", "bb" and "cc",
-		then the contents of CIvocab_terms.bin will be "a\0bb\0cc\0".
+		then the contents of CIvocab_terms.bin will be "a\0bb\0cc\0".  This file does not need to be sorted in alphabetical (or similar) order.
+		
+		CIvocab.bin: This is a list of triples <term, offset, impacts>. Term is a pointer to the string in the CIvocab_terms.bin file (i.e. a
+		byte offset within the file). Offset is the offset (in CIpostings.bin) of the start of the postings list. Impacts is the number of impacts
+		in the impact ordered postings list.  JASS v1 assumes this file is sorted in alphabetical order by the term string (i.e. where term points to)
+		when using strcmp().
 	*/
 	class serialise_jass_v1 : public index_manager::delegate
 		{
 		private:
+			/*
+				CLASS SERIALISE_JASS_V1::VOCAB_TRIPPLE
+				--------------------------------------
+			*/
+			/*!
+				@brief The tripple used in CIvocab.bin
+			*/
+			class vocab_tripple
+				{
+				public:
+					std::string	token;			///< The term as a string (needed for sorting the std::vectorvocab_tripple array later)
+					uint64_t term;				///< The pointer to the \0 terminated string in the CI_vovab_terms.bin file.
+					uint64_t offset;			///< The pointer to the postings stored in the CIpostings.bin file.
+					uint64_t impacts;			///< The number of impacts that exist for this term.
+				public:
+					/*
+						 SERIALISE_JASS_V1::VOCAB_TRIPPLE::VOCAB_TRIPPLE()
+						--------------------------------------------------
+					*/
+					/*!
+						@brief Constructor
+						@param string [in] The term that that this object represents.
+						@param term [in] The location of this term in CIvocab_terms.bin.
+						@param offset [in] The offset of the postings list in CIpostings.bin.
+						@param impacts [in] The number of impacts in the postings list.
+					*/
+					vocab_tripple(const slice &string, uint64_t term, uint64_t offset, uint64_t impacts) :
+						token(static_cast<char *>(string.address()), string.size()),
+						term(term),
+						offset(offset),
+						impacts(impacts)
+						{
+						/* Nothing */
+						}
+					
+					bool operator<(const vocab_tripple &other) const
+						{
+						return token < other.token;
+						}
+				};
+			
+		private:
 			file vocabulary_strings;					///< The concatination of UTS-8 encoded unique tokens in the collection.
 			file vocabulary;							///< Details about the term (including a pointer to the term, a pointer to the postings, and the quantum count.
 			file postings;								///< The postings lists.
+			std::vector<vocab_tripple> index_key;		///< The entry point into the JASS v1 index is CIvocab.bin, the index key.
 
 		public:
 			/*
@@ -72,10 +120,8 @@ namespace JASS
 			/*!
 				@brief Destructor
 			*/
-			virtual ~serialise_jass_v1()
-				{
-				/* Nothing */
-				}
+			virtual ~serialise_jass_v1();
+
 			/*
 				SERIALISE_JASS_V1::DELEGATE::OPERATOR()()
 				-----------------------------------------
