@@ -221,11 +221,45 @@ namespace JASS
 			/*!
 				@brief Return a reference to the n'th byte past the start of the slice.
 				@param index [in] Which byte to return.
+				@details  No safety comparison is performed.  Out of range indexing will result in undefined behaviour
 				@return A reference to the byte at position specified in index.
 			*/
 			uint8_t &operator[](size_t index) const
 				{
 				return ((uint8_t *)pointer)[index];
+				}
+			
+			/*
+				SLICE::STRICT_WEAK_ORDER_LESS_THAN()
+				------------------------------------
+			*/
+			/*!
+				@brief Return true if this < with.
+				@details The colaiting sequence is memcmp().
+				@param me [in] The slice to compare.
+				@param with [in] The slice to compare to.
+				@return true if this < with, else false.
+			*/
+			static bool strict_weak_order_less_than(const slice &me, const slice &with)
+				{
+				if (me.size() == with.size())
+					return memcmp(me.address(), with.address(), me.size()) < 0;
+				else if (me.size() < with.size())
+					{
+					auto cmp = memcmp(me.address(), with.address(), me.size());
+					if (cmp == 0)
+						return true;
+					else
+						return cmp < 0 ? true : false;
+					}
+				else
+					{
+					auto cmp = memcmp(me.address(), with.address(), with.size());
+					if (cmp == 0)
+						return false;
+					else
+						return cmp < 0 ? true : false;
+					}
 				}
 
 			/*
@@ -234,6 +268,7 @@ namespace JASS
 			*/
 			/*!
 				@brief Return true if this < with.
+				@details The colaiting sequence is: shorter strings are  "less" then longer strings.  For strings of equal length memcmp() us used.
 				@param with [in] The slice to compare to.
 				@return true if this < with, else false.
 			*/
@@ -253,16 +288,17 @@ namespace JASS
 			/*!
 				@brief Return true if this > with.
 				@param with [in] The slice to compare to.
+				@details The colaiting sequence is: shorter strings are  "less" then longer strings.  For strings of equal length memcmp() us used.
 				@return true if this > with, else false.
 			*/
 			bool operator>(const slice &with) const
-			{
+				{
 				if (size() > with.size())
 					return true;
 				if (size() < with.size())
 					return false;
 				return memcmp(address(), with.address(), size()) > 0;
-			}
+				}
 
 			/*
 				SLICE::OPERATOR==()
@@ -274,11 +310,11 @@ namespace JASS
 				@return true if this == with, else false.
 			*/
 			bool operator==(const slice &with) const
-			{
-				if (size() == with.size())
-					return true;
+				{
+				if (size() != with.size())
+					return false;
 				return memcmp(address(), with.address(), size()) == 0;
-			}
+				}
 			/*
 				SLICE::UNITTEST()
 				-----------------

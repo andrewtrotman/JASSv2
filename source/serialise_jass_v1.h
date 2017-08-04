@@ -60,7 +60,7 @@ namespace JASS
 			class vocab_tripple
 				{
 				public:
-					std::string	token;			///< The term as a string (needed for sorting the std::vectorvocab_tripple array later)
+					slice	token;			///< The term as a string (needed for sorting the std::vectorvocab_tripple array later)
 					uint64_t term;				///< The pointer to the \0 terminated string in the CI_vovab_terms.bin file.
 					uint64_t offset;			///< The pointer to the postings stored in the CIpostings.bin file.
 					uint64_t impacts;			///< The number of impacts that exist for this term.
@@ -77,7 +77,7 @@ namespace JASS
 						@param impacts [in] The number of impacts in the postings list.
 					*/
 					vocab_tripple(const slice &string, uint64_t term, uint64_t offset, uint64_t impacts) :
-						token(static_cast<char *>(string.address()), string.size()),
+						token(string),
 						term(term),
 						offset(offset),
 						impacts(impacts)
@@ -85,9 +85,18 @@ namespace JASS
 						/* Nothing */
 						}
 					
+					/*
+						 SERIALISE_JASS_V1::VOCAB_TRIPPLE::OPERATOR<()
+						----------------------------------------------
+					*/
+					/*!
+						@brief Compare (using strcmp() colaiting sequence) this object with another for less than.
+						@param other [in] The object to compare to
+						@return true if this < other, else false
+					*/
 					bool operator<(const vocab_tripple &other) const
 						{
-						return token < other.token;
+						return slice::strict_weak_order_less_than(token, other.token);
 						}
 				};
 			

@@ -12,6 +12,7 @@
 */
 #pragma once
 
+#include <map>
 #include <tuple>
 #include <sstream>
 #include <iostream>
@@ -186,9 +187,7 @@ namespace JASS
 				term_frequencies(memory_pool, initial_size, growth_factor),		// give the allocator to the array
 				positions(memory_pool, initial_size, growth_factor)				// give the allocator to the array
 				{
-				/*
-					Nothing
-				*/
+				/* Nothing */
 				}
 
 			/*
@@ -253,6 +252,18 @@ namespace JASS
 				highest_position = position;
 				}
 			
+			/*
+				INDEX_POSTINGS::IMPACT_ORDER()
+				------------------------------
+			*/
+			void impact_order(void)
+				{
+				std::map<uint32_t, uint32_t> frequencies;
+				
+				for (const auto &posting : *this)
+					++frequencies[std::get<1>(posting)];
+				}
+		
 			/*
 				INDEX_POSTINGS::TEXT_RENDER()
 				-----------------------------

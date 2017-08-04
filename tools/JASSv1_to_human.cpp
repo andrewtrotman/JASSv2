@@ -24,7 +24,7 @@ int main(void)
 	{
 	std::string vocab_buffer;
 	JASS::file::read_entire_file("CIvocab.bin", vocab_buffer);
-	vocab_tripple *vocab = (vocab_tripple *)vocab_buffer.c_str();
+	const vocab_tripple *vocab = reinterpret_cast<const vocab_tripple *>(vocab_buffer.c_str());
 	auto vocab_length = vocab_buffer.size() / sizeof(vocab_tripple);
 
 
