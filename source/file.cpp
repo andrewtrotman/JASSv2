@@ -254,7 +254,7 @@ namespace JASS
 	void file::seek(size_t offset)
 		{
 		#ifdef WIN32
-			_fseeki64(fp, offset, SEEK_END);
+			_fseeki64(fp, offset, SEEK_SET);
 		#else
 			fseeko(fp, offset, SEEK_SET);
 		#endif
