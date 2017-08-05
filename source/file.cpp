@@ -315,6 +315,7 @@ namespace JASS
 			create a temporary filename.  There doesn't appear to be a clean way of doing this.
 		*/
 		auto filename = file::mkstemp("jass");
+
 		/*
 			write, read back, and check we didn't lose anything along the way.
 		*/
@@ -336,8 +337,20 @@ namespace JASS
 		
 		disk_object->read(disk_object_contents);			// read past end of file
 		JASS_assert(disk_object_contents.size() == 0);
-		delete disk_object;
 
+		/*
+			Check seek and tell()
+		*/
+		disk_object->seek(5);
+		uint8_t byte;
+		disk_object->read(&byte, 1);
+		JASS_assert(byte == example_file[5]);
+		JASS_assert(disk_object->tell() == 6);
+
+		/*
+			Clean up
+		*/
+		delete disk_object;
 		(void)remove(filename.c_str());								// delete the file once we're done with it (cast to void to remove Coverity warning)
 	
 		/*
@@ -394,7 +407,6 @@ namespace JASS
 		*/
 		file star(nullptr);
 		JASS_assert(stdio.size() == (std::numeric_limits<size_t>::max)());
-
 
 		/*
 			Yay, we passed

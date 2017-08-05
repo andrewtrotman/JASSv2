@@ -33,6 +33,7 @@
 #include "allocator_memory.h"
 #include "serialise_jass_v1.h"
 #include "instream_file_star.h"
+#include "index_postings_impact.h"
 #include "instream_document_trec.h"
 #include "index_manager_sequential.h"
 #include "compress_integer_variable_byte.h"
@@ -136,6 +137,10 @@ int main(void)
 
 		puts("index_postings");
 		JASS::index_postings::unittest();
+
+		puts("impact_postings_impact");
+		JASS::index_postings_impact::unittest();
+
 
 		puts("index_manager");
 		JASS::index_manager::unittest();

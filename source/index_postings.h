@@ -19,6 +19,7 @@
 
 #include "dynamic_array.h"
 #include "allocator_pool.h"
+#include "index_postings_impact.h"
 
 namespace JASS
 	{
@@ -34,6 +35,30 @@ namespace JASS
 		private:
 			static constexpr size_t initial_size = 4;		///< Initially allocate space for 4 elements
 			static constexpr double growth_factor = 1.5;	///< Grow dynamic arrays by a factor of 1.5
+
+		protected:
+			/*
+				INDEX_POSTINGS::POSTING
+				-----------------------
+			*/
+			/*!
+				@brief The representation of a single postings as a tuple of docid, term frequency and position.
+			*/
+			class posting
+				{
+				public:
+					uint32_t document_id;						///< Internal document identifier
+					uint32_t term_frequency;					///< Number of times the term occurs in this dociument
+					uint32_t position;							///< The word position of this term in this document
+				public:
+					posting(uint32_t document_id, uint32_t term_frequency, uint32_t position) :
+						document_id(document_id),
+						term_frequency(term_frequency),
+						position(position)
+						{
+						/* Nothing */
+						}
+				};
 			
 		private:
 			size_t highest_document;							///< The higest document number seen in this postings list (counting from 1)
@@ -42,13 +67,6 @@ namespace JASS
 			dynamic_array<uint32_t> document_ids;			///< Array holding the document IDs
 			dynamic_array<uint16_t> term_frequencies;		///< Array holding the term frequencies
 			dynamic_array<uint32_t> positions;				///< Array holding the term positions
-
-		protected:
-			/*!
-				@typedef posting
-				@brief The representation of a single postings as a tuple of docid, term frequency and position.
-			*/
-			typedef std::tuple<uint32_t, uint32_t, uint32_t> posting;
 
 			/*
 				CLASS INDEX_POSTINGS::ITERATOR
@@ -133,7 +151,7 @@ namespace JASS
 					*/
 					const posting operator*() const
 						{
-						return std::make_tuple(*document, *frequency, *position);
+						return posting(*document, *frequency, *position);
 						}
 
 					/*
@@ -256,14 +274,66 @@ namespace JASS
 				INDEX_POSTINGS::IMPACT_ORDER()
 				------------------------------
 			*/
-			void impact_order(void)
+			/*!
+				TO DO:Fix this
+			*/
+			void impact_order(allocator &memory)
 				{
-				std::map<uint32_t, uint32_t> frequencies;
-				
+				std::array<uint32_t, 0x10000> frequencies;
+				size_t number_of_postings = 0;
+
+				/*
+					Count up the number of times each impact is seen
+				*/
 				for (const auto &posting : *this)
-					++frequencies[std::get<1>(posting)];
+					{
+					frequencies[posting.term_frequency]++;
+					number_of_postings++;
+					}
+
+				/*
+					Count the number of unique impacts
+				*/
+				size_t number_of_impacts = 0;
+				for (auto &times : frequencies)
+					if (times != 0)
+						number_of_impacts++;
+
+				/*
+					Allocate the postings list
+				*/
+				index_postings_impact postings_list(number_of_impacts, number_of_postings + 2 * number_of_impacts, memory);
+
+				/*
+					Put the headers into place and turn the frequencies into pointers
+				*/
+				size_t cumulative = 0;
+				size_t current_impact = 0;
+				size_t impact_value = 0;
+				for (auto &times : frequencies)
+					{
+					impact_value++;
+					if (times != 0)
+						{
+						current_impact++;
+						auto prior = cumulative;
+
+						postings_list.header(current_impact, impact_value, &postings_list[prior + 1], &postings_list[prior + 1 + times]);
+						cumulative += times + 2;				// +1 for the impact_frequenct and +1 for the 0 terminator
+						times = prior;
+						}
+					}
+
+				/*
+					Now place the postings in the right places
+				*/
+				for (const auto &posting : *this)
+					{
+					postings_list[frequencies[posting.term_frequency]] = posting.document_id;
+					frequencies[posting.term_frequency]++;
+					}
 				}
-		
+
 			/*
 				INDEX_POSTINGS::TEXT_RENDER()
 				-----------------------------
@@ -277,15 +347,15 @@ namespace JASS
 				uint32_t previous_document_id = std::numeric_limits<uint32_t>::max();
 				for (const auto &posting : *this)
 					{
-					if (std::get<0>(posting) != previous_document_id)
+					if (posting.document_id != previous_document_id)
 						{
 						if (previous_document_id != std::numeric_limits<uint32_t>::max())
 							stream << '>';
-						stream << '<' << std::get<0>(posting) << ',' << std::get<1>(posting) << ',' << std::get<2>(posting);
-						previous_document_id = std::get<0>(posting);
+						stream << '<' << posting.document_id << ',' << posting.term_frequency << ',' << posting.position;
+						previous_document_id = posting.document_id;
 						}
 					else
-						stream << ',' << std::get<2>(posting);
+						stream << ',' << posting.position;
 					}
 				stream << '>';
 				}

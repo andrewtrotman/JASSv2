@@ -315,6 +315,7 @@ namespace JASS
 					return false;
 				return memcmp(address(), with.address(), size()) == 0;
 				}
+
 			/*
 				SLICE::UNITTEST()
 				-----------------
@@ -364,6 +365,17 @@ namespace JASS
 
 				JASS_assert(slice("a") == slice("a"));
 				JASS_assert(!(slice("aa") == slice("a")));
+
+				/*
+					exhaustively test strict_weak_order_less_than() which emilates a strcmp()
+				*/
+				JASS_assert(strict_weak_order_less_than(slice("aa"), slice("aa")) == false);
+				JASS_assert(strict_weak_order_less_than(slice("a"), slice("aa")) == true);
+				JASS_assert(strict_weak_order_less_than(slice("b"), slice("aa")) == false);
+				JASS_assert(strict_weak_order_less_than(slice("a"), slice("bb")) == true);
+				JASS_assert(strict_weak_order_less_than(slice("aa"), slice("a")) == false);
+				JASS_assert(strict_weak_order_less_than(slice("aa"), slice("b")) == true);
+				JASS_assert(strict_weak_order_less_than(slice("bb"), slice("a")) == false);
 
 				puts("slice::PASSED");
 				}

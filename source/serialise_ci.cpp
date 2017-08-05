@@ -86,10 +86,10 @@ namespace JASS
 		code << "{\n";
 		for (const auto &posting : postings)
 			{
-			if (std::get<0>(posting) != previous_document_id)
+			if (posting.document_id != previous_document_id)
 				{
-				code << "q.add_rsv(" << std::get<0>(posting) << ',' << std::get<1>(posting) << ");\n";
-				previous_document_id = std::get<0>(posting);
+				code << "q.add_rsv(" << posting.document_id << ',' << posting.term_frequency << ");\n";
+				previous_document_id = posting.document_id;
 				}
 			}
 		code << "}\n";

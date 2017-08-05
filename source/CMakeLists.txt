@@ -42,6 +42,7 @@ set(JASSlib_FILES
 	index_manager.h
 	index_manager_sequential.h
 	index_postings.h
+	index_postings_impact.h
 	instream.h
 	instream_document_trec.h
 	instream_document_trec.cpp

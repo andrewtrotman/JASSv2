@@ -182,6 +182,7 @@ namespace JASS
 				allocator_pool pool;
 				index_postings postings(pool);
 				callback(slice(), postings);
+				callback(0, slice());
 				}
 
 			/*
