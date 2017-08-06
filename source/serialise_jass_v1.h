@@ -38,6 +38,8 @@ namespace JASS
 
 		The JASS CI index in made up of 4 files:  CIvocab_terms.bin, CIvocab.bin, CIpostings.bin, and CIdoclist.bin
 
+		CIdoclist.bin: The list of document identifiers (each '\0' terminated).  Then an index to each of the doclents (stored as a table of uint64_t).  The final 8 bytes of the file is an uin64_t storing the total numbner of unique documents in the collection.
+
 		CIvocab_terms.bin: This is a list of all the unique terms in the collection (the closure of the vocabulary).  It is stored as a
 		sequence of '\0' terminated UTF-8 strings.  So, if the vocabularty contains three terms, "a", "bb" and "cc",
 		then the contents of CIvocab_terms.bin will be "a\0bb\0cc\0".  This file does not need to be sorted in alphabetical (or similar) order.
@@ -46,6 +48,10 @@ namespace JASS
 		byte offset within the file). Offset is the offset (in CIpostings.bin) of the start of the postings list. Impacts is the number of impacts
 		in the impact ordered postings list.  JASS v1 assumes this file is sorted in alphabetical order by the term string (i.e. where term points to)
 		when using strcmp().
+		
+		CIpostings.bin: This file contains all the postings lists compressed using the same codex.  This is different from ATIRE which allows
+		each postings list to be encoded using a different codex.  The first byte of this file specifies the codex where
+		S=uncompressed, c=VarByte, 8=Simple8,  q=QMX, Q=QMX4D, R=QMX0D.
 	*/
 	class serialise_jass_v1 : public index_manager::delegate
 		{
@@ -101,10 +107,12 @@ namespace JASS
 				};
 			
 		private:
-			file vocabulary_strings;					///< The concatination of UTS-8 encoded unique tokens in the collection.
-			file vocabulary;							///< Details about the term (including a pointer to the term, a pointer to the postings, and the quantum count.
-			file postings;								///< The postings lists.
+			file vocabulary_strings;						///< The concatination of UTS-8 encoded unique tokens in the collection.
+			file vocabulary;									///< Details about the term (including a pointer to the term, a pointer to the postings, and the quantum count.
+			file postings;										///< The postings lists.
+			file primary_keys;								///< The list of external identifiers (document primary keys).
 			std::vector<vocab_tripple> index_key;		///< The entry point into the JASS v1 index is CIvocab.bin, the index key.
+			std::vector<uint64_t> primary_key_offsets;///< A list of locations (on disk) of each primary key.
 
 		public:
 			/*
@@ -117,7 +125,8 @@ namespace JASS
 			serialise_jass_v1() :
 				vocabulary_strings("CIvocab_terms.bin", "w+b"),
 				vocabulary("CIvocab.bin", "w+b"),
-				postings("CIpostings.bin", "w+b")
+				postings("CIpostings.bin", "w+b"),
+				primary_keys("CIdoclist.bin", "w+b")
 				{
 				/* Nothing */
 				}

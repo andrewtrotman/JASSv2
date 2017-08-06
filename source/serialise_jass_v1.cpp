@@ -32,6 +32,15 @@ namespace JASS
 			vocabulary.write(&line.offset, sizeof(line.offset));
 			vocabulary.write(&line.impacts, sizeof(line.impacts));
 			}
+
+		/*
+			Serialise the primary key offsets and the numnber of documents in the collection.  This all goes into the primary key file CIdoclist.bin.
+		*/
+		for (uint64_t key : primary_key_offsets)
+			primary_keys.write(&key, sizeof(key));
+
+		uint64_t document_count = primary_key_offsets.size();
+		primary_keys.write(&document_count, sizeof(document_count));
 		}
 
 	/*
@@ -47,7 +56,6 @@ namespace JASS
 		vocabulary_strings.write(term.address(), term.size());
 		vocabulary_strings.write("\0", 1);
 		
-		
 		/*
 			Keep a copy of the term and the detals of the postings list for later sorting and writeing to CIvocab.bin
 		*/
@@ -59,9 +67,9 @@ namespace JASS
 	*/
 	void serialise_jass_v1::operator()(size_t document_id, const slice &primary_key)
 		{
-		/*
-			To do.
-		*/
+		primary_key_offsets.push_back(primary_keys.tell());
+		primary_keys.write(primary_key.address(), primary_key.size());
+		primary_keys.write("\0", 1);
 		}
 
 	/*
