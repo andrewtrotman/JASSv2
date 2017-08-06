@@ -38,7 +38,8 @@ namespace JASS
 
 		The JASS CI index in made up of 4 files:  CIvocab_terms.bin, CIvocab.bin, CIpostings.bin, and CIdoclist.bin
 
-		CIdoclist.bin: The list of document identifiers (each '\0' terminated).  Then an index to each of the doclents (stored as a table of uint64_t).  The final 8 bytes of the file is an uin64_t storing the total numbner of unique documents in the collection.
+		CIdoclist.bin: The list of document identifiers (each '\0' terminated).  Then an index to each of the doclents (stored as a table of uint64_t).
+		The final 8 bytes of the file is an uin64_t storing the total numbner of unique documents in the collection.
 
 		CIvocab_terms.bin: This is a list of all the unique terms in the collection (the closure of the vocabulary).  It is stored as a
 		sequence of '\0' terminated UTF-8 strings.  So, if the vocabularty contains three terms, "a", "bb" and "cc",
@@ -51,7 +52,13 @@ namespace JASS
 		
 		CIpostings.bin: This file contains all the postings lists compressed using the same codex.  This is different from ATIRE which allows
 		each postings list to be encoded using a different codex.  The first byte of this file specifies the codex where
-		S=uncompressed, c=VarByte, 8=Simple8,  q=QMX, Q=QMX4D, R=QMX0D.
+		S=uncompressed, c=VarByte, 8=Simple8,  q=QMX, Q=QMX4D, R=QMX0D.  This is followed by the postings lists.  A postings list is: a list
+		of 64-bit pointer to headers.  Each header is <uint16_t impact_score, uint64_t start, uint64_t end, uint32_t impact_frequency>
+		where impact_score is the impact value, start and end are pointers to the compressed docids, and impact_frequency is the number of dociment_ids 
+		in the list.  The header is terminated with a row of all 0s (i.e. 14 consequitive 0-bytes).  This is followed by the list of docid's for each
+		segment - each compressed seperately.  These lists do *not* have the impact score stored at the start and do *not* have 0 terminators on them.
+		This means score-at-a-time processing is the only paradigm, even if term-at-a-time processing is done score-at-a-time for each term.  ATIRE could
+		do either (but it was a compile time flag).
 	*/
 	class serialise_jass_v1 : public index_manager::delegate
 		{

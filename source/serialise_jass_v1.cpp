@@ -35,11 +35,10 @@ namespace JASS
 
 		/*
 			Serialise the primary key offsets and the numnber of documents in the collection.  This all goes into the primary key file CIdoclist.bin.
+			As JASS v2 counts from 1 but JASS v1 counts from 0, we have to drop the first (blank) element and subtract 1 from the count
 		*/
-		for (uint64_t key : primary_key_offsets)
-			primary_keys.write(&key, sizeof(key));
-
-		uint64_t document_count = primary_key_offsets.size();
+		uint64_t document_count = primary_key_offsets.size() - 1;
+		primary_keys.write(&primary_key_offsets[1], sizeof(primary_key_offsets[1]) * document_count);
 		primary_keys.write(&document_count, sizeof(document_count));
 		}
 
@@ -95,8 +94,21 @@ namespace JASS
 		/*
 			Checksum the inde to make sure its correct.
 		*/
-		auto checksum = checksum::fletcher_16_file("CIvocab_terms.bin");
-		JASS_assert(checksum == 0x61E1);
+		std::cout << "=====";
+
+		auto checksum = checksum::fletcher_16_file("CIvocab.bin");
+		std::cout << "\tCIvocab.bin = " << checksum << '\n';
+
+		checksum = checksum::fletcher_16_file("CIvocab_terms.bin");
+		std::cout << "\tCIvocab_terms.bin = " << checksum << '\n';
+
+		checksum = checksum::fletcher_16_file("CIpostings.bin");
+		std::cout << "\tCIpostings.bin = " << checksum << '\n';
+
+		checksum = checksum::fletcher_16_file("CIdoclist.bin");
+		std::cout << "\tCIdoclist.bin = " << checksum << '\n';
+
+		std::cout << "=====";
 
 		puts("\tserialise_jass_v1::INCOMPLETE - not all implemented");
 		}
