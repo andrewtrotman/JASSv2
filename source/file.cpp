@@ -254,10 +254,16 @@ namespace JASS
 	void file::seek(size_t offset)
 		{
 		#ifdef WIN32
-			_fseeki64(fp, offset, SEEK_SET);
+			auto error = _fseeki64(fp, offset, SEEK_SET);
 		#else
-			fseeko(fp, offset, SEEK_SET);
+			auto error = fseeko(fp, offset, SEEK_SET);
 		#endif
+
+		/*
+			if error is non-zero then seek failed - which if a fatal error.
+		*/
+		if (error != 0)
+			throw std::out_of_range("file::seek() failure");
 		}
 		
 	/*
@@ -343,7 +349,8 @@ namespace JASS
 		*/
 		disk_object->seek(5);
 		uint8_t byte;
-		disk_object->read(&byte, 1);
+		auto check = disk_object->read(&byte, 1);
+		JASS_assert(check == 1);
 		JASS_assert(byte == example_file[5]);
 		JASS_assert(disk_object->tell() == 6);
 
