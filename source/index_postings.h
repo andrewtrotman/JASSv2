@@ -275,9 +275,11 @@ namespace JASS
 				------------------------------
 			*/
 			/*!
-				TO DO:Fix this
+				@brief Take a postings list and turn it into an impact ordered postings list with impact headers.
+				@param memory [in] All allocation to do with this process, including the result, is allocated in this arena.
+				@result A reference to the impact ordered posting list allocated in the arena passed as paramter memory.
 			*/
-			void impact_order(allocator &memory)
+			index_postings_impact &impact_order(allocator &memory)
 				{
 				std::array<uint32_t, 0x10000> frequencies;
 				size_t number_of_postings = 0;
@@ -301,8 +303,14 @@ namespace JASS
 
 				/*
 					Allocate the postings list
+					This is a little awkward, but it works... The object itself if allocated using the allocator
+					passed by the caller, and as such it remains valid until that allocator's space is freed - which
+					is not done by this method or any it calls.  Thus its possible to return a reference to the object
+					and know its stull valid once this method terminates
 				*/
-				index_postings_impact postings_list(number_of_impacts, number_of_postings + 2 * number_of_impacts, memory);
+				index_postings_impact *postings_list_memory;
+				postings_list_memory = new (reinterpret_cast<index_postings_impact *>(memory.malloc(sizeof(*postings_list_memory)))) index_postings_impact(number_of_impacts, number_of_postings + 2 * number_of_impacts, memory);
+				index_postings_impact &postings_list = *postings_list_memory;
 
 				/*
 					Put the headers into place and turn the frequencies into pointers
@@ -332,6 +340,7 @@ namespace JASS
 					postings_list[frequencies[posting.term_frequency]] = posting.document_id;
 					frequencies[posting.term_frequency]++;
 					}
+				return postings_list;
 				}
 
 			/*

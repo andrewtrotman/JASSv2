@@ -39,8 +39,18 @@ namespace JASS
 				{
 				public:
 					size_t impact_score;				///< The impact score.
-					size_t *begin;						///< Pointer into postings of the start of the document list for this impact score.
-					size_t *end;						///< Ppinter into postings of the end of the document list for this impact score.
+					size_t *start;						///< Pointer into postings of the start of the document list for this impact score.
+					size_t *finish;					///< Ppinter into postings of the end of the document list for this impact score.
+
+				public:
+					size_t *begin(void) const
+						{
+						return start;
+						}
+					size_t *end(void) const
+						{
+						return finish;
+						}
 				};
 
 		protected:
@@ -104,8 +114,39 @@ namespace JASS
 			void header(size_t index, size_t score, size_t *postings_start, size_t *postings_end)
 				{
 				impacts[index].impact_score = score;
-				impacts[index].begin = postings_start;
-				impacts[index].end = postings_end;
+				impacts[index].start = postings_start;
+				impacts[index].finish = postings_end;
+				}
+
+			/*
+				INDEX_POSTINGS_IMPACT::IMPACT_SIZE()
+				------------------------------------
+			*/
+			/*!
+				@brief Return the number of unique impact scores in the postings list.
+				@brief The number of unique impact scores.
+			*/
+			size_t impact_size(void)
+				{
+				return number_of_impacts;
+				}
+
+			/*
+				INDEX_POSTINGS_IMPACT::BEGIN()
+				------------------------------
+			*/
+			impact *begin(void) const
+				{
+				return impacts;
+				}
+
+			/*
+				INDEX_POSTINGS_IMPACT::END()
+				----------------------------
+			*/
+			impact *end(void) const
+				{
+				return impacts + number_of_impacts;
 				}
 
 			/*
@@ -144,15 +185,29 @@ namespace JASS
 				JASS_assert(memcmp(&postings[0], answer, sizeof(answer)) == 0);
 
 				JASS_assert(postings.impacts[0].impact_score == 255);
-				JASS_assert(postings.impacts[0].begin == &postings.postings[1]);
-				JASS_assert(postings.impacts[0].end == &postings.postings[2]);
+				JASS_assert(postings.impacts[0].start == &postings.postings[1]);
+				JASS_assert(postings.impacts[0].finish == &postings.postings[2]);
 
 				JASS_assert(postings.impacts[1].impact_score == 128);
-				JASS_assert(postings.impacts[1].begin == &postings.postings[4]);
-				JASS_assert(postings.impacts[1].end == &postings.postings[6]);
+				JASS_assert(postings.impacts[1].start == &postings.postings[4]);
+				JASS_assert(postings.impacts[1].finish == &postings.postings[6]);
 
 				JASS_assert(postings.number_of_postings == 7);
-				JASS_assert(postings.number_of_impacts == 2);
+				JASS_assert(postings.impact_size() == 2);
+
+				/*
+					Check iteration
+				*/
+				std::string serialised_answer = "255:10 \n128:2 5 \n";
+				std::stringstream output;
+				for (const auto &header : postings)
+					{
+					output << header.impact_score << ":";
+					for (const auto &document_id : header)
+						output << document_id << " ";
+					output << '\n';
+					}
+				JASS_assert(output.str() == serialised_answer);
 
 				puts("index_postings_impact::PASSED");
 				}
