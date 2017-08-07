@@ -43,12 +43,30 @@ namespace JASS
 		}
 
 	/*
+		SERIALISE_JASS_V1::WRITE_POSTINGS()
+		-----------------------------------
+	*/
+	size_t serialise_jass_v1::write_postings(const index_postings &postings, size_t &number_of_impacts)
+		{
+		number_of_impacts = 0;
+
+		return 0;
+		}
+
+	/*
 		SERIALISE_JASS_V1::OPERATOR()()
 		-------------------------------
 	*/
 	void serialise_jass_v1::operator()(const slice &term, const index_postings &postings)
 		{
+		size_t number_of_impact_scores;
+		size_t postings_location = write_postings(postings, number_of_impact_scores);
+
+		/*
+			Find out where we are in the vocabulary strings file - which will be the start of the term before we write it.
+		*/
 		uint64_t term_offset = vocabulary_strings.tell();
+
 		/*
 			Write the vocabulary term to CIvocab_terms.bin
 		*/
@@ -58,8 +76,9 @@ namespace JASS
 		/*
 			Keep a copy of the term and the detals of the postings list for later sorting and writeing to CIvocab.bin
 		*/
-		index_key.push_back(vocab_tripple(term, term_offset, 0, 0));
+		index_key.push_back(vocab_tripple(term, term_offset, postings_location, number_of_impact_scores));
 		}
+
 	/*
 		SERIALISE_JASS_V1::DELEGATE::OPERATOR()()
 		-----------------------------------------

@@ -52,7 +52,7 @@ namespace JASS
 		
 		CIpostings.bin: This file contains all the postings lists compressed using the same codex.  This is different from ATIRE which allows
 		each postings list to be encoded using a different codex.  The first byte of this file specifies the codex where
-		S=uncompressed, c=VarByte, 8=Simple8,  q=QMX, Q=QMX4D, R=QMX0D.  This is followed by the postings lists.  A postings list is: a list
+		s=uncompressed, c=VarByte, 8=Simple8,  q=QMX, Q=QMX4D, R=QMX0D.  This is followed by the postings lists.  A postings list is: a list
 		of 64-bit pointer to headers.  Each header is <uint16_t impact_score, uint64_t start, uint64_t end, uint32_t impact_frequency>
 		where impact_score is the impact value, start and end are pointers to the compressed docids, and impact_frequency is the number of dociment_ids 
 		in the list.  The header is terminated with a row of all 0s (i.e. 14 consequitive 0-bytes).  This is followed by the list of docid's for each
@@ -63,6 +63,16 @@ namespace JASS
 	class serialise_jass_v1 : public index_manager::delegate
 		{
 		private:
+			enum class jass_v1_codex
+			{
+			uncompressed = 's',				///< Postings are not compressed.
+			variable_byte = 'c',				///< Postings are compressed using ATIRE's variable byte encoding.
+			simple_8 = '8',					///< Postings are compressed using ATIRE's simple-8 encoding.
+			qmx = 'q',							///< Postings are compressed using QMX (with difference encoding).
+			qmx_d4 = 'Q',						///< Postings are compressed using QMX with Lemire's D4 delta encoding.
+			qmx_d0 = 'R'						///< Postings are compressed using QMX without delta encoding.
+			};
+
 			/*
 				CLASS SERIALISE_JASS_V1::VOCAB_TRIPPLE
 				--------------------------------------
@@ -121,6 +131,20 @@ namespace JASS
 			std::vector<vocab_tripple> index_key;		///< The entry point into the JASS v1 index is CIvocab.bin, the index key.
 			std::vector<uint64_t> primary_key_offsets;///< A list of locations (on disk) of each primary key.
 
+		private:
+			
+			/*
+				SERIALISE_JASS_V1::WRITE_POSTINGS()
+				-----------------------------------
+			*/
+			/*!
+				@Brief Convert the postings list to the JASS v1 format and serialise it to disk.
+				@param postings [in] The postings list to serialise.
+				@param number_of_impacts [out] The number of distinct impact scores seen in the postings list.
+				@return The location (in CIpostings.bin) of the start of the serialised postings list.
+			*/
+			size_t write_postings(const index_postings &postings, size_t &number_of_impacts);
+
 		public:
 			/*
 				SERIALISE_JASS_V1::SERIALISE_JASS_V1()
@@ -135,7 +159,11 @@ namespace JASS
 				postings("CIpostings.bin", "w+b"),
 				primary_keys("CIdoclist.bin", "w+b")
 				{
-				/* Nothing */
+				/*
+					For the initial bring-up the postings ar not compressed.
+				*/
+				uint8_t codex = static_cast<uint8_t>(jass_v1_codex::uncompressed);
+				postings.write(&codex, 1);
 				}
 
 			/*

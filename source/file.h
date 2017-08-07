@@ -20,6 +20,7 @@
 
 #include <string>
 #include <vector>
+#include <stdexcept>
 
 namespace JASS
 	{
@@ -200,6 +201,7 @@ namespace JASS
 			*/
 			/*!
 				@brief Seek to the given offset in the file.
+				@details Throws std::out_of_range in the unlikely event of an error.
 				@param offset [in] The location to seek to.
 			*/
 			void seek(size_t offset);
