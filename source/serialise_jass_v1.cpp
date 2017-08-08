@@ -114,7 +114,9 @@ namespace JASS
 			write out each postings list segment.
 		*/
 		for (const auto &header : impact_ordered)
+			{
 			postings.write(header.begin(), header.size());				// Since we're not compressed, just write them out as a single chunk.
+			}
 
 		/*
 			return the location of the postings list on disk

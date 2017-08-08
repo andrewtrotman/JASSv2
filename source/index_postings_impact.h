@@ -40,7 +40,7 @@ namespace JASS
 				public:
 					size_t impact_score;				///< The impact score.
 					size_t *start;						///< Pointer into postings of the start of the document list for this impact score.
-					size_t *finish;					///< Ppinter into postings of the end of the document list for this impact score.
+					size_t *finish;					///< Pointer into postings of the end of the document list for this impact score.
 
 				public:
 					/*

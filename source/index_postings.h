@@ -323,10 +323,10 @@ namespace JASS
 					impact_value++;
 					if (times != 0)
 						{
-						current_impact++;
 						auto prior = cumulative;
 
 						postings_list.header(current_impact, impact_value, &postings_list[prior + 1], &postings_list[prior + 1 + times]);
+						current_impact++;
 						cumulative += times + 2;				// +1 for the impact_frequenct and +1 for the 0 terminator
 						times = prior;
 						}
