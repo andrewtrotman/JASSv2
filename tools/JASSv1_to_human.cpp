@@ -16,6 +16,9 @@
 	STRUCT VOCAB_TRIPPLE
 	--------------------
 */
+/*!
+	@brief A tripple representing the vocabulart structure of JASS v1
+*/
 struct vocab_tripple
 	{
 	uint64_t term;
@@ -26,6 +29,9 @@ struct vocab_tripple
 /*
 	DUMP_DOCLIST()
 	--------------
+*/
+/*!
+	@brief Dump the list of external document IDs (i.e. Primary Keys). 
 */
 void dump_doclist(void)
 	{

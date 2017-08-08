@@ -46,11 +46,80 @@ namespace JASS
 		SERIALISE_JASS_V1::WRITE_POSTINGS()
 		-----------------------------------
 	*/
-	size_t serialise_jass_v1::write_postings(const index_postings &postings, size_t &number_of_impacts)
+	size_t serialise_jass_v1::write_postings(const index_postings &postings_list, size_t &number_of_impacts)
 		{
-		number_of_impacts = 0;
+		/*
+			Keep a track of where the postings are stored on disk.
+		*/
+		size_t postings_locaton = postings.tell();
 
-		return 0;
+		/*
+			Impact order the postings list.
+		*/
+		const auto &impact_ordered = postings_list.impact_order(memory);
+
+		/*
+			Write out the number of impact headers we're going to see.
+		*/
+		uint64_t impact_count = number_of_impacts = impact_ordered.impact_size();
+		postings.write(&impact_count, sizeof(impact_count));
+
+		/*
+			Write out each pointer to an impact header.
+		*/
+		uint64_t offset = postings_locaton + sizeof(impact_count) + impact_count * sizeof(uint64_t);
+		uint64_t impact_header_size = sizeof(uint16_t) + sizeof(uint64_t) + sizeof(uint64_t) + sizeof(uint32_t);
+		for (size_t which = 0; which < impact_count; which++)
+			{
+			postings.write(&offset, sizeof(offset));
+			offset += impact_header_size;
+			}
+
+		/*
+			Write out each impact header.
+		*/
+		for (const auto &header : impact_ordered)
+			{
+			/*
+				impact score (uint16_t).
+			*/
+			uint16_t score = header.impact_score;
+			postings.write(&score, sizeof(score));
+
+			/*
+				start loction on disk (uint64_t).
+			*/
+			uint64_t start_location = offset;
+			postings.write(&start_location, sizeof(start_location));
+
+			/*
+				This is where comnoression happens - but since we're not initially compressing no work is necessary.
+			*/
+			offset += header.size();
+
+			/*
+				end location on disk (uint64_t).
+			*/
+			uint64_t finish_location = offset;
+			postings.write(&finish_location, sizeof(finish_location));
+
+			/*
+				the number of document ids with this impact score (length of the impact segment measured in doc_ids).
+			*/
+			uint32_t frequency = header.size();
+			postings.write(&frequency, sizeof(frequency));
+			}
+
+		/*
+			write out each postings list segment.
+		*/
+		for (const auto &header : impact_ordered)
+			postings.write(header.begin(), header.size());				// Since we're not compressed, just write them out as a single chunk.
+
+		/*
+			return the location of the postings list on disk
+		*/
+		return postings_locaton;
 		}
 
 	/*
@@ -59,6 +128,10 @@ namespace JASS
 	*/
 	void serialise_jass_v1::operator()(const slice &term, const index_postings &postings)
 		{
+		/*
+			write the postings list to disk and keep a track of where it is.
+		*/
+		memory.rewind();
 		size_t number_of_impact_scores;
 		size_t postings_location = write_postings(postings, number_of_impact_scores);
 

@@ -263,7 +263,7 @@ namespace JASS
 			if error is non-zero then seek failed - which if a fatal error.
 		*/
 		if (error != 0)
-			throw std::out_of_range("file::seek() failure");
+			throw std::out_of_range("file::seek() failure");		// LCOV_EXCL_LINE	// This is highly unlikely to happen - its not clear why seek() can fail.
 		}
 		
 	/*

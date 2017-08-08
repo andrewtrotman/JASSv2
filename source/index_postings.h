@@ -279,9 +279,9 @@ namespace JASS
 				@param memory [in] All allocation to do with this process, including the result, is allocated in this arena.
 				@result A reference to the impact ordered posting list allocated in the arena passed as paramter memory.
 			*/
-			index_postings_impact &impact_order(allocator &memory)
+			index_postings_impact &impact_order(allocator &memory) const
 				{
-				std::array<uint32_t, 0x10000> frequencies;
+				std::array<uint32_t, 0x10000> frequencies = {};
 				size_t number_of_postings = 0;
 
 				/*

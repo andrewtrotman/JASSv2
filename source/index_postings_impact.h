@@ -29,8 +29,8 @@ namespace JASS
 		{
 		public:
 			/*
-				CLASS IMPACT
-				------------
+				CLASS INDEX_POSTINGS_IMPACT::IMPACT
+				-----------------------------------
 			*/
 			/*!
 				@brief Each impact is represented as an impact score, and a start and end pointer.
@@ -43,13 +43,43 @@ namespace JASS
 					size_t *finish;					///< Ppinter into postings of the end of the document list for this impact score.
 
 				public:
+					/*
+						INDEX_POSTINGS_IMPACT::IMPACT::BEGIN()
+						--------------------------------------
+					*/
+					/*!
+						@brief Return a pointer to the start of the document identifiers array (for use as an iterator).
+						@return Pointer to first document id.
+					*/
 					size_t *begin(void) const
 						{
 						return start;
 						}
+
+					/*
+						INDEX_POSTINGS_IMPACT::IMPACT::END()
+						------------------------------------
+					*/
+					/*!
+						@brief Return a pointer to the end of the document identifiers array (for use as an iterator).
+						@return Pointer to the element immediately after the last document id.
+					*/
 					size_t *end(void) const
 						{
 						return finish;
+						}
+
+					/*
+						INDEX_POSTINGS_IMPACT::IMPACT::SIZE()
+						-------------------------------------
+					*/
+					/*!
+						@brief Return the numner of postings with this impact score.
+						@return number of postings with this impact score.
+					*/
+					size_t size(void) const
+						{
+						return static_cast<size_t>(finish - start);
 						}
 				};
 
@@ -94,7 +124,7 @@ namespace JASS
 				then posting[0] will be the impact score.
 				@return a reference to the size_t at postng[index].
 			*/
-			size_t &operator[](size_t index)
+			size_t &operator[](size_t index) const
 				{
 				return postings[index];
 				}
@@ -111,7 +141,7 @@ namespace JASS
 				@param postings_end [in] The end of the range if postings that share this impact score
 
 			*/
-			void header(size_t index, size_t score, size_t *postings_start, size_t *postings_end)
+			void header(size_t index, size_t score, size_t *postings_start, size_t *postings_end) const
 				{
 				impacts[index].impact_score = score;
 				impacts[index].start = postings_start;
@@ -126,7 +156,7 @@ namespace JASS
 				@brief Return the number of unique impact scores in the postings list.
 				@brief The number of unique impact scores.
 			*/
-			size_t impact_size(void)
+			size_t impact_size(void) const
 				{
 				return number_of_impacts;
 				}
@@ -134,6 +164,10 @@ namespace JASS
 			/*
 				INDEX_POSTINGS_IMPACT::BEGIN()
 				------------------------------
+			*/
+			/*!
+				@brief Return a pointer to the first impact header (for use in an iterator).
+				@return A pointer to the first impact header.
 			*/
 			impact *begin(void) const
 				{
@@ -143,6 +177,10 @@ namespace JASS
 			/*
 				INDEX_POSTINGS_IMPACT::END()
 				----------------------------
+			*/
+			/*!
+				@brief Return a pointer to one element past the end of the impact headers (for use in an iterator).
+				@return A pointer to one element past the end of the impact headers.
 			*/
 			impact *end(void) const
 				{

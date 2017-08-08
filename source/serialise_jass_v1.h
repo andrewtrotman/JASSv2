@@ -87,6 +87,7 @@ namespace JASS
 					uint64_t term;				///< The pointer to the \0 terminated string in the CI_vovab_terms.bin file.
 					uint64_t offset;			///< The pointer to the postings stored in the CIpostings.bin file.
 					uint64_t impacts;			///< The number of impacts that exist for this term.
+
 				public:
 					/*
 						 SERIALISE_JASS_V1::VOCAB_TRIPPLE::VOCAB_TRIPPLE()
@@ -130,6 +131,7 @@ namespace JASS
 			file primary_keys;								///< The list of external identifiers (document primary keys).
 			std::vector<vocab_tripple> index_key;		///< The entry point into the JASS v1 index is CIvocab.bin, the index key.
 			std::vector<uint64_t> primary_key_offsets;///< A list of locations (on disk) of each primary key.
+			allocator_pool memory;							///< Memory used to store the impact-ordered postings list.
 
 		private:
 			
@@ -157,7 +159,8 @@ namespace JASS
 				vocabulary_strings("CIvocab_terms.bin", "w+b"),
 				vocabulary("CIvocab.bin", "w+b"),
 				postings("CIpostings.bin", "w+b"),
-				primary_keys("CIdoclist.bin", "w+b")
+				primary_keys("CIdoclist.bin", "w+b"),
+				memory(1024 * 1024)								///< The allocation block size is currently 1MB, big enough for most postings lists (but it'll grow for larger ones).
 				{
 				/*
 					For the initial bring-up the postings ar not compressed.
