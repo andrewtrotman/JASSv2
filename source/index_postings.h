@@ -324,8 +324,20 @@ namespace JASS
 					if (times != 0)
 						{
 						auto prior = cumulative;
+						/*
+							Put the impact score in place along with the 0 terminator.
+						*/
+						postings_list[prior + 1] = impact_value;
+						postings_list[prior + 1 + times] = 0;
 
+						/*
+							Put the header in place.
+						*/
 						postings_list.header(current_impact, impact_value, &postings_list[prior + 1], &postings_list[prior + 1 + times]);
+
+						/*
+							Keep track of where in the list we are.
+						*/
 						current_impact++;
 						cumulative += times + 2;				// +1 for the impact_frequenct and +1 for the 0 terminator
 						times = prior;
@@ -337,7 +349,7 @@ namespace JASS
 				*/
 				for (const auto &posting : *this)
 					{
-					postings_list[frequencies[posting.term_frequency]] = posting.document_id;
+					postings_list[frequencies[posting.term_frequency] + 1] = posting.document_id;
 					frequencies[posting.term_frequency]++;
 					}
 				return postings_list;

@@ -51,7 +51,7 @@ namespace JASS
 		/*
 			Keep a track of where the postings are stored on disk.
 		*/
-		size_t postings_locaton = postings.tell();
+		size_t postings_location = postings.tell();
 
 		/*
 			Impact order the postings list.
@@ -59,17 +59,19 @@ namespace JASS
 		const auto &impact_ordered = postings_list.impact_order(memory);
 
 		/*
-			Write out the number of impact headers we're going to see.
+			Compute the number of impact headers we're going to see.
 		*/
 		uint64_t impact_count = number_of_impacts = impact_ordered.impact_size();
+#ifdef NEVER
 		postings.write(&impact_count, sizeof(impact_count));
+#endif
 
 		/*
 			Write out each pointer to an impact header.
 		*/
-		uint64_t offset = postings_locaton + sizeof(impact_count) + impact_count * sizeof(uint64_t);
+		uint64_t offset = postings_location + number_of_impacts * sizeof(offset);
 		uint64_t impact_header_size = sizeof(uint16_t) + sizeof(uint64_t) + sizeof(uint64_t) + sizeof(uint32_t);
-		for (size_t which = 0; which < impact_count; which++)
+		for (size_t which = 0; which < number_of_impacts; which++)
 			{
 			postings.write(&offset, sizeof(offset));
 			offset += impact_header_size;
@@ -78,6 +80,10 @@ namespace JASS
 		/*
 			Write out each impact header.
 		*/
+		size_t start_of_postings = offset + impact_header_size;			// +1 because there's a 0 terminator at the end
+
+//auto at = postings.tell();
+
 		for (const auto &header : impact_ordered)
 			{
 			/*
@@ -89,18 +95,18 @@ namespace JASS
 			/*
 				start loction on disk (uint64_t).
 			*/
-			uint64_t start_location = offset;
+			uint64_t start_location = start_of_postings;
 			postings.write(&start_location, sizeof(start_location));
 
 			/*
-				This is where comnoression happens - but since we're not initially compressing no work is necessary.
+				This is where compression happens - but since we're not initially compressing no work is necessary.
 			*/
 			offset += header.size();
 
 			/*
 				end location on disk (uint64_t).
 			*/
-			uint64_t finish_location = offset;
+			uint64_t finish_location = start_of_postings + header.size() * sizeof(uint32_t);
 			postings.write(&finish_location, sizeof(finish_location));
 
 			/*
@@ -111,17 +117,30 @@ namespace JASS
 			}
 
 		/*
+			write out a "blank" impact header
+		*/
+		uint8_t zero[] = {0,0,  0,0,0,0,0,0,0,0,   0,0,0,0,0,0,0,0,   0,0,0,0};
+		postings.write(&zero, sizeof(zero));
+
+//auto at_2 = postings.tell();
+
+		/*
 			write out each postings list segment.
 		*/
 		for (const auto &header : impact_ordered)
-			{
-			postings.write(header.begin(), header.size());				// Since we're not compressed, just write them out as a single chunk.
-			}
+			for (const auto &posting : header)
+				{
+				/*
+					uncompressed is an array of uint32_t integers counting from 0 (but the indexer counts from 1 so we subtract 1).
+				*/
+				uint32_t document_id = posting - 1;
+				postings.write(&document_id, sizeof(document_id));
+				}
 
 		/*
 			return the location of the postings list on disk
 		*/
-		return postings_locaton;
+		return postings_location;
 		}
 
 	/*
@@ -135,6 +154,7 @@ namespace JASS
 		*/
 		memory.rewind();
 		size_t number_of_impact_scores;
+
 		size_t postings_location = write_postings(postings, number_of_impact_scores);
 
 		/*
