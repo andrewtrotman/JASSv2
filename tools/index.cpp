@@ -3,8 +3,6 @@
 	---------
 	Copyright (c) 2016 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
-	
-	Originally from the ATIRE codebase (where it was also written by Andrew Trotman)
 */
 /*!
 	@file
@@ -18,8 +16,15 @@
 #include "serialise_ci.h"
 #include "instream_file.h"
 #include "instream_memory.h"
+#include "command_line_parser.h"
 #include "instream_document_trec.h"
 #include "index_manager_sequential.h"
+
+/*
+bool jass_v1_index = false;
+JASS::commandline_commamnd serialiser("-sj1", "Serialise the index as a JASS v1 index", jass_v1_index);
+JASS_commandline(serialiser);
+*/
 
 /*
 	MAIN()

@@ -61,10 +61,7 @@ namespace JASS
 		/*
 			Compute the number of impact headers we're going to see.
 		*/
-		uint64_t impact_count = number_of_impacts = impact_ordered.impact_size();
-#ifdef NEVER
-		postings.write(&impact_count, sizeof(impact_count));
-#endif
+		number_of_impacts = impact_ordered.impact_size();
 
 		/*
 			Write out each pointer to an impact header.
@@ -81,8 +78,6 @@ namespace JASS
 			Write out each impact header.
 		*/
 		size_t start_of_postings = offset + impact_header_size;			// +1 because there's a 0 terminator at the end
-
-//auto at = postings.tell();
 
 		for (const auto &header : impact_ordered)
 			{
@@ -121,8 +116,6 @@ namespace JASS
 		*/
 		uint8_t zero[] = {0,0,  0,0,0,0,0,0,0,0,   0,0,0,0,0,0,0,0,   0,0,0,0};
 		postings.write(&zero, sizeof(zero));
-
-//auto at_2 = postings.tell();
 
 		/*
 			write out each postings list segment.

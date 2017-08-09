@@ -17,6 +17,7 @@
 #include "hash_table.h"
 #include "top_k_heap.h"
 #include "binary_tree.h"
+#include "commandline.h"
 #include "pointer_box.h"
 #include "serialise_ci.h"
 #include "hash_pearson.h"
@@ -58,6 +59,9 @@ int main(void)
 
 	try
 		{
+		puts("commandline");
+		JASS::commandline::unittest();
+		
 #ifdef NEVER
 		//	JASS::string is a typedef so nothing to test.
 		
@@ -148,12 +152,10 @@ int main(void)
 
 		puts("index_manager_sequential");
 		JASS::index_manager_sequential::unittest();
-#endif
 
 		puts("serialise_jass_v1");
 		JASS::serialise_jass_v1::unittest();
 
-#ifdef NEVER
 		puts("serialise_ci");
 		JASS::serialise_ci::unittest();
 

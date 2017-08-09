@@ -28,6 +28,7 @@ set(JASSlib_FILES
 	channel_file.cpp
 	checksum.h
 	checksum.cpp
+	commandline.h
 	compress_integer.h
 	compress_integer_variable_byte.h
 	compress_integer_variable_byte.cpp
