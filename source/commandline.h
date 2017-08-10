@@ -76,12 +76,12 @@ namespace JASS
 				--------------------
 			*/
 			/*!
-				@brief Extract a boolean value of the parameter from the command line parameters
-				@param arg [in] The unparsed paramter as given by the user
+				@brief Extract a boolean value of the parameter from the command line parameters.
+				@param parameter [in] The unparsed paramter as given by the user.
 				@param element [out] where to put the value.
 				@return true if it was possible to extract a value, false on error.
 			*/
-			static bool extract(std::ostringstream &messages, const char *arg, command<bool> element)
+			static bool extract(std::ostringstream &messages, const char *parameter, command<bool> element)
 				{
 				element.parameter = true;
 				return true;
@@ -93,7 +93,8 @@ namespace JASS
 			*/
 			/*!
 				@brief Extract an integer value of the parameter from the command line parameters
-				@param arg [in] The unparsed paramter as given by the user
+				@details All signed integer types can be decode in this one method by assuming the largest type and then checking for out of range
+				@param parameter [in] The unparsed paramter as given by the user
 				@param element [out] where to put the value.
 				@return true if it was possible to extract a value, false on error.
 			*/
@@ -102,16 +103,16 @@ namespace JASS
 							 std::is_same<TYPE, int>::value ||
 							 std::is_same<TYPE, long>::value ||
 							 std::is_same<TYPE, long long>::value>::type* = nullptr>
-			static bool extract(std::ostringstream &messages, const char *arg, command<TYPE> element)
+			static bool extract(std::ostringstream &messages, const char *parameter, command<TYPE> element)
 				{
-				long long answer = strtoll(arg, NULL, 0);
+				long long answer = strtoll(parameter, NULL, 0);
 				if (answer > std::numeric_limits<TYPE>::max())
-					messages << arg << " Numeric overflow on parameter\n";
+					messages << parameter << " Numeric overflow on parameter\n";
 				else if (answer < std::numeric_limits<TYPE>::min())
-					messages << arg << " Numeric underflow on parameter\n";
+					messages << parameter << " Numeric underflow on parameter\n";
 				else
 					{
-					element.parameter = reinterpret_cast<TYPE>(answer);
+					element.parameter = static_cast<TYPE>(answer);
 					return true;
 					}
 
@@ -124,7 +125,8 @@ namespace JASS
 			*/
 			/*!
 				@brief Extract an unsigned integer value of the parameter from the command line parameters
-				@param arg [in] The unparsed paramter as given by the user
+				@details All unsigned integer types can be decode in this one method by assuming the largest type and then checking for out of range
+				@param parameter [in] The unparsed paramter as given by the user
 				@param element [out] where to put the value.
 				@return true if it was possible to extract a value, false on error.
 			*/
@@ -133,15 +135,15 @@ namespace JASS
 							 std::is_same<TYPE, unsigned int>::value ||
 							 std::is_same<TYPE, unsigned long>::value ||
 							 std::is_same<TYPE, unsigned long long>::value>::type* = nullptr>
-			static bool extract(std::ostringstream &messages, const char *arg, command<TYPE> element)
+			static bool extract(std::ostringstream &messages, const char *parameter, command<TYPE> element)
 				{
-				unsigned long long answer = strtoull(arg, NULL, 0);
+				unsigned long long answer = strtoull(parameter, NULL, 0);
 				if (answer > std::numeric_limits<TYPE>::max())
 					{
-					messages << arg << " Numeric overflow on parameter\n";
+					messages << parameter << " Numeric overflow on parameter\n";
 					return false;
 					}
-				element.parameter = reinterpret_cast<TYPE>(answer);
+				element.parameter = static_cast<TYPE>(answer);
 				return true;
 				}
 
@@ -151,13 +153,13 @@ namespace JASS
 			*/
 			/*!
 				@brief Extract a string value of the parameter from the command line parameters
-				@param arg [in] The unparsed parameter as given by the user
+				@param parameter [in] The unparsed parameter as given by the user
 				@param element [out] where to put the value.
 				@return true if it was possible to extract a value, false on error.
 			*/
-			static bool extract(std::ostringstream &messages, const char *arg, command<std::string> element)
+			static bool extract(std::ostringstream &messages, const char *parameter, command<std::string> element)
 				{
-				element.parameter = arg;
+				element.parameter = parameter;
 				return true;
 				}
 
@@ -167,14 +169,14 @@ namespace JASS
 			*/
 			/*!
 				@brief Catch all for unknown types
-				@param arg [in] The unparsed parameter as given by the user
+				@param parameter [in] The unparsed parameter as given by the user
 				@param element [out] where to put the value.
 				@return true if it was possible to extract a value, false on error.
 			*/
 			template <typename TYPE>
-			static bool extract(std::ostringstream &messages, const char *arg, TYPE element)
+			static bool extract(std::ostringstream &messages, const char *parameter, TYPE element)
 				{
-				messages << element.shortname << " " << element.longname << arg << " Unknown parameter type\n";
+				messages << element.shortname << " " << element.longname << parameter << " Unknown parameter type\n";
 				return false;
 				}
 
@@ -213,9 +215,17 @@ namespace JASS
 			static for_each_parameter(bool &success, std::ostringstream &messages, size_t &arg, const char *argv[], std::tuple<Tp...> &tuple)
 				{
 				if (strcmp(argv[arg], std::get<I>(tuple).shortname.c_str()) == 0)				// looking for "-a v"
+					{
 					success |= !extract(messages, argv[++arg], std::get<I>(tuple));
+					if (typeid(std::get<I>(tuple).parameter) != typeid(bool))
+						arg++;
+					}
 				else if (strcmp(argv[arg], std::get<I>(tuple).longname.c_str()) == 0)		// looking for "--aaa v"
+					{
 					success |= !extract(messages, argv[++arg], std::get<I>(tuple));
+					if (typeid(std::get<I>(tuple).parameter) != typeid(bool))
+						arg++;
+					}
 				else if (strncmp(argv[arg], std::get<I>(tuple).longname.c_str(), std::get<I>(tuple).longname.size()) == 0)			// looking for "-aav"
 					{
 					success |= !extract(messages, argv[arg] + std::get<I>(tuple).longname.size(), std::get<I>(tuple));
@@ -290,24 +300,70 @@ namespace JASS
 			*/
 			static void unittest(void)
 				{
-				int argc = 2;
-				const char *argv[] = {"-sj1", "-sj2another", "-sj3", };
+				/*
+					Declare some objects
+				*/
+				bool parameter_boolean = false;
+				auto serialiser = commandline::parameter("-b", "--boolean", "Extract a boolean", parameter_boolean);
 
-				bool jass_v1_index = false;
-				auto serialiser = commandline::parameter("-sj1", "--serialise_jass_v1", "Serialise the index as a JASS v1 index", jass_v1_index);
+				std::string parameter_string = "Something";
+				auto str = commandline::parameter("-s", "--string", "Extractr a string", parameter_string);
 
-				std::string jass_v1_string = "Something";
-				auto str = commandline::parameter("-sj2", "--serialise_jass_v2", "Serialise the index as a JASS v1 index", jass_v1_string);
+				int parameter_integer = 0;
+				auto integer = commandline::parameter("-i", "--integer", "Extract an integer", parameter_integer);
 
-				auto all_commands = std::make_tuple(serialiser, str);
+				unsigned int parameter_unsigned = 0;
+				auto unsigned_integer = commandline::parameter("-u", "--unsigned", "Extract an unsigned integer", parameter_unsigned);
+
+				/* 
+					Declare the parameter object to parse
+				*/
+				auto all_commands = std::make_tuple(serialiser, str, integer, unsigned_integer);
+
+				/*
+					Declare a command line like argc and argv[].
+				*/
+				int argc = 6;
+				const char *argv[] = {"-b", "-s", "string", "-i3", "-u", "4"};
+
+				/*
+					Call the parser
+				*/
 				std::string error;
 				auto success = commandline::parse(argc, argv, all_commands, error);
 
-				if (!success)
-					std::cout << error;
-				else
-					std::cout << jass_v1_index << " " << jass_v1_string << "\n";
+				/*
+					Make sure we got the right answer.
+				*/
+				JASS_assert(success);
+				JASS_assert(error == "");
+				std::ostringstream results;
+				results << parameter_boolean << parameter_string << parameter_integer << parameter_unsigned;
+				JASS_assert(results.str() == "1string34");
+
+				/*
+					Check longnames
+				*/
+				parameter_boolean = false;
+				const char *argv2[] = {"--boolean", "--string", "four", "--integer5", "--unsigned", "6"};
+				success = commandline::parse(argc, argv2, all_commands, error);
+				JASS_assert(success);
+				std::ostringstream results2;
+				results2 << parameter_boolean << parameter_string << parameter_integer << parameter_unsigned;
+				JASS_assert(results2.str() == "1four56");
+
+				/*
+					check for errors
+				*/
+				const char *argv3[] = {"--integer", "2147483648", "--unsigned", "4294967296", "--integer", "-2147483649", "--nonexistant"};
+				success = commandline::parse(7, argv3, all_commands, error);
+				JASS_assert(!success);
+				std::string answer =
+					"2147483648 Numeric overflow on parameter\n"
+					"4294967296 Numeric overflow on parameter\n"
+					"-2147483649 Numeric underflow on parameter\n"
+					"--nonexistant Unknown parameter\n";
+				JASS_assert(error == answer);
 				}
 		};
 	}
-
