@@ -147,6 +147,14 @@ namespace JASS
 			{
 			document_id_start += primary_key_start_tag.size();
 			document_id_end = std::search(document_id_start, document_end, primary_key_end_tag.c_str(), primary_key_end_tag.c_str() + primary_key_end_tag.size());
+
+			/*
+				Trim whitespace from the start and end of the primary key.
+			*/
+			while (isspace(*document_id_start) && document_id_start < document_end)			// trim early whitespace
+				document_id_start++;
+			while (isspace(*(document_id_end - 1)) && document_id_end > document_start)				// trip trailing whitespace
+				document_id_end--;
 			}
 
 		/*

@@ -13,28 +13,55 @@
 #include <string.h>
 
 #include "parser.h"
+#include "version.h"
+#include "commandline.h"
 #include "serialise_ci.h"
 #include "instream_file.h"
 #include "instream_memory.h"
-#include "command_line_parser.h"
+#include "serialise_jass_v1.h"
 #include "instream_document_trec.h"
 #include "index_manager_sequential.h"
 
 /*
-bool jass_v1_index = false;
-JASS::commandline_commamnd serialiser("-sj1", "Serialise the index as a JASS v1 index", jass_v1_index);
-JASS_commandline(serialiser);
+	Declare the command line parameters
 */
+bool parameter_jass_v1_index = false;
+auto parameter_jass_v1_index_command = JASS::commandline::parameter("-I1", "--index_jass_v1", "Generate a JASS version 1 index.", parameter_jass_v1_index);
+
+bool parameter_compiled_index = false;
+auto parameter_compiled_index_command = JASS::commandline::parameter("-Ic", "--index_compiled", "Generate a JASS compiled index.", parameter_compiled_index);
+
+std::string parameter_filename = "";
+auto parameter_filename_command = JASS::commandline::parameter("-f", "--filename", "Filename to index.", parameter_filename);
+
+auto command_line_parameters = std::make_tuple
+	(
+	parameter_filename_command,
+	parameter_jass_v1_index_command,
+	parameter_compiled_index_command
+	);
 
 /*
 	MAIN()
 	------
 */
-int main(int argc, char *argv[])
+int main(int argc, const char *argv[])
 	{
+	std::cout << JASS::version::build() << "\n";
+	/*
+		Do the command line parsing.
+	*/
+	std::string error;
+	auto success = JASS::commandline::parse(argc, argv, command_line_parameters, error);
+	if (!success)
+		{
+		std::cout << error;
+		exit(1);
+		}
+
 	JASS::parser parser;
 	JASS::document document;
-	std::shared_ptr<JASS::instream> file(new JASS::instream_file(argv[1]));
+	std::shared_ptr<JASS::instream> file(new JASS::instream_file(parameter_filename));
 	std::shared_ptr<JASS::instream> source(new JASS::instream_document_trec(file));
 	JASS::index_manager_sequential index;
 
@@ -83,8 +110,23 @@ int main(int argc, char *argv[])
 	
 	printf("Documents:%lld\n", (long long)total_documents);
 
-	JASS::serialise_ci serialiser;
-	index.iterate(serialiser);
+	/*
+		Do we need to generate a compiled index?
+	*/
+	if (parameter_compiled_index)
+		{
+		JASS::serialise_ci serialiser;
+		index.iterate(serialiser);
+		}
+
+	/*
+		Do we need to generate a JASS v1 index?
+	*/
+	if (parameter_jass_v1_index)
+		{
+		JASS::serialise_jass_v1 serialiser;
+		index.iterate(serialiser);
+		}
 
 	return 0;
 	}

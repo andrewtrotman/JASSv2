@@ -15,6 +15,8 @@
 #include <tuple>
 #include <string>
 #include <utility>
+#include <sstream>
+
 #include <stdlib.h>
 
 #include "string.h"
@@ -266,8 +268,8 @@ namespace JASS
 				}
 
 			/*
-				COMMANDLINE::PARAMETER()
-				------------------------
+				COMMANDLINE::PARSE()
+				--------------------
 			*/
 			/*!
 				@brief Perform the command line parsing.
@@ -282,7 +284,7 @@ namespace JASS
 				{
 				std::ostringstream messages;
 				bool success = true;
-				size_t argument = 0;
+				size_t argument = 1;
 
 				while (argument < argc)
 					for_each_parameter(success, messages, argument, argv, all_parameters);
@@ -323,8 +325,8 @@ namespace JASS
 				/*
 					Declare a command line like argc and argv[].
 				*/
-				int argc = 6;
-				const char *argv[] = {"-b", "-s", "string", "-i3", "-u", "4"};
+				int argc = 7;
+				const char *argv[] = {"program", "-b", "-s", "string", "-i3", "-u", "4"};
 
 				/*
 					Call the parser
@@ -345,7 +347,7 @@ namespace JASS
 					Check longnames
 				*/
 				parameter_boolean = false;
-				const char *argv2[] = {"--boolean", "--string", "four", "--integer5", "--unsigned", "6"};
+				const char *argv2[] = {"program", "--boolean", "--string", "four", "--integer5", "--unsigned", "6"};
 				success = commandline::parse(argc, argv2, all_commands, error);
 				JASS_assert(success);
 				std::ostringstream results2;
@@ -355,8 +357,8 @@ namespace JASS
 				/*
 					check for errors
 				*/
-				const char *argv3[] = {"--integer", "2147483648", "--unsigned", "4294967296", "--integer", "-2147483649", "--nonexistant"};
-				success = commandline::parse(7, argv3, all_commands, error);
+				const char *argv3[] = {"program", "--integer", "2147483648", "--unsigned", "4294967296", "--integer", "-2147483649", "--nonexistant"};
+				success = commandline::parse(8, argv3, all_commands, error);
 				JASS_assert(!success);
 				std::string answer =
 					"2147483648 Numeric overflow on parameter\n"
