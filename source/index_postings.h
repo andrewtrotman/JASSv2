@@ -320,7 +320,6 @@ namespace JASS
 				size_t impact_value = 0;
 				for (auto &times : frequencies)
 					{
-					impact_value++;
 					if (times != 0)
 						{
 						auto prior = cumulative;
@@ -342,6 +341,7 @@ namespace JASS
 						cumulative += times + 2;				// +1 for the impact_frequenct and +1 for the 0 terminator
 						times = prior;
 						}
+					impact_value++;
 					}
 
 				/*
