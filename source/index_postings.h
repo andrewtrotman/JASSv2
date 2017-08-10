@@ -116,9 +116,7 @@ namespace JASS
 						frequency_end(parent.term_frequencies.end()),
 						frequencies_remaining(frequency != parent.term_frequencies.end() ? *frequency : 0)
 						{
-						/*
-							Nothing.
-						*/
+						/* Nothing */
 						}
 
 					/*
@@ -147,7 +145,7 @@ namespace JASS
 						-------------------------------------
 					*/
 					/*!
-						@brief Return a reference to the element pointed to by this iterator.
+						@brief Return a copy of the element pointed to by this iterator.
 					*/
 					const posting operator*() const
 						{
@@ -174,7 +172,137 @@ namespace JASS
 						return *this;
 						}
 				};
-			
+
+			/*
+				CLASS INDEX_POSTINGS::TF_ITERATOR
+				---------------------------------
+			*/
+			/*!
+				@brief C++ iterator for iterating over the <document_id, term_frequency> paira in an index_postings object.
+			*/
+			class tf_iterator
+				{
+				private:
+					dynamic_array<uint32_t>::iterator document;			///< The iterator for the documents (1 per document).
+					dynamic_array<uint16_t>::iterator frequency;			///< The iterator for the frequencies (1 per document).
+
+				public:
+					/*
+						INDEX_POSTINGS::TF_ITERATOR::TF_ITERATOR()
+						------------------------------------------
+					*/
+					/*!
+						@brief Constructor
+						@param parent [in] The object that this iterator is iterating over
+						@param start [in] Whether this is an iterator for the START or END of the postings lists
+					*/
+					tf_iterator(const index_postings &parent, iterator::where start):
+						document(start == iterator::START ? parent.document_ids.begin() : parent.document_ids.end()),
+						frequency(start == iterator::START ? parent.term_frequencies.begin() : parent.term_frequencies.end())
+						{
+						/* Nothing */
+						}
+
+					/*
+						INDEX_POSTINGS::TF_ITERATOR::OPERATOR!=()
+						-----------------------------------------
+					*/
+					/*!
+						@brief Compare two iterator objects for non-equality.
+						@param other [in] The iterator object to compare to.
+						@return true if they differ, else false.
+					*/
+
+					bool operator!=(const tf_iterator &other) const
+						{
+						if (other.frequency != frequency)
+							return true;
+						else
+							return false;
+						}
+
+					/*
+						INDEX_POSTINGS::TF_ITERATOR::OPERATOR*()
+						----------------------------------------
+					*/
+					/*!
+						@brief Return a copy of the element pointed to by this iterator.
+					*/
+					const posting operator*() const
+						{
+						return posting(*document, *frequency, 0);
+						}
+
+					/*
+						INDEX_POSTINGS::TF_ITERATOR::OPERATOR++()
+						-----------------------------------------
+					*/
+					/*!
+						@brief Increment this iterator.
+					*/
+					const tf_iterator &operator++()
+						{
+						++document;
+						++frequency;
+
+						return *this;
+						}
+				};
+
+			/*
+				CLASS INDEX_POSTINGS::TF_ITERATOR_THUNK
+				---------------------------------------
+			*/
+			/*!
+				@brief Intermediary object used to create iterators over the non-positional parts of the index
+			*/
+			class tf_iterator_thunk
+				{
+				private:
+					const index_postings &parent;					///< The index_postings object we're thunking through
+
+				public:
+					/*
+						INDEX_POSTINGS::TF_ITERATOR_THUNK::TF_ITERATOR_THUNK()
+						------------------------------------------------------
+					*/
+					/*!
+						@brief Constructor
+						@param parent [in] The index_postings object that the tf_iterator will iterate over
+					*/
+					tf_iterator_thunk(const index_postings &parent) :
+						parent(parent)
+						{
+						/* Nothing */
+						}
+
+					/*
+						INDEX_POSTINGS::TF_ITERATOR_THUNK::BEGIN()
+						------------------------------------------
+					*/
+					/*!
+						@brief Return a tf_iterator pointing to the start of the postings.
+						@return tf_iterator pointing to start of the postings.
+					*/
+					auto begin(void) const
+						{
+						return tf_iterator(parent, iterator::START);
+						}
+						
+					/*
+						INDEX_POSTINGS::TF_ITERATOR_THUNK::END()
+						----------------------------------------
+					*/
+					/*!
+						@brief Return an iterator pointing to the end of the postings.
+						@return Iterator pointing to end of tne postings.
+					*/
+					auto end(void) const
+						{
+						return tf_iterator(parent, iterator::END);
+						}
+				};
+
 		private:
 			/*
 				INDEX_POSTINGS::INDEX_POSTINGS()
@@ -229,10 +357,21 @@ namespace JASS
 				@brief Return an iterator pointing to the end of the postings.
 				@return Iterator pointing to end of tne postings.
 			*/
-
 			iterator end(void) const
 				{
 				return iterator(*this, iterator::END);
+				}
+
+			/*
+				INDEX_POSTINGS::TF_ITERATE()
+				----------------------------
+			*/
+			/*!
+				@brief return an intermediary that can be used to iterate over the <document_id, term_frequency> pairs without positions
+			*/
+			const tf_iterator_thunk tf_iterate(void) const
+				{
+				return tf_iterator_thunk(*this);
 				}
 
 			/*
@@ -287,7 +426,7 @@ namespace JASS
 				/*
 					Count up the number of times each impact is seen
 				*/
-				for (const auto &posting : *this)
+				for (const auto &posting : tf_iterate())
 					{
 					frequencies[posting.term_frequency]++;
 					number_of_postings++;
@@ -297,7 +436,7 @@ namespace JASS
 					Count the number of unique impacts
 				*/
 				size_t number_of_impacts = 0;
-				for (auto &times : frequencies)
+				for (auto times : frequencies)
 					if (times != 0)
 						number_of_impacts++;
 
@@ -309,7 +448,7 @@ namespace JASS
 					and know its stull valid once this method terminates
 				*/
 				index_postings_impact *postings_list_memory;
-				postings_list_memory = new (reinterpret_cast<index_postings_impact *>(memory.malloc(sizeof(*postings_list_memory)))) index_postings_impact(number_of_impacts, number_of_postings + 2 * number_of_impacts, memory);
+				postings_list_memory = new (reinterpret_cast<index_postings_impact *>(memory.malloc(sizeof(*postings_list_memory)))) index_postings_impact(number_of_impacts, number_of_postings, memory);
 				index_postings_impact &postings_list = *postings_list_memory;
 
 				/*
@@ -324,21 +463,15 @@ namespace JASS
 						{
 						auto prior = cumulative;
 						/*
-							Put the impact score in place along with the 0 terminator.
-						*/
-						postings_list[prior + 1] = impact_value;
-						postings_list[prior + 1 + times] = 0;
-
-						/*
 							Put the header in place.
 						*/
-						postings_list.header(current_impact, impact_value, &postings_list[prior + 1], &postings_list[prior + 1 + times]);
+						postings_list.header(current_impact, impact_value, &postings_list[prior], &postings_list[prior + times]);
 
 						/*
 							Keep track of where in the list we are.
 						*/
 						current_impact++;
-						cumulative += times + 2;				// +1 for the impact_frequenct and +1 for the 0 terminator
+						cumulative += times;
 						times = prior;
 						}
 					impact_value++;
@@ -347,9 +480,9 @@ namespace JASS
 				/*
 					Now place the postings in the right places
 				*/
-				for (const auto &posting : *this)
+				for (const auto &posting : tf_iterate())
 					{
-					postings_list[frequencies[posting.term_frequency] + 1] = posting.document_id;
+					postings_list[frequencies[posting.term_frequency]] = posting.document_id;
 					frequencies[posting.term_frequency]++;
 					}
 				return postings_list;

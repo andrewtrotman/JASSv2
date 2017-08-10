@@ -96,7 +96,6 @@ namespace JASS
 			/*
 				This is where compression happens - but since we're not initially compressing no work is necessary.
 			*/
-			offset += header.size();
 
 			/*
 				end location on disk (uint64_t).
