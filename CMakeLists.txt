@@ -82,8 +82,8 @@ target_link_libraries(unittest JASSlib ${CMAKE_THREAD_LIBS_INIT})
 #
 # build the indexer
 #
-add_executable(index tools/index.cpp)
-target_link_libraries(index JASSlib ${CMAKE_THREAD_LIBS_INIT})
+add_executable(JASS_index tools/JASS_index.cpp)
+target_link_libraries(JASS_index JASSlib ${CMAKE_THREAD_LIBS_INIT})
 
 #
 # build the compiled_indexes stubs
