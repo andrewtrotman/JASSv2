@@ -12,6 +12,7 @@
 #include "parser.h"
 #include "unicode.h"
 #include "version.h"
+#include "reverse.h"
 #include "checksum.h"
 #include "bitstring.h"
 #include "hash_table.h"
@@ -59,10 +60,13 @@ int main(void)
 
 	try
 		{
+		puts("reverse");
+		JASS::reverse_adapter<int>::unittest();
+
 		puts("commandline");
 		JASS::commandline::unittest();
 		
-#ifdef NEVER
+//#ifdef NEVER
 		//	JASS::string is a typedef so nothing to test.
 		
 		puts("checksum");
@@ -173,7 +177,7 @@ int main(void)
 
 		puts("query");
 		JASS::query<uint16_t>::unittest();
-#endif
+//#endif
 
 		puts("ALL UNIT TESTS HAVE PASSED");
 		failed = false;

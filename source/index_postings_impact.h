@@ -83,6 +83,74 @@ namespace JASS
 						}
 				};
 
+		private:
+			/*
+				CLASS INDEX_POSTINGS_IMPACT::REVERSE_ITERATOR
+				---------------------------------------------
+			*/
+			/*!
+				@brief A reverse iterator for iterating over impact headers from highet to lowest
+			*/
+			class reverse_iterator
+				{
+				private:
+					impact *address;				///< Which header we're pointing at
+
+				public:
+					/*
+						 INDEX_POSTINGS_IMPACT::REVERSE_ITERATOR:REVERSE_ITERATOR
+						---------------------------------------------------------
+					*/
+					/*!
+						@brief Constructor
+						@oaram address [in] Were this iterator points.
+					*/
+					reverse_iterator(impact *address):
+						address(address)
+						{
+						/* Nothing */
+						}
+
+					/*
+						 INDEX_POSTINGS_IMPACT::REVERSE_ITERATOR:OPERATOR!=()
+						-----------------------------------------------------
+					*/
+					/*!
+						@brief Compare two iterator objects for non-equality.
+						@param other [in] The iterator object to compare to.
+						@return true if they differ, else false.
+					*/
+					bool operator!=(const reverse_iterator &other) const
+						{
+						return address != other.address;
+						}
+
+					/*
+						 INDEX_POSTINGS_IMPACT::REVERSE_ITERATOR:OPERATOR*()
+						----------------------------------------------------
+					*/
+					/*!
+						@brief Return a reference to the element pointed to by this iterator.
+					*/
+					impact &operator*()
+						{
+						return *address;
+						}
+
+					/*
+						 INDEX_POSTINGS_IMPACT::REVERSE_ITERATOR:OPERATOR++()
+						-----------------------------------------------------
+					*/
+					/*!
+						@brief Increment this iterator.
+					*/
+					const reverse_iterator &operator++()
+						{
+						address--;
+						return *this;
+						}
+				};
+
 		protected:
 			allocator &memory;						///< All allocation  happens in this arena.
 			size_t number_of_impacts;				///< The number of impact objects in the impacts array.
@@ -188,6 +256,55 @@ namespace JASS
 				}
 
 			/*
+				INDEX_POSTINGS_IMPACT::RBEGIN()
+				-------------------------------
+			*/
+			/*!
+				@brief Return a pointer to the last impact header (for use in an reverse iterator).
+				@return A pointer to the first impact header.
+			*/
+			impact *rbegin(void) const
+				{
+				return impacts + number_of_impacts - 1;
+				}
+
+			/*
+				INDEX_POSTINGS_IMPACT::REND()
+				----------------------------
+			*/
+			/*!
+				@brief Return a pointer to one element before the first impact headers (for use in reverse iteration iterator).
+				@return A pointer to one element past the end of the impact headers.
+			*/
+			impact *rend(void) const
+				{
+				return impacts - 1;
+				}
+
+			/*
+				INDEX_POSTINGS_IMPACT::TEXT_RENDER()
+				------------------------------------
+			*/
+			/*!
+				@brief Dump a human-readable version of the postings list down the stream.
+				@param stream [in] The stream to write to.
+			*/
+			void text_render(std::ostream &stream) const
+				{
+				stream << "{[";
+				for (const auto &header : *this)
+					{
+					stream << header.impact_score << ":";
+					for (const auto posting : header)
+						stream << posting << " ";
+					}
+				stream << "]\n[";
+				for (size_t index = 0; index < number_of_postings; index++)
+					stream << postings[index] << " ";
+				stream << "]}";
+				}
+
+			/*
 				INDEX_POSTINGS_IMPACT::UNITTEST()
 				---------------------------------
 			*/
@@ -250,4 +367,20 @@ namespace JASS
 				puts("index_postings_impact::PASSED");
 				}
 		};
+
+	/*
+		OPERATOR<<()
+		------------
+	*/
+	/*!
+		@brief Dump a human readable version of the postings list down an output stream.
+		@param stream [in] The stream to write to.
+		@param data [in] The postings list to write.
+		@return The stream once the postings list has been written.
+	*/
+	inline std::ostream &operator<<(std::ostream &stream, const index_postings_impact &data)
+		{
+		data.text_render(stream);
+		return stream;
+		}
 	}

@@ -10,6 +10,8 @@
 #include "serialise_jass_v1.h"
 #include "index_manager_sequential.h"
 
+bool print = false;
+
 namespace JASS
 	{
 	/*
@@ -58,6 +60,12 @@ namespace JASS
 		*/
 		const auto &impact_ordered = postings_list.impact_order(memory);
 
+if (print)
+{
+std::cout << postings_list << "\n";
+std::cout << impact_ordered << "\n-\n";
+}
+
 		/*
 			Compute the number of impact headers we're going to see.
 		*/
@@ -70,6 +78,7 @@ namespace JASS
 		uint64_t impact_header_size = sizeof(uint16_t) + sizeof(uint64_t) + sizeof(uint64_t) + sizeof(uint32_t);
 		for (size_t which = 0; which < number_of_impacts; which++)
 			{
+if (print) std::cout << "offset:" << offset;
 			postings.write(&offset, sizeof(offset));
 			offset += impact_header_size;
 			}
@@ -85,12 +94,14 @@ namespace JASS
 				impact score (uint16_t).
 			*/
 			uint16_t score = header.impact_score;
+if (print) std::cout << " score:" << score;
 			postings.write(&score, sizeof(score));
 
 			/*
 				start loction on disk (uint64_t).
 			*/
 			uint64_t start_location = start_of_postings;
+if (print) std::cout << " start:" << start_location;
 			postings.write(&start_location, sizeof(start_location));
 
 			/*
@@ -101,6 +112,7 @@ namespace JASS
 				end location on disk (uint64_t).
 			*/
 			uint64_t finish_location = start_of_postings + header.size() * sizeof(uint32_t);
+if (print) std::cout << " finish:" << finish_location;
 			postings.write(&finish_location, sizeof(finish_location));
 
 			/*
@@ -108,6 +120,8 @@ namespace JASS
 			*/
 			uint32_t frequency = header.size();
 			postings.write(&frequency, sizeof(frequency));
+if (print) std::cout << " frequency:" << frequency;
+start_of_postings = finish_location;
 			}
 
 		/*
@@ -115,6 +129,8 @@ namespace JASS
 		*/
 		uint8_t zero[] = {0,0,  0,0,0,0,0,0,0,0,   0,0,0,0,0,0,0,0,   0,0,0,0};
 		postings.write(&zero, sizeof(zero));
+
+if (print) std::cout << " <00 00000000 00000000 0000>";
 
 		/*
 			write out each postings list segment.
@@ -127,8 +143,10 @@ namespace JASS
 				*/
 				uint32_t document_id = posting - 1;
 				postings.write(&document_id, sizeof(document_id));
+if (print) std::cout << " <" << document_id << ">";
 				}
 
+if (print) std::cout << "\n";
 		/*
 			return the location of the postings list on disk
 		*/
@@ -147,7 +165,15 @@ namespace JASS
 		memory.rewind();
 		size_t number_of_impact_scores;
 
-		size_t postings_location = write_postings(postings, number_of_impact_scores);
+		size_t postings_location;
+		if (term == "million")
+			{
+			print = true;
+			postings_location = write_postings(postings, number_of_impact_scores);
+			print = false;
+			}
+		else
+			postings_location = write_postings(postings, number_of_impact_scores);
 
 		/*
 			Find out where we are in the vocabulary strings file - which will be the start of the term before we write it.

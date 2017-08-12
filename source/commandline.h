@@ -366,6 +366,8 @@ namespace JASS
 					"-2147483649 Numeric underflow on parameter\n"
 					"--nonexistant Unknown parameter\n";
 				JASS_assert(error == answer);
+
+				puts("commandline:PASSED");
 				}
 		};
 	}

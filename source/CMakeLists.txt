@@ -63,6 +63,7 @@ set(JASSlib_FILES
 	query16_t.h
 	query_term.h
 	query_term_list.h
+	reverse.h
 	serialise_ci.cpp
 	serialise_ci.h
 	serialise_jass_v1.cpp
