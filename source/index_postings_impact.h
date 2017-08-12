@@ -263,9 +263,9 @@ namespace JASS
 				@brief Return a pointer to the last impact header (for use in an reverse iterator).
 				@return A pointer to the first impact header.
 			*/
-			impact *rbegin(void) const
+			auto rbegin(void) const
 				{
-				return impacts + number_of_impacts - 1;
+				return reverse_iterator(impacts + number_of_impacts - 1);
 				}
 
 			/*
@@ -276,9 +276,9 @@ namespace JASS
 				@brief Return a pointer to one element before the first impact headers (for use in reverse iteration iterator).
 				@return A pointer to one element past the end of the impact headers.
 			*/
-			impact *rend(void) const
+			auto rend(void) const
 				{
-				return impacts - 1;
+				return reverse_iterator(impacts - 1);
 				}
 
 			/*

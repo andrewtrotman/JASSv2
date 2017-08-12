@@ -66,7 +66,6 @@ int main(void)
 		puts("commandline");
 		JASS::commandline::unittest();
 		
-//#ifdef NEVER
 		//	JASS::string is a typedef so nothing to test.
 		
 		puts("checksum");
@@ -177,7 +176,6 @@ int main(void)
 
 		puts("query");
 		JASS::query<uint16_t>::unittest();
-//#endif
 
 		puts("ALL UNIT TESTS HAVE PASSED");
 		failed = false;

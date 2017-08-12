@@ -17,6 +17,8 @@
 #include <vector>
 #include <sstream>
 
+#include "asserts.h"
+
 namespace JASS
 	{
 	/*
