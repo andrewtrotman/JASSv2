@@ -201,7 +201,7 @@ namespace JASS
 		}
 
 		/*
-			Checksum the inde to make sure its correct.
+			Checksum the index to make sure its correct.
 		*/
 		auto checksum = checksum::fletcher_16_file("CIvocab.bin");
 		JASS_assert(checksum == 10977);
