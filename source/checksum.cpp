@@ -40,8 +40,6 @@ namespace JASS
 			sum_2 = (sum_2 + sum_1) % 255;
 
 			++start;
-
-			printf("%x %x %x\n", *start, sum_1, sum_2);
 			}
 
 		return (sum_2 << 8) | sum_1;
@@ -95,7 +93,7 @@ namespace JASS
 	*/
 	uint16_t checksum::fletcher_16_file(const std::string &filename)
 		{
-		std::ifstream file(filename);
+		std::ifstream file(filename, std::ios::binary);
 		return fletcher_16(file);
 		}
 

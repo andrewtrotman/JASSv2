@@ -205,19 +205,15 @@ namespace JASS
 		*/
 		auto checksum = checksum::fletcher_16_file("CIvocab.bin");
 		JASS_assert(checksum == 10977);
-//		std::cout << "\tCIvocab.bin = " << checksum << '\n';
 
 		checksum = checksum::fletcher_16_file("CIvocab_terms.bin");
 		JASS_assert(checksum == 25057);
-//		std::cout << "\tCIvocab_terms.bin = " << checksum << '\n';
 
 		checksum = checksum::fletcher_16_file("CIpostings.bin");
 		JASS_assert(checksum == 9785);
-//		std::cout << "\tCIpostings.bin = " << checksum << '\n';
 
 		checksum = checksum::fletcher_16_file("CIdoclist.bin");
 		JASS_assert(checksum == 3045);
-//		std::cout << "\tCIdoclist.bin = " << checksum << '\n';
 
 		puts("serialise_jass_v1::PASSED");
 		}
