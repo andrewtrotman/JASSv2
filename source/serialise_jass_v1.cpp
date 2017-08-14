@@ -115,7 +115,7 @@ namespace JASS
 		/*
 			write out a "blank" impact header
 		*/
-		uint8_t zero[] = {0,0,  0,0,0,0,0,0,0,0,   0,0,0,0,0,0,0,0,   0,0,0,0};
+		uint8_t zero[] = {0, 0,  0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0};
 		postings.write(&zero, sizeof(zero));
 
 		/*
@@ -203,22 +203,22 @@ namespace JASS
 		/*
 			Checksum the inde to make sure its correct.
 		*/
-		std::cout << "=====";
-
 		auto checksum = checksum::fletcher_16_file("CIvocab.bin");
-		std::cout << "\tCIvocab.bin = " << checksum << '\n';
+		JASS_assert(checksum == 10977);
+//		std::cout << "\tCIvocab.bin = " << checksum << '\n';
 
 		checksum = checksum::fletcher_16_file("CIvocab_terms.bin");
-		std::cout << "\tCIvocab_terms.bin = " << checksum << '\n';
+		JASS_assert(checksum == 25057);
+//		std::cout << "\tCIvocab_terms.bin = " << checksum << '\n';
 
 		checksum = checksum::fletcher_16_file("CIpostings.bin");
-		std::cout << "\tCIpostings.bin = " << checksum << '\n';
+		JASS_assert(checksum == 9785);
+//		std::cout << "\tCIpostings.bin = " << checksum << '\n';
 
 		checksum = checksum::fletcher_16_file("CIdoclist.bin");
-		std::cout << "\tCIdoclist.bin = " << checksum << '\n';
+		JASS_assert(checksum == 3045);
+//		std::cout << "\tCIdoclist.bin = " << checksum << '\n';
 
-		std::cout << "=====";
-
-		puts("\tserialise_jass_v1::INCOMPLETE - not all implemented");
+		puts("serialise_jass_v1::PASSED");
 		}
 	}

@@ -190,6 +190,6 @@ namespace JASS
 		*/
 		(void)remove(filename.c_str());
 
-		::puts("channel_file::PASS");
+		::puts("channel_file::PASSED");
 		}
 	}

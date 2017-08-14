@@ -259,7 +259,7 @@ namespace JASS
 				JASS_assert(b.compare(a) < 0);
 				JASS_assert(c.compare(a) > 0);
 
-				puts("pointer_box::PASS");
+				puts("pointer_box::PASSED");
 				}
 		};
 	}

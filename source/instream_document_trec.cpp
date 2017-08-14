@@ -186,33 +186,43 @@ namespace JASS
 		*/
 		slicer.read(indexable_object);
 		JASS_assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_1);
-		
+		JASS_assert(std::string((char *)&indexable_object.primary_key[0], indexable_object.primary_key.size()) == unittest_data::ten_document_1_key);
+
 		slicer.read(indexable_object);
 		JASS_assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_2);
-		
+		JASS_assert(std::string((char *)&indexable_object.primary_key[0], indexable_object.primary_key.size()) == unittest_data::ten_document_2_key);
+
 		slicer.read(indexable_object);
 		JASS_assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_3);
-		
+		JASS_assert(std::string((char *)&indexable_object.primary_key[0], indexable_object.primary_key.size()) == unittest_data::ten_document_3_key);
+
 		slicer.read(indexable_object);
 		JASS_assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_4);
-		
+		JASS_assert(std::string((char *)&indexable_object.primary_key[0], indexable_object.primary_key.size()) == unittest_data::ten_document_4_key);
+
 		slicer.read(indexable_object);
 		JASS_assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_5);
-		
+		JASS_assert(std::string((char *)&indexable_object.primary_key[0], indexable_object.primary_key.size()) == unittest_data::ten_document_5_key);
+
 		slicer.read(indexable_object);
 		JASS_assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_6);
-		
+		JASS_assert(std::string((char *)&indexable_object.primary_key[0], indexable_object.primary_key.size()) == unittest_data::ten_document_6_key);
+
 		slicer.read(indexable_object);
 		JASS_assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_7);
-		
+		JASS_assert(std::string((char *)&indexable_object.primary_key[0], indexable_object.primary_key.size()) == unittest_data::ten_document_7_key);
+
 		slicer.read(indexable_object);
 		JASS_assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_8);
-		
+		JASS_assert(std::string((char *)&indexable_object.primary_key[0], indexable_object.primary_key.size()) == unittest_data::ten_document_8_key);
+
 		slicer.read(indexable_object);
 		JASS_assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_9);
-		
+		JASS_assert(std::string((char *)&indexable_object.primary_key[0], indexable_object.primary_key.size()) == unittest_data::ten_document_9_key);
+
 		slicer.read(indexable_object);
 		JASS_assert(std::string((char *)&indexable_object.contents[0], indexable_object.contents.size()) == unittest_data::ten_document_10);
+		JASS_assert(std::string((char *)&indexable_object.primary_key[0], indexable_object.primary_key.size()) == unittest_data::ten_document_10_key);
 
 		slicer.read(indexable_object);
 		JASS_assert(indexable_object.contents.size() == 0);

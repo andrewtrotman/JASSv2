@@ -25,9 +25,9 @@
 #pragma pack(push, 1)
 struct vocab_tripple
 	{
-	uint64_t term;
-	uint64_t offset;
-	uint64_t impacts;
+	uint64_t term;			///< pointer to term in the term file
+	uint64_t offset;		///< pointer to the postings list.
+	uint64_t impacts;		///< The number of impacts for this term
 	};
 #pragma pack(pop)
 
@@ -36,15 +36,15 @@ struct vocab_tripple
 	--------------------
 */
 /*!
-	The layout (in memory) of each impact header.
+	@brief The layout (in memory) of each impact header.
 */
 #pragma pack(push, 1)
 struct impact_header
 	{
-	uint16_t impact_score;
-	uint64_t start;
-	uint64_t finish;
-	uint32_t impacts;
+	uint16_t impact_score;			///< The impact score for this sequence.
+	uint64_t start;					///< Pointer (from start of file) to the postings for this impact.
+	uint64_t finish;					///< Pointer (from start of file) to the end of the postings for this term.
+	uint32_t documents;					///< Number of documents with this impact score
 	};
 #pragma pack(pop)
 

@@ -219,7 +219,7 @@ namespace JASS
 						If we're not in the heap then put is there if need-be
 					*/
 					accumulators[document_id] += weight;
-					heap.push_back(JASS::pointer_box<uint16_t>(&accumulators[document_id]));
+					heap.push_back(&accumulators[document_id]);
 					}
 				else if (accumulators[document_id] < *heap.front())
 					{
@@ -227,7 +227,7 @@ namespace JASS
 						we weren't in the heap, but we might become so
 					*/
 					if ((accumulators[document_id] += weight) > *heap.front())
-						heap.push_back(JASS::pointer_box<uint16_t>(&accumulators[document_id]));
+						heap.push_back(&accumulators[document_id]);
 					}
 				else
 					{
@@ -235,7 +235,7 @@ namespace JASS
 						We're already in the heap but we might have moved spots
 					*/
 					accumulators[document_id] += weight;
-					heap.promote(JASS::pointer_box<uint16_t>(&accumulators[document_id]));
+					heap.promote(&accumulators[document_id]);
 					}
 				}
 
@@ -310,7 +310,7 @@ namespace JASS
 						JASS_assert(term.token() == "three");
 					}
 
-				puts("query::PASS");
+				puts("query::PASSED");
 				}
 		};
 	}

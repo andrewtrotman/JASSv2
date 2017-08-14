@@ -20,6 +20,7 @@
 #include <functional>
 
 #include "asserts.h"
+#include "pointer_box.h"
 #include "allocator_cpp.h"
 #include "allocator_pool.h"
 
@@ -75,6 +76,7 @@ namespace JASS
 				front_correct(false),
 				k(k)
 				{
+				/* Nothing */
 				}
 
 			/*
@@ -402,7 +404,7 @@ namespace JASS
 				exact_heap.sort();
 	
 				/*
-					Serialise and compaie to the known correct result
+					Serialise and compare to the known correct result
 				*/
 				std::ostringstream exact_result;
 				exact_result << exact_heap;
@@ -411,24 +413,55 @@ namespace JASS
 				/*
 					Check insetion once we've sorted the heap
 				*/
-				top_k_heap<int> small_heap(5, memory);
-				for (const auto &element : sequence)
+				top_k_heap<int> small_heap(2, memory);
+				for (const auto element : sequence)
 					{
 					small_heap.sort();
 					small_heap.push_back(element);
 					}
 				small_heap.sort();
 				auto front = small_heap.front();
-				JASS_assert(front == 5);
+				JASS_assert(front == 8);
 				small_heap.sort();
 				std::ostringstream small_result;
 				small_result << small_heap;
-				JASS_assert(small_result.str() == "9 8 7 6 5");
+				JASS_assert(small_result.str() == "9 8");
+
+				/*
+					Test promote()
+				*/
+				int eight = 8;
+				int *eight_pointer = &eight;
+				top_k_heap<pointer_box<int>> pointer_heap(2, memory);
+				for (auto element = 0; element < sizeof(sequence) / sizeof(*sequence); element++)
+					{
+					pointer_heap.sort();
+					if (sequence[element] == 8)
+						pointer_heap.push_back(eight_pointer);
+					else
+						pointer_heap.push_back(&sequence[element]);
+					}
+				pointer_heap.sort();
+				auto pointer_front = pointer_heap.front();
+				JASS_assert(*pointer_front == 8);
+				pointer_heap.sort();
+
+				*eight_pointer += 3;
+				pointer_heap.promote(&eight);
+
+				int ten = 10;
+				pointer_heap.push_back(&ten);
+				pointer_heap.sort();
+
+				std::ostringstream pointer_result;
+				for (const auto pointer : pointer_heap)
+					pointer_result << *pointer;
+				JASS_assert(pointer_result.str() == "1110");
 
 				/*
 					We passed!
 				*/
-				puts("top_k_heap::PASS");
+				puts("top_k_heap::PASSED");
 				}
 		};
 		

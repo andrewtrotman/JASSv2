@@ -149,7 +149,6 @@ int main(void)
 		puts("impact_postings_impact");
 		JASS::index_postings_impact::unittest();
 
-
 		puts("index_manager");
 		JASS::index_manager::unittest();
 

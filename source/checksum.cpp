@@ -128,20 +128,20 @@ namespace JASS
 			Long string
 		*/
 		checksum = checksum::fletcher_16((const uint8_t *)(unittest_data::ten_documents.c_str()), (int)unittest_data::ten_documents.size());
-		JASS_assert(checksum == 0xC29E);
+		JASS_assert(checksum == 0xF7DE);
 
 		/*
 			C++ Strings.  Since this just calls the C version, checking only one string suffices.
 		*/
 		checksum = checksum::fletcher_16(unittest_data::ten_documents);
-		JASS_assert(checksum == 0xC29E);
+		JASS_assert(checksum == 0xF7DE);
 
 		/*
 			Check the istream version
 		*/
 		std::istringstream stream(unittest_data::ten_documents);
 		checksum = checksum::fletcher_16(stream);
-		JASS_assert(checksum == 0xC29E);
+		JASS_assert(checksum == 0xF7DE);
 		
 		/*
 			Passed!
