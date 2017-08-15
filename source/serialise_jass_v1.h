@@ -25,40 +25,44 @@ namespace JASS
 	*/
 	/*!
 		@brief Serialise an index in the experimental JASS-CI format used (by JASS version 1) in the RIGOR workshop.
-		@details The original version of JASS was an experimental hack in reducing the complexity of the ATIRE search engine,
-		that resulted in an index that was large, but easy to process.  The intent was to go back and "fix" the index to be smaller
-		and faster.  That never happened.  Instead it was used as the basis of other work.  In an effort to bring up this re-write of
-		ATIRE and JASS, compatibility with the hack (known as JASS CI) is maintained so that the indexer can be checked without writing
-		the search engine itself (i.e. this JASS is being bootstrapped from JASS CI).
+		@details The original version of JASS was an experimental hack in reducing the complexity of the ATIRE search 
+		engine, that resulted in an index that was large, but easy to process. The intent was to go back and "fix" the 
+		index to be smaller and faster. That never happened. Instead it was used as the basis of other work. In an 
+		effort to bring up this re-write of ATIRE and JASS, compatibility with the hack (known as JASS version 1) is 
+		maintained so that the indexer can be checked without writing the search engine itself (i.e. this JASS is being
+		 bootstrapped from JASS version 1)
 
-		The paper compairing JASS CI to other search engines (including ATIRE) is here:
-		J. Lin, M. Crane, A. Trotman, J. Callan, I. Chattopadhyaya, J. Foley, G. Ingersoll, C. Macdonald, S. Vigna (2016),
-		Toward Reproducible Baselines: The Open-Source IR Reproducibility Challenge, Proceedings of the European Conference on 
-		Information Retrieval (ECIR 2016), pp. 408-420.
+		The paper comparing JASS version 1 to other search engines (including ATIRE) is here: J. Lin, M. Crane, A. Trotman,
+		J. Callan, I. Chattopadhyaya, J. Foley, G. Ingersoll, C. Macdonald, S. Vigna (2016), Toward Reproducible Baselines:
+		The Open-Source IR Reproducibility Challenge, Proceedings of the European Conference on Information Retrieval
+		(ECIR 2016), pp. 408-420.
 
-		The JASS CI index in made up of 4 files:  CIvocab_terms.bin, CIvocab.bin, CIpostings.bin, and CIdoclist.bin
+		The JASS version 1 index in made up of 4 files: CIvocab_terms.bin, CIvocab.bin, CIpostings.bin, and CIdoclist.bin
 
-		CIdoclist.bin: The list of document identifiers (each '\0' terminated).  Then an index to each of the doclents (stored as a table of uint64_t).
-		The final 8 bytes of the file is an uin64_t storing the total numbner of unique documents in the collection.
+		CIdoclist.bin: The list of document identifiers (each '\0' terminated). Then an index to each of the doclents 
+		(stored as a table of uint64_t). The final 8 bytes of the file is an uin64_t storing the total numbner of unique 
+		documents in the collection.
 
-		CIvocab_terms.bin: This is a list of all the unique terms in the collection (the closure of the vocabulary).  It is stored as a
-		sequence of '\0' terminated UTF-8 strings.  So, if the vocabularty contains three terms, "a", "bb" and "cc",
-		then the contents of CIvocab_terms.bin will be "a\0bb\0cc\0".  This file does not need to be sorted in alphabetical (or similar) order.
-		
-		CIvocab.bin: This is a list of triples <term, offset, impacts>. Term is a pointer to the string in the CIvocab_terms.bin file (i.e. a
-		byte offset within the file). Offset is the offset (in CIpostings.bin) of the start of the postings list. Impacts is the number of impacts
-		in the impact ordered postings list.  JASS v1 assumes this file is sorted in alphabetical order by the term string (i.e. where term points to)
-		when using strcmp().
-		
-		CIpostings.bin: This file contains all the postings lists compressed using the same codex.  This is different from ATIRE which allows
-		each postings list to be encoded using a different codex.  The first byte of this file specifies the codex where
-		s=uncompressed, c=VarByte, 8=Simple8,  q=QMX, Q=QMX4D, R=QMX0D.  This is followed by the postings lists.  A postings list is: a list
-		of 64-bit pointer to headers.  Each header is <uint16_t impact_score, uint64_t start, uint64_t end, uint32_t impact_frequency>
-		where impact_score is the impact value, start and end are pointers to the compressed docids, and impact_frequency is the number of dociment_ids 
-		in the list.  The header is terminated with a row of all 0s (i.e. 14 consequitive 0-bytes).  This is followed by the list of docid's for each
-		segment - each compressed seperately.  These lists do *not* have the impact score stored at the start and do *not* have 0 terminators on them.
-		This means score-at-a-time processing is the only paradigm, even if term-at-a-time processing is done score-at-a-time for each term.  ATIRE could
-		do either (but it was a compile time flag).
+		CIvocab_terms.bin: This is a list of all the unique terms in the collection (the closure of the vocabulary). It is 
+		stored as a sequence of '\0' terminated UTF-8 strings. So, if the vocabularty contains three terms, "a", "bb" and "cc",
+		then the contents of CIvocab_terms.bin will be "a\0bb\0cc\0". This file does not need to be sorted in alphabetical (or 
+		similar) order.
+
+		CIvocab.bin: This is a list of triples (term, offset, impacts). Term is a pointer to the string in the CIvocab_terms.bin 
+		file (i.e. a byte offset within the file). Offset is the offset (in CIpostings.bin) of the start of the postings list. 
+		Impacts is the number of impacts in the impact ordered postings list. JASS v1 assumes this file is sorted in alphabetical 
+		order by the term string (i.e. where term points to) when using strcmp().
+
+		CIpostings.bin: This file contains all the postings lists compressed using the same codex. This is different from 
+		ATIRE which allows each postings list to be encoded using a different codex. The first byte of this file specifies 
+		the codex where s=uncompressed, c=VarByte, 8=Simple8, q=QMX, Q=QMX4D, R=QMX0D. This is followed by the postings lists.
+		A postings list is: a list of 64-bit pointer to headers. Each header is (uint16_t impact_score, uint64_t start,
+		uint64_t end, uint32_t impact_frequency) where impact_score is the impact value, start and end are pointers to the
+		compressed docids, and impact_frequency is the number of dociment_ids in the list. The header is terminated with a 
+		row of all 0s (i.e. 22 consequitive 0-bytes). This is followed by the list of docid's for each segment - each compressed 
+		seperately. These lists do not have the impact score stored at the start and do not have 0 terminators on them. This 
+		means score-at-a-time processing is the only paradigm, even if term-at-a-time processing is done score-at-a-time for 
+		each term. ATIRE could do either (but it was a compile time flag).
 	*/
 	class serialise_jass_v1 : public index_manager::delegate
 		{
