@@ -1,4 +1,3 @@
-![Logo](logo.png)
 # JASSv2
 The JASS experimental search engine is still in development.  Please see the [wiki](../../wiki) for details.
 
