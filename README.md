@@ -13,32 +13,4 @@ CodeCov (code coverage): [![codecov](https://codecov.io/gh/andrewtrotman/JASSv2/
 CodeDocs.xyx (documentation): [![Documentation Status](https://codedocs.xyz/andrewtrotman/JASSv2.svg)](https://codedocs.xyz/andrewtrotman/JASSv2/)
 
 # JASSv2
-
-## Building JASSv2 (Linux/OSX)
-
-The build requires the dependencies: CMake, doxygen
-
-Then perform these steps:
-
-1. cd build
-2. cmake ..
-3. make
-4. ./unittest
-
-## Building JASSv2 (Windows)
-
-The build requires the dependencies: CMake, doxygen, Visual Studio 2015
-
-Open a VS2015 x64 Native Tools CMD, then perform these steps:
-
-1. cd build
-2. cmake -G "NMake Makefiles" ..
-3. nmake
-4. unittest
-
-## Get GitHub to call CoverityScan
-1. git checkout coverity_scan
-2. git merge master
-3. git push
-4. git checkout master
-
+The JASS experimental search engine is still in development.  Please see the [wiki](wiki) for details.
