@@ -13,4 +13,4 @@ CodeCov (code coverage): [![codecov](https://codecov.io/gh/andrewtrotman/JASSv2/
 CodeDocs.xyx (documentation): [![Documentation Status](https://codedocs.xyz/andrewtrotman/JASSv2.svg)](https://codedocs.xyz/andrewtrotman/JASSv2/)
 
 # JASSv2
-The JASS experimental search engine is still in development.  Please see the [wiki](../../wik) for details.
+The JASS experimental search engine is still in development.  Please see the [wiki](../../wiki) for details.
