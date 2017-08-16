@@ -34,6 +34,17 @@ namespace JASS
 		{
 		private:
 			/*
+				CLASS COMMANDLINE::TEXT_NOTE
+				----------------------------
+			*/
+			/*!
+				@bried used to specify text strings to appear in the help.
+			*/
+			class text_note
+			 {
+			 };
+
+			/*
 				CLASS COMMANDLINE::COMMAND
 				--------------------------
 			*/
@@ -73,6 +84,21 @@ namespace JASS
 				};
 
 		private:
+			/*
+				COMMANDLINE::EXTRACT
+				--------------------
+			*/
+			/*!
+				@brief Dummy for use with text embedded in the parameter lists.
+				@param parameter [in] The unparsed paramter as given by the user.
+				@param element [out] where to put the value (unused).
+				@return true if it was possible to extract a value, false on error.
+			*/
+			static bool extract(std::ostringstream &messages, const char *parameter, command<text_note> element)
+				{
+				return true;
+				}
+
 			/*
 				COMMANDLINE::EXTRACT
 				--------------------
@@ -216,7 +242,9 @@ namespace JASS
 			inline typename std::enable_if<I < sizeof...(Tp), void>::type
 			static for_each_parameter(bool &success, std::ostringstream &messages, size_t &arg, const char *argv[], std::tuple<Tp...> &tuple)
 				{
-				if (strcmp(argv[arg], std::get<I>(tuple).shortname.c_str()) == 0)				// looking for "-a v"
+				if (std::get<I>(tuple).shortname.size() == 0 || std::get<I>(tuple).longname.size() == 0)				// looking for non-parameters (i.e. notes_
+					for_each_parameter<I + 1, Tp...>(success, messages, arg, argv, tuple);
+				else if (strcmp(argv[arg], std::get<I>(tuple).shortname.c_str()) == 0)				// looking for "-a v"
 					{
 					success |= !extract(messages, argv[++arg], std::get<I>(tuple));
 					if (typeid(std::get<I>(tuple).parameter) != typeid(bool))
@@ -242,6 +270,88 @@ namespace JASS
 					for_each_parameter<I + 1, Tp...>(success, messages, arg, argv, tuple);
 				}
 
+			/*
+				COMMANDLINE::FOR_EACH_USAGE_FORMATTING()
+				----------------------------------------
+				For information on interating over a tuple see here https://stackoverflow.com/questions/1198260/iterate-over-tuple
+			*/
+			/*!
+				@brief Iterate over each parameter computing the length of the longest shortname and longname
+				@param width_of_shortname [out] the longest shortname here or below.
+				@param width_of_longname [out] the longest longname here or below.
+				@param tuple [in] The remainder of the command line parameters as specified as the programmer.
+			*/
+			template<std::size_t I = 0, typename... Tp>
+			inline typename std::enable_if<I == sizeof...(Tp), void>::type
+			static for_each_usage_formatting(size_t &width_of_shortname, size_t &width_of_longname, const std::tuple<Tp...> &)
+				{
+				}
+
+			/*
+				COMMANDLINE::FOR_EACH_USAGE_FORMATTING()
+				----------------------------------------
+				For information on interating over a tuple see here https://stackoverflow.com/questions/1198260/iterate-over-tuple
+			*/
+			/*!
+				@brief Iterate over each parameter computing the length of the longest shortname and longname
+				@param width_of_shortname [out] the longest shortname here or below.
+				@param width_of_longname [out] the longest longname here or below.
+				@param tuple [in] The remainder of the command line parameters as specified as the programmer.
+			*/
+			template<std::size_t I = 0, typename... Tp>
+			inline typename std::enable_if<I < sizeof...(Tp), void>::type
+			static for_each_usage_formatting(size_t &width_of_shortname, size_t &width_of_longname, const std::tuple<Tp...> &tuple)
+				{
+				if (std::get<I>(tuple).shortname.size() > width_of_shortname)
+					width_of_shortname = std::get<I>(tuple).shortname.size();
+
+				if (std::get<I>(tuple).longname.size() > width_of_longname)
+					width_of_longname = std::get<I>(tuple).longname.size();
+
+				for_each_usage_formatting<I + 1, Tp...>(width_of_shortname, width_of_longname, tuple);
+				}
+
+			/*
+				COMMANDLINE::FOR_EACH_USAGE_PRINT()
+				-----------------------------------
+				For information on interating over a tuple see here https://stackoverflow.com/questions/1198260/iterate-over-tuple
+			*/
+			/*!
+				@brief Iterate over each parameter printing the shortname, longname, and description.
+				@param width_of_shortname [in] Space to take to print the shortname.
+				@param width_of_longname [in] Space to take to print the shortname.
+				@param tuple [in] The remainder of the command line parameters as specified as the programmer.
+			*/
+			template<std::size_t I = 0, typename... Tp>
+			inline typename std::enable_if<I == sizeof...(Tp), void>::type
+			static for_each_usage_print(size_t width_of_shortname, size_t width_of_longname, const std::tuple<Tp...> &)
+				{
+				/* Nothing */
+				}
+
+			/*
+				COMMANDLINE::FOR_EACH_USAGE_PRINT()
+				-----------------------------------
+				For information on interating over a tuple see here https://stackoverflow.com/questions/1198260/iterate-over-tuple
+			*/
+			/*!
+				@brief Iterate over each parameter printing the shortname, longname, and description.
+				@param width_of_shortname [in] Space to take to print the shortname.
+				@param width_of_longname [in] Space to take to print the shortname.
+				@param tuple [in] The remainder of the command line parameters as specified as the programmer.
+			*/
+			template<std::size_t I = 0, typename... Tp>
+			inline typename std::enable_if<I < sizeof...(Tp), void>::type
+			static for_each_usage_print(size_t width_of_shortname, size_t width_of_longname, const std::tuple<Tp...> &tuple)
+				{
+				if (std::get<I>(tuple).shortname.size() == 0)
+					printf("%-s\n", std::get<I>(tuple).description.c_str());
+				else
+					printf("%-*.*s %-*.*s %-s\n", (int)width_of_shortname, (int)width_of_shortname, std::get<I>(tuple).shortname.c_str(), (int)width_of_longname, (int)width_of_longname, std::get<I>(tuple).longname.c_str(), std::get<I>(tuple).description.c_str());
+
+				for_each_usage_print<I + 1, Tp...>(width_of_shortname, width_of_longname, tuple);
+				}
+
 		public:
 			/*
 				COMMANDLINE::PARAMETER()
@@ -260,11 +370,35 @@ namespace JASS
 				@param longname [in] The long name to mathc e.g. "-mood".
 				@param description [in] The descriptrion to show when the user asks for help e.g. "The users' mood".
 				@param parameter [out] A reference to the external variable to set based on the command line.
+				@return A command object for use in a tuple.
 			*/
 			template <typename TYPE>
 			static command<TYPE> parameter(const std::string &shortname, const std::string &longname, const std::string &description, TYPE &parameter)
 				{
 				return command<TYPE>(shortname, longname, description, parameter);
+				}
+
+
+			/*
+				COMMANDLINE::NOTE()
+				-------------------
+			*/
+			/*!
+				@brief Specify an allowable command line parameter
+				@details To specify a possible command line parameter call this method and use the result in a std::tuple call to parse.
+				For example:
+				
+				bool jass_v1_index = true;
+
+				auto serialiser = commandline::parameter("-sj1", "--serialise_jass_v1", "Serialise the index as a JASS v1 index", jass_v1_index);
+
+				@param description [in] The descriptrion to show when the user asks for help e.g. "The users' mood".
+			*/
+			static command<text_note> note(const std::string &description)
+				{
+				text_note blank;
+
+				return command<text_note>("", "", description, blank);
 				}
 
 			/*
@@ -294,6 +428,32 @@ namespace JASS
 				}
 
 			/*
+				COMMANDLINE::USAGE()
+				--------------------
+			*/
+			/*!
+				@brief Produce command-line help from the parameters
+				@param exename [in] The name of the executable
+				@param all_parameters [in] a tuple of objects returned bu commandline::parameter.
+			*/
+			template <typename... TYPE>
+			static void usage(const std::string exename, const std::tuple<TYPE...> &all_parameters)
+				{
+				size_t width_of_shortname = 0;
+				size_t width_of_longname = 0;
+
+				/*
+					Compute the length of the shortname and longname fields.
+				*/
+				for_each_usage_formatting(width_of_shortname, width_of_longname, all_parameters);
+
+				/*
+					Print the usage instructions.
+				*/
+				for_each_usage_print(width_of_shortname, width_of_longname, all_parameters);
+				}
+
+			/*
 				ALLOCATOR_CPP::UNITTEST()
 				-------------------------
 			*/
@@ -306,21 +466,21 @@ namespace JASS
 					Declare some objects
 				*/
 				bool parameter_boolean = false;
-				auto serialiser = commandline::parameter("-b", "--boolean", "Extract a boolean", parameter_boolean);
-
 				std::string parameter_string = "Something";
-				auto str = commandline::parameter("-s", "--string", "Extractr a string", parameter_string);
-
 				int parameter_integer = 0;
-				auto integer = commandline::parameter("-i", "--integer", "Extract an integer", parameter_integer);
-
 				unsigned int parameter_unsigned = 0;
-				auto unsigned_integer = commandline::parameter("-u", "--unsigned", "Extract an unsigned integer", parameter_unsigned);
 
 				/* 
 					Declare the parameter object to parse
 				*/
-				auto all_commands = std::make_tuple(serialiser, str, integer, unsigned_integer);
+				auto all_commands = std::make_tuple
+					(
+					commandline::note("PARAMETERS"),
+					commandline::parameter("-b", "--boolean", "Extract a boolean", parameter_boolean),
+					commandline::parameter("-s", "--string", "Extractr a string", parameter_string),
+					commandline::parameter("-i", "--integer", "Extract an integer", parameter_integer),
+					commandline::parameter("-u", "--unsigned", "Extract an unsigned integer", parameter_unsigned)
+					);
 
 				/*
 					Declare a command line like argc and argv[].

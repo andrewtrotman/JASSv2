@@ -26,20 +26,41 @@
 	Declare the command line parameters
 */
 bool parameter_jass_v1_index = false;
-auto parameter_jass_v1_index_command = JASS::commandline::parameter("-I1", "--index_jass_v1", "Generate a JASS version 1 index.", parameter_jass_v1_index);
-
 bool parameter_compiled_index = false;
-auto parameter_compiled_index_command = JASS::commandline::parameter("-Ic", "--index_compiled", "Generate a JASS compiled index.", parameter_compiled_index);
-
 std::string parameter_filename = "";
-auto parameter_filename_command = JASS::commandline::parameter("-f", "--filename", "Filename to index.", parameter_filename);
+bool parameter_quiet = false;
+bool parameter_help = false;
+size_t parameter_report_every_n = std::numeric_limits<size_t>::max();
 
 auto command_line_parameters = std::make_tuple
 	(
-	parameter_filename_command,
-	parameter_jass_v1_index_command,
-	parameter_compiled_index_command
+	JASS::commandline::note("\nMISCELLANEOUS\n-------------"),
+	JASS::commandline::parameter("-q", "--nologo", "Suppress the banner.", parameter_quiet),
+	JASS::commandline::parameter("-?", "--help", "Print this help.", parameter_help),
+	JASS::commandline::parameter("-h", "--help", "Print this help.", parameter_help),
+	JASS::commandline::parameter("-H", "--help", "Print this help.", parameter_help),
+
+	JASS::commandline::note("\nREPORTING\n---------"),
+	JASS::commandline::parameter("-N", "--report-every", "<n> Report time and memory every <n> documents.", parameter_report_every_n),
+
+	JASS::commandline::note("\nFILE HANDLING\n-------------"),
+	JASS::commandline::parameter("-f", "--filename", "<filename> Filename to index.", parameter_filename),
+
+	JASS::commandline::note("\nINDEX GENERATION\n----------------"),
+	JASS::commandline::parameter("-I1", "--index_jass_v1", "Generate a JASS version 1 index.", parameter_jass_v1_index),
+	JASS::commandline::parameter("-Ic", "--index_compiled", "Generate a JASS compiled index.", parameter_compiled_index)
 	);
+
+/*
+	USAGE()
+	-------
+*/
+uint8_t usage(const std::string exename)
+	{
+	JASS::commandline::usage(exename, command_line_parameters);
+	std::cout << "\n";
+	return 1;
+	}
 
 /*
 	MAIN()
@@ -47,7 +68,6 @@ auto command_line_parameters = std::make_tuple
 */
 int main(int argc, const char *argv[])
 	{
-	std::cout << JASS::version::build() << "\n";
 	/*
 		Do the command line parsing.
 	*/
@@ -59,6 +79,18 @@ int main(int argc, const char *argv[])
 		exit(1);
 		}
 
+	if (!parameter_quiet)
+		std::cout << JASS::version::build() << "\n";
+
+	if (parameter_filename == "")
+		std::cout << "filename needed";
+
+	if (parameter_filename == "" || parameter_help)
+		exit(usage(argv[0]));
+
+	/*
+		Now call JASS
+	*/
 	JASS::parser parser;
 	JASS::document document;
 	std::shared_ptr<JASS::instream> file(new JASS::instream_file(parameter_filename));
@@ -66,19 +98,36 @@ int main(int argc, const char *argv[])
 	JASS::index_manager_sequential index;
 
 	size_t total_documents = 0;
-	
+
+	/*
+		Parse the instream to get document (which are then indexed)
+	*/
 	do
 		{
+		/*
+			Reuse memory from before
+		*/
 		document.rewind();
+
+		/*
+			get the next document
+		*/
 		source->read(document);
 		if (document.isempty())
 			break;
 		total_documents++;
-		if (total_documents % 10000 == 0)
-			printf("Documents:%lld\n", (long long)total_documents);
+		if (total_documents % parameter_report_every_n == 0)
+			std::cout << "Documents:" << total_documents << '\n';
+
+		/*
+			parse the current document
+		*/
 		parser.set_document(document);
 		index.begin_document(document.primary_key);
 
+		/*
+			Process each token
+		*/
 		bool finished = false;
 		do
 			{
@@ -108,7 +157,7 @@ int main(int argc, const char *argv[])
 		}
 	while (!document.isempty());
 	
-	printf("Documents:%lld\n", (long long)total_documents);
+	std::cout << "Documents:" << total_documents << '\n';
 
 	/*
 		Do we need to generate a compiled index?
