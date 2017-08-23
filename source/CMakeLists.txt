@@ -34,6 +34,10 @@ set(JASSlib_FILES
 	compress_integer_all.cpp
 	compress_integer_none.h
 	compress_integer_none.cpp
+	compress_integer_qmx_improved.h
+	compress_integer_qmx_improved.cpp
+	compress_integer_qmx_original.h
+	compress_integer_qmx_original.cpp
 	compress_integer_variable_byte.h
 	compress_integer_variable_byte.cpp
 	document.h
