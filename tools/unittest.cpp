@@ -9,6 +9,7 @@
 #include "maths.h"
 #include "query.h"
 #include "slice.h"
+#include "timer.h"
 #include "parser.h"
 #include "unicode.h"
 #include "version.h"
@@ -39,6 +40,7 @@
 #include "index_postings_impact.h"
 #include "instream_document_trec.h"
 #include "index_manager_sequential.h"
+#include "compress_integer_qmx_improved.h"
 #include "compress_integer_variable_byte.h"
 
 /*
@@ -61,6 +63,9 @@ int main(void)
 
 	try
 		{
+		puts("timer");
+		JASS::timer::unittest();
+
 		puts("reverse");
 		JASS::reverse_adapter<int>::unittest();
 
@@ -167,6 +172,9 @@ int main(void)
 
 		puts("compress_integer_variable_byte");
 		JASS::compress_integer_variable_byte::unittest();
+
+		puts("compress_integer_qmx_improved");
+		JASS::compress_integer_qmx_improved::unittest();
 
 		puts("accumulator_2d");
 		JASS::accumulator_2d<uint32_t>::unittest();

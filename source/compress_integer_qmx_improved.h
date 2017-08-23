@@ -6,9 +6,10 @@
 	
 	Improved by:
 		Not having the variable-byte crud on the end
-		not requiring SIMD-word alignment.
+		Not requiring SIMD-word alignment
 		The removal of crud not necessary for real use (e.g. stats)
 		short_end_block is always true
+		long sequences of zeros are not allowed (but singles 0s are allowed)
 */
 #pragma once
 
@@ -42,6 +43,8 @@ namespace JASS
 
 			virtual size_t encode(void *encoded, size_t encoded_buffer_length, const integer *source, size_t source_integers);
 			virtual void decode(integer *decoded, size_t integers_to_decode, const void *source, size_t source_length);
+
+			static void unittest(void);
 		};
 	}
 

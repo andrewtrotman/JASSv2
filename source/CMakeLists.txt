@@ -78,6 +78,7 @@ set(JASSlib_FILES
 	serialise_jass_v1.h
 	slice.h
 	strings.h
+	timer.h
 	top_k_heap.h
 	unicode.h
 	unicode.cpp

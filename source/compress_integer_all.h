@@ -25,4 +25,6 @@ namespace JASS
 			std::string description;
 			compress_integer *codex;
 		};
+
+	extern compress_integer_all compress_integer_all_compressors[];
 	}
