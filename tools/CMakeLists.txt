@@ -56,14 +56,21 @@ add_executable(ascii_database_to_c
 	ascii_database_to_c.cpp
 	)
 
-
-
 #
 # JASSv1_to_human
 #
 
 add_executable(JASSv1_to_human
 	JASSv1_to_human.cpp
+	../source/asserts.cpp
+	../source/file.cpp)
+
+#
+# test_integer_compress
+#
+
+add_executable(test_integer_compress
+	test_integer_compress
 	../source/asserts.cpp
 	../source/file.cpp)
 

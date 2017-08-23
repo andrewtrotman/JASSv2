@@ -35,6 +35,7 @@
 #include "allocator_memory.h"
 #include "serialise_jass_v1.h"
 #include "instream_file_star.h"
+#include "compress_integer_none.h"
 #include "index_postings_impact.h"
 #include "instream_document_trec.h"
 #include "index_manager_sequential.h"
@@ -160,6 +161,9 @@ int main(void)
 
 		puts("serialise_ci");
 		JASS::serialise_ci::unittest();
+
+		puts("compress_integer_none");
+		JASS::compress_integer_none::unittest();
 
 		puts("compress_integer_variable_byte");
 		JASS::compress_integer_variable_byte::unittest();

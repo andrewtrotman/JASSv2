@@ -30,6 +30,10 @@ set(JASSlib_FILES
 	checksum.cpp
 	commandline.h
 	compress_integer.h
+	compress_integer_all.h
+	compress_integer_all.cpp
+	compress_integer_none.h
+	compress_integer_none.cpp
 	compress_integer_variable_byte.h
 	compress_integer_variable_byte.cpp
 	document.h

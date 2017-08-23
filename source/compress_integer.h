@@ -43,9 +43,7 @@ namespace JASS
 			*/
 			compress_integer()
 				{
-				/*
-					Nothing
-				*/
+				/* Nothing */
 				}
 			/*
 				COMPRESS_INTEGER::COMPRESS_INTEGER()
@@ -56,9 +54,7 @@ namespace JASS
 			*/
 			virtual ~compress_integer()
 				{
-				/*
-					Nothing
-				*/
+				/* Nothing */
 				}
 
 			/*
@@ -73,7 +69,7 @@ namespace JASS
 				@param source_integers [in] The length (in integers) of the source buffer.
 				@return The number of bytes used to encode the integer sequence, or 0 on error (i.e. overflow).
 			*/
-			virtual size_t encode(uint8_t *encoded, size_t encoded_buffer_length, const integer *source, size_t source_integers) = 0;
+			virtual size_t encode(void *encoded, size_t encoded_buffer_length, const integer *source, size_t source_integers) = 0;
 			
 			/*
 				COMPRESS_INTEGER::DECODE()
@@ -86,6 +82,6 @@ namespace JASS
 				@param source [in] The encoded integers.
 				@param source_length [in] The length (in bytes) of the source buffer.
 			*/
-			virtual void decode(integer *decoded, size_t integers_to_decode, const uint8_t *source, size_t source_length) = 0;
+			virtual void decode(integer *decoded, size_t integers_to_decode, const void *source, size_t source_length) = 0;
 		} ;
 	}

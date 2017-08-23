@@ -31,7 +31,9 @@ namespace JASS
 		is the binary sequence 011101110001, which broken into 7-bit chunks is 0001110 1110001.  These then
 		get the high bits added, 0 for all except the last byte, [0]0001110 [1]1110001, then write out
 		the byte sequence high byte first 0x0E 0xF1.
-		This implementation works with 32-bit and 64-bit integers.
+		This implementation works with 32-bit and 64-bit integers.  To encode 64-bit integers ensure 
+		#define JASS_COMPRESS_INTEGER_BITS_PER_INTEGER 64
+		is set at compile time.
 	*/
 	class compress_integer_variable_byte : public compress_integer
 		{
@@ -45,6 +47,7 @@ namespace JASS
 			*/
 			compress_integer_variable_byte()
 				{
+				/* Nothing */
 				}
 			
 			/*
@@ -56,6 +59,7 @@ namespace JASS
 			*/
 			virtual ~compress_integer_variable_byte()
 				{
+				/* Nothing */
 				}
 
 			/*
@@ -70,7 +74,7 @@ namespace JASS
 				@param source_integers [in] The length (in integers) of the source buffer.
 				@return The number of bytes used to encode the integer sequence, or 0 on error (i.e. overflow).
 			*/
-			virtual size_t encode(uint8_t *encoded, size_t encoded_buffer_length, const integer *source, size_t source_integers);
+			virtual size_t encode(void *encoded, size_t encoded_buffer_length, const integer *source, size_t source_integers);
 			
 			/*
 				COMPRESS_INTEGER_VARIABLE_BYTE::DECODE()
@@ -83,7 +87,7 @@ namespace JASS
 				@param source [in] The encoded integers.
 				@param source_length [in] The length (in bytes) of the source buffer.
 			*/
-			virtual void decode(integer *decoded, size_t integers_to_decode, const uint8_t *source, size_t source_length);
+			virtual void decode(integer *decoded, size_t integers_to_decode, const void *source, size_t source_length);
 
 			/*
 				COMPRESS_INTEGER_VARIABLE_BYTE::BYTES_NEEDED_FOR()

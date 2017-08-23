@@ -18,8 +18,9 @@ namespace JASS
 		COMPRESS_INTEGER_VARIABLE_BYTE::ENCODE()
 		----------------------------------------
 	*/
-	size_t compress_integer_variable_byte::encode(uint8_t *encoded, size_t encoded_buffer_length, const integer *source, size_t source_integers)
+	size_t compress_integer_variable_byte::encode(void *encoded_as_void, size_t encoded_buffer_length, const integer *source, size_t source_integers)
 		{
+		uint8_t *encoded = static_cast<uint8_t *>(encoded_as_void);
 		size_t used = 0;						// the number of bytes of storage used so far
 
 		const integer *end = source + source_integers;			// the end of the input sequence
@@ -55,8 +56,9 @@ namespace JASS
 		COMPRESS_INTEGER_VARIABLE_BYTE::DECODE()
 		----------------------------------------
 	*/
-	void compress_integer_variable_byte::decode(integer *decoded, size_t integers_to_decode, const uint8_t *source, size_t source_length)
+	void compress_integer_variable_byte::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
 		{
+		const uint8_t *source = static_cast<const uint8_t *>(source_as_void);
 		integer *end = decoded + integers_to_decode;		// compute the stopping condition
 
 		/*
