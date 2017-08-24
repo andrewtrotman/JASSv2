@@ -71,16 +71,9 @@ add_executable(JASSv1_to_human
 
 add_executable(test_integer_compress
 	test_integer_compress
-	../source/asserts.cpp
-	../source/file.cpp
-	../source/compress_integer.h
-	../source/compress_integer_all.h
-	../source/compress_integer_all.cpp
-	../source/compress_integer_none.h
-	../source/compress_integer_none.cpp
-	../source/compress_integer_qmx_improved.h
-	../source/compress_integer_qmx_improved.cpp
-	../source/compress_integer_variable_byte.h
-	../source/compress_integer_variable_byte.cpp
+	)
+
+target_link_libraries(test_integer_compress
+	JASSlib
 	)
 

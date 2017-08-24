@@ -34,62 +34,64 @@
 /*
 	Buffer to hold the contents of the current postings list.  This is way too large, but only allocated once.
 */
-static uint32_t *postings_list;
+std::vector<uint32_t> postings_list;
 
 /*
 	Buffer to hold the compressed postings list
 */
-static uint32_t *compressed_postings_list;
+std::vector<uint32_t> compressed_postings_list;
 
 /*
 	Buffer to hold the decompressed postings list - after compression then decompression this should equal postings_list[]
 */
-static uint32_t *decompressed_postings_list;
+std::vector<uint32_t> decompressed_postings_list;
 
 /*
 	Buffer holding the sum of times to decompress postings lists of this length
 */
-static uint32_t *decompress_time;
+std::vector<uint32_t> decompress_time;
 
 /*
 	Buffer holding the number of postings list of this length
 */
-static uint32_t *decompress_count;
+std::vector<uint32_t> decompress_count;
 
 /*
 	Buffer holding the size (in bytes) of each compressed string
 */
-static uint32_t *compressed_size;
+std::vector<uint32_t> compressed_size;
 
 /*
 	Buffer holding the number of postings list of this length
 */
-static uint32_t *compressed_count;		// should be identical to decompress_count
+std::vector<uint32_t> compressed_count;		// should be identical to decompress_count
 
 /*
 	DRAW_HISTOGRAM()
 	----------------
+	Write out the number-of-integers, time-to-decompress and the compressed-size averaged over the input data.
 */
 void draw_histogram(void)
 	{
-	printf("length DecompressTimeInNanoseconds CompressedSizeInBytes\n");
+	std::cout << "length DecompressTimeInNanoseconds CompressedSizeInBytes\n";
 	for (uint32_t index = 0; index < NUMBER_OF_DOCUMENTS; index++)
 		if (decompress_time[index] != 0)
-			printf("%u %u %u\n", index, decompress_time[index] / decompress_count[index], compressed_size[index] / compressed_count[index]);
+			std::cout << index << " " << decompress_time[index] / decompress_count[index] << " " << compressed_size[index] / compressed_count[index] << "\n";
 	}
 
 /*
 	GENERATE_DIFFERENCES()
 	----------------------
+	Compute the d1-gap delta's of the postings list (consequetive differences)
 */
-void generate_differences(uint32_t *postings_list, uint32_t length)
+void generate_differences(std::vector<uint32_t> &postings_list)
 	{
 	uint32_t previous = 0;
-
+	uint32_t length = postings_list.size();
+	
 	for (uint32_t current = 0; current < length; current++)
 		{
-		uint32_t was;
-		was = postings_list[current];
+		uint32_t was = postings_list[current];
 
 		postings_list[current] -= previous;
 		previous = was;
@@ -99,6 +101,7 @@ void generate_differences(uint32_t *postings_list, uint32_t length)
 /*
 	USAGE()
 	-------
+	Write out the useage statistics.
 */
 void usage(const char *exename)
 	{
@@ -108,9 +111,11 @@ void usage(const char *exename)
 /*
 	GENERATE_EXAMPLE()
 	------------------
+	Generate a simple sample set of test data.
 */
 void generate_example(const std::string &filename)
 	{
+#ifdef NEVER
 	JASS::file output(filename, "w+b");
 
 	for (uint32_t length = 1; length < 10; length++)
@@ -119,6 +124,7 @@ void generate_example(const std::string &filename)
 		for (uint32_t value = 0; value < length; value++)
 			output.write(&value, sizeof(value));
 		}
+#endif
 	}
 
 /*
@@ -129,8 +135,8 @@ int main(int argc, char *argv[])
 	{
 	const char *filename;
 
-	JASS::compress_integer *shrinkerator = JASS::compress_integer_all_compressors[0].codex;
-	std::cout << JASS::compress_integer_all_compressors[0].description << '\n';
+	JASS::compress_integer *shrinkerator = JASS::compress_integer_all::compress_integer_all_compressors[0].codex;
+	std::cout << JASS::compress_integer_all::compress_integer_all_compressors[0].description << '\n';
 
 	/*
 		Check parameters
@@ -150,27 +156,23 @@ int main(int argc, char *argv[])
 	/*
 		Initialise by setting the count buffers to 0
 	*/
-	postings_list = new uint32_t[NUMBER_OF_DOCUMENTS];
-	compressed_postings_list = new uint32_t[NUMBER_OF_DOCUMENTS];
-	decompressed_postings_list = new uint32_t[NUMBER_OF_DOCUMENTS];
-	decompress_time = new uint32_t[NUMBER_OF_DOCUMENTS];
-	decompress_count = new uint32_t[NUMBER_OF_DOCUMENTS];
-	compressed_size = new uint32_t[NUMBER_OF_DOCUMENTS];
-	compressed_count = new uint32_t[NUMBER_OF_DOCUMENTS];
-
 puts("zero");
-	memset(decompress_time, 0, NUMBER_OF_DOCUMENTS  * sizeof(*decompress_time));
-	memset(decompress_count, 0, NUMBER_OF_DOCUMENTS  * sizeof(*decompress_count));
-	memset(compressed_size, 0, NUMBER_OF_DOCUMENTS  * sizeof(*compressed_size));
-	memset(compressed_count, 0, NUMBER_OF_DOCUMENTS  * sizeof(*compressed_count));
+	postings_list.resize(NUMBER_OF_DOCUMENTS);
+	compressed_postings_list.resize(NUMBER_OF_DOCUMENTS);
+	decompressed_postings_list.resize(NUMBER_OF_DOCUMENTS);
+	decompress_time.resize(NUMBER_OF_DOCUMENTS);
+	decompress_count.resize(NUMBER_OF_DOCUMENTS);
+	compressed_size.resize(NUMBER_OF_DOCUMENTS);
+	compressed_count.resize(NUMBER_OF_DOCUMENTS);
 puts("done");
 
 	/*
 		Open the postings list file
 	*/
-	printf("Using:%s\n", filename);
-	FILE *fp;
-	if ((fp = fopen(filename, "rb")) == NULL)
+	std::cout << "Using:" << filename << "\n";
+	
+	FILE *fp = fopen(filename, "rb");
+	if (fp == nullptr)
 		exit(printf("cannot open %s\n", filename));
 
 	/*
@@ -184,7 +186,7 @@ puts("done");
 		/*
 			Read one postings list (and make sure we did so successfully)
 		*/
-		if (fread(postings_list, sizeof(*postings_list), length, fp) != length)
+		if (fread(&postings_list[0], sizeof(postings_list[0]), length, fp) != length)
 			exit(printf("i/o error\n"));
 
 printf("Length:%u\n", (unsigned)length);
@@ -193,13 +195,13 @@ fflush(stdout);
 		/*
 			convert into d1-gaps
 		*/
-		generate_differences(postings_list, length);
+		generate_differences(postings_list);
 
 		/*
 			Compress
 		*/
 		uint64_t size_in_bytes_once_compressed;
-		size_in_bytes_once_compressed = shrinkerator->encode(compressed_postings_list, NUMBER_OF_DOCUMENTS * sizeof(*compressed_postings_list), postings_list, length);
+		size_in_bytes_once_compressed = shrinkerator->encode(&compressed_postings_list[0], compressed_postings_list.size() * sizeof(compressed_postings_list[0]), &postings_list[0], length);
 
 
 		compressed_size[length] += size_in_bytes_once_compressed;
@@ -209,7 +211,7 @@ fflush(stdout);
 			Decompress
 		*/
 		auto timer = JASS::timer::start();
-		shrinkerator->decode(decompressed_postings_list, length, compressed_postings_list, size_in_bytes_once_compressed);
+		shrinkerator->decode(&decompressed_postings_list[0], length, &compressed_postings_list[0], size_in_bytes_once_compressed);
 		auto took = JASS::timer::stop(timer).nanoseconds();
 
 		decompress_time[length] += took;
@@ -221,28 +223,26 @@ fflush(stdout);
 		/*
 			Verify
 		*/
-		if (memcmp(postings_list, decompressed_postings_list, length * sizeof(*postings_list)) != 0)
+		if (memcmp(&postings_list[0], &decompressed_postings_list[0], length * sizeof(postings_list[0])) != 0)
 			{
-			printf("Fail on list %u\n", term_count);
+			std::cout << "Fail on list " << term_count << "\n";
 			for (uint32_t pos = 0; pos < length; pos++)
 				if (postings_list[pos] != decompressed_postings_list[pos])
-					printf("Fail at pos:%d\n", (int)pos);
+					std::cout << "Fail at pos:" << pos << "\n";
 			exit(0);
 			}
+			
 		/*
 			Notify
 		*/
-	#ifdef NEVER
+//	#ifdef NEVER
 		if (term_count % 1000 == 0)
-			{
-			printf("Terms:%u\n", (unsigned)term_count);
-			fflush(stdout);
-			}
-	#endif
+			std::cout << "Terms:" << term_count << std::endl;
+//	#endif
 
 		}
 
-	printf("Total terms:%u\n", term_count);
+	std::cout << "Total terms:" << term_count << "\n";
 	draw_histogram();
 
 	return 0;
