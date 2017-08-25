@@ -85,7 +85,7 @@ namespace JASS
 			/*
 				impact score (uint16_t).
 			*/
-			uint16_t score = header.impact_score;
+			uint16_t score = static_cast<uint16_t>(header.impact_score);
 			postings.write(&score, sizeof(score));
 
 			/*
@@ -107,7 +107,7 @@ namespace JASS
 			/*
 				the number of document ids with this impact score (length of the impact segment measured in doc_ids).
 			*/
-			uint32_t frequency = header.size();
+			uint32_t frequency = static_cast<uint32_t>(header.size());
 			postings.write(&frequency, sizeof(frequency));
 			start_of_postings = finish_location;
 			}
@@ -127,7 +127,7 @@ namespace JASS
 				/*
 					uncompressed is an array of uint32_t integers counting from 0 (but the indexer counts from 1 so we subtract 1).
 				*/
-				uint32_t document_id = posting - 1;
+				uint32_t document_id = static_cast<uint32_t>(posting - 1);
 				postings.write(&document_id, sizeof(document_id));
 				}
 

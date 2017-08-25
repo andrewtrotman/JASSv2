@@ -35,10 +35,10 @@
 std::vector<uint32_t> postings_list;				// Buffer to hold the contents of the current postings list.  This is way too large, but only allocated once.
 std::vector<uint32_t> compressed_postings_list;		// Buffer to hold the compressed postings list
 std::vector<uint32_t> decompressed_postings_list;	// Buffer to hold the decompressed postings list - after compression then decompression this should equal postings_list[]
-std::vector<uint32_t> decompress_time;				// Buffer holding the sum of times to decompress postings lists of this length
-std::vector<uint32_t> decompress_count;				// Buffer holding the number of postings list of this length
-std::vector<uint32_t> compressed_size;				// Buffer holding the size (in bytes) of each compressed string
-std::vector<uint32_t> compressed_count;				// Buffer holding the number of postings list of this length, should be identical to decompress_count
+std::vector<uint64_t> decompress_time;				// Buffer holding the sum of times to decompress postings lists of this length
+std::vector<uint64_t> decompress_count;				// Buffer holding the number of postings list of this length
+std::vector<uint64_t> compressed_size;				// Buffer holding the size (in bytes) of each compressed string
+std::vector<uint64_t> compressed_count;				// Buffer holding the number of postings list of this length, should be identical to decompress_count
 
 /*
 	DRAW_HISTOGRAM()
@@ -61,9 +61,9 @@ void draw_histogram(void)
 void generate_differences(std::vector<uint32_t> &postings_list)
 	{
 	uint32_t previous = 0;
-	uint32_t length = postings_list.size();
+	size_t length = postings_list.size();
 	
-	for (uint32_t current = 0; current < length; current++)
+	for (size_t current = 0; current < length; current++)
 		{
 		uint32_t was = postings_list[current];
 

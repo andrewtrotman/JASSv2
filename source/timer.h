@@ -20,6 +20,13 @@
 
 namespace JASS
 	{
+	/*
+		CLASS TIMER
+		-----------
+	*/
+	/*!
+		@brief General purpose cross-platform timer methods for C++11 and later
+	*/
 	class timer
 		{
 		private:
@@ -66,9 +73,9 @@ namespace JASS
 						@brief Return the time-slice as number of milliseconds.
 						@return time in miliseconds.
 					*/
-					size_t milliseconds(void)
+					auto milliseconds(void)
 						{
-						return std::chrono::duration<double, std::milli>(took).count();
+						return std::chrono::duration_cast<std::chrono::milliseconds>(took).count();
 						}
 
 					/*
@@ -79,9 +86,9 @@ namespace JASS
 						@brief Return the time-slice as number of microseconds.
 						@return time in miliseconds.
 					*/
-					size_t microseconds(void)
+					auto microseconds(void)
 						{
-						return std::chrono::duration<double, std::micro>(took).count();
+						return std::chrono::duration_cast<std::chrono::microseconds>(took).count();
 						}
 
 					/*
@@ -92,9 +99,9 @@ namespace JASS
 						@brief Return the time-slice as number of nanoseconds.
 						@return time in nanoseconds.
 					*/
-					size_t nanoseconds(void)
+					auto nanoseconds(void)
 						{
-						return std::chrono::duration<double, std::nano>(took).count();
+						return std::chrono::duration_cast<std::chrono::nanoseconds>(took).count();
 						}
 				};
 
@@ -164,7 +171,7 @@ namespace JASS
 				/*
 					Yay!
 				*/
-				puts("timer::PASSED\n");
+				puts("timer::PASSED");
 				}
 
 		};
