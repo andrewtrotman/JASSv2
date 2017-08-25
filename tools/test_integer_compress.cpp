@@ -14,6 +14,7 @@
 
 	An example file is Lemire's dump of .gov2 which can be found here: https://lemire.me/data/integercompression2014.html
 */
+#include <limits>
 #include <iostream>
 
 #include <stdio.h>
@@ -109,7 +110,7 @@ int main(int argc, const char *argv[])
 	/*
 		Set up for parsing the command line
 	*/
-	uint64_t report_every;																// print a message every this number of postings lists
+	uint64_t report_every = std::numeric_limits<uint64_t>::max();							// print a message every this number of postings lists
 	bool generate = false;																// should we generate a sample file (usually false)
 	std::string filename = "";															// the name of the postings list file to check with
 	std::array<bool, JASS::compress_integer_all::compressors_size> selectors = {};		// which compressor does the user select
