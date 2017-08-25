@@ -6,12 +6,13 @@
 */
 /*!
 	@file
-	@brief A data structure representing all the integer compression schemes known by JASS
+	@brief A container holding all the integer compression schemes known by JASS.
 	@author Andrew Trotman
-	@copyright 2016 Andrew Trotman
+	@copyright 2017 Andrew Trotman
 */
 #pragma once
 
+#include <array>
 #include <tuple>
 #include <string>
 
@@ -20,49 +21,183 @@
 
 namespace JASS
 	{
+	/*
+		CLASS COMPRESS_INTEGER_ALL
+		--------------------------
+	*/
+	/*!
+		@brief A container holding all the integer compression schemes known by JASS
+		@details Add a new compressor by creating an instance of it in compress_integer_all.cpp, then creating
+		an new row in the table compressors, then incr
+	*/
 	class compress_integer_all
 		{
 		public:
-			static std::vector<compress_integer_all> compress_integer_all_compressors;
-			
-		public:
-			std::string shortname;
-			std::string longname;
-			std::string description;
-			compress_integer *codex;
+			static constexpr size_t compressors_size = 3;					///< There are currently this many compressors know to JASS
+			static constexpr size_t default_compressor = 0;					///< The default one to use is at this position in the compressors array
+
+		private:
+			/*
+				CLASS COMPRESS_INTEGER_ALL::DETAILS
+				-----------------------------------
+			*/
+			/*!
+				Each compressor is represented by the command line details and an instance of that compressor
+			*/
+			class details
+				{
+				public:
+					const char *shortname;					///< The short command line parameter.
+					const char *longname;					///< The long command line parameter.
+					const char *description;				///< The name of the scheme, in command line use other stuff is wrapped around this.
+					compress_integer *codex;				///< An instance of the compressor.
+				};
+
+		private:
+			static std::array<details, compressors_size> compressors;			///< The array of known compressor schemes
 			
 		private:
-			// https://stackoverflow.com/questions/28410697/c-convert-vector-to-tuple
+			/*
+				COMPRESS_INTEGER_ALL::MAKE_COMMANDLINE()
+				----------------------------------------
+			*/
+			/*!
+				@brief Turn the array into a tupple for use with JASS::commandline
+				@param option [in] The boolean array used to represent whether or not the parameter has been selected on the command line
+				@return A tuple of this scheme and all after it in the compressors array.
+			*/
+			template<std::size_t I, typename std::enable_if<I == 0, size_t>::type = I>
+			static auto make_commandline(std::array<bool, compressors_size> &option)
+				{
+				return std::make_tuple(commandline::parameter(compress_integer_all::compressors[I].shortname, compress_integer_all::compressors[I].longname, compress_integer_all::compressors[I].description, option[I]));
+				}
 
-			template <typename TYPE, std::size_t... Indices>
-			auto vectorToTupleHelper(const std::vector<TYPE>& v, std::index_sequence<Indices...>)
-			{
-			return std::make_tuple((v[Indices]+1)...);
-			}
-
-			template <std::size_t N, typename TYPE>
-			auto vectorToTuple(const std::vector<TYPE>& v)
-			{
-			assert(v.size() >= N);
-			return vectorToTupleHelper(v, std::make_index_sequence<N>());
-			}
+			/*
+				COMPRESS_INTEGER_ALL::MAKE_COMMANDLINE()
+				----------------------------------------
+			*/
+			/*!
+				@brief Turn the array into a tupple for use with JASS::commandline
+				@param option [in] The boolean array used to represent whether or not the parameter has been selected on the command line
+				@return A tuple of this scheme and all after it in the compressors array.
+			*/
+			template<std::size_t I, typename std::enable_if<I != 0, size_t>::type = I>
+			static auto make_commandline(std::array<bool, compressors_size> &option)
+				{
+				return std::tuple_cat(make_commandline<I - 1>(option), std::make_tuple(commandline::parameter(compress_integer_all::compressors[I].shortname, compress_integer_all::compressors[I].longname, compress_integer_all::compressors[I].description, option[I])));
+				}
 		
 		public:
-#ifdef NEVER
-			static auto codexlist_as_parameterlist(std::vector<char> &option)
+			/*
+				COMPRESS_INTEGER_ALL::PARAMETERLIST()
+				-------------------------------------
+			*/
+			/*!
+				@brief Get a std::tuple of the compressors ready for use with JASS::commandline.
+				@param option [in] An array (one per compressor, each pre-set to false) that will be set to true when the user selects a compressor.
+				@return A std::tuple for use with JASS::commandline.
+			*/
+			static auto parameterlist(std::array<bool, compressors_size> &option)
 				{
-				size_t which;
-				auto command_line_parameters = std::make_tuple();
-				
-				for (const auto &row : compress_integer_all_compressors)
-					{
-					auto next_row = std::make_tuple(commandline::parameter(row.shortname, row.longname, std::string("Compress postings lists using:") + row.description, option[which]));
-					command_line_parameters = std::tuple_cat(command_line_parameters, next_row);
-					which++;
-					}
+				return make_commandline<compressors_size - 1>(option);
 				}
-#endif
-		};
+			
+			/*
+				COMPRESS_INTEGER_ALL::COMPRESSOR()
+				----------------------------------
+			*/
+			/*!
+				@brief Turn the first selected compressor (according to option) into a compressor
+				@param option [in] An array (one per compressor) with (preferably) one set to true.
+				@return An integer compressor, or the default integer compressor if each member of option is set to false.
+			*/
+			static compress_integer &compressor(const std::array<bool, compressors_size> &option)
+				{
+				for (size_t which = 0; which < compressors_size; which++)
+					if (option[which])
+						return *compressors[which].codex;
+					
+				return *compressors[default_compressor].codex;
+				}
+			
+			/*
+				COMPRESS_INTEGER_ALL::NAME()
+				----------------------------
+			*/
+			/*!
+				@brief Get the name of the first selected compressor (according to option).
+				@param option [in] An array (one per compressor) with (preferably) one set to true.
+				@return The name of the first selected compressor.
+			*/
+			static const std::string name(const std::array<bool, compressors_size> &option)
+				{
+				for (size_t which = 0; which < compressors_size; which++)
+					if (option[which])
+						return compressors[which].description;
+					
+				return compressors[default_compressor].description;
+				}
+			
+			/*
+				COMPRESS_INTEGER_ALL::UNITTEST()
+				--------------------------------
+			*/
+			/*!
+				@brief Unit test this class
+			*/
+			static void unittest(void)
+				{
+				/*
+					Allocate an array of selectors and get a parameter list
+				*/
+				std::array<bool, compressors_size> parameters = {};
+				auto parameter_list = parameterlist(parameters);
 
-	extern std::vector<compress_integer_all> compress_integer_all_compressors;
+				/*
+					Fake argc and argv[]
+				*/
+				const char *argv[] = {"program", "-cv"};
+				
+				/*
+					Call the command line parser to get the selected option
+				*/
+				std::string errors;
+				auto success = commandline::parse(2, argv, parameter_list, errors);
+				
+				/*
+					Make sure we succeeded
+				*/
+				JASS_assert(success == true);
+				
+				/*
+					Check that only one parameter was selected
+				*/
+				size_t parameters_selected = 0;
+				for (const auto param : parameters)
+					if (param)
+						parameters_selected++;
+				JASS_assert(parameters_selected == 1);
+				
+				/*
+					Make sure we got the correct parameter selected
+				*/
+				JASS_assert(parameters[1] == true);
+				
+				/*
+					Check what happens if we don't have any parameters.
+				*/
+				parameters = {};
+				const char *argv0[] = {"program"};
+				success = commandline::parse(1, argv0, parameter_list, errors);
+				JASS_assert(success == true);
+				parameters_selected = 0;
+				for (const auto param : parameters)
+					if (param)
+						parameters_selected++;
+				JASS_assert(parameters_selected == 0);
+				JASS_assert(name(parameters) == "None");
+				
+				puts("compress_integer_all::PASSED");
+				}
+		};
 	}

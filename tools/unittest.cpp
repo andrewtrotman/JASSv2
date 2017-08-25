@@ -36,6 +36,7 @@
 #include "allocator_memory.h"
 #include "serialise_jass_v1.h"
 #include "instream_file_star.h"
+#include "compress_integer_all.h"
 #include "compress_integer_none.h"
 #include "index_postings_impact.h"
 #include "instream_document_trec.h"
@@ -63,6 +64,9 @@ int main(void)
 
 	try
 		{
+		puts("compress_integer_all");
+		JASS::compress_integer_all::unittest();
+		
 		puts("timer");
 		JASS::timer::unittest();
 

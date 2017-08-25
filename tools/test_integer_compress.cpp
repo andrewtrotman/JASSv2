@@ -1,12 +1,12 @@
 /*
 	TEST_INTEGER_COMPRESS.CPP
 	-------------------------
-	Copyright (c) 2016 Andrew Trotman
+	Copyright (c) 2017 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 /*
 	Run through a file of postings lists making sure we can compress and decompress it into the same sequebce.
-	The format of the filw is:
+	The format of the file is:
 
 		length (4-byte integer)
 		posting (length * 4-byte integers)
@@ -16,55 +16,28 @@
 */
 #include <iostream>
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
-
 
 #include "file.h"
 #include "timer.h"
+#include "commandline.h"
 #include "compress_integer_all.h"
 
 /*
 	The test set must contain no more that this number of documents.
 */
-#define NUMBER_OF_DOCUMENTS (1024 * 1024 * 128)
+#define NUMBER_OF_DOCUMENTS (1024 * 1024 * 20)
 
-/*
-	Buffer to hold the contents of the current postings list.  This is way too large, but only allocated once.
-*/
-std::vector<uint32_t> postings_list;
-
-/*
-	Buffer to hold the compressed postings list
-*/
-std::vector<uint32_t> compressed_postings_list;
-
-/*
-	Buffer to hold the decompressed postings list - after compression then decompression this should equal postings_list[]
-*/
-std::vector<uint32_t> decompressed_postings_list;
-
-/*
-	Buffer holding the sum of times to decompress postings lists of this length
-*/
-std::vector<uint32_t> decompress_time;
-
-/*
-	Buffer holding the number of postings list of this length
-*/
-std::vector<uint32_t> decompress_count;
-
-/*
-	Buffer holding the size (in bytes) of each compressed string
-*/
-std::vector<uint32_t> compressed_size;
-
-/*
-	Buffer holding the number of postings list of this length
-*/
-std::vector<uint32_t> compressed_count;		// should be identical to decompress_count
+std::vector<uint32_t> postings_list;				// Buffer to hold the contents of the current postings list.  This is way too large, but only allocated once.
+std::vector<uint32_t> compressed_postings_list;		// Buffer to hold the compressed postings list
+std::vector<uint32_t> decompressed_postings_list;	// Buffer to hold the decompressed postings list - after compression then decompression this should equal postings_list[]
+std::vector<uint32_t> decompress_time;				// Buffer holding the sum of times to decompress postings lists of this length
+std::vector<uint32_t> decompress_count;				// Buffer holding the number of postings list of this length
+std::vector<uint32_t> compressed_size;				// Buffer holding the size (in bytes) of each compressed string
+std::vector<uint32_t> compressed_count;				// Buffer holding the number of postings list of this length, should be identical to decompress_count
 
 /*
 	DRAW_HISTOGRAM()
@@ -99,64 +72,94 @@ void generate_differences(std::vector<uint32_t> &postings_list)
 	}
 
 /*
-	USAGE()
-	-------
-	Write out the useage statistics.
-*/
-void usage(const char *exename)
-	{
-	exit(printf("Usage:%s <testfile>\n", exename));
-	}
-
-/*
 	GENERATE_EXAMPLE()
 	------------------
 	Generate a simple sample set of test data.
 */
 void generate_example(const std::string &filename)
 	{
-#ifdef NEVER
 	JASS::file output(filename, "w+b");
 
-	for (uint32_t length = 1; length < 10; length++)
+	for (uint32_t length = 1; length < 11; length++)
 		{
 		output.write(&length, sizeof(length));
 		for (uint32_t value = 0; value < length; value++)
 			output.write(&value, sizeof(value));
 		}
-#endif
+	}
+
+/*
+	USAGE()
+	-------
+	Write out the useage statistics.
+*/
+template <typename TYPE>
+void usage(const char *exename, TYPE command_line_parameters)
+	{
+	JASS::commandline::usage(exename, command_line_parameters);
+	exit(0);
 	}
 
 /*
 	MAIN()
 	------
 */
-int main(int argc, char *argv[])
+int main(int argc, const char *argv[])
 	{
-	const char *filename;
+	/*
+		Set up for parsing the command line
+	*/
+	uint64_t report_every;																// print a message every this number of postings lists
+	bool generate = false;																// should we generate a sample file (usually false)
+	std::string filename = "";															// the name of the postings list file to check with
+	std::array<bool, JASS::compress_integer_all::compressors_size> selectors = {};		// which compressor does the user select
+	auto command_line = JASS::compress_integer_all::parameterlist(selectors);			// get list of avaiable compressors
+	auto all_parameters = std::tuple_cat
+		(
+		std::make_tuple
+			(
+			JASS::commandline::note("\nFILENAME PARSING\n----------------"),
+			JASS::commandline::parameter("-f", "--filename", "Name of encoded postings list file", filename),
+			JASS::commandline::note("\nCOMPRESSORS\n-----------")
+			),
+		command_line,
+		std::make_tuple
+			(
+			JASS::commandline::note("\nGENERATE\n--------"),
+			JASS::commandline::parameter("-G", "--Generate", "generate a sample file for checking (you are unlikely to want to do this)", generate),
+			JASS::commandline::note("\nREPORTING\n---------"),
+			JASS::commandline::parameter("-N", "--report-every", "<n> Report time and memory every <n> documents.", report_every)
+			)
+		);
 
-	JASS::compress_integer *shrinkerator = JASS::compress_integer_all::compress_integer_all_compressors[0].codex;
-	std::cout << JASS::compress_integer_all::compress_integer_all_compressors[0].description << '\n';
+	/*
+		parse the command line.
+	*/
+	std::string error;
+	if (!JASS::commandline::parse(argc, argv, all_parameters, error))
+		usage(argv[0], all_parameters);
 
 	/*
 		Check parameters
 	*/
-	if (argc <= 1)
-		usage(argv[0]);	// filename = "/Volumes/Other/data/gov2.sorted";			// debug from the IDE
-	else if (argc == 2)
-		filename = argv[1];											// else the first parameter is the filename to use
-	else if (argc == 3)
+	if (filename == "")
+		usage(argv[0], all_parameters);
+
+	/*
+		Announce what we're about to do
+	*/
+	if (generate)
 		{
-		generate_example(argv[1]);
+		std::cout << "Generate " << filename << '\n';
+		generate_example(filename);
 		return 0;
 		}
-	else
-		usage(argv[0]);
+	JASS::compress_integer &shrinkerator = JASS::compress_integer_all::compressor(selectors);
+	std::cout << "Check " << JASS::compress_integer_all::name(selectors) << " on file " << filename << '\n';
 
 	/*
 		Initialise by setting the count buffers to 0
 	*/
-puts("zero");
 	postings_list.resize(NUMBER_OF_DOCUMENTS);
 	compressed_postings_list.resize(NUMBER_OF_DOCUMENTS);
 	decompressed_postings_list.resize(NUMBER_OF_DOCUMENTS);
@@ -164,16 +167,13 @@ puts("zero");
 	decompress_count.resize(NUMBER_OF_DOCUMENTS);
 	compressed_size.resize(NUMBER_OF_DOCUMENTS);
 	compressed_count.resize(NUMBER_OF_DOCUMENTS);
-puts("done");
 
 	/*
 		Open the postings list file
 	*/
-	std::cout << "Using:" << filename << "\n";
-	
-	FILE *fp = fopen(filename, "rb");
+	FILE *fp = fopen(filename.c_str(), "rb");
 	if (fp == nullptr)
-		exit(printf("cannot open %s\n", filename));
+		exit(printf("cannot open %s\n", filename.c_str()));
 
 	/*
 		Iterate through each postings list in the file
@@ -189,8 +189,8 @@ puts("done");
 		if (fread(&postings_list[0], sizeof(postings_list[0]), length, fp) != length)
 			exit(printf("i/o error\n"));
 
-printf("Length:%u\n", (unsigned)length);
-fflush(stdout);
+//printf("Length:%u\n", (unsigned)length);
+//fflush(stdout);
 
 		/*
 			convert into d1-gaps
@@ -201,7 +201,7 @@ fflush(stdout);
 			Compress
 		*/
 		uint64_t size_in_bytes_once_compressed;
-		size_in_bytes_once_compressed = shrinkerator->encode(&compressed_postings_list[0], compressed_postings_list.size() * sizeof(compressed_postings_list[0]), &postings_list[0], length);
+		size_in_bytes_once_compressed = shrinkerator.encode(&compressed_postings_list[0], compressed_postings_list.size() * sizeof(compressed_postings_list[0]), &postings_list[0], length);
 
 
 		compressed_size[length] += size_in_bytes_once_compressed;
@@ -211,14 +211,14 @@ fflush(stdout);
 			Decompress
 		*/
 		auto timer = JASS::timer::start();
-		shrinkerator->decode(&decompressed_postings_list[0], length, &compressed_postings_list[0], size_in_bytes_once_compressed);
+		shrinkerator.decode(&decompressed_postings_list[0], length, &compressed_postings_list[0], size_in_bytes_once_compressed);
 		auto took = JASS::timer::stop(timer).nanoseconds();
 
 		decompress_time[length] += took;
 		decompress_count[length]++;
 
-printf("%u integers -> %uns\n", (unsigned)length, (unsigned)took);
-fflush(stdout);
+//printf("%u integers -> %uns\n", (unsigned)length, (unsigned)took);
+//fflush(stdout);
 
 		/*
 			Verify
@@ -235,11 +235,8 @@ fflush(stdout);
 		/*
 			Notify
 		*/
-//	#ifdef NEVER
-		if (term_count % 1000 == 0)
-			std::cout << "Terms:" << term_count << std::endl;
-//	#endif
-
+		if (term_count % report_every == 0)
+			std::cout << "Terms processed:" << term_count << std::endl;
 		}
 
 	std::cout << "Total terms:" << term_count << "\n";
