@@ -30,7 +30,7 @@ bool parameter_compiled_index = false;
 std::string parameter_filename = "";
 bool parameter_quiet = false;
 bool parameter_help = false;
-size_t parameter_report_every_n = std::numeric_limits<size_t>::max();
+size_t parameter_report_every_n = (std::numeric_limits<size_t>::max)();
 
 auto command_line_parameters = std::make_tuple
 	(
@@ -55,7 +55,7 @@ auto command_line_parameters = std::make_tuple
 	USAGE()
 	-------
 */
-uint8_t usage(const std::string exename)
+uint8_t usage(const std::string &exename)
 	{
 	JASS::commandline::usage(exename, command_line_parameters);
 	std::cout << "\n";

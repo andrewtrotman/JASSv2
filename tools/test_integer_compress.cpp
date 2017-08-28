@@ -110,7 +110,7 @@ int main(int argc, const char *argv[])
 	/*
 		Set up for parsing the command line
 	*/
-	uint64_t report_every = std::numeric_limits<uint64_t>::max();							// print a message every this number of postings lists
+	uint64_t report_every = (std::numeric_limits<uint64_t>::max)();							// print a message every this number of postings lists
 	bool generate = false;																// should we generate a sample file (usually false)
 	std::string filename = "";															// the name of the postings list file to check with
 	std::array<bool, JASS::compress_integer_all::compressors_size> selectors = {};		// which compressor does the user select
@@ -241,6 +241,7 @@ int main(int argc, const char *argv[])
 		}
 
 	std::cout << "Total terms:" << term_count << "\n";
+	fclose(fp);
 	draw_histogram();
 
 	return 0;

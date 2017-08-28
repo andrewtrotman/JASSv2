@@ -13,6 +13,7 @@
 #pragma once
 
 #include <tuple>
+#include <limits>
 #include <string>
 #include <utility>
 #include <sstream>
@@ -135,7 +136,7 @@ namespace JASS
 			static bool extract(std::ostringstream &messages, const char *parameter, command<TYPE> element)
 				{
 				long long answer = strtoll(parameter, NULL, 0);
-				if (answer > std::numeric_limits<TYPE>::max())
+				if (answer > (std::numeric_limits<TYPE>::max)())
 					messages << parameter << " Numeric overflow on parameter\n";
 				else if (answer < std::numeric_limits<TYPE>::min())
 					messages << parameter << " Numeric underflow on parameter\n";
@@ -167,7 +168,7 @@ namespace JASS
 			static bool extract(std::ostringstream &messages, const char *parameter, command<TYPE> element)
 				{
 				unsigned long long answer = strtoull(parameter, NULL, 0);
-				if (answer > std::numeric_limits<TYPE>::max())
+				if (answer > (std::numeric_limits<TYPE>::max)())
 					{
 					messages << parameter << " Numeric overflow on parameter\n";
 					return false;
@@ -438,7 +439,7 @@ namespace JASS
 				@param all_parameters [in] a tuple of objects returned bu commandline::parameter.
 			*/
 			template <typename... TYPE>
-			static void usage(const std::string exename, const std::tuple<TYPE...> &all_parameters)
+			static void usage(const std::string &exename, const std::tuple<TYPE...> &all_parameters)
 				{
 				size_t width_of_shortname = 0;
 				size_t width_of_longname = 0;

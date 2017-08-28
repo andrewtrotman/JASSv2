@@ -24,9 +24,11 @@ namespace JASS
 		Table of known copressors and their command line parameter names and actual names
 	*/
 	std::array<compress_integer_all::details, compress_integer_all::compressors_size> compress_integer_all::compressors
-		{{
-		{"-cn", "--compress_none", "None", &none},
-		{"-cv", "--compress_vbyte", "Variable Byte", &variable_byte},
-		{"-cq", "--compress_qmx_improved", "QMX Improved", &qmx_improved},
-		}};
+		{
+			{
+			{"-cn", "--compress_none", "None", &none},
+			{"-cv", "--compress_vbyte", "Variable Byte", &variable_byte},
+			{"-cq", "--compress_qmx_improved", "QMX Improved", &qmx_improved},
+			}
+		};
 	}
