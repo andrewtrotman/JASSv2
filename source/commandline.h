@@ -423,7 +423,7 @@ namespace JASS
 				bool success = true;
 				size_t argument = 1;
 
-				while (argument < argc)
+				while (argument < static_cast<size_t>(argc))
 					for_each_parameter(success, messages, argument, argv, all_parameters);
 
 				error = messages.str();

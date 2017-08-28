@@ -116,7 +116,7 @@ int main(void)
 	JASS::file::read_entire_file("CIvocab_terms.bin", strings);
 
 	std::cout << "POSTINGS LISTS\n--------------\n";
-	for (auto term = 0; term < vocab_length; term++)
+	for (size_t term = 0; term < vocab_length; term++)
 		{
 		std::cout << strings.c_str() + vocab[term].term << "->";
 		dump_postings_list(postings.c_str(), vocab[term].offset, vocab[term].impacts);

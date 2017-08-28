@@ -433,7 +433,7 @@ namespace JASS
 				int eight = 8;
 				int *eight_pointer = &eight;
 				top_k_heap<pointer_box<int>> pointer_heap(2, memory);
-				for (auto element = 0; element < sizeof(sequence) / sizeof(*sequence); element++)
+				for (size_t element = 0; element < sizeof(sequence) / sizeof(*sequence); element++)
 					{
 					pointer_heap.sort();
 					if (sequence[element] == 8)

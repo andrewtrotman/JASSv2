@@ -30,7 +30,7 @@
 	
 	@param expression [in] The expression to check.
 */
-#define JASS_assert(expression) (expression ? ((void)0) : fail(__func__, __FILE__, __LINE__, #expression))
+#define JASS_assert(expression) ((expression) ? ((void)0) : fail(__func__, __FILE__, __LINE__, #expression))
 
 /*
 	FAIL()
