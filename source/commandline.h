@@ -17,6 +17,7 @@
 #include <string>
 #include <utility>
 #include <sstream>
+#include <typeinfo>
 
 #include <stdlib.h>
 
