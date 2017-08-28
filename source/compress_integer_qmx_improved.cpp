@@ -97,6 +97,49 @@ namespace JASS
 			return 32;
 		}
 
+	struct type_and_integers
+		{
+		size_t type;
+		size_t integers;
+		};
+
+	static const type_and_integers table[] =
+		{
+		{0, 256},	// size_in_bits == 0;
+		{1, 128},	// size_in_bits == 1;
+		{2, 64},		// size_in_bits == 2;
+		{3, 40},		// size_in_bits == 3;
+		{4, 32},		// size_in_bits == 4;
+		{5, 24},		// size_in_bits == 5;
+		{6, 20},		// size_in_bits == 6;
+		{7, 36},		// size_in_bits == 7;  256-bits
+		{8, 16},		// size_in_bits == 8;
+		{9, 28},		// size_in_bits == 9;  256-bits
+		{10, 12},	// size_in_bits == 10;
+		{0, 0},
+		{11, 20},	// size_in_bits == 12;
+		{0, 0},
+		{0, 0},
+		{0, 0},
+		{12, 8},		// size_in_bits == 16;
+		{0, 0},
+		{0, 0},
+		{0, 0},
+		{0, 0},
+		{13, 12},	// size_in_bits == 21;	256-bits
+		{0, 0},
+		{0, 0},
+		{0, 0},
+		{0, 0},
+		{0, 0},
+		{0, 0},
+		{0, 0},
+		{0, 0},
+		{0, 0},
+		{0, 0},
+		{14, 4},	// size_in_bits == 32;
+		};
+
 	/*
 		WRITE_OUT()
 		-----------
@@ -104,92 +147,31 @@ namespace JASS
 	*/
 	static void write_out(uint8_t **buffer, uint32_t *source, uint32_t raw_count, uint32_t size_in_bits, uint8_t **length_buffer)
 		{
+		uint32_t full_length_buffer[128 * 16];			// If the run_length is too short then 0-pad into this buffer
 		uint32_t current, batch;
 		uint8_t *destination = *buffer;
-		uint32_t *end = source + raw_count;
 		uint8_t *key_store = *length_buffer;
 		uint32_t sequence_buffer[4];
 		uint32_t instance, value;
 		uint8_t type;
 		uint32_t count;
 
-		if (size_in_bits == 0)
-			{
-			type = 0;
-			count = (raw_count + 255) / 256;
-			}
-		else if (size_in_bits == 1)
-			{
-			type = 1;		// 1 bit per integer
-			count = (raw_count + 127) / 128;
-			}
-		else if (size_in_bits == 2)
-			{
-			type = 2;		// 2 bits per integer
-			count = (raw_count + 63) / 64;
-			}
-		else if (size_in_bits == 3)
-			{
-			type = 3;		// 3 bits per integer
-			count = (raw_count + 39) / 40;
-			}
-		else if (size_in_bits == 4)
-			{
-			type = 4;		// 4 bits per integer
-			count = (raw_count + 31) / 32;
-			}
-		else if (size_in_bits == 5)
-			{
-			type = 5;		// 5 bits per integer
-			count = (raw_count + 23) / 24;
-			}
-		else if (size_in_bits == 6)
-			{
-			type = 6;		// 6 bits per integer
-			count = (raw_count + 19) / 20;
-			}
-		else if (size_in_bits == 7)
-			{
-			type = 7;		// 7 bits per integer, 18 integers per read (but requires 2 reads)
-			count = (raw_count + 35) / 36;
-			}
-		else if (size_in_bits == 8)
-			{
-			type = 8;		// 8 bits per integer
-			count = (raw_count + 15) / 16;
-			}
-		else if (size_in_bits == 9)
-			{
-			type = 9;		// 9 bits per integer, 14 integers per read (but requires 2 reads)
-			count = (raw_count + 27) / 28;
-			}
-		else if (size_in_bits == 10)
-			{
-			type = 10;		// 10 bits per integer
-			count = (raw_count + 11) / 12;
-			}
-		else if (size_in_bits == 12)
-			{
-			type = 11;		// 12 bits per integer, 10 integers per read (but requires 2 reads)
-			count = (raw_count + 19) / 20;
-			}
-		else if (size_in_bits == 16)
-			{
-			type = 12;		// 16 bits per integer
-			count = (raw_count + 7) / 8;
-			}
-		else if (size_in_bits == 21)
-			{
-			type = 13;		// 21 bits per integer, 6 integers per read (but requires 2 reads)
-			count = (raw_count + 11) / 12;
-			}
-		else if (size_in_bits == 32)
-			{
-			type = 14;		// 32 bits per integer
-			count = (raw_count + 3) / 4;
-			}
-		else
+		if (size_in_bits > 32)
 			exit(printf("Can't compress into integers of size %dbits\n", size_in_bits));
+		type = table[size_in_bits].type;
+		count = (raw_count + table[size_in_bits].integers - 1) / table[size_in_bits].integers;
+
+		/*
+			0-pad if there aren't enough integers in the source buffer.
+		*/
+		if (table[size_in_bits].type != 0 && count * table[size_in_bits].integers != raw_count)
+			{	// must 0-pad to prevent read overflow in input buffer
+			std::copy(source, source + raw_count, full_length_buffer);
+			std::fill(full_length_buffer + raw_count, full_length_buffer + (count * table[size_in_bits].integers - raw_count), 0);
+			source = full_length_buffer;
+			}
+
+		uint32_t *end = source + raw_count;
 
 		while (count > 0)
 			{
