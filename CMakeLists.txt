@@ -44,7 +44,6 @@ endif()
 #	Add SSE4.2 use.
 #
 if(WIN32)
-	add_definitions("/arch:SSE2")
 else()
 	add_definitions("-msse4.2")
 endif()

@@ -160,13 +160,13 @@ namespace JASS
 					Check that the timer took about the same time in nanoseconds as microseconds
 				*/
 				auto nano_as_micro = nano / 1000;
-				JASS_assert(nano_as_micro >= micro - 1 && nano_as_micro - 1 <= micro);
+				JASS_assert((nano_as_micro >= micro - 1) && (nano_as_micro - 1 <= micro));
 
 				/*
 					Check that the timer took about the same time in nanoseconds as milliseconds
 				*/
 				auto nano_as_milli = nano / 1000'000;
-				JASS_assert(nano_as_milli >= milli - 1 && nano_as_milli - 1 <= milli);
+				JASS_assert((nano_as_milli >= milli - 1) && (nano_as_milli - 1 <= milli));
 
 				/*
 					Yay!
