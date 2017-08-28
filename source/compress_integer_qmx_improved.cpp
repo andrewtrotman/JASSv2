@@ -141,13 +141,12 @@ namespace JASS
 		};
 
 	/*
-		WRITE_OUT()
-		-----------
+		COMPRESS_INTEGER_QMX_IMPROVED::WRITE_OUT()
+		------------------------------------------
 		write a sequence into the destination buffer
 	*/
-	static void write_out(uint8_t **buffer, uint32_t *source, uint32_t raw_count, uint32_t size_in_bits, uint8_t **length_buffer)
+	void compress_integer_qmx_improved::write_out(uint8_t **buffer, uint32_t *source, uint32_t raw_count, uint32_t size_in_bits, uint8_t **length_buffer)
 		{
-		uint32_t full_length_buffer[128 * 16];			// If the run_length is too short then 0-pad into this buffer
 		uint32_t current, batch;
 		uint8_t *destination = *buffer;
 		uint8_t *key_store = *length_buffer;
