@@ -36,7 +36,7 @@ namespace JASS
 			compress_integer_qmx_improved() :
 				length_buffer(nullptr),
 				length_buffer_length(0),
-				full_length_buffer(new uint32_t [128 * 16])
+				full_length_buffer(new uint32_t [256 * 16])
 				{
 				/* Nothing */
 				}
