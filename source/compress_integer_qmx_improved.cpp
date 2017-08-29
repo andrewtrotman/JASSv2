@@ -760,39 +760,39 @@ namespace JASS
 
 		for (instance = 0; instance < 16 * 256; instance++)
 			every_case.push_back(0);
-		for (instance = 0; instance < 16 * 2256; instance++)
+		for (instance = 0; instance < 16 * 256; instance++)
 			every_case.push_back(1);
-		for (instance = 0; instance < 16 * 2128; instance++)
+		for (instance = 0; instance < 16 * 128; instance++)
 			every_case.push_back(0x01);
-		for (instance = 0; instance < 16 * 264; instance++)
+		for (instance = 0; instance < 16 * 64; instance++)
 			every_case.push_back(0x03);
-		for (instance = 0; instance < 16 * 240; instance++)
+		for (instance = 0; instance < 16 * 40; instance++)
 			every_case.push_back(0x07);
-		for (instance = 0; instance < 16 * 232; instance++)
+		for (instance = 0; instance < 16 * 32; instance++)
 			every_case.push_back(0x0F);
-		for (instance = 0; instance < 16 * 224; instance++)
-			every_case.push_back(0x1F);
-		for (instance = 0; instance < 16 * 220; instance++)
-			every_case.push_back(0x3F);
-		for (instance = 0; instance < 16 * 216; instance++)
-			every_case.push_back(0xFF);
-		for (instance = 0; instance < 16 * 212; instance++)
-			every_case.push_back(0x3FF);
-		for (instance = 0; instance < 16 * 28; instance++)
-			every_case.push_back(0xFFFF);
 		for (instance = 0; instance < 16 * 24; instance++)
+			every_case.push_back(0x1F);
+		for (instance = 0; instance < 16 * 20; instance++)
+			every_case.push_back(0x3F);
+		for (instance = 0; instance < 16 * 16; instance++)
+			every_case.push_back(0xFF);
+		for (instance = 0; instance < 16 * 12; instance++)
+			every_case.push_back(0x3FF);
+		for (instance = 0; instance < 16 * 8; instance++)
+			every_case.push_back(0xFFFF);
+		for (instance = 0; instance < 16 * 4; instance++)
 			every_case.push_back(0xFFFFFFFF);
 
 		/*
 			Test all valid instances that fit into two SIMD-words
 		*/
-		for (instance = 0; instance < 16 * 236; instance++)
+		for (instance = 0; instance < 16 * 36; instance++)
 			every_case.push_back(0x7F);
-		for (instance = 0; instance < 16 * 228; instance++)
+		for (instance = 0; instance < 16 * 28; instance++)
 			every_case.push_back(0x1FF);
-		for (instance = 0; instance < 16 * 220; instance++)
+		for (instance = 0; instance < 16 * 20; instance++)
 			every_case.push_back(0xFFF);
-		for (instance = 0; instance < 16 * 212; instance++)
+		for (instance = 0; instance < 16 * 12; instance++)
 			every_case.push_back(0x1FFFFF);
 
 		std::vector<uint32_t> every_case_compressed(every_case.size());
