@@ -166,7 +166,7 @@ namespace JASS
 		if (table[size_in_bits].type != 0 && count * table[size_in_bits].integers != raw_count)
 			{	// must 0-pad to prevent read overflow in input buffer
 			std::copy(source, source + raw_count, full_length_buffer);
-			std::fill(full_length_buffer + raw_count, full_length_buffer + (count * table[size_in_bits].integers - raw_count), 0);
+			std::fill(full_length_buffer + raw_count, full_length_buffer + (count * table[size_in_bits].integers), 0);
 			source = full_length_buffer;
 			}
 
