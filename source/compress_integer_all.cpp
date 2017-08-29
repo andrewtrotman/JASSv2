@@ -31,4 +31,65 @@ namespace JASS
 			{"-cq", "--compress_qmx_improved", "QMX Improved", &qmx_improved},
 			}
 		};
+
+	/*
+		COMPRESS_INTEGER_ALL::UNITTEST()
+		--------------------------------
+	*/
+	void compress_integer_all::unittest(void)
+		{
+		/*
+			Allocate an array of selectors and get a parameter list
+		*/
+		std::array<bool, compressors_size> parameters = {};
+		auto parameter_list = parameterlist(parameters);
+
+		/*
+			Fake argc and argv[]
+		*/
+		const char *argv[] = {"program", "-cv"};
+		
+		/*
+			Call the command line parser to get the selected option
+		*/
+		std::string errors;
+		auto success = commandline::parse(2, argv, parameter_list, errors);
+		
+		/*
+			Make sure we succeeded
+		*/
+		JASS_assert(success == true);
+		
+		/*
+			Check that only one parameter was selected
+		*/
+		size_t parameters_selected = 0;
+		for (const auto param : parameters)
+			if (param)
+				parameters_selected++;
+		JASS_assert(parameters_selected == 1);
+		
+		/*
+			Make sure we got the correct parameter selected
+		*/
+		JASS_assert(parameters[1] == true);
+		JASS_assert(name(parameters) == compressors[1].description);
+		JASS_assert(&compressor(parameters) == compressors[1].codex);
+
+		/*
+			Check what happens if we don't have any parameters.
+		*/
+		parameters = {};
+		const char *argv0[] = {"program"};
+		success = commandline::parse(1, argv0, parameter_list, errors);
+		JASS_assert(success == true);
+		parameters_selected = 0;
+		for (const auto param : parameters)
+			if (param)
+				parameters_selected++;					// LCOV_EXCL_LINE		// if the unit test is successful then this should not be called.
+		JASS_assert(parameters_selected == 0);
+		JASS_assert(name(parameters) == "None");
+		
+		puts("compress_integer_all::PASSED");
+		}
 	}

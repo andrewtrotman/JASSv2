@@ -17,6 +17,7 @@
 #include <string>
 #include <utility>
 #include <sstream>
+#include <iostream>
 #include <typeinfo>
 
 #include <stdlib.h>
@@ -45,6 +46,7 @@ namespace JASS
 			*/
 			class text_note
 			 {
+			 /* Nothing */
 			 };
 
 			/*
@@ -99,7 +101,7 @@ namespace JASS
 			*/
 			static bool extract(std::ostringstream &messages, const char *parameter, command<text_note> element)
 				{
-				return true;
+				return true;		// LCOV_EXCL_LINE	// theoretically possible to call this line, but it does nothing but is needed for a clean compilation.
 				}
 
 			/*
@@ -288,6 +290,7 @@ namespace JASS
 			inline typename std::enable_if<I == sizeof...(Tp), void>::type
 			static for_each_usage_formatting(size_t &width_of_shortname, size_t &width_of_longname, const std::tuple<Tp...> &)
 				{
+				/* Nothing */
 				}
 
 			/*
@@ -321,13 +324,14 @@ namespace JASS
 			*/
 			/*!
 				@brief Iterate over each parameter printing the shortname, longname, and description.
+				@param out [in] The stream to write to.
 				@param width_of_shortname [in] Space to take to print the shortname.
 				@param width_of_longname [in] Space to take to print the shortname.
 				@param tuple [in] The remainder of the command line parameters as specified as the programmer.
 			*/
 			template<std::size_t I = 0, typename... Tp>
 			inline typename std::enable_if<I == sizeof...(Tp), void>::type
-			static for_each_usage_print(size_t width_of_shortname, size_t width_of_longname, const std::tuple<Tp...> &)
+			static for_each_usage_print(std::ostream &out, size_t width_of_shortname, size_t width_of_longname, const std::tuple<Tp...> &)
 				{
 				/* Nothing */
 				}
@@ -339,20 +343,27 @@ namespace JASS
 			*/
 			/*!
 				@brief Iterate over each parameter printing the shortname, longname, and description.
+				@param out [in] The stream to write to.
 				@param width_of_shortname [in] Space to take to print the shortname.
 				@param width_of_longname [in] Space to take to print the shortname.
 				@param tuple [in] The remainder of the command line parameters as specified as the programmer.
 			*/
 			template<std::size_t I = 0, typename... Tp>
 			inline typename std::enable_if<I < sizeof...(Tp), void>::type
-			static for_each_usage_print(size_t width_of_shortname, size_t width_of_longname, const std::tuple<Tp...> &tuple)
+			static for_each_usage_print(std::ostream &out, size_t width_of_shortname, size_t width_of_longname, const std::tuple<Tp...> &tuple)
 				{
 				if (std::get<I>(tuple).shortname.size() == 0)
-					printf("%-s\n", std::get<I>(tuple).description.c_str());
+					out << std::left << std::get<I>(tuple).description << '\n';
 				else
-					printf("%-*.*s %-*.*s %-s\n", (int)width_of_shortname, (int)width_of_shortname, std::get<I>(tuple).shortname.c_str(), (int)width_of_longname, (int)width_of_longname, std::get<I>(tuple).longname.c_str(), std::get<I>(tuple).description.c_str());
+					{
+					out.width(width_of_shortname + 1);
+					out << std::left << std::get<I>(tuple).shortname;
+					out.width(width_of_longname + 1);
+					out << std::left << std::get<I>(tuple).longname;
+					out << std::left << std::get<I>(tuple).description << '\n';
+					}
 
-				for_each_usage_print<I + 1, Tp...>(width_of_shortname, width_of_longname, tuple);
+				for_each_usage_print<I + 1, Tp...>(out, width_of_shortname, width_of_longname, tuple);
 				}
 
 		public:
@@ -440,10 +451,11 @@ namespace JASS
 				@param all_parameters [in] a tuple of objects returned bu commandline::parameter.
 			*/
 			template <typename... TYPE>
-			static void usage(const std::string &exename, const std::tuple<TYPE...> &all_parameters)
+			static std::string usage(const std::string &exename, const std::tuple<TYPE...> &all_parameters)
 				{
 				size_t width_of_shortname = 0;
 				size_t width_of_longname = 0;
+				std::ostringstream answer;
 
 				/*
 					Compute the length of the shortname and longname fields.
@@ -453,7 +465,9 @@ namespace JASS
 				/*
 					Print the usage instructions.
 				*/
-				for_each_usage_print(width_of_shortname, width_of_longname, all_parameters);
+				for_each_usage_print(answer, width_of_shortname, width_of_longname, all_parameters);
+
+				return answer.str();
 				}
 
 			/*
@@ -520,8 +534,22 @@ namespace JASS
 				/*
 					check for errors
 				*/
+				class sptang
+					{
+					/* Nothing */
+					} funny_object;
+				auto error_commands = std::make_tuple
+					(
+					commandline::note("PARAMETERS"),
+					commandline::parameter("-b", "--boolean", "Extract a boolean", parameter_boolean),
+					commandline::parameter("-s", "--string", "Extractr a string", parameter_string),
+					commandline::parameter("-i", "--integer", "Extract an integer", parameter_integer),
+					commandline::parameter("-u", "--unsigned", "Extract an unsigned integer", parameter_unsigned),
+					commandline::parameter("-f", "--funny", "Extract an object", funny_object)
+					);
+
 				const char *argv3[] = {"program", "--integer", "2147483648", "--unsigned", "4294967296", "--integer", "-2147483649", "--nonexistant"};
-				success = commandline::parse(8, argv3, all_commands, error);
+				success = commandline::parse(8, argv3, error_commands, error);
 				JASS_assert(!success);
 				std::string answer =
 					"2147483648 Numeric overflow on parameter\n"
@@ -529,6 +557,16 @@ namespace JASS
 					"-2147483649 Numeric underflow on parameter\n"
 					"--nonexistant Unknown parameter\n";
 				JASS_assert(error == answer);
+
+				auto how_to = usage("exename", error_commands);
+				std::string how_to_use =
+					"PARAMETERS\n"
+					"-b --boolean  Extract a boolean\n"
+					"-s --string   Extractr a string\n"
+					"-i --integer  Extract an integer\n"
+					"-u --unsigned Extract an unsigned integer\n"
+					"-f --funny    Extract an object\n";
+				JASS_assert(how_to == how_to_use);
 
 				puts("commandline:PASSED");
 				}

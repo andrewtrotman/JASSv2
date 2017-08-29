@@ -157,7 +157,7 @@ namespace JASS
 		uint32_t count;
 
 		if (size_in_bits > 32)
-			exit(printf("Can't compress into integers of size %dbits\n", size_in_bits));
+			exit(printf("Can't compress into integers of size %dbits\n", size_in_bits));				// LCOV_EXCL_LINE
 		type = table[size_in_bits].type;
 		count = (raw_count + table[size_in_bits].integers - 1) / table[size_in_bits].integers;
 
@@ -625,8 +625,8 @@ namespace JASS
 						}
 					break;
 				default:
-					exit(printf("Selecting on a non whole power of 2, must exit\n"));
-					break;
+					exit(printf("Selecting on a non whole power of 2, must exit\n"));						// LCOV_EXCL_LINE
+					break;					// LCOV_EXCL_LINE
 				}
 			}
 
@@ -709,48 +709,14 @@ namespace JASS
 		uint32_t *decompress_buffer = (uint32_t *)(((uint8_t *)&decompress_buffer_memory[0]) + 1);
 		compressor.decode(decompress_buffer, sequence.size(), compress_buffer, size_once_compressed);
 
-
-		#ifdef VERBOSE
-			/*
-				Print out the test sequence
-			*/
-			for (pos = 0; pos < buffer_size; pos++)
-				printf("%02X ", ((uint8_t *)second_compress_buffer)[pos]);
-			puts("");
-		#endif
-
-
-		uint32_t pos;
 		uint32_t pass;
 
 		pass = true;
-		for (pos = 0; pos < sequence.size(); pos++)
+		for (uint32_t pos = 0; pos < sequence.size(); pos++)
 			if (sequence[pos] != decompress_buffer[pos])
-				{
-				#ifdef VERBOSE
-					printf("p[%d]:%X != %X\n", pos, sequence[pos], decompress_buffer[pos]);
-				#endif
 				pass = false;
-				}
-			else
-				{
-				#ifdef VERBOSE
-					printf("p[%d]:%X == %X\n", pos, sequence[pos], decompress_buffer[pos]);
-				#endif
-				}
 
-		if (pass)
-			{
-			#ifdef VERBOSE
-			puts("compress_integer_qmx_improved::PASSED");
-			#endif
-			}
-		else
-			{
-			#ifdef VERBOSE
-				puts("Test failed");
-			#endif
-			}
+		JASS_assert(pass);
 
 		/*
 			Test all valid instances that fit into one SIMD-word
@@ -802,6 +768,59 @@ namespace JASS
 		compressor.decode(&every_case_decompressed[0], every_case.size(), &every_case_compressed[0], size_once_compressed);
 
 		JASS_assert(every_case_decompressed == every_case);
+
+		/*
+			Check the end cases
+		*/
+		/*
+			15 * 8 bits
+		*/
+		every_case.clear();
+		for (instance = 0; instance < 15; instance++)
+			every_case.push_back(0xFF);
+		every_case_compressed.resize(every_case.size());
+		size_once_compressed = compressor.encode(&every_case_compressed[0], every_case_compressed.size() * sizeof(every_case_compressed[0]), &every_case[0], every_case.size());
+		every_case_decompressed.resize(every_case.size() + 256);
+		compressor.decode(&every_case_decompressed[0], every_case.size(), &every_case_compressed[0], size_once_compressed);
+		every_case_decompressed.resize(every_case.size());
+		JASS_assert(every_case_decompressed == every_case);
+
+		/*
+			7 * 16 bits
+		*/
+		every_case.clear();
+		for (instance = 0; instance < 7; instance++)
+			every_case.push_back(0xFFFF);
+		every_case_compressed.resize(every_case.size());
+		size_once_compressed = compressor.encode(&every_case_compressed[0], every_case_compressed.size() * sizeof(every_case_compressed[0]), &every_case[0], every_case.size());
+		every_case_decompressed.resize(every_case.size() + 256);
+		compressor.decode(&every_case_decompressed[0], every_case.size(), &every_case_compressed[0], size_once_compressed);
+		every_case_decompressed.resize(every_case.size());
+		JASS_assert(every_case_decompressed == every_case);
+
+		/*
+			3 * 32 bits
+		*/
+		every_case.clear();
+		for (instance = 0; instance < 3; instance++)
+			every_case.push_back(0xFFFFFFFF);
+		every_case_compressed.resize(every_case.size());
+		size_once_compressed = compressor.encode(&every_case_compressed[0], every_case_compressed.size() * sizeof(every_case_compressed[0]), &every_case[0], every_case.size());
+		every_case_decompressed.resize(every_case.size() + 256);
+		compressor.decode(&every_case_decompressed[0], every_case.size(), &every_case_compressed[0], size_once_compressed);
+		every_case_decompressed.resize(every_case.size());
+		JASS_assert(every_case_decompressed == every_case);
+
+		/*
+			Pathalogical case where everything must be promosted to the next block size
+		*/
+		std::vector<uint32_t> pathalogical = {0x01, 0x03, 0x07, 0x0F, 0x1F, 0x3F, 0x7F, 0xFF, 0x1FF, 0x3FF, 0xFFF, 0xFFFF, 0x1FFFFF, 0xFFFFFFFF};
+		every_case_compressed.resize(1024);
+		size_once_compressed = compressor.encode(&every_case_compressed[0], every_case_compressed.size() * sizeof(every_case_compressed[0]), &pathalogical[0], pathalogical.size());
+		every_case_decompressed.resize(pathalogical.size() + 256);
+		compressor.decode(&every_case_decompressed[0], every_case.size(), &every_case_compressed[0], size_once_compressed);
+		every_case_decompressed.resize(pathalogical.size());
+		JASS_assert(every_case_decompressed == pathalogical);
 
 		puts("compress_integer_qmx_improved::PASSED");
 		}
@@ -1282,7 +1301,7 @@ namespace JASS
 				}
 			else
 				{
-				printf("\t\t\t\t\tin++;\n");			// dummy, can't occur
+				printf("\t\t\t\t\tin++;// LCOV_EXCL_LINE\n");			// dummy, can't occur
 				}
 			if ((instance & 0xF) == 0xF)
 				printf("\t\t\t\t\tbreak;\n");		// every 32 instances we break (its the end of the fall through)
@@ -6617,37 +6636,37 @@ namespace JASS
 					to += 4;
 					break;
 				case 0xf0:
-					in++;
+					in++;// LCOV_EXCL_LINE
 				case 0xf1:
-					in++;
+					in++;// LCOV_EXCL_LINE
 				case 0xf2:
-					in++;
+					in++;// LCOV_EXCL_LINE
 				case 0xf3:
-					in++;
+					in++;// LCOV_EXCL_LINE
 				case 0xf4:
-					in++;
+					in++;// LCOV_EXCL_LINE
 				case 0xf5:
-					in++;
+					in++;// LCOV_EXCL_LINE
 				case 0xf6:
-					in++;
+					in++;// LCOV_EXCL_LINE
 				case 0xf7:
-					in++;
+					in++;// LCOV_EXCL_LINE
 				case 0xf8:
-					in++;
+					in++;// LCOV_EXCL_LINE
 				case 0xf9:
-					in++;
+					in++;// LCOV_EXCL_LINE
 				case 0xfa:
-					in++;
+					in++;// LCOV_EXCL_LINE
 				case 0xfb:
-					in++;
+					in++;// LCOV_EXCL_LINE
 				case 0xfc:
-					in++;
+					in++;// LCOV_EXCL_LINE
 				case 0xfd:
-					in++;
+					in++;// LCOV_EXCL_LINE
 				case 0xfe:
-					in++;
+					in++;// LCOV_EXCL_LINE
 				case 0xff:
-					in++;
+					in++;// LCOV_EXCL_LINE
 					break;
 				}
 			}

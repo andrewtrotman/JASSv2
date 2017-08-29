@@ -145,59 +145,6 @@ namespace JASS
 			/*!
 				@brief Unit test this class
 			*/
-			static void unittest(void)
-				{
-				/*
-					Allocate an array of selectors and get a parameter list
-				*/
-				std::array<bool, compressors_size> parameters = {};
-				auto parameter_list = parameterlist(parameters);
-
-				/*
-					Fake argc and argv[]
-				*/
-				const char *argv[] = {"program", "-cv"};
-				
-				/*
-					Call the command line parser to get the selected option
-				*/
-				std::string errors;
-				auto success = commandline::parse(2, argv, parameter_list, errors);
-				
-				/*
-					Make sure we succeeded
-				*/
-				JASS_assert(success == true);
-				
-				/*
-					Check that only one parameter was selected
-				*/
-				size_t parameters_selected = 0;
-				for (const auto param : parameters)
-					if (param)
-						parameters_selected++;
-				JASS_assert(parameters_selected == 1);
-				
-				/*
-					Make sure we got the correct parameter selected
-				*/
-				JASS_assert(parameters[1] == true);
-				
-				/*
-					Check what happens if we don't have any parameters.
-				*/
-				parameters = {};
-				const char *argv0[] = {"program"};
-				success = commandline::parse(1, argv0, parameter_list, errors);
-				JASS_assert(success == true);
-				parameters_selected = 0;
-				for (const auto param : parameters)
-					if (param)
-						parameters_selected++;
-				JASS_assert(parameters_selected == 0);
-				JASS_assert(name(parameters) == "None");
-				
-				puts("compress_integer_all::PASSED");
-				}
+			static void unittest(void);
 		};
 	}

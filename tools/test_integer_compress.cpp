@@ -97,7 +97,7 @@ void generate_example(const std::string &filename)
 template <typename TYPE>
 void usage(const char *exename, TYPE command_line_parameters)
 	{
-	JASS::commandline::usage(exename, command_line_parameters);
+	std::cout << JASS::commandline::usage(exename, command_line_parameters);
 	exit(0);
 	}
 

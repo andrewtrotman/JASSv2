@@ -57,8 +57,7 @@ auto command_line_parameters = std::make_tuple
 */
 uint8_t usage(const std::string &exename)
 	{
-	JASS::commandline::usage(exename, command_line_parameters);
-	std::cout << "\n";
+	std::cout << JASS::commandline::usage(exename, command_line_parameters) << "\n";
 	return 1;
 	}
 

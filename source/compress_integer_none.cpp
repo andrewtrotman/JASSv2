@@ -64,6 +64,12 @@ namespace JASS
 		size_t bytes_used = codex.encode(&encoded_buffer[0], encoded_buffer.size() * sizeof(encoded_buffer[0]), &raw_buffer[0], raw_buffer.size());
 		codex.decode(&decoded_buffer[0], raw_buffer.size(), &encoded_buffer[0], bytes_used);
 		JASS_assert(memcmp(&decoded_buffer[0], &raw_buffer[0], raw_buffer.size() * sizeof(raw_buffer[0])) == 0);
+
+		/*
+			Check the overflow case
+		*/
+		bytes_used = codex.encode(&encoded_buffer[0], 1, &raw_buffer[0], raw_buffer.size());
+		JASS_assert(bytes_used == 0);
 		
 		/*
 			The tests have passed
