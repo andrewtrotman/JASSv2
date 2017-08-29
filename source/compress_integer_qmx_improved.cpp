@@ -758,41 +758,41 @@ namespace JASS
 		std::vector<uint32_t> every_case;
 		size_t instance;
 
-		for (instance = 0; instance < 256; instance++)
+		for (instance = 0; instance < 16 * 256; instance++)
 			every_case.push_back(0);
-		for (instance = 0; instance < 256; instance++)
+		for (instance = 0; instance < 16 * 2256; instance++)
 			every_case.push_back(1);
-		for (instance = 0; instance < 128; instance++)
+		for (instance = 0; instance < 16 * 2128; instance++)
 			every_case.push_back(0x01);
-		for (instance = 0; instance < 64; instance++)
+		for (instance = 0; instance < 16 * 264; instance++)
 			every_case.push_back(0x03);
-		for (instance = 0; instance < 40; instance++)
+		for (instance = 0; instance < 16 * 240; instance++)
 			every_case.push_back(0x07);
-		for (instance = 0; instance < 32; instance++)
+		for (instance = 0; instance < 16 * 232; instance++)
 			every_case.push_back(0x0F);
-		for (instance = 0; instance < 24; instance++)
+		for (instance = 0; instance < 16 * 224; instance++)
 			every_case.push_back(0x1F);
-		for (instance = 0; instance < 20; instance++)
+		for (instance = 0; instance < 16 * 220; instance++)
 			every_case.push_back(0x3F);
-		for (instance = 0; instance < 16; instance++)
+		for (instance = 0; instance < 16 * 216; instance++)
 			every_case.push_back(0xFF);
-		for (instance = 0; instance < 12; instance++)
+		for (instance = 0; instance < 16 * 212; instance++)
 			every_case.push_back(0x3FF);
-		for (instance = 0; instance < 8; instance++)
+		for (instance = 0; instance < 16 * 28; instance++)
 			every_case.push_back(0xFFFF);
-		for (instance = 0; instance < 4; instance++)
+		for (instance = 0; instance < 16 * 24; instance++)
 			every_case.push_back(0xFFFFFFFF);
 
 		/*
 			Test all valid instances that fit into two SIMD-words
 		*/
-		for (instance = 0; instance < 36; instance++)
+		for (instance = 0; instance < 16 * 236; instance++)
 			every_case.push_back(0x7F);
-		for (instance = 0; instance < 28; instance++)
+		for (instance = 0; instance < 16 * 228; instance++)
 			every_case.push_back(0x1FF);
-		for (instance = 0; instance < 20; instance++)
+		for (instance = 0; instance < 16 * 220; instance++)
 			every_case.push_back(0xFFF);
-		for (instance = 0; instance < 12; instance++)
+		for (instance = 0; instance < 16 * 212; instance++)
 			every_case.push_back(0x1FFFFF);
 
 		std::vector<uint32_t> every_case_compressed(every_case.size());
