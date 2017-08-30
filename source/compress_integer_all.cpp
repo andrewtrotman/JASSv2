@@ -89,7 +89,8 @@ namespace JASS
 				parameters_selected++;					// LCOV_EXCL_LINE		// if the unit test is successful then this should not be called.
 		JASS_assert(parameters_selected == 0);
 		JASS_assert(name(parameters) == "None");
-		
+		JASS_assert(&compressor(parameters) == compressors[default_compressor].codex);
+
 		puts("compress_integer_all::PASSED");
 		}
 	}
