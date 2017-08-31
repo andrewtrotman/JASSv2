@@ -666,6 +666,22 @@ namespace JASS
 		}
 
 	/*
+		COMPRESS_INTEGER_QMX_IMPROVED::UNITTEST_ONE()
+		---------------------------------------------
+	*/
+	void compress_integer_qmx_improved::unittest_one(const std::vector<uint32_t> &sequence)
+		{
+		compress_integer_qmx_improved compressor;
+		std::vector<uint32_t>compressed(sequence.size());
+		std::vector<uint32_t>decompressed(sequence.size() + 256);
+
+		auto size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &sequence[0], sequence.size());
+		compressor.decode(&decompressed[0], sequence.size(), &compressed[0], size_once_compressed);
+		decompressed.resize(sequence.size());
+		JASS_assert(decompressed == sequence);
+		}
+
+	/*
 		COMPRESS_INTEGER_QMX_IMPROVED::UNITTEST()
 		-----------------------------------------
 	*/
@@ -778,12 +794,7 @@ namespace JASS
 		every_case.clear();
 		for (instance = 0; instance < 15; instance++)
 			every_case.push_back(0xFF);
-		every_case_compressed.resize(every_case.size());
-		size_once_compressed = compressor.encode(&every_case_compressed[0], every_case_compressed.size() * sizeof(every_case_compressed[0]), &every_case[0], every_case.size());
-		every_case_decompressed.resize(every_case.size() + 256);
-		compressor.decode(&every_case_decompressed[0], every_case.size(), &every_case_compressed[0], size_once_compressed);
-		every_case_decompressed.resize(every_case.size());
-		JASS_assert(every_case_decompressed == every_case);
+		unittest_one(every_case);
 
 		/*
 			7 * 16 bits
@@ -791,12 +802,15 @@ namespace JASS
 		every_case.clear();
 		for (instance = 0; instance < 7; instance++)
 			every_case.push_back(0xFFFF);
-		every_case_compressed.resize(every_case.size());
-		size_once_compressed = compressor.encode(&every_case_compressed[0], every_case_compressed.size() * sizeof(every_case_compressed[0]), &every_case[0], every_case.size());
-		every_case_decompressed.resize(every_case.size() + 256);
-		compressor.decode(&every_case_decompressed[0], every_case.size(), &every_case_compressed[0], size_once_compressed);
-		every_case_decompressed.resize(every_case.size());
-		JASS_assert(every_case_decompressed == every_case);
+		unittest_one(every_case);
+
+		/*
+			7 * 8 bits
+		*/
+		every_case.clear();
+		for (instance = 0; instance < 7; instance++)
+			every_case.push_back(0xFF);
+		unittest_one(every_case);
 
 		/*
 			3 * 32 bits
@@ -804,23 +818,29 @@ namespace JASS
 		every_case.clear();
 		for (instance = 0; instance < 3; instance++)
 			every_case.push_back(0xFFFFFFFF);
-		every_case_compressed.resize(every_case.size());
-		size_once_compressed = compressor.encode(&every_case_compressed[0], every_case_compressed.size() * sizeof(every_case_compressed[0]), &every_case[0], every_case.size());
-		every_case_decompressed.resize(every_case.size() + 256);
-		compressor.decode(&every_case_decompressed[0], every_case.size(), &every_case_compressed[0], size_once_compressed);
-		every_case_decompressed.resize(every_case.size());
-		JASS_assert(every_case_decompressed == every_case);
+		unittest_one(every_case);
+
+		/*
+			3 * 16 bits
+		*/
+		every_case.clear();
+		for (instance = 0; instance < 3; instance++)
+			every_case.push_back(0xFFFF);
+		unittest_one(every_case);
+
+		/*
+			3 * 8 bits
+		*/
+		every_case.clear();
+		for (instance = 0; instance < 3; instance++)
+			every_case.push_back(0xFF);
+		unittest_one(every_case);
 
 		/*
 			Pathalogical case where everything must be promosted to the next block size
 		*/
-		std::vector<uint32_t> pathalogical = {0x01, 0x03, 0x07, 0x0F, 0x1F, 0x3F, 0x7F, 0xFF, 0x1FF, 0x3FF, 0xFFF, 0xFFFF, 0x1FFFFF, 0xFFFFFFFF};
-		every_case_compressed.resize(1024);
-		size_once_compressed = compressor.encode(&every_case_compressed[0], every_case_compressed.size() * sizeof(every_case_compressed[0]), &pathalogical[0], pathalogical.size());
-		every_case_decompressed.resize(pathalogical.size() + 256);
-		compressor.decode(&every_case_decompressed[0], every_case.size(), &every_case_compressed[0], size_once_compressed);
-		every_case_decompressed.resize(pathalogical.size());
-		JASS_assert(every_case_decompressed == pathalogical);
+		std::vector<uint32_t> pathalogical = {0X01, 0x00, 0x03, 0x07, 0x0F, 0x1F, 0x3F, 0x7F, 0xFF, 0x1FF, 0x3FF, 0xFFF, 0xFFFF, 0x1FFFFF, 0xFFFFFFFF};
+		unittest_one(pathalogical);
 
 		puts("compress_integer_qmx_improved::PASSED");
 		}

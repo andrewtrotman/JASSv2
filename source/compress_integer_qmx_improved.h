@@ -51,6 +51,7 @@ namespace JASS
 			virtual void decode(integer *decoded, size_t integers_to_decode, const void *source, size_t source_length);
 
 			static void unittest(void);
+			static void unittest_one(const std::vector<uint32_t> &sequence);
 		};
 	}
 
