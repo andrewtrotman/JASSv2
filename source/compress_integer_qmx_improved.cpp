@@ -442,7 +442,7 @@ namespace JASS
 					for (block = 0; block < 8; block++)
 						*(current_length + block) = 8;
 				else if (largest <= 8)
-					for (block = 0; block < 8; block++)
+					for (block = 0; block < 16; block++)
 						*(current_length + block) = 16;
 				}
 			else if (source_integers - (current_length - length_buffer)  < 16)
@@ -616,7 +616,7 @@ namespace JASS
 				case 32:
 					for (block = 0; block < 4; block += 4)
 						if (*(current_length + block) > 32)
-							*current_length = *(current_length + 1) = *(current_length + 2) = *(current_length + 3) = 64;				// promote
+							*current_length = *(current_length + 1) = *(current_length + 2) = *(current_length + 3) = 64;		// LCOV_EXCL_LINE  // can't happen	// promote
 					if (*current_length == 32)
 						{
 						for (block = 0; block < 4; block++)
@@ -672,7 +672,7 @@ namespace JASS
 	void compress_integer_qmx_improved::unittest_one(const std::vector<uint32_t> &sequence)
 		{
 		compress_integer_qmx_improved compressor;
-		std::vector<uint32_t>compressed(sequence.size());
+		std::vector<uint32_t>compressed(sequence.size() * 2);
 		std::vector<uint32_t>decompressed(sequence.size() + 256);
 
 		auto size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &sequence[0], sequence.size());
@@ -730,7 +730,7 @@ namespace JASS
 		pass = true;
 		for (uint32_t pos = 0; pos < sequence.size(); pos++)
 			if (sequence[pos] != decompress_buffer[pos])
-				pass = false;
+				pass = false;				// LCOV_EXCL_LINE				// if this happens the the assert will fail.
 
 		JASS_assert(pass);
 
@@ -839,7 +839,7 @@ namespace JASS
 		/*
 			Pathalogical case where everything must be promosted to the next block size
 		*/
-		std::vector<uint32_t> pathalogical = {0X01, 0x00, 0x03, 0x07, 0x0F, 0x1F, 0x3F, 0x7F, 0xFF, 0x1FF, 0x3FF, 0xFFF, 0xFFFF, 0x1FFFFF, 0xFFFFFFFF};
+		std::vector<uint32_t> pathalogical = {0X01, 0x01, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x03, 0x03, 0x03, 0x03, 0x07, 0x07, 0x07, 0x07, 0x0F, 0x0F, 0x0F, 0x0F, 0x1F, 0x1F, 0x1F, 0x1F, 0x3F, 0x3F, 0x3F, 0x3F, 0x7F, 0x7F, 0x7F, 0x7F, 0xFF, 0xFF, 0xFF, 0xFF, 0x1FF, 0x1FF, 0x1FF, 0x1FF, 0x3FF, 0x3FF, 0x3FF, 0x3FF, 0xFFF, 0xFFF, 0xFFF, 0xFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0x1FFFFF, 0x1FFFFF, 0x1FFFFF, 0x1FFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF};
 		unittest_one(pathalogical);
 
 		puts("compress_integer_qmx_improved::PASSED");
