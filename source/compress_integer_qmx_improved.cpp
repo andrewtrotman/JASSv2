@@ -1,5 +1,5 @@
 /*
-	COMPRESS_INTEGER_QMX_IMPROVED.CPP
+	COMPRESS_INTEGER_QMX_ORIGINAL.CPP
 	---------------------------------
 	Copyright (c) 2014-2017 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
@@ -25,44 +25,72 @@
 	This gives us 15 possible combinations.  The combinaton is stored in the top 4 bits of a selector byte.  The
 	bottom 4-bits of the selector store a run-length (the number of such sequences seen in a row.
 
-	The 128-bit (or 256-bit) packed binary values are stored first.  Then we store the selectors,  In QMX
-	improced the variable byte encoded pointer to the start of the selectors is not needed
-	because selectors are encoded from the end of the string to the start.
+	The 128-bit (or 256-bit) packed binary values are stored first.  Then we store the selectors,  Finally,
+	stored variable byte encoded, is a pointer to the start of the selector (from the end of the sequence).
 
-	This way, all reads and writes are 128-bit word aligned, except addressing the selectors, which are byte aligned.
+	This way, all reads and writes are 128-bit word aligned, except addressing the selector (and the pointer
+	the selector).  These reads are byte aligned.
 
 	Note:  There is currently 1 unused encoding (i.e. 16 unused selecvtor values).  These might in the future be
 	used for encoding exceptions, much as PForDelta does.
 */
-#include <array>
-#include <vector>
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <emmintrin.h>
 #include <smmintrin.h>
 
+#include <array>
+
 #include "asserts.h"
-#include "compress_integer_qmx_improved.h"
+#include "compress_integer_qmx_original.h"
 
 //#define MAKE_DECOMPRESS 1		/* uncomment this and it will create a program that writes the decompressor */
 //#define TEST_ONE_STRING 1		/* Uncomment this and it will create a program that can be used to test the compressor and decompressor */
+#define NO_ZEROS 1					/* stores runs of 256  1s in a row (not 1-bit number, but actual 1 values). */
+#define SHORT_END_BLOCKS 1
 
-#ifdef TEST_ONE_STRING
-	int main(void)
-		{
-		JASS::compress_integer_qmx_improved::unittest();
-		return 0;
-		}
+#ifdef _MSC_VER
+	#define ALIGN_16 __declspec(align(16))
+#else
+	#define ALIGN_16 __attribute__ ((aligned (16)))
+#endif
+
+//#define STATS						/* uncomment this and it will count the selector usage */
+#ifdef STATS
+	static uint32_t stats[65] = {0};
 #endif
 
 namespace JASS
 	{
 	/*
+		COMPRESS_INTEGER_QMX_ORIGINAL::COMPRESS_INTEGER_QMX_ORIGINAL()
+		--------------------------------------------------------------
+	*/
+	compress_integer_qmx_original::compress_integer_qmx_original()
+		{
+		length_buffer = NULL;
+		length_buffer_length = 0;
+		}
+
+	/*
+		COMPRESS_INTEGER_QMX_ORIGINAL::!COMPRESS_INTEGER_QMX_ORIGINAL()
+		--------------------------------------------------------------
+	*/
+	compress_integer_qmx_original::~compress_integer_qmx_original()
+		{
+		delete [] length_buffer;
+		#ifdef STATS
+			uint32_t which;
+			for (which = 0; which <= 32; which++)
+				if (stats[which] != 0)
+					printf("%d\t%d\ttimes\n", which, stats[which]);
+		#endif
+		}
+
+	/*
 		BITS_NEEDED_FOR()
 		-----------------
-		How many QMX bits are needed to store and integer of the given value
 	*/
 	static uint8_t bits_needed_for(uint32_t value)
 		{
@@ -98,80 +126,181 @@ namespace JASS
 			return 32;
 		}
 
-	struct type_and_integers
+	/*
+		VBYTE_BYTES_NEEDED_FOR()
+		------------------------
+	*/
+	static inline uint32_t vbyte_bytes_needed_for(uint32_t docno)
 		{
-		size_t type;
-		size_t integers;
-		};
-
-	static const type_and_integers table[] =
-		{
-		{0, 256},	// size_in_bits == 0;
-		{1, 128},	// size_in_bits == 1;
-		{2, 64},		// size_in_bits == 2;
-		{3, 40},		// size_in_bits == 3;
-		{4, 32},		// size_in_bits == 4;
-		{5, 24},		// size_in_bits == 5;
-		{6, 20},		// size_in_bits == 6;
-		{7, 36},		// size_in_bits == 7;  256-bits
-		{8, 16},		// size_in_bits == 8;
-		{9, 28},		// size_in_bits == 9;  256-bits
-		{10, 12},	// size_in_bits == 10;
-		{0, 0},
-		{11, 20},	// size_in_bits == 12;
-		{0, 0},
-		{0, 0},
-		{0, 0},
-		{12, 8},		// size_in_bits == 16;
-		{0, 0},
-		{0, 0},
-		{0, 0},
-		{0, 0},
-		{13, 12},	// size_in_bits == 21;	256-bits
-		{0, 0},
-		{0, 0},
-		{0, 0},
-		{0, 0},
-		{0, 0},
-		{0, 0},
-		{0, 0},
-		{0, 0},
-		{0, 0},
-		{0, 0},
-		{14, 4},	// size_in_bits == 32;
-		};
+		if (docno < (1 << 7))
+			return 1;
+		else if (docno < (1 << 14))
+			return 2;
+		else if (docno < (1 << 21))
+			return 3;
+		else if (docno < (1 << 28))
+			return 4;
+		else
+			return 5;
+		}
 
 	/*
-		COMPRESS_INTEGER_QMX_IMPROVED::WRITE_OUT()
-		------------------------------------------
-		write a sequence into the destination buffer
+		VBYTE_COMPRESS_INTO()
+		---------------------
+		NOTE:	We compress "backwards" because we want to keep decompressing from the end of the string
+				to get the number
 	*/
-	void compress_integer_qmx_improved::write_out(uint8_t **buffer, uint32_t *source, uint32_t raw_count, uint32_t size_in_bits, uint8_t **length_buffer)
+	static inline void vbyte_compress_into(uint8_t *dest, uint32_t docno)
+		{
+		if (docno < (1 << 7))
+			dest[0] = (docno & 0x7F) | 0x80;
+		else if (docno < (1 << 14))
+			{
+			dest[1] = (docno >> 7) & 0x7F;
+			dest[0] = (docno & 0x7F) | 0x80;
+			}
+		else if (docno < (1 << 21))
+			{
+			dest[2] = (docno >> 14) & 0x7F;
+			dest[1] = (docno >> 7) & 0x7F;
+			dest[0] = (docno & 0x7F) | 0x80;
+			}
+		else if (docno < (1 << 28))
+			{
+			dest[3] = (docno >> 21) & 0x7F;
+			dest[2] = (docno >> 14) & 0x7F;
+			dest[1] = (docno >> 7) & 0x7F;
+			dest[0] = (docno & 0x7F) | 0x80;
+			}
+		else
+			{
+			dest[4] = (docno >> 28) & 0x7F;
+			dest[3] = (docno >> 21) & 0x7F;
+			dest[2] = (docno >> 14) & 0x7F;
+			dest[1] = (docno >> 7) & 0x7F;
+			dest[0] = (docno & 0x7F) | 0x80;
+			}
+		}
+
+	/*
+		VBYTE_DECOMPRESS()
+		------------------
+		NOTE:	this method is given a ponter to the end of the v-byte compressed
+				integer.  The task is to work backwards until it gets the integer
+	*/
+	static inline uint32_t vbyte_decompress(uint8_t *source) 
+		{
+		uint32_t result;
+
+		if (*source & 0x80)
+			return *source & 0x7F;
+		else
+			{
+			result = *source--;
+
+			while (!(*source & 0x80))
+			   result = (result << 7) | *source--;
+
+			return (result << 7) | (*source & 0x7F);
+			}
+		}
+
+	/*
+		WRITE_OUT()
+		-----------
+	*/
+	static void write_out(uint8_t **buffer, uint32_t *source, uint32_t raw_count, uint32_t size_in_bits, uint8_t **length_buffer)
 		{
 		uint32_t current, batch;
 		uint8_t *destination = *buffer;
+		uint32_t *end = source + raw_count;
 		uint8_t *key_store = *length_buffer;
-		uint32_t sequence_buffer[4];
+		uint32_t ALIGN_16 sequence_buffer[4];
 		uint32_t instance, value;
 		uint8_t type;
 		uint32_t count;
 
-		if (size_in_bits > 32)
-			exit(printf("Can't compress into integers of size %dbits\n", size_in_bits));				// LCOV_EXCL_LINE
-		type = table[size_in_bits].type;
-		count = (raw_count + table[size_in_bits].integers - 1) / table[size_in_bits].integers;
+		#ifdef STATS
+			stats[size_in_bits] += raw_count;
+		#endif
 
-		/*
-			0-pad if there aren't enough integers in the source buffer.
-		*/
-		if (table[size_in_bits].type != 0 && count * table[size_in_bits].integers != raw_count)
-			{	// must 0-pad to prevent read overflow in input buffer
-			std::copy(source, source + raw_count, full_length_buffer);
-			std::fill(full_length_buffer + raw_count, full_length_buffer + (count * table[size_in_bits].integers), 0);
-			source = full_length_buffer;
+		if (size_in_bits == 0)
+			{
+			type = 0;
+			count = (raw_count + 255) / 256;
 			}
-
-		uint32_t *end = source + raw_count;
+		else if (size_in_bits == 1)
+			{
+			type = 1;		// 1 bit per integer
+			count = (raw_count + 127) / 128;
+			}
+		else if (size_in_bits == 2)
+			{
+			type = 2;		// 2 bits per integer
+			count = (raw_count + 63) / 64;
+			}
+		else if (size_in_bits == 3)
+			{
+			type = 3;		// 3 bits per integer
+			count = (raw_count + 39) / 40;
+			}
+		else if (size_in_bits == 4)
+			{
+			type = 4;		// 4 bits per integer
+			count = (raw_count + 31) / 32;
+			}
+		else if (size_in_bits == 5)
+			{
+			type = 5;		// 5 bits per integer
+			count = (raw_count + 23) / 24;
+			}
+		else if (size_in_bits == 6)
+			{
+			type = 6;		// 6 bits per integer
+			count = (raw_count + 19) / 20;
+			}
+		else if (size_in_bits == 7)
+			{
+			type = 7;		// 7 bits per integer, 18 integers per read (but requires 2 reads)
+			count = (raw_count + 35) / 36;
+			}
+		else if (size_in_bits == 8)
+			{
+			type = 8;		// 8 bits per integer
+			count = (raw_count + 15) / 16;
+			}
+		else if (size_in_bits == 9)
+			{
+			type = 9;		// 9 bits per integer, 14 integers per read (but requires 2 reads)
+			count = (raw_count + 27) / 28;
+			}
+		else if (size_in_bits == 10)
+			{
+			type = 10;		// 10 bits per integer
+			count = (raw_count + 11) / 12;
+			}
+		else if (size_in_bits == 12)
+			{
+			type = 11;		// 12 bits per integer, 10 integers per read (but requires 2 reads)
+			count = (raw_count + 19) / 20;
+			}
+		else if (size_in_bits == 16)
+			{
+			type = 12;		// 16 bits per integer
+			count = (raw_count + 7) / 8;
+			}
+		else if (size_in_bits == 21)
+			{
+			type = 13;		// 21 bits per integer, 6 integers per read (but requires 2 reads)
+			count = (raw_count + 11) / 12;
+			}
+		else if (size_in_bits == 32)
+			{
+			type = 14;		// 32 bits per integer
+			count = (raw_count + 3) / 4;
+			}
+		else
+			exit(printf("Can't compress into integers of size %dbits\n", size_in_bits));
 
 		while (count > 0)
 			{
@@ -261,7 +390,11 @@ namespace JASS
 						source += 36;				// 36 in a double 128-bit word
 						break;
 					case 8:		// 8 bits per integer
+		#ifdef SHORT_END_BLOCKS
 						for (instance = 0; instance < 16 && source < end; instance++)
+		#else
+						for (instance = 0; instance < 16; instance++)
+		#endif
 							*destination++ = (uint8_t)*source++;
 						break;
 					case 9:		// 9 bits per integer
@@ -308,7 +441,11 @@ namespace JASS
 						source += 20;				// 20 in a double 128-bit word
 						break;
 					case 16:		// 16 bits per integer
+		#ifdef SHORT_END_BLOCKS
 						for (instance = 0; instance < 8 && source < end; instance++)
+		#else
+						for (instance = 0; instance < 8; instance++)
+		#endif
 							{
 							*(uint16_t *)destination = (uint16_t)*source++;
 							destination += 2;
@@ -332,7 +469,11 @@ namespace JASS
 						source += 12;				// 12 in a double 128-bit word
 						break;
 					case 32:		// 32 bits per integer
+		#ifdef SHORT_END_BLOCKS
 						for (instance = 0; instance < 4 && source < end; instance++)
+		#else
+						for (instance = 0; instance < 4; instance++)
+		#endif
 							{
 							*(uint32_t *)destination = (uint32_t)*source++;
 							destination += 4;
@@ -346,30 +487,30 @@ namespace JASS
 		}
 
 	/*
-		MAXIMUM()
-		---------
+		MAX()
+		-----
 	*/
 	template <class T>
-	T maximum(T a, T b)
+	T max(T a, T b)
 		{
 		return a > b ? a : b;
 		}
 
 	/*
-		MAXIMUM()
-		---------
+		MAX()
+		-----
 	*/
 	template <class T>
-	T maximum(T a, T b, T c, T d)
+	T max(T a, T b, T c, T d)
 		{
-		return maximum(maximum(a, b), maximum(c, d));
+		return max(max(a, b), max(c, d));
 		}
 
 	/*
-		COMPRESS_INTEGER_QMX_IMPROVED::ENCODE()
+		COMPRESS_INTEGER_QMX_ORIGINAL::ENCODE()
 		---------------------------------------
 	*/
-	size_t compress_integer_qmx_improved::encode(void *into_as_void, size_t encoded_buffer_length, const integer *source, size_t source_integers)
+	size_t compress_integer_qmx_original::encode(void *into_as_void, size_t encoded_buffer_length, const integer *source, size_t source_integers)
 		{
 		uint32_t *into = static_cast<uint32_t *>(into_as_void);
 		const uint32_t WASTAGE = 512;
@@ -405,7 +546,7 @@ namespace JASS
 			four encoded integers starting on a 4-integer boundary.
 		*/
 		for (current_length = length_buffer; current_length < length_buffer + source_integers + 4; current_length += 4)
-			*current_length = *(current_length + 1) = *(current_length + 2) = *(current_length + 3) = maximum(*current_length, *(current_length + 1), *(current_length + 2), *(current_length + 3));
+			*current_length = *(current_length + 1) = *(current_length + 2) = *(current_length + 3) = max(*current_length, *(current_length + 1), *(current_length + 2), *(current_length + 3));
 
 		/*
 			This code makes sure we can do aligned reads, promoting to larger integers if necessary
@@ -413,6 +554,7 @@ namespace JASS
 		current_length = length_buffer;
 		while (current_length < length_buffer + source_integers)
 			{
+		#ifdef SHORT_END_BLOCKS
 			/*
 				If there are fewer than 16 values remaining and they all fit into 8-bits then its smaller than storing stripes
 				If there are fewer than 8 values remaining and they all fit into 16-bits then its smaller than storing stripes
@@ -422,7 +564,7 @@ namespace JASS
 				{
 				largest = 0;
 				for (block = 0; block < 8; block++)
-					largest = maximum((uint8_t)largest, *(current_length + block));
+					largest = max((uint8_t)largest, *(current_length + block));
 				if (largest <= 8)
 					for (block = 0; block < 8; block++)
 						*(current_length + block) = 8;
@@ -437,19 +579,19 @@ namespace JASS
 				{
 				largest = 0;
 				for (block = 0; block < 8; block++)
-					largest = maximum((uint8_t)largest, *(current_length + block));
+					largest = max((uint8_t)largest, *(current_length + block));
 				if (largest <= 8)
 					for (block = 0; block < 8; block++)
 						*(current_length + block) = 8;
 				else if (largest <= 16)
-					for (block = 0; block < 16; block++)
+					for (block = 0; block < 8; block++)
 						*(current_length + block) = 16;
 				}
 			else if (source_integers - (current_length - length_buffer)  < 16)
 				{
 				largest = 0;
 				for (block = 0; block < 16; block++)
-					largest = maximum((uint8_t)largest, *(current_length + block));
+					largest = max((uint8_t)largest, *(current_length + block));
 				if (largest <= 8)
 					for (block = 0; block < 16; block++)
 						*(current_length + block) = 8;
@@ -457,6 +599,7 @@ namespace JASS
 			/*
 				Otherwise we have the standard rules for a block
 			*/
+		#endif
 			switch (*current_length)
 				{
 				case 0:
@@ -616,7 +759,7 @@ namespace JASS
 				case 32:
 					for (block = 0; block < 4; block += 4)
 						if (*(current_length + block) > 32)
-							*current_length = *(current_length + 1) = *(current_length + 2) = *(current_length + 3) = 64;		// LCOV_EXCL_LINE  // can't happen	// promote
+							*current_length = *(current_length + 1) = *(current_length + 2) = *(current_length + 3) = 64;				// promote
 					if (*current_length == 32)
 						{
 						for (block = 0; block < 4; block++)
@@ -625,8 +768,8 @@ namespace JASS
 						}
 					break;
 				default:
-					exit(printf("Selecting on a non whole power of 2, must exit\n"));						// LCOV_EXCL_LINE
-					break;					// LCOV_EXCL_LINE
+					exit(printf("Selecting on a non whole power of 2, must exit\n"));
+					break;
 				}
 			}
 
@@ -651,27 +794,35 @@ namespace JASS
 		write_out(&destination, (uint32_t *)current - run_length, run_length, bits, &keys);
 
 		/*
-			Copy the lengths to the end, backwards
+			Copy the lengths to the end
 		*/
-		uint8_t *from = length_buffer + (keys - length_buffer) - 1;
-		uint8_t *to = destination;
-		for (uint32_t pos = 0; pos < keys - length_buffer; pos++)
-		 *to++ = *from--;
+		memcpy(destination, length_buffer, keys - length_buffer);
 		destination += keys - length_buffer;
+
+		/*
+			Add the pointer to the lengths
+		*/
+		uint32_t val = keys - length_buffer + vbyte_bytes_needed_for(keys - length_buffer); // offset (from the end) to the start of the keys
+		if (vbyte_bytes_needed_for(val) > vbyte_bytes_needed_for(keys - length_buffer))
+			val = keys - length_buffer + vbyte_bytes_needed_for(val); 				// although rare, this happens when adding the length of the vbyte encoded length makes the vbyte encoding one byte longer (i.e. 127)
+		vbyte_compress_into(destination, val);
+
+		destination += vbyte_bytes_needed_for(val);
+
 
 		/*
 			Compute the length (in bytes)
 		*/
-		return destination - (uint8_t *)into;        // return length in bytes
+		return destination - (uint8_t *)into;	// return length in bytes
 		}
-
+		
 	/*
-		COMPRESS_INTEGER_QMX_IMPROVED::UNITTEST_ONE()
+		COMPRESS_INTEGER_QMX_ORIGINAL::UNITTEST_ONE()
 		---------------------------------------------
 	*/
-	void compress_integer_qmx_improved::unittest_one(const std::vector<uint32_t> &sequence)
+	void compress_integer_qmx_original::unittest_one(const std::vector<uint32_t> &sequence)
 		{
-		compress_integer_qmx_improved compressor;
+		compress_integer_qmx_original compressor;
 		std::vector<uint32_t>compressed(sequence.size() * 2);
 		std::vector<uint32_t>decompressed(sequence.size() + 256);
 
@@ -682,10 +833,10 @@ namespace JASS
 		}
 
 	/*
-		COMPRESS_INTEGER_QMX_IMPROVED::UNITTEST()
+		COMPRESS_INTEGER_QMX_ORIGINAL::UNITTEST()
 		-----------------------------------------
 	*/
-	void compress_integer_qmx_improved::unittest(void)
+	void compress_integer_qmx_original::unittest(void)
 		{
 		/*
 			Start with an example sequence of integers.
@@ -703,7 +854,7 @@ namespace JASS
 		/*
 			Allocatte a compresser
 		*/
-		compress_integer_qmx_improved compressor;
+		compress_integer_qmx_original compressor;
 
 		/*
 			Make sure the place we're putting the compresed data is alligned to an odd address location, then compress.
@@ -842,5853 +993,5842 @@ namespace JASS
 		std::vector<uint32_t> pathalogical = {0X01, 0x01, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x03, 0x03, 0x03, 0x03, 0x07, 0x07, 0x07, 0x07, 0x0F, 0x0F, 0x0F, 0x0F, 0x1F, 0x1F, 0x1F, 0x1F, 0x3F, 0x3F, 0x3F, 0x3F, 0x7F, 0x7F, 0x7F, 0x7F, 0xFF, 0xFF, 0xFF, 0xFF, 0x1FF, 0x1FF, 0x1FF, 0x1FF, 0x3FF, 0x3FF, 0x3FF, 0x3FF, 0xFFF, 0xFFF, 0xFFF, 0xFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0x1FFFFF, 0x1FFFFF, 0x1FFFFF, 0x1FFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF};
 		unittest_one(pathalogical);
 
-		puts("compress_integer_qmx_improved::PASSED");
+		puts("compress_integer_qmx_original::PASSED");
 		}
+	}		// end namespace
 
-	}	// end the namespace
-
-#ifdef MAKE_DECOMPRESS
-	/*
-		The following program generates the source code for compress_runlength::decodeArray()
-	*/
-
-	/*
-		MAIN()
-		------
-		This version assumes SSE4.1 and so it is *not* portable to non X86 architectures
-	*/
-	int main(void)
-		{
-		printf("namespace JASS\n");
-		printf("\t{\n");
-		printf("\talignas(16) static uint32_t static_mask_21[]  = {0x1fffff, 0x1fffff, 0x1fffff, 0x1fffff};\n");
-		printf("\talignas(16) static uint32_t static_mask_12[]  = {0xfff, 0xfff, 0xfff, 0xfff};\n");
-		printf("\talignas(16) static uint32_t static_mask_10[] = {0x3ff, 0x3ff, 0x3ff, 0x3ff};\n");
-		printf("\talignas(16) static uint32_t static_mask_9[]  = {0x1ff, 0x1ff, 0x1ff, 0x1ff};\n");
-		printf("\talignas(16) static uint32_t static_mask_7[]  = {0x7f, 0x7f, 0x7f, 0x7f};\n");
-		printf("\talignas(16) static uint32_t static_mask_6[]  = {0x3f, 0x3f, 0x3f, 0x3f};\n");
-		printf("\talignas(16) static uint32_t static_mask_5[]  = {0x1f, 0x1f, 0x1f, 0x1f};\n");
-		printf("\talignas(16) static uint32_t static_mask_4[]  = {0x0f, 0x0f, 0x0f, 0x0f};\n");
-		printf("\talignas(16) static uint32_t static_mask_3[]  = {0x07, 0x07, 0x07, 0x07};\n");
-		printf("\talignas(16) static uint32_t static_mask_2[]  = {0x03, 0x03, 0x03, 0x03};\n");
-		printf("\talignas(16) static uint32_t static_mask_1[]  = {0x01, 0x01, 0x01, 0x01};\n");
-		printf("\n");
-		printf("\tvoid compress_integer_qmx_improved::decode(integer *to, size_t destination_integers, const void *source, size_t len)\n");
-		printf("\t\t{\n");
-		printf("\t\t__m128i byte_stream, byte_stream_2, tmp, tmp2, mask_21, mask_12, mask_10, mask_9, mask_7, mask_6, mask_5, mask_4, mask_3, mask_2, mask_1;\n");
-		printf("\t\tuint8_t *in = (uint8_t *)source;\n");
-		printf("\t\tuint8_t *keys = ((uint8_t *)source) + len - 1;\n");
-
-		printf("\n");
-		printf("\t\tmask_21 = _mm_loadu_si128((__m128i *)static_mask_21);\n");
-		printf("\t\tmask_12 = _mm_loadu_si128((__m128i *)static_mask_12);\n");
-		printf("\t\tmask_10 = _mm_loadu_si128((__m128i *)static_mask_10);\n");
-		printf("\t\tmask_9 = _mm_loadu_si128((__m128i *)static_mask_9);\n");
-		printf("\t\tmask_7 = _mm_loadu_si128((__m128i *)static_mask_7);\n");
-		printf("\t\tmask_6 = _mm_loadu_si128((__m128i *)static_mask_6);\n");
-		printf("\t\tmask_5 = _mm_loadu_si128((__m128i *)static_mask_5);\n");
-		printf("\t\tmask_4 = _mm_loadu_si128((__m128i *)static_mask_4);\n");
-		printf("\t\tmask_3 = _mm_loadu_si128((__m128i *)static_mask_3);\n");
-		printf("\t\tmask_2 = _mm_loadu_si128((__m128i *)static_mask_2);\n");
-		printf("\t\tmask_1 = _mm_loadu_si128((__m128i *)static_mask_1);\n");
-		printf("\n");
-
-		printf("\t\twhile (in <= keys)                      // <= because there can be a boundary case where the final key is 255*0 bit integers\n");
-		printf("\t\t\t{\n");
-		printf("\t\t\tswitch (*keys--)\n");
-		printf("\t\t\t\t{\n");
-
-		for (uint32_t instance = 0; instance <= 0xFF; instance++)
+	#ifdef MAKE_DECOMPRESS
+		/*
+			The following program generates the source code for compress_runlength::decodeArray()
+		*/
+		/*
+			MAIN()
+			------
+			This version assumes SSE4.1 and so it is *not* portable to non X86 architectures
+		*/
+		int main(void)
 			{
-			printf("\t\t\t\tcase 0x%02x:\n", instance);
-			if ((instance >> 4) == 0)
-				{
-				/*
-					256 0-bit integers
-				*/
-				printf("\t\t\t\t\ttmp = _mm_loadu_si128((__m128i *)static_mask_1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 1, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 2, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 3, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 4, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 5, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 6, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 7, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 8, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 9, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 10, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 11, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 12, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 13, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 14, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 15, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 16, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 17, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 18, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 19, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 20, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 21, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 22, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 23, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 24, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 25, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 26, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 27, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 28, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 29, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 30, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 31, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 32, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 33, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 34, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 35, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 36, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 37, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 38, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 39, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 40, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 41, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 42, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 43, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 44, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 45, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 46, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 47, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 48, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 49, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 50, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 51, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 52, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 53, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 54, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 55, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 56, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 57, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 58, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 59, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 60, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 61, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 62, tmp);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 63, tmp);\n");
-				printf("\t\t\t\t\tto += 256;\n");		// becomes 256 integers
-				}
-			else if (instance >> 4 == 1)
-				{
-				/*
-					128 * 1-bit integers
-				*/
-				printf("\t\t\t\t\tbyte_stream = _mm_loadu_si128((__m128i *)in);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_1));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_1));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_1));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_1));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_1));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_1));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_1));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_1));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_1));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_1));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_1));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_1));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_1));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_1));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_1));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_1));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 16, _mm_and_si128(byte_stream, mask_1));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 17, _mm_and_si128(byte_stream, mask_1));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 18, _mm_and_si128(byte_stream, mask_1));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 19, _mm_and_si128(byte_stream, mask_1));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 20, _mm_and_si128(byte_stream, mask_1));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 21, _mm_and_si128(byte_stream, mask_1));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 22, _mm_and_si128(byte_stream, mask_1));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 23, _mm_and_si128(byte_stream, mask_1));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 24, _mm_and_si128(byte_stream, mask_1));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 25, _mm_and_si128(byte_stream, mask_1));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 26, _mm_and_si128(byte_stream, mask_1));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 27, _mm_and_si128(byte_stream, mask_1));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 28, _mm_and_si128(byte_stream, mask_1));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 29, _mm_and_si128(byte_stream, mask_1));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 30, _mm_and_si128(byte_stream, mask_1));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 31, _mm_and_si128(byte_stream, mask_1));\n");
+			uint32_t instance;
 
-				printf("\t\t\t\t\tin += 16;\n");		// 16 bytes
-				printf("\t\t\t\t\tto += 128;\n");		// becomes 128 integers
-				}
-			else if (instance >> 4 == 2)
-				{
-				/*
-					64 * 2-bit integers
-				*/
-				printf("\t\t\t\t\tbyte_stream = _mm_loadu_si128((__m128i *)in);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_2));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 2);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_2));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 2);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_2));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 2);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_2));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 2);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_2));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 2);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_2));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 2);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_2));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 2);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_2));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 2);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_2));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 2);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_2));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 2);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_2));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 2);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_2));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 2);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_2));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 2);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_2));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 2);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_2));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 2);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_2));\n");
+			printf("namespace JASS\n");
+			printf("\t{\n");
 
-				printf("\t\t\t\t\tin += 16;\n");		// 16 bytes
-				printf("\t\t\t\t\tto += 64;\n");		// becomes 64 integers
-				}
-			else if (instance >> 4 == 3)
-				{
-				/*
-					40 * 3-bit integers
-				*/
-				printf("\t\t\t\t\tbyte_stream = _mm_loadu_si128((__m128i *)in);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_3));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 3);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_3));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 3);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_3));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 3);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_3));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 3);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_3));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 3);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_3));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 3);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_3));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 3);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_3));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 3);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_3));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 3);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_3));\n");
+			printf("static uint32_t ALIGN_16 static_mask_21[]  = {0x1fffff, 0x1fffff, 0x1fffff, 0x1fffff};\n");
+			printf("static uint32_t ALIGN_16 static_mask_12[]  = {0xfff, 0xfff, 0xfff, 0xfff};\n");
+			printf("static uint32_t ALIGN_16 static_mask_10[] = {0x3ff, 0x3ff, 0x3ff, 0x3ff};\n");
+			printf("static uint32_t ALIGN_16 static_mask_9[]  = {0x1ff, 0x1ff, 0x1ff, 0x1ff};\n");
+			printf("static uint32_t ALIGN_16 static_mask_7[]  = {0x7f, 0x7f, 0x7f, 0x7f};\n");
+			printf("static uint32_t ALIGN_16 static_mask_6[]  = {0x3f, 0x3f, 0x3f, 0x3f};\n");
+			printf("static uint32_t ALIGN_16 static_mask_5[]  = {0x1f, 0x1f, 0x1f, 0x1f};\n");
+			printf("static uint32_t ALIGN_16 static_mask_4[]  = {0x0f, 0x0f, 0x0f, 0x0f};\n");
+			printf("static uint32_t ALIGN_16 static_mask_3[]  = {0x07, 0x07, 0x07, 0x07};\n");
+			printf("static uint32_t ALIGN_16 static_mask_2[]  = {0x03, 0x03, 0x03, 0x03};\n");
+			printf("static uint32_t ALIGN_16 static_mask_1[]  = {0x01, 0x01, 0x01, 0x01};\n");
+			printf("\tvoid compress_integer_qmx_original::decode(integer *to, size_t destination_integers, const void *source, size_t len)\n");
+			printf("{\n");
+			printf("__m128i byte_stream, byte_stream_2, tmp, tmp2, mask_21, mask_12, mask_10, mask_9, mask_7, mask_6, mask_5, mask_4, mask_3, mask_2, mask_1;\n");
+			printf("uint8_t *in = (uint8_t *)source;\n");
+			printf("uint32_t *end = to + destination_integers;\n");
+			printf("uint32_t key_start = vbyte_decompress((uint8_t *)source + len - 1);\n");
+			printf("uint8_t *keys = (uint8_t *)source + len - key_start;\n");
 
-				printf("\t\t\t\t\tin += 16;\n");		// 16 bytes
-				printf("\t\t\t\t\tto += 40;\n");		// becomes 40 integers
-				}
-			else if (instance >> 4 == 4)
-				{
-				/*
-					32 * 4-bit integers
-				*/
-				printf("\t\t\t\t\tbyte_stream = _mm_loadu_si128((__m128i *)in);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_4));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 4);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_4));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 4);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_4));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 4);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_4));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 4);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_4));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 4);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_4));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 4);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_4));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 4);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_4));\n");
+			printf("\n");
+			printf("mask_21 = _mm_load_si128((__m128i *)static_mask_21);\n");
+			printf("mask_12 = _mm_load_si128((__m128i *)static_mask_12);\n");
+			printf("mask_10 = _mm_load_si128((__m128i *)static_mask_10);\n");
+			printf("mask_9 = _mm_load_si128((__m128i *)static_mask_9);\n");
+			printf("mask_7 = _mm_load_si128((__m128i *)static_mask_7);\n");
+			printf("mask_6 = _mm_load_si128((__m128i *)static_mask_6);\n");
+			printf("mask_5 = _mm_load_si128((__m128i *)static_mask_5);\n");
+			printf("mask_4 = _mm_load_si128((__m128i *)static_mask_4);\n");
+			printf("mask_3 = _mm_load_si128((__m128i *)static_mask_3);\n");
+			printf("mask_2 = _mm_load_si128((__m128i *)static_mask_2);\n");
+			printf("mask_1 = _mm_load_si128((__m128i *)static_mask_1);\n");
+			printf("\n");
 
-				printf("\t\t\t\t\tin += 16;\n");		// 16 bytes
-				printf("\t\t\t\t\tto += 32;\n");		// becomes 32 integers
-				}
-			else if (instance >> 4 == 5)
-				{
-				/*
-					24 * 5-bit integers
-				*/
-				printf("\t\t\t\t\tbyte_stream = _mm_loadu_si128((__m128i *)in);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_5));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 5);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_5));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 5);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_5));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 5);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_5));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 5);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_5));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 5);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_5));\n");
+			printf("while (to < end)\n");
+			printf("\t{\n");
+			printf("\tswitch (*keys++)\n");
+			printf("\t\t{\n");
 
-				printf("\t\t\t\t\tin += 16;\n");		// 16 bytes
-				printf("\t\t\t\t\tto += 24;\n");		// becomes 24 integers
-				}
-			else if (instance >> 4 == 6)
+			for (instance = 0; instance <= 0xFF; instance++)
 				{
-				/*
-					20 * 6-bit integers
-				*/
-				printf("\t\t\t\t\tbyte_stream = _mm_loadu_si128((__m128i *)in);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_6));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 6);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_6));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 6);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_6));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 6);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_6));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 6);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_6));\n");
+				printf("\t\tcase 0x%02x:\n", instance);
+				if ((instance >> 4) == 0)
+					{
+					/*
+						256 0-bit integers
+					*/
+					printf("#ifdef NO_ZEROS\n");
+					printf("\t\t\ttmp = _mm_load_si128((__m128i *)static_mask_1);\n");
+					printf("#else\n");
+					printf("\t\t\ttmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));\n");
+					printf("#endif\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 1, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 2, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 3, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 4, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 5, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 6, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 7, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 8, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 9, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 10, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 11, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 12, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 13, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 14, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 15, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 16, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 17, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 18, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 19, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 20, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 21, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 22, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 23, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 24, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 25, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 26, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 27, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 28, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 29, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 30, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 31, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 32, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 33, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 34, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 35, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 36, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 37, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 38, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 39, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 40, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 41, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 42, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 43, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 44, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 45, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 46, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 47, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 48, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 49, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 50, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 51, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 52, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 53, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 54, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 55, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 56, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 57, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 58, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 59, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 60, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 61, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 62, tmp);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 63, tmp);\n");
+					printf("\t\t\tto += 256;\n");		// becomes 256 integers
+					}
+				else if (instance >> 4 == 1)
+					{
+					/*
+						128 * 1-bit integers
+					*/
+					printf("\t\t\tbyte_stream = _mm_load_si128((__m128i *)in);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_1));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_1));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_1));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_1));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_1));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_1));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_1));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_1));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_1));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_1));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_1));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_1));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_1));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_1));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_1));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_1));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 16, _mm_and_si128(byte_stream, mask_1));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 17, _mm_and_si128(byte_stream, mask_1));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 18, _mm_and_si128(byte_stream, mask_1));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 19, _mm_and_si128(byte_stream, mask_1));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 20, _mm_and_si128(byte_stream, mask_1));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 21, _mm_and_si128(byte_stream, mask_1));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 22, _mm_and_si128(byte_stream, mask_1));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 23, _mm_and_si128(byte_stream, mask_1));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 24, _mm_and_si128(byte_stream, mask_1));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 25, _mm_and_si128(byte_stream, mask_1));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 26, _mm_and_si128(byte_stream, mask_1));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 27, _mm_and_si128(byte_stream, mask_1));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 28, _mm_and_si128(byte_stream, mask_1));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 29, _mm_and_si128(byte_stream, mask_1));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 30, _mm_and_si128(byte_stream, mask_1));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 1);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 31, _mm_and_si128(byte_stream, mask_1));\n");
 
-				printf("\t\t\t\t\tin += 16;\n");		// 16 bytes
-				printf("\t\t\t\t\tto += 20;\n");		// becomes 20 integers
-				}
-			else if (instance >> 4 == 7)
-				{
-				/*
-					36 * 7 bit integers (in two 128-bit words)
-				*/
-				printf("\t\t\t\t\tbyte_stream = _mm_loadu_si128((__m128i *)in);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_7));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi32(byte_stream, 7);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_7));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi32(byte_stream, 7);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_7));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi32(byte_stream, 7);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_7));\n");
+					printf("\t\t\tin += 16;\n");		// 16 bytes
+					printf("\t\t\tto += 128;\n");		// becomes 128 integers
+					}
+				else if (instance >> 4 == 2)
+					{
+					/*
+						64 * 2-bit integers
+					*/
+					printf("\t\t\tbyte_stream = _mm_load_si128((__m128i *)in);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_2));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 2);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_2));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 2);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_2));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 2);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_2));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 2);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_2));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 2);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_2));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 2);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_2));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 2);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_2));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 2);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_2));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 2);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_2));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 2);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_2));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 2);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_2));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 2);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_2));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 2);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_2));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 2);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_2));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 2);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_2));\n");
 
-				printf("\t\t\t\t\tbyte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 4), _mm_srli_epi32(byte_stream, 7)), mask_7));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi32(byte_stream_2, 3);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_7));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi32(byte_stream, 7);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_7));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi32(byte_stream, 7);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_7));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi32(byte_stream, 7);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_7));\n");
+					printf("\t\t\tin += 16;\n");		// 16 bytes
+					printf("\t\t\tto += 64;\n");		// becomes 64 integers
+					}
+				else if (instance >> 4 == 3)
+					{
+					/*
+						40 * 3-bit integers
+					*/
+					printf("\t\t\tbyte_stream = _mm_load_si128((__m128i *)in);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_3));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 3);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_3));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 3);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_3));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 3);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_3));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 3);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_3));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 3);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_3));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 3);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_3));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 3);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_3));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 3);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_3));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 3);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_3));\n");
 
-				printf("\t\t\t\t\tin += 32;\n");		// 32 bytes
-				printf("\t\t\t\t\tto += 36;\n");		// becomes 36 integers
-				}
-			else if (instance >> 4 == 8)
-				{
-				/*
-					16 * 8-bit integers
-				*/
-				printf("\t\t\t\t\ttmp = _mm_loadu_si128((__m128i *)in);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to, _mm_cvtepu8_epi32(tmp));\n");
-				printf("\t\t\t\t\ttmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 1, _mm_cvtepu8_epi32(tmp2));\n");
-				printf("\t\t\t\t\ttmp = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)));\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 2, _mm_cvtepu8_epi32(tmp));\n");
-				printf("\t\t\t\t\ttmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 3, _mm_cvtepu8_epi32(tmp2));\n");
+					printf("\t\t\tin += 16;\n");		// 16 bytes
+					printf("\t\t\tto += 40;\n");		// becomes 40 integers
+					}
+				else if (instance >> 4 == 4)
+					{
+					/*
+						32 * 4-bit integers
+					*/
+					printf("\t\t\tbyte_stream = _mm_load_si128((__m128i *)in);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_4));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 4);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_4));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 4);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_4));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 4);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_4));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 4);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_4));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 4);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_4));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 4);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_4));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 4);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_4));\n");
 
-				printf("\t\t\t\t\tin += 16;\n");		// 16 bytes
-				printf("\t\t\t\t\tto += 16;\n");		// becomes 16 integers
-				}
-			else if (instance >> 4 == 9)
-				{
-				/*
-					28 * 9-bit ingtegers (in two 128-bit words)
-				*/
-				printf("\t\t\t\t\tbyte_stream = _mm_loadu_si128((__m128i *)in);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_9));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi32(byte_stream, 9);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_9));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi32(byte_stream, 9);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_9));\n");
-				printf("\t\t\t\t\tbyte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 5), _mm_srli_epi32(byte_stream, 9)), mask_9));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi32(byte_stream_2, 4);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_9));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi32(byte_stream, 9);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_9));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi32(byte_stream, 9);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_9));\n");
-				printf("\t\t\t\t\tin += 32;\n");		// 32 bytes
-				printf("\t\t\t\t\tto += 28;\n");		// becomes 28 integers
-				}
-			else if (instance >> 4 == 10)
-				{
-				/*
-					12 * 10-bit integers
-				*/
-				printf("\t\t\t\t\tbyte_stream = _mm_loadu_si128((__m128i *)in);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_10));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 10);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_10));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 10);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_10));\n");
+					printf("\t\t\tin += 16;\n");		// 16 bytes
+					printf("\t\t\tto += 32;\n");		// becomes 32 integers
+					}
+				else if (instance >> 4 == 5)
+					{
+					/*
+						24 * 5-bit integers
+					*/
+					printf("\t\t\tbyte_stream = _mm_load_si128((__m128i *)in);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_5));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 5);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_5));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 5);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_5));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 5);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_5));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 5);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_5));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 5);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_5));\n");
 
-				printf("\t\t\t\t\tin += 16;\n");		// 16 bytes
-				printf("\t\t\t\t\tto += 12;\n");		// becomes 12 integers
-				}
-			else if (instance >> 4 == 11)
-				{
-				/*
-					20 * 12-bit ingtegers (in two 128-bit words)
-				*/
-				printf("\t\t\t\t\tbyte_stream = _mm_loadu_si128((__m128i *)in);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_12));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi32(byte_stream, 12);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_12));\n");
-				printf("\t\t\t\t\tbyte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 8), _mm_srli_epi32(byte_stream, 12)), mask_12));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi32(byte_stream_2, 8);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_12));\n");
-				printf("\t\t\t\t\tbyte_stream = _mm_srli_epi32(byte_stream, 12);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_12));\n");
+					printf("\t\t\tin += 16;\n");		// 16 bytes
+					printf("\t\t\tto += 24;\n");		// becomes 24 integers
+					}
+				else if (instance >> 4 == 6)
+					{
+					/*
+						20 * 6-bit integers
+					*/
+					printf("\t\t\tbyte_stream = _mm_load_si128((__m128i *)in);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_6));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 6);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_6));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 6);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_6));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 6);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_6));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 6);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_6));\n");
 
-				printf("\t\t\t\t\tin += 32;\n");		// 32 bytes
-				printf("\t\t\t\t\tto += 20;\n");		// becomes 20 integers
-				}
-			else if (instance >> 4 == 12)
-				{
-				/*
-					16-bit integers
-				*/
-				printf("\t\t\t\t\ttmp = _mm_loadu_si128((__m128i *)in);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to, _mm_cvtepu16_epi32(tmp));\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 1, _mm_cvtepu16_epi32(_mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)))));\n");
+					printf("\t\t\tin += 16;\n");		// 16 bytes
+					printf("\t\t\tto += 20;\n");		// becomes 20 integers
+					}
+				else if (instance >> 4 == 7)
+					{
+					/*
+						36 * 7 bit integers (in two 128-bit words)
+					*/
+					printf("\t\t\tbyte_stream = _mm_load_si128((__m128i *)in);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_7));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi32(byte_stream, 7);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_7));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi32(byte_stream, 7);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_7));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi32(byte_stream, 7);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_7));\n");
 
-				printf("\t\t\t\t\tin += 16;\n");		// 16 bytes
-				printf("\t\t\t\t\tto += 8;\n");			// becomes 8 integers
-				}
-			else if (instance >> 4 == 13)
-				{
-				/*
-					12 * 21-bit ingtegers (in two 128-bit words)
-				*/
-				printf("\t\t\t\t\tbyte_stream = _mm_loadu_si128((__m128i *)in);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_21));\n");
-				printf("\t\t\t\t\tbyte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 11), _mm_srli_epi32(byte_stream, 21)), mask_21));\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(_mm_srli_epi32(byte_stream_2, 11), mask_21));\n");
+					printf("\t\t\tbyte_stream_2 = _mm_load_si128((__m128i *)in + 1);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 4, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 4), _mm_srli_epi32(byte_stream, 7)), mask_7));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi32(byte_stream_2, 3);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_7));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi32(byte_stream, 7);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_7));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi32(byte_stream, 7);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_7));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi32(byte_stream, 7);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_7));\n");
 
-				printf("\t\t\t\t\tin += 32;\n");			// 32 bytes
-				printf("\t\t\t\t\tto += 12;\n");			// becomes 8 integers
-				}
-			else if (instance >> 4 == 14)
-				{
-				/*
-					32-bit integers
-				*/
-				printf("\t\t\t\t\ttmp = _mm_loadu_si128((__m128i *)in);\n");
-				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to, tmp);\n");
+					printf("\t\t\tin += 32;\n");		// 32 bytes
+					printf("\t\t\tto += 36;\n");		// becomes 36 integers
+					}
+				else if (instance >> 4 == 8)
+					{
+					/*
+						16 * 8-bit integers
+					*/
+					printf("\t\t\ttmp = _mm_loadu_si128((__m128i *)in);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to, _mm_cvtepu8_epi32(tmp));\n");
+					printf("\t\t\ttmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 1, _mm_cvtepu8_epi32(tmp2));\n");
+					printf("\t\t\ttmp = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)));\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 2, _mm_cvtepu8_epi32(tmp));\n");
+					printf("\t\t\ttmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 3, _mm_cvtepu8_epi32(tmp2));\n");
 
-				printf("\t\t\t\t\tin += 16;\n");		// 16 bytes
-				printf("\t\t\t\t\tto += 4;\n");			// becomes 4 integers
+					printf("\t\t\tin += 16;\n");		// 16 bytes
+					printf("\t\t\tto += 16;\n");		// becomes 16 integers
+					}
+				else if (instance >> 4 == 9)
+					{
+					/*
+						28 * 9-bit ingtegers (in two 128-bit words)
+					*/
+					printf("\t\t\tbyte_stream = _mm_load_si128((__m128i *)in);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_9));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi32(byte_stream, 9);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_9));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi32(byte_stream, 9);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_9));\n");
+					printf("\t\t\tbyte_stream_2 = _mm_load_si128((__m128i *)in + 1);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 3, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 5), _mm_srli_epi32(byte_stream, 9)), mask_9));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi32(byte_stream_2, 4);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_9));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi32(byte_stream, 9);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_9));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi32(byte_stream, 9);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_9));\n");
+					printf("\t\t\tin += 32;\n");		// 32 bytes
+					printf("\t\t\tto += 28;\n");		// becomes 28 integers
+					}
+				else if (instance >> 4 == 10)
+					{
+					/*
+						12 * 10-bit integers
+					*/
+					printf("\t\t\tbyte_stream = _mm_load_si128((__m128i *)in);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_10));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 10);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_10));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi64(byte_stream, 10);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_10));\n");
+
+					printf("\t\t\tin += 16;\n");		// 16 bytes
+					printf("\t\t\tto += 12;\n");		// becomes 12 integers
+					}
+				else if (instance >> 4 == 11)
+					{
+					/*
+						20 * 12-bit ingtegers (in two 128-bit words)
+					*/
+					printf("\t\t\tbyte_stream = _mm_load_si128((__m128i *)in);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_12));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi32(byte_stream, 12);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_12));\n");
+					printf("\t\t\tbyte_stream_2 = _mm_load_si128((__m128i *)in + 1);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 2, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 8), _mm_srli_epi32(byte_stream, 12)), mask_12));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi32(byte_stream_2, 8);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_12));\n");
+					printf("\t\t\tbyte_stream = _mm_srli_epi32(byte_stream, 12);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_12));\n");
+
+					printf("\t\t\tin += 32;\n");		// 32 bytes
+					printf("\t\t\tto += 20;\n");		// becomes 20 integers
+					}
+				else if (instance >> 4 == 12)
+					{
+					/*
+						16-bit integers
+					*/
+					printf("\t\t\ttmp = _mm_load_si128((__m128i *)in);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to, _mm_cvtepu16_epi32(tmp));\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 1, _mm_cvtepu16_epi32(_mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)))));\n");
+
+					printf("\t\t\tin += 16;\n");		// 16 bytes
+					printf("\t\t\tto += 8;\n");			// becomes 8 integers
+					}
+				else if (instance >> 4 == 13)
+					{
+					/*
+						12 * 21-bit ingtegers (in two 128-bit words)
+					*/
+					printf("\t\t\tbyte_stream = _mm_load_si128((__m128i *)in);");
+					printf("\t\t\t_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_21));");
+					printf("\t\t\tbyte_stream_2 = _mm_load_si128((__m128i *)in + 1);");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 1, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 11), _mm_srli_epi32(byte_stream, 21)), mask_21));");
+					printf("\t\t\t_mm_store_si128((__m128i *)to + 2, _mm_and_si128(_mm_srli_epi32(byte_stream_2, 11), mask_21));");
+
+					printf("\t\t\tin += 32;\n");			// 32 bytes
+					printf("\t\t\tto += 12;\n");			// becomes 8 integers
+					}
+				else if (instance >> 4 == 14)
+					{
+					/*
+						32-bit integers
+					*/
+					printf("\t\t\ttmp = _mm_load_si128((__m128i *)in);\n");
+					printf("\t\t\t_mm_store_si128((__m128i *)to, tmp);\n");
+
+					printf("\t\t\tin += 16;\n");		// 16 bytes
+					printf("\t\t\tto += 4;\n");			// becomes 4 integers
+					}
+				else
+					{
+					printf("\t\t\tin++;\n");			// dummy, can't occur
+					}
+				if ((instance & 0xF) == 0xF)
+					printf("\t\t\tbreak;\n");		// every 32 instances we break (its the end of the fall through)
 				}
-			else
-				{
-				printf("\t\t\t\t\tin++;// LCOV_EXCL_LINE\n");			// dummy, can't occur
-				}
-			if ((instance & 0xF) == 0xF)
-				printf("\t\t\t\t\tbreak;\n");		// every 32 instances we break (its the end of the fall through)
+			printf("\t\t}\n");
+			printf("\t}\n");
+			printf("}\n");
+			printf("}\n");
 			}
-		printf("\t\t\t\t}\n");
-		printf("\t\t\t}\n");
-		printf("\t\t}\n");
-		printf("\t}\n");
+	#endif
 
-		return 0;
-		}
-#endif
-
-	/*
-		COMPRESS_INTEGER_QMX_IMPROVED::DECODEARRAY()
-		--------------------------------------------
-		this code was generated by the method above.
-	*/
 namespace JASS
 	{
-	alignas(16) static uint32_t static_mask_21[]  = {0x1fffff, 0x1fffff, 0x1fffff, 0x1fffff};
-	alignas(16) static uint32_t static_mask_12[]  = {0xfff, 0xfff, 0xfff, 0xfff};
-	alignas(16) static uint32_t static_mask_10[] = {0x3ff, 0x3ff, 0x3ff, 0x3ff};
-	alignas(16) static uint32_t static_mask_9[]  = {0x1ff, 0x1ff, 0x1ff, 0x1ff};
-	alignas(16) static uint32_t static_mask_7[]  = {0x7f, 0x7f, 0x7f, 0x7f};
-	alignas(16) static uint32_t static_mask_6[]  = {0x3f, 0x3f, 0x3f, 0x3f};
-	alignas(16) static uint32_t static_mask_5[]  = {0x1f, 0x1f, 0x1f, 0x1f};
-	alignas(16) static uint32_t static_mask_4[]  = {0x0f, 0x0f, 0x0f, 0x0f};
-	alignas(16) static uint32_t static_mask_3[]  = {0x07, 0x07, 0x07, 0x07};
-	alignas(16) static uint32_t static_mask_2[]  = {0x03, 0x03, 0x03, 0x03};
-	alignas(16) static uint32_t static_mask_1[]  = {0x01, 0x01, 0x01, 0x01};
-
-	void compress_integer_qmx_improved::decode(integer *to, size_t destination_integers, const void *source, size_t len)
-		{
-		__m128i byte_stream, byte_stream_2, tmp, tmp2, mask_21, mask_12, mask_10, mask_9, mask_7, mask_6, mask_5, mask_4, mask_3, mask_2, mask_1;
-		uint8_t *in = (uint8_t *)source;
-		uint8_t *keys = ((uint8_t *)source) + len - 1;
-
-		mask_21 = _mm_loadu_si128((__m128i *)static_mask_21);
-		mask_12 = _mm_loadu_si128((__m128i *)static_mask_12);
-		mask_10 = _mm_loadu_si128((__m128i *)static_mask_10);
-		mask_9 = _mm_loadu_si128((__m128i *)static_mask_9);
-		mask_7 = _mm_loadu_si128((__m128i *)static_mask_7);
-		mask_6 = _mm_loadu_si128((__m128i *)static_mask_6);
-		mask_5 = _mm_loadu_si128((__m128i *)static_mask_5);
-		mask_4 = _mm_loadu_si128((__m128i *)static_mask_4);
-		mask_3 = _mm_loadu_si128((__m128i *)static_mask_3);
-		mask_2 = _mm_loadu_si128((__m128i *)static_mask_2);
-		mask_1 = _mm_loadu_si128((__m128i *)static_mask_1);
-
-		while (in <= keys)                      // <= because there can be a boundary case where the final key is 255*0 bit integers
+		/*
+			COMPRESS_INTEGER_QMX_ORIGINAL::DECODE()
+			---------------------------------------
+			This code was generated by the method above.
+		*/
+		static uint32_t ALIGN_16 static_mask_21[]  = {0x1fffff, 0x1fffff, 0x1fffff, 0x1fffff};
+		static uint32_t ALIGN_16 static_mask_12[]  = {0xfff, 0xfff, 0xfff, 0xfff};
+		static uint32_t ALIGN_16 static_mask_10[] = {0x3ff, 0x3ff, 0x3ff, 0x3ff};
+		static uint32_t ALIGN_16 static_mask_9[]  = {0x1ff, 0x1ff, 0x1ff, 0x1ff};
+		static uint32_t ALIGN_16 static_mask_7[]  = {0x7f, 0x7f, 0x7f, 0x7f};
+		static uint32_t ALIGN_16 static_mask_6[]  = {0x3f, 0x3f, 0x3f, 0x3f};
+		static uint32_t ALIGN_16 static_mask_5[]  = {0x1f, 0x1f, 0x1f, 0x1f};
+		static uint32_t ALIGN_16 static_mask_4[]  = {0x0f, 0x0f, 0x0f, 0x0f};
+		static uint32_t ALIGN_16 static_mask_3[]  = {0x07, 0x07, 0x07, 0x07};
+		static uint32_t ALIGN_16 static_mask_2[]  = {0x03, 0x03, 0x03, 0x03};
+		static uint32_t ALIGN_16 static_mask_1[]  = {0x01, 0x01, 0x01, 0x01};
+		void compress_integer_qmx_original::decode(integer *to, size_t destination_integers, const void *source, size_t len)
 			{
-			switch (*keys--)
+			__m128i byte_stream, byte_stream_2, tmp, tmp2, mask_21, mask_12, mask_10, mask_9, mask_7, mask_6, mask_5, mask_4, mask_3, mask_2, mask_1;
+			uint8_t *in = (uint8_t *)source;
+			uint32_t *end = to + destination_integers;
+			uint32_t key_start = vbyte_decompress((uint8_t *)source + len - 1);
+			uint8_t *keys = (uint8_t *)source + len - key_start;
+
+			mask_21 = _mm_load_si128((__m128i *)static_mask_21);
+			mask_12 = _mm_load_si128((__m128i *)static_mask_12);
+			mask_10 = _mm_load_si128((__m128i *)static_mask_10);
+			mask_9 = _mm_load_si128((__m128i *)static_mask_9);
+			mask_7 = _mm_load_si128((__m128i *)static_mask_7);
+			mask_6 = _mm_load_si128((__m128i *)static_mask_6);
+			mask_5 = _mm_load_si128((__m128i *)static_mask_5);
+			mask_4 = _mm_load_si128((__m128i *)static_mask_4);
+			mask_3 = _mm_load_si128((__m128i *)static_mask_3);
+			mask_2 = _mm_load_si128((__m128i *)static_mask_2);
+			mask_1 = _mm_load_si128((__m128i *)static_mask_1);
+
+			while (to < end)
 				{
-				case 0x00:
-					tmp = _mm_loadu_si128((__m128i *)static_mask_1);
-					_mm_storeu_si128((__m128i *)to, tmp);
-					_mm_storeu_si128((__m128i *)to + 1, tmp);
-					_mm_storeu_si128((__m128i *)to + 2, tmp);
-					_mm_storeu_si128((__m128i *)to + 3, tmp);
-					_mm_storeu_si128((__m128i *)to + 4, tmp);
-					_mm_storeu_si128((__m128i *)to + 5, tmp);
-					_mm_storeu_si128((__m128i *)to + 6, tmp);
-					_mm_storeu_si128((__m128i *)to + 7, tmp);
-					_mm_storeu_si128((__m128i *)to + 8, tmp);
-					_mm_storeu_si128((__m128i *)to + 9, tmp);
-					_mm_storeu_si128((__m128i *)to + 10, tmp);
-					_mm_storeu_si128((__m128i *)to + 11, tmp);
-					_mm_storeu_si128((__m128i *)to + 12, tmp);
-					_mm_storeu_si128((__m128i *)to + 13, tmp);
-					_mm_storeu_si128((__m128i *)to + 14, tmp);
-					_mm_storeu_si128((__m128i *)to + 15, tmp);
-					_mm_storeu_si128((__m128i *)to + 16, tmp);
-					_mm_storeu_si128((__m128i *)to + 17, tmp);
-					_mm_storeu_si128((__m128i *)to + 18, tmp);
-					_mm_storeu_si128((__m128i *)to + 19, tmp);
-					_mm_storeu_si128((__m128i *)to + 20, tmp);
-					_mm_storeu_si128((__m128i *)to + 21, tmp);
-					_mm_storeu_si128((__m128i *)to + 22, tmp);
-					_mm_storeu_si128((__m128i *)to + 23, tmp);
-					_mm_storeu_si128((__m128i *)to + 24, tmp);
-					_mm_storeu_si128((__m128i *)to + 25, tmp);
-					_mm_storeu_si128((__m128i *)to + 26, tmp);
-					_mm_storeu_si128((__m128i *)to + 27, tmp);
-					_mm_storeu_si128((__m128i *)to + 28, tmp);
-					_mm_storeu_si128((__m128i *)to + 29, tmp);
-					_mm_storeu_si128((__m128i *)to + 30, tmp);
-					_mm_storeu_si128((__m128i *)to + 31, tmp);
-					_mm_storeu_si128((__m128i *)to + 32, tmp);
-					_mm_storeu_si128((__m128i *)to + 33, tmp);
-					_mm_storeu_si128((__m128i *)to + 34, tmp);
-					_mm_storeu_si128((__m128i *)to + 35, tmp);
-					_mm_storeu_si128((__m128i *)to + 36, tmp);
-					_mm_storeu_si128((__m128i *)to + 37, tmp);
-					_mm_storeu_si128((__m128i *)to + 38, tmp);
-					_mm_storeu_si128((__m128i *)to + 39, tmp);
-					_mm_storeu_si128((__m128i *)to + 40, tmp);
-					_mm_storeu_si128((__m128i *)to + 41, tmp);
-					_mm_storeu_si128((__m128i *)to + 42, tmp);
-					_mm_storeu_si128((__m128i *)to + 43, tmp);
-					_mm_storeu_si128((__m128i *)to + 44, tmp);
-					_mm_storeu_si128((__m128i *)to + 45, tmp);
-					_mm_storeu_si128((__m128i *)to + 46, tmp);
-					_mm_storeu_si128((__m128i *)to + 47, tmp);
-					_mm_storeu_si128((__m128i *)to + 48, tmp);
-					_mm_storeu_si128((__m128i *)to + 49, tmp);
-					_mm_storeu_si128((__m128i *)to + 50, tmp);
-					_mm_storeu_si128((__m128i *)to + 51, tmp);
-					_mm_storeu_si128((__m128i *)to + 52, tmp);
-					_mm_storeu_si128((__m128i *)to + 53, tmp);
-					_mm_storeu_si128((__m128i *)to + 54, tmp);
-					_mm_storeu_si128((__m128i *)to + 55, tmp);
-					_mm_storeu_si128((__m128i *)to + 56, tmp);
-					_mm_storeu_si128((__m128i *)to + 57, tmp);
-					_mm_storeu_si128((__m128i *)to + 58, tmp);
-					_mm_storeu_si128((__m128i *)to + 59, tmp);
-					_mm_storeu_si128((__m128i *)to + 60, tmp);
-					_mm_storeu_si128((__m128i *)to + 61, tmp);
-					_mm_storeu_si128((__m128i *)to + 62, tmp);
-					_mm_storeu_si128((__m128i *)to + 63, tmp);
-					to += 256;
-				case 0x01:
-					tmp = _mm_loadu_si128((__m128i *)static_mask_1);
-					_mm_storeu_si128((__m128i *)to, tmp);
-					_mm_storeu_si128((__m128i *)to + 1, tmp);
-					_mm_storeu_si128((__m128i *)to + 2, tmp);
-					_mm_storeu_si128((__m128i *)to + 3, tmp);
-					_mm_storeu_si128((__m128i *)to + 4, tmp);
-					_mm_storeu_si128((__m128i *)to + 5, tmp);
-					_mm_storeu_si128((__m128i *)to + 6, tmp);
-					_mm_storeu_si128((__m128i *)to + 7, tmp);
-					_mm_storeu_si128((__m128i *)to + 8, tmp);
-					_mm_storeu_si128((__m128i *)to + 9, tmp);
-					_mm_storeu_si128((__m128i *)to + 10, tmp);
-					_mm_storeu_si128((__m128i *)to + 11, tmp);
-					_mm_storeu_si128((__m128i *)to + 12, tmp);
-					_mm_storeu_si128((__m128i *)to + 13, tmp);
-					_mm_storeu_si128((__m128i *)to + 14, tmp);
-					_mm_storeu_si128((__m128i *)to + 15, tmp);
-					_mm_storeu_si128((__m128i *)to + 16, tmp);
-					_mm_storeu_si128((__m128i *)to + 17, tmp);
-					_mm_storeu_si128((__m128i *)to + 18, tmp);
-					_mm_storeu_si128((__m128i *)to + 19, tmp);
-					_mm_storeu_si128((__m128i *)to + 20, tmp);
-					_mm_storeu_si128((__m128i *)to + 21, tmp);
-					_mm_storeu_si128((__m128i *)to + 22, tmp);
-					_mm_storeu_si128((__m128i *)to + 23, tmp);
-					_mm_storeu_si128((__m128i *)to + 24, tmp);
-					_mm_storeu_si128((__m128i *)to + 25, tmp);
-					_mm_storeu_si128((__m128i *)to + 26, tmp);
-					_mm_storeu_si128((__m128i *)to + 27, tmp);
-					_mm_storeu_si128((__m128i *)to + 28, tmp);
-					_mm_storeu_si128((__m128i *)to + 29, tmp);
-					_mm_storeu_si128((__m128i *)to + 30, tmp);
-					_mm_storeu_si128((__m128i *)to + 31, tmp);
-					_mm_storeu_si128((__m128i *)to + 32, tmp);
-					_mm_storeu_si128((__m128i *)to + 33, tmp);
-					_mm_storeu_si128((__m128i *)to + 34, tmp);
-					_mm_storeu_si128((__m128i *)to + 35, tmp);
-					_mm_storeu_si128((__m128i *)to + 36, tmp);
-					_mm_storeu_si128((__m128i *)to + 37, tmp);
-					_mm_storeu_si128((__m128i *)to + 38, tmp);
-					_mm_storeu_si128((__m128i *)to + 39, tmp);
-					_mm_storeu_si128((__m128i *)to + 40, tmp);
-					_mm_storeu_si128((__m128i *)to + 41, tmp);
-					_mm_storeu_si128((__m128i *)to + 42, tmp);
-					_mm_storeu_si128((__m128i *)to + 43, tmp);
-					_mm_storeu_si128((__m128i *)to + 44, tmp);
-					_mm_storeu_si128((__m128i *)to + 45, tmp);
-					_mm_storeu_si128((__m128i *)to + 46, tmp);
-					_mm_storeu_si128((__m128i *)to + 47, tmp);
-					_mm_storeu_si128((__m128i *)to + 48, tmp);
-					_mm_storeu_si128((__m128i *)to + 49, tmp);
-					_mm_storeu_si128((__m128i *)to + 50, tmp);
-					_mm_storeu_si128((__m128i *)to + 51, tmp);
-					_mm_storeu_si128((__m128i *)to + 52, tmp);
-					_mm_storeu_si128((__m128i *)to + 53, tmp);
-					_mm_storeu_si128((__m128i *)to + 54, tmp);
-					_mm_storeu_si128((__m128i *)to + 55, tmp);
-					_mm_storeu_si128((__m128i *)to + 56, tmp);
-					_mm_storeu_si128((__m128i *)to + 57, tmp);
-					_mm_storeu_si128((__m128i *)to + 58, tmp);
-					_mm_storeu_si128((__m128i *)to + 59, tmp);
-					_mm_storeu_si128((__m128i *)to + 60, tmp);
-					_mm_storeu_si128((__m128i *)to + 61, tmp);
-					_mm_storeu_si128((__m128i *)to + 62, tmp);
-					_mm_storeu_si128((__m128i *)to + 63, tmp);
-					to += 256;
-				case 0x02:
-					tmp = _mm_loadu_si128((__m128i *)static_mask_1);
-					_mm_storeu_si128((__m128i *)to, tmp);
-					_mm_storeu_si128((__m128i *)to + 1, tmp);
-					_mm_storeu_si128((__m128i *)to + 2, tmp);
-					_mm_storeu_si128((__m128i *)to + 3, tmp);
-					_mm_storeu_si128((__m128i *)to + 4, tmp);
-					_mm_storeu_si128((__m128i *)to + 5, tmp);
-					_mm_storeu_si128((__m128i *)to + 6, tmp);
-					_mm_storeu_si128((__m128i *)to + 7, tmp);
-					_mm_storeu_si128((__m128i *)to + 8, tmp);
-					_mm_storeu_si128((__m128i *)to + 9, tmp);
-					_mm_storeu_si128((__m128i *)to + 10, tmp);
-					_mm_storeu_si128((__m128i *)to + 11, tmp);
-					_mm_storeu_si128((__m128i *)to + 12, tmp);
-					_mm_storeu_si128((__m128i *)to + 13, tmp);
-					_mm_storeu_si128((__m128i *)to + 14, tmp);
-					_mm_storeu_si128((__m128i *)to + 15, tmp);
-					_mm_storeu_si128((__m128i *)to + 16, tmp);
-					_mm_storeu_si128((__m128i *)to + 17, tmp);
-					_mm_storeu_si128((__m128i *)to + 18, tmp);
-					_mm_storeu_si128((__m128i *)to + 19, tmp);
-					_mm_storeu_si128((__m128i *)to + 20, tmp);
-					_mm_storeu_si128((__m128i *)to + 21, tmp);
-					_mm_storeu_si128((__m128i *)to + 22, tmp);
-					_mm_storeu_si128((__m128i *)to + 23, tmp);
-					_mm_storeu_si128((__m128i *)to + 24, tmp);
-					_mm_storeu_si128((__m128i *)to + 25, tmp);
-					_mm_storeu_si128((__m128i *)to + 26, tmp);
-					_mm_storeu_si128((__m128i *)to + 27, tmp);
-					_mm_storeu_si128((__m128i *)to + 28, tmp);
-					_mm_storeu_si128((__m128i *)to + 29, tmp);
-					_mm_storeu_si128((__m128i *)to + 30, tmp);
-					_mm_storeu_si128((__m128i *)to + 31, tmp);
-					_mm_storeu_si128((__m128i *)to + 32, tmp);
-					_mm_storeu_si128((__m128i *)to + 33, tmp);
-					_mm_storeu_si128((__m128i *)to + 34, tmp);
-					_mm_storeu_si128((__m128i *)to + 35, tmp);
-					_mm_storeu_si128((__m128i *)to + 36, tmp);
-					_mm_storeu_si128((__m128i *)to + 37, tmp);
-					_mm_storeu_si128((__m128i *)to + 38, tmp);
-					_mm_storeu_si128((__m128i *)to + 39, tmp);
-					_mm_storeu_si128((__m128i *)to + 40, tmp);
-					_mm_storeu_si128((__m128i *)to + 41, tmp);
-					_mm_storeu_si128((__m128i *)to + 42, tmp);
-					_mm_storeu_si128((__m128i *)to + 43, tmp);
-					_mm_storeu_si128((__m128i *)to + 44, tmp);
-					_mm_storeu_si128((__m128i *)to + 45, tmp);
-					_mm_storeu_si128((__m128i *)to + 46, tmp);
-					_mm_storeu_si128((__m128i *)to + 47, tmp);
-					_mm_storeu_si128((__m128i *)to + 48, tmp);
-					_mm_storeu_si128((__m128i *)to + 49, tmp);
-					_mm_storeu_si128((__m128i *)to + 50, tmp);
-					_mm_storeu_si128((__m128i *)to + 51, tmp);
-					_mm_storeu_si128((__m128i *)to + 52, tmp);
-					_mm_storeu_si128((__m128i *)to + 53, tmp);
-					_mm_storeu_si128((__m128i *)to + 54, tmp);
-					_mm_storeu_si128((__m128i *)to + 55, tmp);
-					_mm_storeu_si128((__m128i *)to + 56, tmp);
-					_mm_storeu_si128((__m128i *)to + 57, tmp);
-					_mm_storeu_si128((__m128i *)to + 58, tmp);
-					_mm_storeu_si128((__m128i *)to + 59, tmp);
-					_mm_storeu_si128((__m128i *)to + 60, tmp);
-					_mm_storeu_si128((__m128i *)to + 61, tmp);
-					_mm_storeu_si128((__m128i *)to + 62, tmp);
-					_mm_storeu_si128((__m128i *)to + 63, tmp);
-					to += 256;
-				case 0x03:
-					tmp = _mm_loadu_si128((__m128i *)static_mask_1);
-					_mm_storeu_si128((__m128i *)to, tmp);
-					_mm_storeu_si128((__m128i *)to + 1, tmp);
-					_mm_storeu_si128((__m128i *)to + 2, tmp);
-					_mm_storeu_si128((__m128i *)to + 3, tmp);
-					_mm_storeu_si128((__m128i *)to + 4, tmp);
-					_mm_storeu_si128((__m128i *)to + 5, tmp);
-					_mm_storeu_si128((__m128i *)to + 6, tmp);
-					_mm_storeu_si128((__m128i *)to + 7, tmp);
-					_mm_storeu_si128((__m128i *)to + 8, tmp);
-					_mm_storeu_si128((__m128i *)to + 9, tmp);
-					_mm_storeu_si128((__m128i *)to + 10, tmp);
-					_mm_storeu_si128((__m128i *)to + 11, tmp);
-					_mm_storeu_si128((__m128i *)to + 12, tmp);
-					_mm_storeu_si128((__m128i *)to + 13, tmp);
-					_mm_storeu_si128((__m128i *)to + 14, tmp);
-					_mm_storeu_si128((__m128i *)to + 15, tmp);
-					_mm_storeu_si128((__m128i *)to + 16, tmp);
-					_mm_storeu_si128((__m128i *)to + 17, tmp);
-					_mm_storeu_si128((__m128i *)to + 18, tmp);
-					_mm_storeu_si128((__m128i *)to + 19, tmp);
-					_mm_storeu_si128((__m128i *)to + 20, tmp);
-					_mm_storeu_si128((__m128i *)to + 21, tmp);
-					_mm_storeu_si128((__m128i *)to + 22, tmp);
-					_mm_storeu_si128((__m128i *)to + 23, tmp);
-					_mm_storeu_si128((__m128i *)to + 24, tmp);
-					_mm_storeu_si128((__m128i *)to + 25, tmp);
-					_mm_storeu_si128((__m128i *)to + 26, tmp);
-					_mm_storeu_si128((__m128i *)to + 27, tmp);
-					_mm_storeu_si128((__m128i *)to + 28, tmp);
-					_mm_storeu_si128((__m128i *)to + 29, tmp);
-					_mm_storeu_si128((__m128i *)to + 30, tmp);
-					_mm_storeu_si128((__m128i *)to + 31, tmp);
-					_mm_storeu_si128((__m128i *)to + 32, tmp);
-					_mm_storeu_si128((__m128i *)to + 33, tmp);
-					_mm_storeu_si128((__m128i *)to + 34, tmp);
-					_mm_storeu_si128((__m128i *)to + 35, tmp);
-					_mm_storeu_si128((__m128i *)to + 36, tmp);
-					_mm_storeu_si128((__m128i *)to + 37, tmp);
-					_mm_storeu_si128((__m128i *)to + 38, tmp);
-					_mm_storeu_si128((__m128i *)to + 39, tmp);
-					_mm_storeu_si128((__m128i *)to + 40, tmp);
-					_mm_storeu_si128((__m128i *)to + 41, tmp);
-					_mm_storeu_si128((__m128i *)to + 42, tmp);
-					_mm_storeu_si128((__m128i *)to + 43, tmp);
-					_mm_storeu_si128((__m128i *)to + 44, tmp);
-					_mm_storeu_si128((__m128i *)to + 45, tmp);
-					_mm_storeu_si128((__m128i *)to + 46, tmp);
-					_mm_storeu_si128((__m128i *)to + 47, tmp);
-					_mm_storeu_si128((__m128i *)to + 48, tmp);
-					_mm_storeu_si128((__m128i *)to + 49, tmp);
-					_mm_storeu_si128((__m128i *)to + 50, tmp);
-					_mm_storeu_si128((__m128i *)to + 51, tmp);
-					_mm_storeu_si128((__m128i *)to + 52, tmp);
-					_mm_storeu_si128((__m128i *)to + 53, tmp);
-					_mm_storeu_si128((__m128i *)to + 54, tmp);
-					_mm_storeu_si128((__m128i *)to + 55, tmp);
-					_mm_storeu_si128((__m128i *)to + 56, tmp);
-					_mm_storeu_si128((__m128i *)to + 57, tmp);
-					_mm_storeu_si128((__m128i *)to + 58, tmp);
-					_mm_storeu_si128((__m128i *)to + 59, tmp);
-					_mm_storeu_si128((__m128i *)to + 60, tmp);
-					_mm_storeu_si128((__m128i *)to + 61, tmp);
-					_mm_storeu_si128((__m128i *)to + 62, tmp);
-					_mm_storeu_si128((__m128i *)to + 63, tmp);
-					to += 256;
-				case 0x04:
-					tmp = _mm_loadu_si128((__m128i *)static_mask_1);
-					_mm_storeu_si128((__m128i *)to, tmp);
-					_mm_storeu_si128((__m128i *)to + 1, tmp);
-					_mm_storeu_si128((__m128i *)to + 2, tmp);
-					_mm_storeu_si128((__m128i *)to + 3, tmp);
-					_mm_storeu_si128((__m128i *)to + 4, tmp);
-					_mm_storeu_si128((__m128i *)to + 5, tmp);
-					_mm_storeu_si128((__m128i *)to + 6, tmp);
-					_mm_storeu_si128((__m128i *)to + 7, tmp);
-					_mm_storeu_si128((__m128i *)to + 8, tmp);
-					_mm_storeu_si128((__m128i *)to + 9, tmp);
-					_mm_storeu_si128((__m128i *)to + 10, tmp);
-					_mm_storeu_si128((__m128i *)to + 11, tmp);
-					_mm_storeu_si128((__m128i *)to + 12, tmp);
-					_mm_storeu_si128((__m128i *)to + 13, tmp);
-					_mm_storeu_si128((__m128i *)to + 14, tmp);
-					_mm_storeu_si128((__m128i *)to + 15, tmp);
-					_mm_storeu_si128((__m128i *)to + 16, tmp);
-					_mm_storeu_si128((__m128i *)to + 17, tmp);
-					_mm_storeu_si128((__m128i *)to + 18, tmp);
-					_mm_storeu_si128((__m128i *)to + 19, tmp);
-					_mm_storeu_si128((__m128i *)to + 20, tmp);
-					_mm_storeu_si128((__m128i *)to + 21, tmp);
-					_mm_storeu_si128((__m128i *)to + 22, tmp);
-					_mm_storeu_si128((__m128i *)to + 23, tmp);
-					_mm_storeu_si128((__m128i *)to + 24, tmp);
-					_mm_storeu_si128((__m128i *)to + 25, tmp);
-					_mm_storeu_si128((__m128i *)to + 26, tmp);
-					_mm_storeu_si128((__m128i *)to + 27, tmp);
-					_mm_storeu_si128((__m128i *)to + 28, tmp);
-					_mm_storeu_si128((__m128i *)to + 29, tmp);
-					_mm_storeu_si128((__m128i *)to + 30, tmp);
-					_mm_storeu_si128((__m128i *)to + 31, tmp);
-					_mm_storeu_si128((__m128i *)to + 32, tmp);
-					_mm_storeu_si128((__m128i *)to + 33, tmp);
-					_mm_storeu_si128((__m128i *)to + 34, tmp);
-					_mm_storeu_si128((__m128i *)to + 35, tmp);
-					_mm_storeu_si128((__m128i *)to + 36, tmp);
-					_mm_storeu_si128((__m128i *)to + 37, tmp);
-					_mm_storeu_si128((__m128i *)to + 38, tmp);
-					_mm_storeu_si128((__m128i *)to + 39, tmp);
-					_mm_storeu_si128((__m128i *)to + 40, tmp);
-					_mm_storeu_si128((__m128i *)to + 41, tmp);
-					_mm_storeu_si128((__m128i *)to + 42, tmp);
-					_mm_storeu_si128((__m128i *)to + 43, tmp);
-					_mm_storeu_si128((__m128i *)to + 44, tmp);
-					_mm_storeu_si128((__m128i *)to + 45, tmp);
-					_mm_storeu_si128((__m128i *)to + 46, tmp);
-					_mm_storeu_si128((__m128i *)to + 47, tmp);
-					_mm_storeu_si128((__m128i *)to + 48, tmp);
-					_mm_storeu_si128((__m128i *)to + 49, tmp);
-					_mm_storeu_si128((__m128i *)to + 50, tmp);
-					_mm_storeu_si128((__m128i *)to + 51, tmp);
-					_mm_storeu_si128((__m128i *)to + 52, tmp);
-					_mm_storeu_si128((__m128i *)to + 53, tmp);
-					_mm_storeu_si128((__m128i *)to + 54, tmp);
-					_mm_storeu_si128((__m128i *)to + 55, tmp);
-					_mm_storeu_si128((__m128i *)to + 56, tmp);
-					_mm_storeu_si128((__m128i *)to + 57, tmp);
-					_mm_storeu_si128((__m128i *)to + 58, tmp);
-					_mm_storeu_si128((__m128i *)to + 59, tmp);
-					_mm_storeu_si128((__m128i *)to + 60, tmp);
-					_mm_storeu_si128((__m128i *)to + 61, tmp);
-					_mm_storeu_si128((__m128i *)to + 62, tmp);
-					_mm_storeu_si128((__m128i *)to + 63, tmp);
-					to += 256;
-				case 0x05:
-					tmp = _mm_loadu_si128((__m128i *)static_mask_1);
-					_mm_storeu_si128((__m128i *)to, tmp);
-					_mm_storeu_si128((__m128i *)to + 1, tmp);
-					_mm_storeu_si128((__m128i *)to + 2, tmp);
-					_mm_storeu_si128((__m128i *)to + 3, tmp);
-					_mm_storeu_si128((__m128i *)to + 4, tmp);
-					_mm_storeu_si128((__m128i *)to + 5, tmp);
-					_mm_storeu_si128((__m128i *)to + 6, tmp);
-					_mm_storeu_si128((__m128i *)to + 7, tmp);
-					_mm_storeu_si128((__m128i *)to + 8, tmp);
-					_mm_storeu_si128((__m128i *)to + 9, tmp);
-					_mm_storeu_si128((__m128i *)to + 10, tmp);
-					_mm_storeu_si128((__m128i *)to + 11, tmp);
-					_mm_storeu_si128((__m128i *)to + 12, tmp);
-					_mm_storeu_si128((__m128i *)to + 13, tmp);
-					_mm_storeu_si128((__m128i *)to + 14, tmp);
-					_mm_storeu_si128((__m128i *)to + 15, tmp);
-					_mm_storeu_si128((__m128i *)to + 16, tmp);
-					_mm_storeu_si128((__m128i *)to + 17, tmp);
-					_mm_storeu_si128((__m128i *)to + 18, tmp);
-					_mm_storeu_si128((__m128i *)to + 19, tmp);
-					_mm_storeu_si128((__m128i *)to + 20, tmp);
-					_mm_storeu_si128((__m128i *)to + 21, tmp);
-					_mm_storeu_si128((__m128i *)to + 22, tmp);
-					_mm_storeu_si128((__m128i *)to + 23, tmp);
-					_mm_storeu_si128((__m128i *)to + 24, tmp);
-					_mm_storeu_si128((__m128i *)to + 25, tmp);
-					_mm_storeu_si128((__m128i *)to + 26, tmp);
-					_mm_storeu_si128((__m128i *)to + 27, tmp);
-					_mm_storeu_si128((__m128i *)to + 28, tmp);
-					_mm_storeu_si128((__m128i *)to + 29, tmp);
-					_mm_storeu_si128((__m128i *)to + 30, tmp);
-					_mm_storeu_si128((__m128i *)to + 31, tmp);
-					_mm_storeu_si128((__m128i *)to + 32, tmp);
-					_mm_storeu_si128((__m128i *)to + 33, tmp);
-					_mm_storeu_si128((__m128i *)to + 34, tmp);
-					_mm_storeu_si128((__m128i *)to + 35, tmp);
-					_mm_storeu_si128((__m128i *)to + 36, tmp);
-					_mm_storeu_si128((__m128i *)to + 37, tmp);
-					_mm_storeu_si128((__m128i *)to + 38, tmp);
-					_mm_storeu_si128((__m128i *)to + 39, tmp);
-					_mm_storeu_si128((__m128i *)to + 40, tmp);
-					_mm_storeu_si128((__m128i *)to + 41, tmp);
-					_mm_storeu_si128((__m128i *)to + 42, tmp);
-					_mm_storeu_si128((__m128i *)to + 43, tmp);
-					_mm_storeu_si128((__m128i *)to + 44, tmp);
-					_mm_storeu_si128((__m128i *)to + 45, tmp);
-					_mm_storeu_si128((__m128i *)to + 46, tmp);
-					_mm_storeu_si128((__m128i *)to + 47, tmp);
-					_mm_storeu_si128((__m128i *)to + 48, tmp);
-					_mm_storeu_si128((__m128i *)to + 49, tmp);
-					_mm_storeu_si128((__m128i *)to + 50, tmp);
-					_mm_storeu_si128((__m128i *)to + 51, tmp);
-					_mm_storeu_si128((__m128i *)to + 52, tmp);
-					_mm_storeu_si128((__m128i *)to + 53, tmp);
-					_mm_storeu_si128((__m128i *)to + 54, tmp);
-					_mm_storeu_si128((__m128i *)to + 55, tmp);
-					_mm_storeu_si128((__m128i *)to + 56, tmp);
-					_mm_storeu_si128((__m128i *)to + 57, tmp);
-					_mm_storeu_si128((__m128i *)to + 58, tmp);
-					_mm_storeu_si128((__m128i *)to + 59, tmp);
-					_mm_storeu_si128((__m128i *)to + 60, tmp);
-					_mm_storeu_si128((__m128i *)to + 61, tmp);
-					_mm_storeu_si128((__m128i *)to + 62, tmp);
-					_mm_storeu_si128((__m128i *)to + 63, tmp);
-					to += 256;
-				case 0x06:
-					tmp = _mm_loadu_si128((__m128i *)static_mask_1);
-					_mm_storeu_si128((__m128i *)to, tmp);
-					_mm_storeu_si128((__m128i *)to + 1, tmp);
-					_mm_storeu_si128((__m128i *)to + 2, tmp);
-					_mm_storeu_si128((__m128i *)to + 3, tmp);
-					_mm_storeu_si128((__m128i *)to + 4, tmp);
-					_mm_storeu_si128((__m128i *)to + 5, tmp);
-					_mm_storeu_si128((__m128i *)to + 6, tmp);
-					_mm_storeu_si128((__m128i *)to + 7, tmp);
-					_mm_storeu_si128((__m128i *)to + 8, tmp);
-					_mm_storeu_si128((__m128i *)to + 9, tmp);
-					_mm_storeu_si128((__m128i *)to + 10, tmp);
-					_mm_storeu_si128((__m128i *)to + 11, tmp);
-					_mm_storeu_si128((__m128i *)to + 12, tmp);
-					_mm_storeu_si128((__m128i *)to + 13, tmp);
-					_mm_storeu_si128((__m128i *)to + 14, tmp);
-					_mm_storeu_si128((__m128i *)to + 15, tmp);
-					_mm_storeu_si128((__m128i *)to + 16, tmp);
-					_mm_storeu_si128((__m128i *)to + 17, tmp);
-					_mm_storeu_si128((__m128i *)to + 18, tmp);
-					_mm_storeu_si128((__m128i *)to + 19, tmp);
-					_mm_storeu_si128((__m128i *)to + 20, tmp);
-					_mm_storeu_si128((__m128i *)to + 21, tmp);
-					_mm_storeu_si128((__m128i *)to + 22, tmp);
-					_mm_storeu_si128((__m128i *)to + 23, tmp);
-					_mm_storeu_si128((__m128i *)to + 24, tmp);
-					_mm_storeu_si128((__m128i *)to + 25, tmp);
-					_mm_storeu_si128((__m128i *)to + 26, tmp);
-					_mm_storeu_si128((__m128i *)to + 27, tmp);
-					_mm_storeu_si128((__m128i *)to + 28, tmp);
-					_mm_storeu_si128((__m128i *)to + 29, tmp);
-					_mm_storeu_si128((__m128i *)to + 30, tmp);
-					_mm_storeu_si128((__m128i *)to + 31, tmp);
-					_mm_storeu_si128((__m128i *)to + 32, tmp);
-					_mm_storeu_si128((__m128i *)to + 33, tmp);
-					_mm_storeu_si128((__m128i *)to + 34, tmp);
-					_mm_storeu_si128((__m128i *)to + 35, tmp);
-					_mm_storeu_si128((__m128i *)to + 36, tmp);
-					_mm_storeu_si128((__m128i *)to + 37, tmp);
-					_mm_storeu_si128((__m128i *)to + 38, tmp);
-					_mm_storeu_si128((__m128i *)to + 39, tmp);
-					_mm_storeu_si128((__m128i *)to + 40, tmp);
-					_mm_storeu_si128((__m128i *)to + 41, tmp);
-					_mm_storeu_si128((__m128i *)to + 42, tmp);
-					_mm_storeu_si128((__m128i *)to + 43, tmp);
-					_mm_storeu_si128((__m128i *)to + 44, tmp);
-					_mm_storeu_si128((__m128i *)to + 45, tmp);
-					_mm_storeu_si128((__m128i *)to + 46, tmp);
-					_mm_storeu_si128((__m128i *)to + 47, tmp);
-					_mm_storeu_si128((__m128i *)to + 48, tmp);
-					_mm_storeu_si128((__m128i *)to + 49, tmp);
-					_mm_storeu_si128((__m128i *)to + 50, tmp);
-					_mm_storeu_si128((__m128i *)to + 51, tmp);
-					_mm_storeu_si128((__m128i *)to + 52, tmp);
-					_mm_storeu_si128((__m128i *)to + 53, tmp);
-					_mm_storeu_si128((__m128i *)to + 54, tmp);
-					_mm_storeu_si128((__m128i *)to + 55, tmp);
-					_mm_storeu_si128((__m128i *)to + 56, tmp);
-					_mm_storeu_si128((__m128i *)to + 57, tmp);
-					_mm_storeu_si128((__m128i *)to + 58, tmp);
-					_mm_storeu_si128((__m128i *)to + 59, tmp);
-					_mm_storeu_si128((__m128i *)to + 60, tmp);
-					_mm_storeu_si128((__m128i *)to + 61, tmp);
-					_mm_storeu_si128((__m128i *)to + 62, tmp);
-					_mm_storeu_si128((__m128i *)to + 63, tmp);
-					to += 256;
-				case 0x07:
-					tmp = _mm_loadu_si128((__m128i *)static_mask_1);
-					_mm_storeu_si128((__m128i *)to, tmp);
-					_mm_storeu_si128((__m128i *)to + 1, tmp);
-					_mm_storeu_si128((__m128i *)to + 2, tmp);
-					_mm_storeu_si128((__m128i *)to + 3, tmp);
-					_mm_storeu_si128((__m128i *)to + 4, tmp);
-					_mm_storeu_si128((__m128i *)to + 5, tmp);
-					_mm_storeu_si128((__m128i *)to + 6, tmp);
-					_mm_storeu_si128((__m128i *)to + 7, tmp);
-					_mm_storeu_si128((__m128i *)to + 8, tmp);
-					_mm_storeu_si128((__m128i *)to + 9, tmp);
-					_mm_storeu_si128((__m128i *)to + 10, tmp);
-					_mm_storeu_si128((__m128i *)to + 11, tmp);
-					_mm_storeu_si128((__m128i *)to + 12, tmp);
-					_mm_storeu_si128((__m128i *)to + 13, tmp);
-					_mm_storeu_si128((__m128i *)to + 14, tmp);
-					_mm_storeu_si128((__m128i *)to + 15, tmp);
-					_mm_storeu_si128((__m128i *)to + 16, tmp);
-					_mm_storeu_si128((__m128i *)to + 17, tmp);
-					_mm_storeu_si128((__m128i *)to + 18, tmp);
-					_mm_storeu_si128((__m128i *)to + 19, tmp);
-					_mm_storeu_si128((__m128i *)to + 20, tmp);
-					_mm_storeu_si128((__m128i *)to + 21, tmp);
-					_mm_storeu_si128((__m128i *)to + 22, tmp);
-					_mm_storeu_si128((__m128i *)to + 23, tmp);
-					_mm_storeu_si128((__m128i *)to + 24, tmp);
-					_mm_storeu_si128((__m128i *)to + 25, tmp);
-					_mm_storeu_si128((__m128i *)to + 26, tmp);
-					_mm_storeu_si128((__m128i *)to + 27, tmp);
-					_mm_storeu_si128((__m128i *)to + 28, tmp);
-					_mm_storeu_si128((__m128i *)to + 29, tmp);
-					_mm_storeu_si128((__m128i *)to + 30, tmp);
-					_mm_storeu_si128((__m128i *)to + 31, tmp);
-					_mm_storeu_si128((__m128i *)to + 32, tmp);
-					_mm_storeu_si128((__m128i *)to + 33, tmp);
-					_mm_storeu_si128((__m128i *)to + 34, tmp);
-					_mm_storeu_si128((__m128i *)to + 35, tmp);
-					_mm_storeu_si128((__m128i *)to + 36, tmp);
-					_mm_storeu_si128((__m128i *)to + 37, tmp);
-					_mm_storeu_si128((__m128i *)to + 38, tmp);
-					_mm_storeu_si128((__m128i *)to + 39, tmp);
-					_mm_storeu_si128((__m128i *)to + 40, tmp);
-					_mm_storeu_si128((__m128i *)to + 41, tmp);
-					_mm_storeu_si128((__m128i *)to + 42, tmp);
-					_mm_storeu_si128((__m128i *)to + 43, tmp);
-					_mm_storeu_si128((__m128i *)to + 44, tmp);
-					_mm_storeu_si128((__m128i *)to + 45, tmp);
-					_mm_storeu_si128((__m128i *)to + 46, tmp);
-					_mm_storeu_si128((__m128i *)to + 47, tmp);
-					_mm_storeu_si128((__m128i *)to + 48, tmp);
-					_mm_storeu_si128((__m128i *)to + 49, tmp);
-					_mm_storeu_si128((__m128i *)to + 50, tmp);
-					_mm_storeu_si128((__m128i *)to + 51, tmp);
-					_mm_storeu_si128((__m128i *)to + 52, tmp);
-					_mm_storeu_si128((__m128i *)to + 53, tmp);
-					_mm_storeu_si128((__m128i *)to + 54, tmp);
-					_mm_storeu_si128((__m128i *)to + 55, tmp);
-					_mm_storeu_si128((__m128i *)to + 56, tmp);
-					_mm_storeu_si128((__m128i *)to + 57, tmp);
-					_mm_storeu_si128((__m128i *)to + 58, tmp);
-					_mm_storeu_si128((__m128i *)to + 59, tmp);
-					_mm_storeu_si128((__m128i *)to + 60, tmp);
-					_mm_storeu_si128((__m128i *)to + 61, tmp);
-					_mm_storeu_si128((__m128i *)to + 62, tmp);
-					_mm_storeu_si128((__m128i *)to + 63, tmp);
-					to += 256;
-				case 0x08:
-					tmp = _mm_loadu_si128((__m128i *)static_mask_1);
-					_mm_storeu_si128((__m128i *)to, tmp);
-					_mm_storeu_si128((__m128i *)to + 1, tmp);
-					_mm_storeu_si128((__m128i *)to + 2, tmp);
-					_mm_storeu_si128((__m128i *)to + 3, tmp);
-					_mm_storeu_si128((__m128i *)to + 4, tmp);
-					_mm_storeu_si128((__m128i *)to + 5, tmp);
-					_mm_storeu_si128((__m128i *)to + 6, tmp);
-					_mm_storeu_si128((__m128i *)to + 7, tmp);
-					_mm_storeu_si128((__m128i *)to + 8, tmp);
-					_mm_storeu_si128((__m128i *)to + 9, tmp);
-					_mm_storeu_si128((__m128i *)to + 10, tmp);
-					_mm_storeu_si128((__m128i *)to + 11, tmp);
-					_mm_storeu_si128((__m128i *)to + 12, tmp);
-					_mm_storeu_si128((__m128i *)to + 13, tmp);
-					_mm_storeu_si128((__m128i *)to + 14, tmp);
-					_mm_storeu_si128((__m128i *)to + 15, tmp);
-					_mm_storeu_si128((__m128i *)to + 16, tmp);
-					_mm_storeu_si128((__m128i *)to + 17, tmp);
-					_mm_storeu_si128((__m128i *)to + 18, tmp);
-					_mm_storeu_si128((__m128i *)to + 19, tmp);
-					_mm_storeu_si128((__m128i *)to + 20, tmp);
-					_mm_storeu_si128((__m128i *)to + 21, tmp);
-					_mm_storeu_si128((__m128i *)to + 22, tmp);
-					_mm_storeu_si128((__m128i *)to + 23, tmp);
-					_mm_storeu_si128((__m128i *)to + 24, tmp);
-					_mm_storeu_si128((__m128i *)to + 25, tmp);
-					_mm_storeu_si128((__m128i *)to + 26, tmp);
-					_mm_storeu_si128((__m128i *)to + 27, tmp);
-					_mm_storeu_si128((__m128i *)to + 28, tmp);
-					_mm_storeu_si128((__m128i *)to + 29, tmp);
-					_mm_storeu_si128((__m128i *)to + 30, tmp);
-					_mm_storeu_si128((__m128i *)to + 31, tmp);
-					_mm_storeu_si128((__m128i *)to + 32, tmp);
-					_mm_storeu_si128((__m128i *)to + 33, tmp);
-					_mm_storeu_si128((__m128i *)to + 34, tmp);
-					_mm_storeu_si128((__m128i *)to + 35, tmp);
-					_mm_storeu_si128((__m128i *)to + 36, tmp);
-					_mm_storeu_si128((__m128i *)to + 37, tmp);
-					_mm_storeu_si128((__m128i *)to + 38, tmp);
-					_mm_storeu_si128((__m128i *)to + 39, tmp);
-					_mm_storeu_si128((__m128i *)to + 40, tmp);
-					_mm_storeu_si128((__m128i *)to + 41, tmp);
-					_mm_storeu_si128((__m128i *)to + 42, tmp);
-					_mm_storeu_si128((__m128i *)to + 43, tmp);
-					_mm_storeu_si128((__m128i *)to + 44, tmp);
-					_mm_storeu_si128((__m128i *)to + 45, tmp);
-					_mm_storeu_si128((__m128i *)to + 46, tmp);
-					_mm_storeu_si128((__m128i *)to + 47, tmp);
-					_mm_storeu_si128((__m128i *)to + 48, tmp);
-					_mm_storeu_si128((__m128i *)to + 49, tmp);
-					_mm_storeu_si128((__m128i *)to + 50, tmp);
-					_mm_storeu_si128((__m128i *)to + 51, tmp);
-					_mm_storeu_si128((__m128i *)to + 52, tmp);
-					_mm_storeu_si128((__m128i *)to + 53, tmp);
-					_mm_storeu_si128((__m128i *)to + 54, tmp);
-					_mm_storeu_si128((__m128i *)to + 55, tmp);
-					_mm_storeu_si128((__m128i *)to + 56, tmp);
-					_mm_storeu_si128((__m128i *)to + 57, tmp);
-					_mm_storeu_si128((__m128i *)to + 58, tmp);
-					_mm_storeu_si128((__m128i *)to + 59, tmp);
-					_mm_storeu_si128((__m128i *)to + 60, tmp);
-					_mm_storeu_si128((__m128i *)to + 61, tmp);
-					_mm_storeu_si128((__m128i *)to + 62, tmp);
-					_mm_storeu_si128((__m128i *)to + 63, tmp);
-					to += 256;
-				case 0x09:
-					tmp = _mm_loadu_si128((__m128i *)static_mask_1);
-					_mm_storeu_si128((__m128i *)to, tmp);
-					_mm_storeu_si128((__m128i *)to + 1, tmp);
-					_mm_storeu_si128((__m128i *)to + 2, tmp);
-					_mm_storeu_si128((__m128i *)to + 3, tmp);
-					_mm_storeu_si128((__m128i *)to + 4, tmp);
-					_mm_storeu_si128((__m128i *)to + 5, tmp);
-					_mm_storeu_si128((__m128i *)to + 6, tmp);
-					_mm_storeu_si128((__m128i *)to + 7, tmp);
-					_mm_storeu_si128((__m128i *)to + 8, tmp);
-					_mm_storeu_si128((__m128i *)to + 9, tmp);
-					_mm_storeu_si128((__m128i *)to + 10, tmp);
-					_mm_storeu_si128((__m128i *)to + 11, tmp);
-					_mm_storeu_si128((__m128i *)to + 12, tmp);
-					_mm_storeu_si128((__m128i *)to + 13, tmp);
-					_mm_storeu_si128((__m128i *)to + 14, tmp);
-					_mm_storeu_si128((__m128i *)to + 15, tmp);
-					_mm_storeu_si128((__m128i *)to + 16, tmp);
-					_mm_storeu_si128((__m128i *)to + 17, tmp);
-					_mm_storeu_si128((__m128i *)to + 18, tmp);
-					_mm_storeu_si128((__m128i *)to + 19, tmp);
-					_mm_storeu_si128((__m128i *)to + 20, tmp);
-					_mm_storeu_si128((__m128i *)to + 21, tmp);
-					_mm_storeu_si128((__m128i *)to + 22, tmp);
-					_mm_storeu_si128((__m128i *)to + 23, tmp);
-					_mm_storeu_si128((__m128i *)to + 24, tmp);
-					_mm_storeu_si128((__m128i *)to + 25, tmp);
-					_mm_storeu_si128((__m128i *)to + 26, tmp);
-					_mm_storeu_si128((__m128i *)to + 27, tmp);
-					_mm_storeu_si128((__m128i *)to + 28, tmp);
-					_mm_storeu_si128((__m128i *)to + 29, tmp);
-					_mm_storeu_si128((__m128i *)to + 30, tmp);
-					_mm_storeu_si128((__m128i *)to + 31, tmp);
-					_mm_storeu_si128((__m128i *)to + 32, tmp);
-					_mm_storeu_si128((__m128i *)to + 33, tmp);
-					_mm_storeu_si128((__m128i *)to + 34, tmp);
-					_mm_storeu_si128((__m128i *)to + 35, tmp);
-					_mm_storeu_si128((__m128i *)to + 36, tmp);
-					_mm_storeu_si128((__m128i *)to + 37, tmp);
-					_mm_storeu_si128((__m128i *)to + 38, tmp);
-					_mm_storeu_si128((__m128i *)to + 39, tmp);
-					_mm_storeu_si128((__m128i *)to + 40, tmp);
-					_mm_storeu_si128((__m128i *)to + 41, tmp);
-					_mm_storeu_si128((__m128i *)to + 42, tmp);
-					_mm_storeu_si128((__m128i *)to + 43, tmp);
-					_mm_storeu_si128((__m128i *)to + 44, tmp);
-					_mm_storeu_si128((__m128i *)to + 45, tmp);
-					_mm_storeu_si128((__m128i *)to + 46, tmp);
-					_mm_storeu_si128((__m128i *)to + 47, tmp);
-					_mm_storeu_si128((__m128i *)to + 48, tmp);
-					_mm_storeu_si128((__m128i *)to + 49, tmp);
-					_mm_storeu_si128((__m128i *)to + 50, tmp);
-					_mm_storeu_si128((__m128i *)to + 51, tmp);
-					_mm_storeu_si128((__m128i *)to + 52, tmp);
-					_mm_storeu_si128((__m128i *)to + 53, tmp);
-					_mm_storeu_si128((__m128i *)to + 54, tmp);
-					_mm_storeu_si128((__m128i *)to + 55, tmp);
-					_mm_storeu_si128((__m128i *)to + 56, tmp);
-					_mm_storeu_si128((__m128i *)to + 57, tmp);
-					_mm_storeu_si128((__m128i *)to + 58, tmp);
-					_mm_storeu_si128((__m128i *)to + 59, tmp);
-					_mm_storeu_si128((__m128i *)to + 60, tmp);
-					_mm_storeu_si128((__m128i *)to + 61, tmp);
-					_mm_storeu_si128((__m128i *)to + 62, tmp);
-					_mm_storeu_si128((__m128i *)to + 63, tmp);
-					to += 256;
-				case 0x0a:
-					tmp = _mm_loadu_si128((__m128i *)static_mask_1);
-					_mm_storeu_si128((__m128i *)to, tmp);
-					_mm_storeu_si128((__m128i *)to + 1, tmp);
-					_mm_storeu_si128((__m128i *)to + 2, tmp);
-					_mm_storeu_si128((__m128i *)to + 3, tmp);
-					_mm_storeu_si128((__m128i *)to + 4, tmp);
-					_mm_storeu_si128((__m128i *)to + 5, tmp);
-					_mm_storeu_si128((__m128i *)to + 6, tmp);
-					_mm_storeu_si128((__m128i *)to + 7, tmp);
-					_mm_storeu_si128((__m128i *)to + 8, tmp);
-					_mm_storeu_si128((__m128i *)to + 9, tmp);
-					_mm_storeu_si128((__m128i *)to + 10, tmp);
-					_mm_storeu_si128((__m128i *)to + 11, tmp);
-					_mm_storeu_si128((__m128i *)to + 12, tmp);
-					_mm_storeu_si128((__m128i *)to + 13, tmp);
-					_mm_storeu_si128((__m128i *)to + 14, tmp);
-					_mm_storeu_si128((__m128i *)to + 15, tmp);
-					_mm_storeu_si128((__m128i *)to + 16, tmp);
-					_mm_storeu_si128((__m128i *)to + 17, tmp);
-					_mm_storeu_si128((__m128i *)to + 18, tmp);
-					_mm_storeu_si128((__m128i *)to + 19, tmp);
-					_mm_storeu_si128((__m128i *)to + 20, tmp);
-					_mm_storeu_si128((__m128i *)to + 21, tmp);
-					_mm_storeu_si128((__m128i *)to + 22, tmp);
-					_mm_storeu_si128((__m128i *)to + 23, tmp);
-					_mm_storeu_si128((__m128i *)to + 24, tmp);
-					_mm_storeu_si128((__m128i *)to + 25, tmp);
-					_mm_storeu_si128((__m128i *)to + 26, tmp);
-					_mm_storeu_si128((__m128i *)to + 27, tmp);
-					_mm_storeu_si128((__m128i *)to + 28, tmp);
-					_mm_storeu_si128((__m128i *)to + 29, tmp);
-					_mm_storeu_si128((__m128i *)to + 30, tmp);
-					_mm_storeu_si128((__m128i *)to + 31, tmp);
-					_mm_storeu_si128((__m128i *)to + 32, tmp);
-					_mm_storeu_si128((__m128i *)to + 33, tmp);
-					_mm_storeu_si128((__m128i *)to + 34, tmp);
-					_mm_storeu_si128((__m128i *)to + 35, tmp);
-					_mm_storeu_si128((__m128i *)to + 36, tmp);
-					_mm_storeu_si128((__m128i *)to + 37, tmp);
-					_mm_storeu_si128((__m128i *)to + 38, tmp);
-					_mm_storeu_si128((__m128i *)to + 39, tmp);
-					_mm_storeu_si128((__m128i *)to + 40, tmp);
-					_mm_storeu_si128((__m128i *)to + 41, tmp);
-					_mm_storeu_si128((__m128i *)to + 42, tmp);
-					_mm_storeu_si128((__m128i *)to + 43, tmp);
-					_mm_storeu_si128((__m128i *)to + 44, tmp);
-					_mm_storeu_si128((__m128i *)to + 45, tmp);
-					_mm_storeu_si128((__m128i *)to + 46, tmp);
-					_mm_storeu_si128((__m128i *)to + 47, tmp);
-					_mm_storeu_si128((__m128i *)to + 48, tmp);
-					_mm_storeu_si128((__m128i *)to + 49, tmp);
-					_mm_storeu_si128((__m128i *)to + 50, tmp);
-					_mm_storeu_si128((__m128i *)to + 51, tmp);
-					_mm_storeu_si128((__m128i *)to + 52, tmp);
-					_mm_storeu_si128((__m128i *)to + 53, tmp);
-					_mm_storeu_si128((__m128i *)to + 54, tmp);
-					_mm_storeu_si128((__m128i *)to + 55, tmp);
-					_mm_storeu_si128((__m128i *)to + 56, tmp);
-					_mm_storeu_si128((__m128i *)to + 57, tmp);
-					_mm_storeu_si128((__m128i *)to + 58, tmp);
-					_mm_storeu_si128((__m128i *)to + 59, tmp);
-					_mm_storeu_si128((__m128i *)to + 60, tmp);
-					_mm_storeu_si128((__m128i *)to + 61, tmp);
-					_mm_storeu_si128((__m128i *)to + 62, tmp);
-					_mm_storeu_si128((__m128i *)to + 63, tmp);
-					to += 256;
-				case 0x0b:
-					tmp = _mm_loadu_si128((__m128i *)static_mask_1);
-					_mm_storeu_si128((__m128i *)to, tmp);
-					_mm_storeu_si128((__m128i *)to + 1, tmp);
-					_mm_storeu_si128((__m128i *)to + 2, tmp);
-					_mm_storeu_si128((__m128i *)to + 3, tmp);
-					_mm_storeu_si128((__m128i *)to + 4, tmp);
-					_mm_storeu_si128((__m128i *)to + 5, tmp);
-					_mm_storeu_si128((__m128i *)to + 6, tmp);
-					_mm_storeu_si128((__m128i *)to + 7, tmp);
-					_mm_storeu_si128((__m128i *)to + 8, tmp);
-					_mm_storeu_si128((__m128i *)to + 9, tmp);
-					_mm_storeu_si128((__m128i *)to + 10, tmp);
-					_mm_storeu_si128((__m128i *)to + 11, tmp);
-					_mm_storeu_si128((__m128i *)to + 12, tmp);
-					_mm_storeu_si128((__m128i *)to + 13, tmp);
-					_mm_storeu_si128((__m128i *)to + 14, tmp);
-					_mm_storeu_si128((__m128i *)to + 15, tmp);
-					_mm_storeu_si128((__m128i *)to + 16, tmp);
-					_mm_storeu_si128((__m128i *)to + 17, tmp);
-					_mm_storeu_si128((__m128i *)to + 18, tmp);
-					_mm_storeu_si128((__m128i *)to + 19, tmp);
-					_mm_storeu_si128((__m128i *)to + 20, tmp);
-					_mm_storeu_si128((__m128i *)to + 21, tmp);
-					_mm_storeu_si128((__m128i *)to + 22, tmp);
-					_mm_storeu_si128((__m128i *)to + 23, tmp);
-					_mm_storeu_si128((__m128i *)to + 24, tmp);
-					_mm_storeu_si128((__m128i *)to + 25, tmp);
-					_mm_storeu_si128((__m128i *)to + 26, tmp);
-					_mm_storeu_si128((__m128i *)to + 27, tmp);
-					_mm_storeu_si128((__m128i *)to + 28, tmp);
-					_mm_storeu_si128((__m128i *)to + 29, tmp);
-					_mm_storeu_si128((__m128i *)to + 30, tmp);
-					_mm_storeu_si128((__m128i *)to + 31, tmp);
-					_mm_storeu_si128((__m128i *)to + 32, tmp);
-					_mm_storeu_si128((__m128i *)to + 33, tmp);
-					_mm_storeu_si128((__m128i *)to + 34, tmp);
-					_mm_storeu_si128((__m128i *)to + 35, tmp);
-					_mm_storeu_si128((__m128i *)to + 36, tmp);
-					_mm_storeu_si128((__m128i *)to + 37, tmp);
-					_mm_storeu_si128((__m128i *)to + 38, tmp);
-					_mm_storeu_si128((__m128i *)to + 39, tmp);
-					_mm_storeu_si128((__m128i *)to + 40, tmp);
-					_mm_storeu_si128((__m128i *)to + 41, tmp);
-					_mm_storeu_si128((__m128i *)to + 42, tmp);
-					_mm_storeu_si128((__m128i *)to + 43, tmp);
-					_mm_storeu_si128((__m128i *)to + 44, tmp);
-					_mm_storeu_si128((__m128i *)to + 45, tmp);
-					_mm_storeu_si128((__m128i *)to + 46, tmp);
-					_mm_storeu_si128((__m128i *)to + 47, tmp);
-					_mm_storeu_si128((__m128i *)to + 48, tmp);
-					_mm_storeu_si128((__m128i *)to + 49, tmp);
-					_mm_storeu_si128((__m128i *)to + 50, tmp);
-					_mm_storeu_si128((__m128i *)to + 51, tmp);
-					_mm_storeu_si128((__m128i *)to + 52, tmp);
-					_mm_storeu_si128((__m128i *)to + 53, tmp);
-					_mm_storeu_si128((__m128i *)to + 54, tmp);
-					_mm_storeu_si128((__m128i *)to + 55, tmp);
-					_mm_storeu_si128((__m128i *)to + 56, tmp);
-					_mm_storeu_si128((__m128i *)to + 57, tmp);
-					_mm_storeu_si128((__m128i *)to + 58, tmp);
-					_mm_storeu_si128((__m128i *)to + 59, tmp);
-					_mm_storeu_si128((__m128i *)to + 60, tmp);
-					_mm_storeu_si128((__m128i *)to + 61, tmp);
-					_mm_storeu_si128((__m128i *)to + 62, tmp);
-					_mm_storeu_si128((__m128i *)to + 63, tmp);
-					to += 256;
-				case 0x0c:
-					tmp = _mm_loadu_si128((__m128i *)static_mask_1);
-					_mm_storeu_si128((__m128i *)to, tmp);
-					_mm_storeu_si128((__m128i *)to + 1, tmp);
-					_mm_storeu_si128((__m128i *)to + 2, tmp);
-					_mm_storeu_si128((__m128i *)to + 3, tmp);
-					_mm_storeu_si128((__m128i *)to + 4, tmp);
-					_mm_storeu_si128((__m128i *)to + 5, tmp);
-					_mm_storeu_si128((__m128i *)to + 6, tmp);
-					_mm_storeu_si128((__m128i *)to + 7, tmp);
-					_mm_storeu_si128((__m128i *)to + 8, tmp);
-					_mm_storeu_si128((__m128i *)to + 9, tmp);
-					_mm_storeu_si128((__m128i *)to + 10, tmp);
-					_mm_storeu_si128((__m128i *)to + 11, tmp);
-					_mm_storeu_si128((__m128i *)to + 12, tmp);
-					_mm_storeu_si128((__m128i *)to + 13, tmp);
-					_mm_storeu_si128((__m128i *)to + 14, tmp);
-					_mm_storeu_si128((__m128i *)to + 15, tmp);
-					_mm_storeu_si128((__m128i *)to + 16, tmp);
-					_mm_storeu_si128((__m128i *)to + 17, tmp);
-					_mm_storeu_si128((__m128i *)to + 18, tmp);
-					_mm_storeu_si128((__m128i *)to + 19, tmp);
-					_mm_storeu_si128((__m128i *)to + 20, tmp);
-					_mm_storeu_si128((__m128i *)to + 21, tmp);
-					_mm_storeu_si128((__m128i *)to + 22, tmp);
-					_mm_storeu_si128((__m128i *)to + 23, tmp);
-					_mm_storeu_si128((__m128i *)to + 24, tmp);
-					_mm_storeu_si128((__m128i *)to + 25, tmp);
-					_mm_storeu_si128((__m128i *)to + 26, tmp);
-					_mm_storeu_si128((__m128i *)to + 27, tmp);
-					_mm_storeu_si128((__m128i *)to + 28, tmp);
-					_mm_storeu_si128((__m128i *)to + 29, tmp);
-					_mm_storeu_si128((__m128i *)to + 30, tmp);
-					_mm_storeu_si128((__m128i *)to + 31, tmp);
-					_mm_storeu_si128((__m128i *)to + 32, tmp);
-					_mm_storeu_si128((__m128i *)to + 33, tmp);
-					_mm_storeu_si128((__m128i *)to + 34, tmp);
-					_mm_storeu_si128((__m128i *)to + 35, tmp);
-					_mm_storeu_si128((__m128i *)to + 36, tmp);
-					_mm_storeu_si128((__m128i *)to + 37, tmp);
-					_mm_storeu_si128((__m128i *)to + 38, tmp);
-					_mm_storeu_si128((__m128i *)to + 39, tmp);
-					_mm_storeu_si128((__m128i *)to + 40, tmp);
-					_mm_storeu_si128((__m128i *)to + 41, tmp);
-					_mm_storeu_si128((__m128i *)to + 42, tmp);
-					_mm_storeu_si128((__m128i *)to + 43, tmp);
-					_mm_storeu_si128((__m128i *)to + 44, tmp);
-					_mm_storeu_si128((__m128i *)to + 45, tmp);
-					_mm_storeu_si128((__m128i *)to + 46, tmp);
-					_mm_storeu_si128((__m128i *)to + 47, tmp);
-					_mm_storeu_si128((__m128i *)to + 48, tmp);
-					_mm_storeu_si128((__m128i *)to + 49, tmp);
-					_mm_storeu_si128((__m128i *)to + 50, tmp);
-					_mm_storeu_si128((__m128i *)to + 51, tmp);
-					_mm_storeu_si128((__m128i *)to + 52, tmp);
-					_mm_storeu_si128((__m128i *)to + 53, tmp);
-					_mm_storeu_si128((__m128i *)to + 54, tmp);
-					_mm_storeu_si128((__m128i *)to + 55, tmp);
-					_mm_storeu_si128((__m128i *)to + 56, tmp);
-					_mm_storeu_si128((__m128i *)to + 57, tmp);
-					_mm_storeu_si128((__m128i *)to + 58, tmp);
-					_mm_storeu_si128((__m128i *)to + 59, tmp);
-					_mm_storeu_si128((__m128i *)to + 60, tmp);
-					_mm_storeu_si128((__m128i *)to + 61, tmp);
-					_mm_storeu_si128((__m128i *)to + 62, tmp);
-					_mm_storeu_si128((__m128i *)to + 63, tmp);
-					to += 256;
-				case 0x0d:
-					tmp = _mm_loadu_si128((__m128i *)static_mask_1);
-					_mm_storeu_si128((__m128i *)to, tmp);
-					_mm_storeu_si128((__m128i *)to + 1, tmp);
-					_mm_storeu_si128((__m128i *)to + 2, tmp);
-					_mm_storeu_si128((__m128i *)to + 3, tmp);
-					_mm_storeu_si128((__m128i *)to + 4, tmp);
-					_mm_storeu_si128((__m128i *)to + 5, tmp);
-					_mm_storeu_si128((__m128i *)to + 6, tmp);
-					_mm_storeu_si128((__m128i *)to + 7, tmp);
-					_mm_storeu_si128((__m128i *)to + 8, tmp);
-					_mm_storeu_si128((__m128i *)to + 9, tmp);
-					_mm_storeu_si128((__m128i *)to + 10, tmp);
-					_mm_storeu_si128((__m128i *)to + 11, tmp);
-					_mm_storeu_si128((__m128i *)to + 12, tmp);
-					_mm_storeu_si128((__m128i *)to + 13, tmp);
-					_mm_storeu_si128((__m128i *)to + 14, tmp);
-					_mm_storeu_si128((__m128i *)to + 15, tmp);
-					_mm_storeu_si128((__m128i *)to + 16, tmp);
-					_mm_storeu_si128((__m128i *)to + 17, tmp);
-					_mm_storeu_si128((__m128i *)to + 18, tmp);
-					_mm_storeu_si128((__m128i *)to + 19, tmp);
-					_mm_storeu_si128((__m128i *)to + 20, tmp);
-					_mm_storeu_si128((__m128i *)to + 21, tmp);
-					_mm_storeu_si128((__m128i *)to + 22, tmp);
-					_mm_storeu_si128((__m128i *)to + 23, tmp);
-					_mm_storeu_si128((__m128i *)to + 24, tmp);
-					_mm_storeu_si128((__m128i *)to + 25, tmp);
-					_mm_storeu_si128((__m128i *)to + 26, tmp);
-					_mm_storeu_si128((__m128i *)to + 27, tmp);
-					_mm_storeu_si128((__m128i *)to + 28, tmp);
-					_mm_storeu_si128((__m128i *)to + 29, tmp);
-					_mm_storeu_si128((__m128i *)to + 30, tmp);
-					_mm_storeu_si128((__m128i *)to + 31, tmp);
-					_mm_storeu_si128((__m128i *)to + 32, tmp);
-					_mm_storeu_si128((__m128i *)to + 33, tmp);
-					_mm_storeu_si128((__m128i *)to + 34, tmp);
-					_mm_storeu_si128((__m128i *)to + 35, tmp);
-					_mm_storeu_si128((__m128i *)to + 36, tmp);
-					_mm_storeu_si128((__m128i *)to + 37, tmp);
-					_mm_storeu_si128((__m128i *)to + 38, tmp);
-					_mm_storeu_si128((__m128i *)to + 39, tmp);
-					_mm_storeu_si128((__m128i *)to + 40, tmp);
-					_mm_storeu_si128((__m128i *)to + 41, tmp);
-					_mm_storeu_si128((__m128i *)to + 42, tmp);
-					_mm_storeu_si128((__m128i *)to + 43, tmp);
-					_mm_storeu_si128((__m128i *)to + 44, tmp);
-					_mm_storeu_si128((__m128i *)to + 45, tmp);
-					_mm_storeu_si128((__m128i *)to + 46, tmp);
-					_mm_storeu_si128((__m128i *)to + 47, tmp);
-					_mm_storeu_si128((__m128i *)to + 48, tmp);
-					_mm_storeu_si128((__m128i *)to + 49, tmp);
-					_mm_storeu_si128((__m128i *)to + 50, tmp);
-					_mm_storeu_si128((__m128i *)to + 51, tmp);
-					_mm_storeu_si128((__m128i *)to + 52, tmp);
-					_mm_storeu_si128((__m128i *)to + 53, tmp);
-					_mm_storeu_si128((__m128i *)to + 54, tmp);
-					_mm_storeu_si128((__m128i *)to + 55, tmp);
-					_mm_storeu_si128((__m128i *)to + 56, tmp);
-					_mm_storeu_si128((__m128i *)to + 57, tmp);
-					_mm_storeu_si128((__m128i *)to + 58, tmp);
-					_mm_storeu_si128((__m128i *)to + 59, tmp);
-					_mm_storeu_si128((__m128i *)to + 60, tmp);
-					_mm_storeu_si128((__m128i *)to + 61, tmp);
-					_mm_storeu_si128((__m128i *)to + 62, tmp);
-					_mm_storeu_si128((__m128i *)to + 63, tmp);
-					to += 256;
-				case 0x0e:
-					tmp = _mm_loadu_si128((__m128i *)static_mask_1);
-					_mm_storeu_si128((__m128i *)to, tmp);
-					_mm_storeu_si128((__m128i *)to + 1, tmp);
-					_mm_storeu_si128((__m128i *)to + 2, tmp);
-					_mm_storeu_si128((__m128i *)to + 3, tmp);
-					_mm_storeu_si128((__m128i *)to + 4, tmp);
-					_mm_storeu_si128((__m128i *)to + 5, tmp);
-					_mm_storeu_si128((__m128i *)to + 6, tmp);
-					_mm_storeu_si128((__m128i *)to + 7, tmp);
-					_mm_storeu_si128((__m128i *)to + 8, tmp);
-					_mm_storeu_si128((__m128i *)to + 9, tmp);
-					_mm_storeu_si128((__m128i *)to + 10, tmp);
-					_mm_storeu_si128((__m128i *)to + 11, tmp);
-					_mm_storeu_si128((__m128i *)to + 12, tmp);
-					_mm_storeu_si128((__m128i *)to + 13, tmp);
-					_mm_storeu_si128((__m128i *)to + 14, tmp);
-					_mm_storeu_si128((__m128i *)to + 15, tmp);
-					_mm_storeu_si128((__m128i *)to + 16, tmp);
-					_mm_storeu_si128((__m128i *)to + 17, tmp);
-					_mm_storeu_si128((__m128i *)to + 18, tmp);
-					_mm_storeu_si128((__m128i *)to + 19, tmp);
-					_mm_storeu_si128((__m128i *)to + 20, tmp);
-					_mm_storeu_si128((__m128i *)to + 21, tmp);
-					_mm_storeu_si128((__m128i *)to + 22, tmp);
-					_mm_storeu_si128((__m128i *)to + 23, tmp);
-					_mm_storeu_si128((__m128i *)to + 24, tmp);
-					_mm_storeu_si128((__m128i *)to + 25, tmp);
-					_mm_storeu_si128((__m128i *)to + 26, tmp);
-					_mm_storeu_si128((__m128i *)to + 27, tmp);
-					_mm_storeu_si128((__m128i *)to + 28, tmp);
-					_mm_storeu_si128((__m128i *)to + 29, tmp);
-					_mm_storeu_si128((__m128i *)to + 30, tmp);
-					_mm_storeu_si128((__m128i *)to + 31, tmp);
-					_mm_storeu_si128((__m128i *)to + 32, tmp);
-					_mm_storeu_si128((__m128i *)to + 33, tmp);
-					_mm_storeu_si128((__m128i *)to + 34, tmp);
-					_mm_storeu_si128((__m128i *)to + 35, tmp);
-					_mm_storeu_si128((__m128i *)to + 36, tmp);
-					_mm_storeu_si128((__m128i *)to + 37, tmp);
-					_mm_storeu_si128((__m128i *)to + 38, tmp);
-					_mm_storeu_si128((__m128i *)to + 39, tmp);
-					_mm_storeu_si128((__m128i *)to + 40, tmp);
-					_mm_storeu_si128((__m128i *)to + 41, tmp);
-					_mm_storeu_si128((__m128i *)to + 42, tmp);
-					_mm_storeu_si128((__m128i *)to + 43, tmp);
-					_mm_storeu_si128((__m128i *)to + 44, tmp);
-					_mm_storeu_si128((__m128i *)to + 45, tmp);
-					_mm_storeu_si128((__m128i *)to + 46, tmp);
-					_mm_storeu_si128((__m128i *)to + 47, tmp);
-					_mm_storeu_si128((__m128i *)to + 48, tmp);
-					_mm_storeu_si128((__m128i *)to + 49, tmp);
-					_mm_storeu_si128((__m128i *)to + 50, tmp);
-					_mm_storeu_si128((__m128i *)to + 51, tmp);
-					_mm_storeu_si128((__m128i *)to + 52, tmp);
-					_mm_storeu_si128((__m128i *)to + 53, tmp);
-					_mm_storeu_si128((__m128i *)to + 54, tmp);
-					_mm_storeu_si128((__m128i *)to + 55, tmp);
-					_mm_storeu_si128((__m128i *)to + 56, tmp);
-					_mm_storeu_si128((__m128i *)to + 57, tmp);
-					_mm_storeu_si128((__m128i *)to + 58, tmp);
-					_mm_storeu_si128((__m128i *)to + 59, tmp);
-					_mm_storeu_si128((__m128i *)to + 60, tmp);
-					_mm_storeu_si128((__m128i *)to + 61, tmp);
-					_mm_storeu_si128((__m128i *)to + 62, tmp);
-					_mm_storeu_si128((__m128i *)to + 63, tmp);
-					to += 256;
-				case 0x0f:
-					tmp = _mm_loadu_si128((__m128i *)static_mask_1);
-					_mm_storeu_si128((__m128i *)to, tmp);
-					_mm_storeu_si128((__m128i *)to + 1, tmp);
-					_mm_storeu_si128((__m128i *)to + 2, tmp);
-					_mm_storeu_si128((__m128i *)to + 3, tmp);
-					_mm_storeu_si128((__m128i *)to + 4, tmp);
-					_mm_storeu_si128((__m128i *)to + 5, tmp);
-					_mm_storeu_si128((__m128i *)to + 6, tmp);
-					_mm_storeu_si128((__m128i *)to + 7, tmp);
-					_mm_storeu_si128((__m128i *)to + 8, tmp);
-					_mm_storeu_si128((__m128i *)to + 9, tmp);
-					_mm_storeu_si128((__m128i *)to + 10, tmp);
-					_mm_storeu_si128((__m128i *)to + 11, tmp);
-					_mm_storeu_si128((__m128i *)to + 12, tmp);
-					_mm_storeu_si128((__m128i *)to + 13, tmp);
-					_mm_storeu_si128((__m128i *)to + 14, tmp);
-					_mm_storeu_si128((__m128i *)to + 15, tmp);
-					_mm_storeu_si128((__m128i *)to + 16, tmp);
-					_mm_storeu_si128((__m128i *)to + 17, tmp);
-					_mm_storeu_si128((__m128i *)to + 18, tmp);
-					_mm_storeu_si128((__m128i *)to + 19, tmp);
-					_mm_storeu_si128((__m128i *)to + 20, tmp);
-					_mm_storeu_si128((__m128i *)to + 21, tmp);
-					_mm_storeu_si128((__m128i *)to + 22, tmp);
-					_mm_storeu_si128((__m128i *)to + 23, tmp);
-					_mm_storeu_si128((__m128i *)to + 24, tmp);
-					_mm_storeu_si128((__m128i *)to + 25, tmp);
-					_mm_storeu_si128((__m128i *)to + 26, tmp);
-					_mm_storeu_si128((__m128i *)to + 27, tmp);
-					_mm_storeu_si128((__m128i *)to + 28, tmp);
-					_mm_storeu_si128((__m128i *)to + 29, tmp);
-					_mm_storeu_si128((__m128i *)to + 30, tmp);
-					_mm_storeu_si128((__m128i *)to + 31, tmp);
-					_mm_storeu_si128((__m128i *)to + 32, tmp);
-					_mm_storeu_si128((__m128i *)to + 33, tmp);
-					_mm_storeu_si128((__m128i *)to + 34, tmp);
-					_mm_storeu_si128((__m128i *)to + 35, tmp);
-					_mm_storeu_si128((__m128i *)to + 36, tmp);
-					_mm_storeu_si128((__m128i *)to + 37, tmp);
-					_mm_storeu_si128((__m128i *)to + 38, tmp);
-					_mm_storeu_si128((__m128i *)to + 39, tmp);
-					_mm_storeu_si128((__m128i *)to + 40, tmp);
-					_mm_storeu_si128((__m128i *)to + 41, tmp);
-					_mm_storeu_si128((__m128i *)to + 42, tmp);
-					_mm_storeu_si128((__m128i *)to + 43, tmp);
-					_mm_storeu_si128((__m128i *)to + 44, tmp);
-					_mm_storeu_si128((__m128i *)to + 45, tmp);
-					_mm_storeu_si128((__m128i *)to + 46, tmp);
-					_mm_storeu_si128((__m128i *)to + 47, tmp);
-					_mm_storeu_si128((__m128i *)to + 48, tmp);
-					_mm_storeu_si128((__m128i *)to + 49, tmp);
-					_mm_storeu_si128((__m128i *)to + 50, tmp);
-					_mm_storeu_si128((__m128i *)to + 51, tmp);
-					_mm_storeu_si128((__m128i *)to + 52, tmp);
-					_mm_storeu_si128((__m128i *)to + 53, tmp);
-					_mm_storeu_si128((__m128i *)to + 54, tmp);
-					_mm_storeu_si128((__m128i *)to + 55, tmp);
-					_mm_storeu_si128((__m128i *)to + 56, tmp);
-					_mm_storeu_si128((__m128i *)to + 57, tmp);
-					_mm_storeu_si128((__m128i *)to + 58, tmp);
-					_mm_storeu_si128((__m128i *)to + 59, tmp);
-					_mm_storeu_si128((__m128i *)to + 60, tmp);
-					_mm_storeu_si128((__m128i *)to + 61, tmp);
-					_mm_storeu_si128((__m128i *)to + 62, tmp);
-					_mm_storeu_si128((__m128i *)to + 63, tmp);
-					to += 256;
-					break;
-				case 0x10:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 16, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 17, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 18, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 19, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 20, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 21, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 22, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 23, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 24, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 25, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 26, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 27, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 28, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 29, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 30, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 31, _mm_and_si128(byte_stream, mask_1));
-					in += 16;
-					to += 128;
-				case 0x11:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 16, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 17, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 18, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 19, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 20, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 21, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 22, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 23, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 24, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 25, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 26, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 27, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 28, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 29, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 30, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 31, _mm_and_si128(byte_stream, mask_1));
-					in += 16;
-					to += 128;
-				case 0x12:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 16, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 17, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 18, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 19, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 20, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 21, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 22, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 23, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 24, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 25, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 26, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 27, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 28, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 29, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 30, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 31, _mm_and_si128(byte_stream, mask_1));
-					in += 16;
-					to += 128;
-				case 0x13:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 16, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 17, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 18, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 19, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 20, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 21, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 22, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 23, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 24, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 25, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 26, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 27, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 28, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 29, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 30, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 31, _mm_and_si128(byte_stream, mask_1));
-					in += 16;
-					to += 128;
-				case 0x14:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 16, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 17, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 18, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 19, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 20, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 21, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 22, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 23, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 24, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 25, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 26, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 27, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 28, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 29, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 30, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 31, _mm_and_si128(byte_stream, mask_1));
-					in += 16;
-					to += 128;
-				case 0x15:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 16, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 17, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 18, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 19, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 20, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 21, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 22, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 23, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 24, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 25, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 26, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 27, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 28, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 29, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 30, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 31, _mm_and_si128(byte_stream, mask_1));
-					in += 16;
-					to += 128;
-				case 0x16:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 16, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 17, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 18, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 19, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 20, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 21, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 22, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 23, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 24, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 25, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 26, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 27, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 28, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 29, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 30, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 31, _mm_and_si128(byte_stream, mask_1));
-					in += 16;
-					to += 128;
-				case 0x17:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 16, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 17, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 18, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 19, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 20, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 21, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 22, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 23, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 24, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 25, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 26, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 27, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 28, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 29, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 30, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 31, _mm_and_si128(byte_stream, mask_1));
-					in += 16;
-					to += 128;
-				case 0x18:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 16, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 17, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 18, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 19, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 20, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 21, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 22, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 23, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 24, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 25, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 26, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 27, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 28, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 29, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 30, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 31, _mm_and_si128(byte_stream, mask_1));
-					in += 16;
-					to += 128;
-				case 0x19:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 16, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 17, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 18, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 19, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 20, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 21, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 22, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 23, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 24, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 25, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 26, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 27, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 28, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 29, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 30, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 31, _mm_and_si128(byte_stream, mask_1));
-					in += 16;
-					to += 128;
-				case 0x1a:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 16, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 17, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 18, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 19, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 20, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 21, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 22, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 23, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 24, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 25, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 26, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 27, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 28, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 29, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 30, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 31, _mm_and_si128(byte_stream, mask_1));
-					in += 16;
-					to += 128;
-				case 0x1b:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 16, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 17, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 18, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 19, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 20, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 21, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 22, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 23, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 24, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 25, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 26, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 27, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 28, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 29, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 30, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 31, _mm_and_si128(byte_stream, mask_1));
-					in += 16;
-					to += 128;
-				case 0x1c:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 16, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 17, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 18, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 19, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 20, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 21, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 22, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 23, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 24, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 25, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 26, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 27, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 28, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 29, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 30, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 31, _mm_and_si128(byte_stream, mask_1));
-					in += 16;
-					to += 128;
-				case 0x1d:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 16, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 17, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 18, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 19, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 20, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 21, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 22, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 23, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 24, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 25, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 26, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 27, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 28, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 29, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 30, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 31, _mm_and_si128(byte_stream, mask_1));
-					in += 16;
-					to += 128;
-				case 0x1e:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 16, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 17, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 18, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 19, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 20, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 21, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 22, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 23, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 24, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 25, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 26, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 27, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 28, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 29, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 30, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 31, _mm_and_si128(byte_stream, mask_1));
-					in += 16;
-					to += 128;
-				case 0x1f:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 16, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 17, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 18, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 19, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 20, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 21, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 22, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 23, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 24, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 25, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 26, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 27, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 28, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 29, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 30, _mm_and_si128(byte_stream, mask_1));
-					byte_stream = _mm_srli_epi64(byte_stream, 1);
-					_mm_storeu_si128((__m128i *)to + 31, _mm_and_si128(byte_stream, mask_1));
-					in += 16;
-					to += 128;
-					break;
-				case 0x20:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_2));
-					in += 16;
-					to += 64;
-				case 0x21:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_2));
-					in += 16;
-					to += 64;
-				case 0x22:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_2));
-					in += 16;
-					to += 64;
-				case 0x23:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_2));
-					in += 16;
-					to += 64;
-				case 0x24:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_2));
-					in += 16;
-					to += 64;
-				case 0x25:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_2));
-					in += 16;
-					to += 64;
-				case 0x26:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_2));
-					in += 16;
-					to += 64;
-				case 0x27:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_2));
-					in += 16;
-					to += 64;
-				case 0x28:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_2));
-					in += 16;
-					to += 64;
-				case 0x29:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_2));
-					in += 16;
-					to += 64;
-				case 0x2a:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_2));
-					in += 16;
-					to += 64;
-				case 0x2b:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_2));
-					in += 16;
-					to += 64;
-				case 0x2c:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_2));
-					in += 16;
-					to += 64;
-				case 0x2d:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_2));
-					in += 16;
-					to += 64;
-				case 0x2e:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_2));
-					in += 16;
-					to += 64;
-				case 0x2f:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_2));
-					byte_stream = _mm_srli_epi64(byte_stream, 2);
-					_mm_storeu_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_2));
-					in += 16;
-					to += 64;
-					break;
-				case 0x30:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_3));
-					in += 16;
-					to += 40;
-				case 0x31:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_3));
-					in += 16;
-					to += 40;
-				case 0x32:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_3));
-					in += 16;
-					to += 40;
-				case 0x33:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_3));
-					in += 16;
-					to += 40;
-				case 0x34:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_3));
-					in += 16;
-					to += 40;
-				case 0x35:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_3));
-					in += 16;
-					to += 40;
-				case 0x36:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_3));
-					in += 16;
-					to += 40;
-				case 0x37:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_3));
-					in += 16;
-					to += 40;
-				case 0x38:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_3));
-					in += 16;
-					to += 40;
-				case 0x39:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_3));
-					in += 16;
-					to += 40;
-				case 0x3a:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_3));
-					in += 16;
-					to += 40;
-				case 0x3b:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_3));
-					in += 16;
-					to += 40;
-				case 0x3c:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_3));
-					in += 16;
-					to += 40;
-				case 0x3d:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_3));
-					in += 16;
-					to += 40;
-				case 0x3e:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_3));
-					in += 16;
-					to += 40;
-				case 0x3f:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_3));
-					byte_stream = _mm_srli_epi64(byte_stream, 3);
-					_mm_storeu_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_3));
-					in += 16;
-					to += 40;
-					break;
-				case 0x40:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_4));
-					in += 16;
-					to += 32;
-				case 0x41:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_4));
-					in += 16;
-					to += 32;
-				case 0x42:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_4));
-					in += 16;
-					to += 32;
-				case 0x43:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_4));
-					in += 16;
-					to += 32;
-				case 0x44:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_4));
-					in += 16;
-					to += 32;
-				case 0x45:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_4));
-					in += 16;
-					to += 32;
-				case 0x46:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_4));
-					in += 16;
-					to += 32;
-				case 0x47:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_4));
-					in += 16;
-					to += 32;
-				case 0x48:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_4));
-					in += 16;
-					to += 32;
-				case 0x49:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_4));
-					in += 16;
-					to += 32;
-				case 0x4a:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_4));
-					in += 16;
-					to += 32;
-				case 0x4b:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_4));
-					in += 16;
-					to += 32;
-				case 0x4c:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_4));
-					in += 16;
-					to += 32;
-				case 0x4d:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_4));
-					in += 16;
-					to += 32;
-				case 0x4e:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_4));
-					in += 16;
-					to += 32;
-				case 0x4f:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_4));
-					byte_stream = _mm_srli_epi64(byte_stream, 4);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_4));
-					in += 16;
-					to += 32;
-					break;
-				case 0x50:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_5));
-					in += 16;
-					to += 24;
-				case 0x51:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_5));
-					in += 16;
-					to += 24;
-				case 0x52:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_5));
-					in += 16;
-					to += 24;
-				case 0x53:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_5));
-					in += 16;
-					to += 24;
-				case 0x54:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_5));
-					in += 16;
-					to += 24;
-				case 0x55:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_5));
-					in += 16;
-					to += 24;
-				case 0x56:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_5));
-					in += 16;
-					to += 24;
-				case 0x57:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_5));
-					in += 16;
-					to += 24;
-				case 0x58:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_5));
-					in += 16;
-					to += 24;
-				case 0x59:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_5));
-					in += 16;
-					to += 24;
-				case 0x5a:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_5));
-					in += 16;
-					to += 24;
-				case 0x5b:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_5));
-					in += 16;
-					to += 24;
-				case 0x5c:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_5));
-					in += 16;
-					to += 24;
-				case 0x5d:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_5));
-					in += 16;
-					to += 24;
-				case 0x5e:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_5));
-					in += 16;
-					to += 24;
-				case 0x5f:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_5));
-					byte_stream = _mm_srli_epi64(byte_stream, 5);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_5));
-					in += 16;
-					to += 24;
-					break;
-				case 0x60:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_6));
-					in += 16;
-					to += 20;
-				case 0x61:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_6));
-					in += 16;
-					to += 20;
-				case 0x62:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_6));
-					in += 16;
-					to += 20;
-				case 0x63:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_6));
-					in += 16;
-					to += 20;
-				case 0x64:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_6));
-					in += 16;
-					to += 20;
-				case 0x65:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_6));
-					in += 16;
-					to += 20;
-				case 0x66:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_6));
-					in += 16;
-					to += 20;
-				case 0x67:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_6));
-					in += 16;
-					to += 20;
-				case 0x68:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_6));
-					in += 16;
-					to += 20;
-				case 0x69:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_6));
-					in += 16;
-					to += 20;
-				case 0x6a:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_6));
-					in += 16;
-					to += 20;
-				case 0x6b:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_6));
-					in += 16;
-					to += 20;
-				case 0x6c:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_6));
-					in += 16;
-					to += 20;
-				case 0x6d:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_6));
-					in += 16;
-					to += 20;
-				case 0x6e:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_6));
-					in += 16;
-					to += 20;
-				case 0x6f:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_6));
-					byte_stream = _mm_srli_epi64(byte_stream, 6);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_6));
-					in += 16;
-					to += 20;
-					break;
-				case 0x70:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_7));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 4), _mm_srli_epi32(byte_stream, 7)), mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 3);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_7));
-					in += 32;
-					to += 36;
-				case 0x71:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_7));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 4), _mm_srli_epi32(byte_stream, 7)), mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 3);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_7));
-					in += 32;
-					to += 36;
-				case 0x72:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_7));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 4), _mm_srli_epi32(byte_stream, 7)), mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 3);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_7));
-					in += 32;
-					to += 36;
-				case 0x73:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_7));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 4), _mm_srli_epi32(byte_stream, 7)), mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 3);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_7));
-					in += 32;
-					to += 36;
-				case 0x74:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_7));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 4), _mm_srli_epi32(byte_stream, 7)), mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 3);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_7));
-					in += 32;
-					to += 36;
-				case 0x75:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_7));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 4), _mm_srli_epi32(byte_stream, 7)), mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 3);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_7));
-					in += 32;
-					to += 36;
-				case 0x76:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_7));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 4), _mm_srli_epi32(byte_stream, 7)), mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 3);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_7));
-					in += 32;
-					to += 36;
-				case 0x77:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_7));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 4), _mm_srli_epi32(byte_stream, 7)), mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 3);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_7));
-					in += 32;
-					to += 36;
-				case 0x78:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_7));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 4), _mm_srli_epi32(byte_stream, 7)), mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 3);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_7));
-					in += 32;
-					to += 36;
-				case 0x79:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_7));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 4), _mm_srli_epi32(byte_stream, 7)), mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 3);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_7));
-					in += 32;
-					to += 36;
-				case 0x7a:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_7));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 4), _mm_srli_epi32(byte_stream, 7)), mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 3);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_7));
-					in += 32;
-					to += 36;
-				case 0x7b:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_7));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 4), _mm_srli_epi32(byte_stream, 7)), mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 3);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_7));
-					in += 32;
-					to += 36;
-				case 0x7c:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_7));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 4), _mm_srli_epi32(byte_stream, 7)), mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 3);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_7));
-					in += 32;
-					to += 36;
-				case 0x7d:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_7));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 4), _mm_srli_epi32(byte_stream, 7)), mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 3);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_7));
-					in += 32;
-					to += 36;
-				case 0x7e:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_7));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 4), _mm_srli_epi32(byte_stream, 7)), mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 3);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_7));
-					in += 32;
-					to += 36;
-				case 0x7f:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_7));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 4), _mm_srli_epi32(byte_stream, 7)), mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 3);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_7));
-					byte_stream = _mm_srli_epi32(byte_stream, 7);
-					_mm_storeu_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_7));
-					in += 32;
-					to += 36;
-					break;
-				case 0x80:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_cvtepu8_epi32(tmp));
-					tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
-					_mm_storeu_si128((__m128i *)to + 1, _mm_cvtepu8_epi32(tmp2));
-					tmp = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)));
-					_mm_storeu_si128((__m128i *)to + 2, _mm_cvtepu8_epi32(tmp));
-					tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
-					_mm_storeu_si128((__m128i *)to + 3, _mm_cvtepu8_epi32(tmp2));
-					in += 16;
-					to += 16;
-				case 0x81:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_cvtepu8_epi32(tmp));
-					tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
-					_mm_storeu_si128((__m128i *)to + 1, _mm_cvtepu8_epi32(tmp2));
-					tmp = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)));
-					_mm_storeu_si128((__m128i *)to + 2, _mm_cvtepu8_epi32(tmp));
-					tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
-					_mm_storeu_si128((__m128i *)to + 3, _mm_cvtepu8_epi32(tmp2));
-					in += 16;
-					to += 16;
-				case 0x82:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_cvtepu8_epi32(tmp));
-					tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
-					_mm_storeu_si128((__m128i *)to + 1, _mm_cvtepu8_epi32(tmp2));
-					tmp = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)));
-					_mm_storeu_si128((__m128i *)to + 2, _mm_cvtepu8_epi32(tmp));
-					tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
-					_mm_storeu_si128((__m128i *)to + 3, _mm_cvtepu8_epi32(tmp2));
-					in += 16;
-					to += 16;
-				case 0x83:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_cvtepu8_epi32(tmp));
-					tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
-					_mm_storeu_si128((__m128i *)to + 1, _mm_cvtepu8_epi32(tmp2));
-					tmp = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)));
-					_mm_storeu_si128((__m128i *)to + 2, _mm_cvtepu8_epi32(tmp));
-					tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
-					_mm_storeu_si128((__m128i *)to + 3, _mm_cvtepu8_epi32(tmp2));
-					in += 16;
-					to += 16;
-				case 0x84:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_cvtepu8_epi32(tmp));
-					tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
-					_mm_storeu_si128((__m128i *)to + 1, _mm_cvtepu8_epi32(tmp2));
-					tmp = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)));
-					_mm_storeu_si128((__m128i *)to + 2, _mm_cvtepu8_epi32(tmp));
-					tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
-					_mm_storeu_si128((__m128i *)to + 3, _mm_cvtepu8_epi32(tmp2));
-					in += 16;
-					to += 16;
-				case 0x85:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_cvtepu8_epi32(tmp));
-					tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
-					_mm_storeu_si128((__m128i *)to + 1, _mm_cvtepu8_epi32(tmp2));
-					tmp = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)));
-					_mm_storeu_si128((__m128i *)to + 2, _mm_cvtepu8_epi32(tmp));
-					tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
-					_mm_storeu_si128((__m128i *)to + 3, _mm_cvtepu8_epi32(tmp2));
-					in += 16;
-					to += 16;
-				case 0x86:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_cvtepu8_epi32(tmp));
-					tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
-					_mm_storeu_si128((__m128i *)to + 1, _mm_cvtepu8_epi32(tmp2));
-					tmp = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)));
-					_mm_storeu_si128((__m128i *)to + 2, _mm_cvtepu8_epi32(tmp));
-					tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
-					_mm_storeu_si128((__m128i *)to + 3, _mm_cvtepu8_epi32(tmp2));
-					in += 16;
-					to += 16;
-				case 0x87:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_cvtepu8_epi32(tmp));
-					tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
-					_mm_storeu_si128((__m128i *)to + 1, _mm_cvtepu8_epi32(tmp2));
-					tmp = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)));
-					_mm_storeu_si128((__m128i *)to + 2, _mm_cvtepu8_epi32(tmp));
-					tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
-					_mm_storeu_si128((__m128i *)to + 3, _mm_cvtepu8_epi32(tmp2));
-					in += 16;
-					to += 16;
-				case 0x88:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_cvtepu8_epi32(tmp));
-					tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
-					_mm_storeu_si128((__m128i *)to + 1, _mm_cvtepu8_epi32(tmp2));
-					tmp = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)));
-					_mm_storeu_si128((__m128i *)to + 2, _mm_cvtepu8_epi32(tmp));
-					tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
-					_mm_storeu_si128((__m128i *)to + 3, _mm_cvtepu8_epi32(tmp2));
-					in += 16;
-					to += 16;
-				case 0x89:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_cvtepu8_epi32(tmp));
-					tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
-					_mm_storeu_si128((__m128i *)to + 1, _mm_cvtepu8_epi32(tmp2));
-					tmp = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)));
-					_mm_storeu_si128((__m128i *)to + 2, _mm_cvtepu8_epi32(tmp));
-					tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
-					_mm_storeu_si128((__m128i *)to + 3, _mm_cvtepu8_epi32(tmp2));
-					in += 16;
-					to += 16;
-				case 0x8a:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_cvtepu8_epi32(tmp));
-					tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
-					_mm_storeu_si128((__m128i *)to + 1, _mm_cvtepu8_epi32(tmp2));
-					tmp = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)));
-					_mm_storeu_si128((__m128i *)to + 2, _mm_cvtepu8_epi32(tmp));
-					tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
-					_mm_storeu_si128((__m128i *)to + 3, _mm_cvtepu8_epi32(tmp2));
-					in += 16;
-					to += 16;
-				case 0x8b:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_cvtepu8_epi32(tmp));
-					tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
-					_mm_storeu_si128((__m128i *)to + 1, _mm_cvtepu8_epi32(tmp2));
-					tmp = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)));
-					_mm_storeu_si128((__m128i *)to + 2, _mm_cvtepu8_epi32(tmp));
-					tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
-					_mm_storeu_si128((__m128i *)to + 3, _mm_cvtepu8_epi32(tmp2));
-					in += 16;
-					to += 16;
-				case 0x8c:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_cvtepu8_epi32(tmp));
-					tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
-					_mm_storeu_si128((__m128i *)to + 1, _mm_cvtepu8_epi32(tmp2));
-					tmp = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)));
-					_mm_storeu_si128((__m128i *)to + 2, _mm_cvtepu8_epi32(tmp));
-					tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
-					_mm_storeu_si128((__m128i *)to + 3, _mm_cvtepu8_epi32(tmp2));
-					in += 16;
-					to += 16;
-				case 0x8d:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_cvtepu8_epi32(tmp));
-					tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
-					_mm_storeu_si128((__m128i *)to + 1, _mm_cvtepu8_epi32(tmp2));
-					tmp = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)));
-					_mm_storeu_si128((__m128i *)to + 2, _mm_cvtepu8_epi32(tmp));
-					tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
-					_mm_storeu_si128((__m128i *)to + 3, _mm_cvtepu8_epi32(tmp2));
-					in += 16;
-					to += 16;
-				case 0x8e:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_cvtepu8_epi32(tmp));
-					tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
-					_mm_storeu_si128((__m128i *)to + 1, _mm_cvtepu8_epi32(tmp2));
-					tmp = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)));
-					_mm_storeu_si128((__m128i *)to + 2, _mm_cvtepu8_epi32(tmp));
-					tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
-					_mm_storeu_si128((__m128i *)to + 3, _mm_cvtepu8_epi32(tmp2));
-					in += 16;
-					to += 16;
-				case 0x8f:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_cvtepu8_epi32(tmp));
-					tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
-					_mm_storeu_si128((__m128i *)to + 1, _mm_cvtepu8_epi32(tmp2));
-					tmp = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)));
-					_mm_storeu_si128((__m128i *)to + 2, _mm_cvtepu8_epi32(tmp));
-					tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
-					_mm_storeu_si128((__m128i *)to + 3, _mm_cvtepu8_epi32(tmp2));
-					in += 16;
-					to += 16;
-					break;
-				case 0x90:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_9));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 5), _mm_srli_epi32(byte_stream, 9)), mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 4);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_9));
-					in += 32;
-					to += 28;
-				case 0x91:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_9));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 5), _mm_srli_epi32(byte_stream, 9)), mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 4);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_9));
-					in += 32;
-					to += 28;
-				case 0x92:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_9));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 5), _mm_srli_epi32(byte_stream, 9)), mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 4);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_9));
-					in += 32;
-					to += 28;
-				case 0x93:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_9));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 5), _mm_srli_epi32(byte_stream, 9)), mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 4);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_9));
-					in += 32;
-					to += 28;
-				case 0x94:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_9));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 5), _mm_srli_epi32(byte_stream, 9)), mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 4);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_9));
-					in += 32;
-					to += 28;
-				case 0x95:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_9));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 5), _mm_srli_epi32(byte_stream, 9)), mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 4);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_9));
-					in += 32;
-					to += 28;
-				case 0x96:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_9));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 5), _mm_srli_epi32(byte_stream, 9)), mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 4);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_9));
-					in += 32;
-					to += 28;
-				case 0x97:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_9));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 5), _mm_srli_epi32(byte_stream, 9)), mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 4);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_9));
-					in += 32;
-					to += 28;
-				case 0x98:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_9));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 5), _mm_srli_epi32(byte_stream, 9)), mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 4);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_9));
-					in += 32;
-					to += 28;
-				case 0x99:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_9));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 5), _mm_srli_epi32(byte_stream, 9)), mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 4);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_9));
-					in += 32;
-					to += 28;
-				case 0x9a:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_9));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 5), _mm_srli_epi32(byte_stream, 9)), mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 4);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_9));
-					in += 32;
-					to += 28;
-				case 0x9b:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_9));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 5), _mm_srli_epi32(byte_stream, 9)), mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 4);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_9));
-					in += 32;
-					to += 28;
-				case 0x9c:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_9));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 5), _mm_srli_epi32(byte_stream, 9)), mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 4);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_9));
-					in += 32;
-					to += 28;
-				case 0x9d:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_9));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 5), _mm_srli_epi32(byte_stream, 9)), mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 4);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_9));
-					in += 32;
-					to += 28;
-				case 0x9e:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_9));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 5), _mm_srli_epi32(byte_stream, 9)), mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 4);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_9));
-					in += 32;
-					to += 28;
-				case 0x9f:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_9));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 5), _mm_srli_epi32(byte_stream, 9)), mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 4);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_9));
-					byte_stream = _mm_srli_epi32(byte_stream, 9);
-					_mm_storeu_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_9));
-					in += 32;
-					to += 28;
-					break;
-				case 0xa0:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_10));
-					byte_stream = _mm_srli_epi64(byte_stream, 10);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_10));
-					byte_stream = _mm_srli_epi64(byte_stream, 10);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_10));
-					in += 16;
-					to += 12;
-				case 0xa1:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_10));
-					byte_stream = _mm_srli_epi64(byte_stream, 10);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_10));
-					byte_stream = _mm_srli_epi64(byte_stream, 10);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_10));
-					in += 16;
-					to += 12;
-				case 0xa2:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_10));
-					byte_stream = _mm_srli_epi64(byte_stream, 10);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_10));
-					byte_stream = _mm_srli_epi64(byte_stream, 10);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_10));
-					in += 16;
-					to += 12;
-				case 0xa3:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_10));
-					byte_stream = _mm_srli_epi64(byte_stream, 10);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_10));
-					byte_stream = _mm_srli_epi64(byte_stream, 10);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_10));
-					in += 16;
-					to += 12;
-				case 0xa4:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_10));
-					byte_stream = _mm_srli_epi64(byte_stream, 10);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_10));
-					byte_stream = _mm_srli_epi64(byte_stream, 10);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_10));
-					in += 16;
-					to += 12;
-				case 0xa5:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_10));
-					byte_stream = _mm_srli_epi64(byte_stream, 10);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_10));
-					byte_stream = _mm_srli_epi64(byte_stream, 10);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_10));
-					in += 16;
-					to += 12;
-				case 0xa6:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_10));
-					byte_stream = _mm_srli_epi64(byte_stream, 10);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_10));
-					byte_stream = _mm_srli_epi64(byte_stream, 10);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_10));
-					in += 16;
-					to += 12;
-				case 0xa7:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_10));
-					byte_stream = _mm_srli_epi64(byte_stream, 10);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_10));
-					byte_stream = _mm_srli_epi64(byte_stream, 10);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_10));
-					in += 16;
-					to += 12;
-				case 0xa8:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_10));
-					byte_stream = _mm_srli_epi64(byte_stream, 10);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_10));
-					byte_stream = _mm_srli_epi64(byte_stream, 10);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_10));
-					in += 16;
-					to += 12;
-				case 0xa9:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_10));
-					byte_stream = _mm_srli_epi64(byte_stream, 10);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_10));
-					byte_stream = _mm_srli_epi64(byte_stream, 10);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_10));
-					in += 16;
-					to += 12;
-				case 0xaa:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_10));
-					byte_stream = _mm_srli_epi64(byte_stream, 10);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_10));
-					byte_stream = _mm_srli_epi64(byte_stream, 10);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_10));
-					in += 16;
-					to += 12;
-				case 0xab:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_10));
-					byte_stream = _mm_srli_epi64(byte_stream, 10);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_10));
-					byte_stream = _mm_srli_epi64(byte_stream, 10);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_10));
-					in += 16;
-					to += 12;
-				case 0xac:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_10));
-					byte_stream = _mm_srli_epi64(byte_stream, 10);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_10));
-					byte_stream = _mm_srli_epi64(byte_stream, 10);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_10));
-					in += 16;
-					to += 12;
-				case 0xad:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_10));
-					byte_stream = _mm_srli_epi64(byte_stream, 10);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_10));
-					byte_stream = _mm_srli_epi64(byte_stream, 10);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_10));
-					in += 16;
-					to += 12;
-				case 0xae:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_10));
-					byte_stream = _mm_srli_epi64(byte_stream, 10);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_10));
-					byte_stream = _mm_srli_epi64(byte_stream, 10);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_10));
-					in += 16;
-					to += 12;
-				case 0xaf:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_10));
-					byte_stream = _mm_srli_epi64(byte_stream, 10);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_10));
-					byte_stream = _mm_srli_epi64(byte_stream, 10);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_10));
-					in += 16;
-					to += 12;
-					break;
-				case 0xb0:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream, 12);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_12));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 8), _mm_srli_epi32(byte_stream, 12)), mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 8);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream, 12);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_12));
-					in += 32;
-					to += 20;
-				case 0xb1:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream, 12);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_12));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 8), _mm_srli_epi32(byte_stream, 12)), mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 8);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream, 12);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_12));
-					in += 32;
-					to += 20;
-				case 0xb2:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream, 12);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_12));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 8), _mm_srli_epi32(byte_stream, 12)), mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 8);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream, 12);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_12));
-					in += 32;
-					to += 20;
-				case 0xb3:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream, 12);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_12));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 8), _mm_srli_epi32(byte_stream, 12)), mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 8);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream, 12);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_12));
-					in += 32;
-					to += 20;
-				case 0xb4:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream, 12);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_12));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 8), _mm_srli_epi32(byte_stream, 12)), mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 8);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream, 12);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_12));
-					in += 32;
-					to += 20;
-				case 0xb5:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream, 12);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_12));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 8), _mm_srli_epi32(byte_stream, 12)), mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 8);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream, 12);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_12));
-					in += 32;
-					to += 20;
-				case 0xb6:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream, 12);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_12));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 8), _mm_srli_epi32(byte_stream, 12)), mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 8);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream, 12);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_12));
-					in += 32;
-					to += 20;
-				case 0xb7:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream, 12);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_12));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 8), _mm_srli_epi32(byte_stream, 12)), mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 8);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream, 12);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_12));
-					in += 32;
-					to += 20;
-				case 0xb8:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream, 12);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_12));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 8), _mm_srli_epi32(byte_stream, 12)), mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 8);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream, 12);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_12));
-					in += 32;
-					to += 20;
-				case 0xb9:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream, 12);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_12));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 8), _mm_srli_epi32(byte_stream, 12)), mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 8);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream, 12);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_12));
-					in += 32;
-					to += 20;
-				case 0xba:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream, 12);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_12));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 8), _mm_srli_epi32(byte_stream, 12)), mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 8);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream, 12);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_12));
-					in += 32;
-					to += 20;
-				case 0xbb:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream, 12);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_12));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 8), _mm_srli_epi32(byte_stream, 12)), mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 8);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream, 12);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_12));
-					in += 32;
-					to += 20;
-				case 0xbc:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream, 12);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_12));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 8), _mm_srli_epi32(byte_stream, 12)), mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 8);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream, 12);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_12));
-					in += 32;
-					to += 20;
-				case 0xbd:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream, 12);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_12));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 8), _mm_srli_epi32(byte_stream, 12)), mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 8);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream, 12);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_12));
-					in += 32;
-					to += 20;
-				case 0xbe:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream, 12);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_12));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 8), _mm_srli_epi32(byte_stream, 12)), mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 8);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream, 12);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_12));
-					in += 32;
-					to += 20;
-				case 0xbf:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream, 12);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_12));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 8), _mm_srli_epi32(byte_stream, 12)), mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream_2, 8);
-					_mm_storeu_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_12));
-					byte_stream = _mm_srli_epi32(byte_stream, 12);
-					_mm_storeu_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_12));
-					in += 32;
-					to += 20;
-					break;
-				case 0xc0:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_cvtepu16_epi32(tmp));
-					_mm_storeu_si128((__m128i *)to + 1, _mm_cvtepu16_epi32(_mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)))));
-					in += 16;
-					to += 8;
-				case 0xc1:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_cvtepu16_epi32(tmp));
-					_mm_storeu_si128((__m128i *)to + 1, _mm_cvtepu16_epi32(_mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)))));
-					in += 16;
-					to += 8;
-				case 0xc2:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_cvtepu16_epi32(tmp));
-					_mm_storeu_si128((__m128i *)to + 1, _mm_cvtepu16_epi32(_mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)))));
-					in += 16;
-					to += 8;
-				case 0xc3:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_cvtepu16_epi32(tmp));
-					_mm_storeu_si128((__m128i *)to + 1, _mm_cvtepu16_epi32(_mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)))));
-					in += 16;
-					to += 8;
-				case 0xc4:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_cvtepu16_epi32(tmp));
-					_mm_storeu_si128((__m128i *)to + 1, _mm_cvtepu16_epi32(_mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)))));
-					in += 16;
-					to += 8;
-				case 0xc5:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_cvtepu16_epi32(tmp));
-					_mm_storeu_si128((__m128i *)to + 1, _mm_cvtepu16_epi32(_mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)))));
-					in += 16;
-					to += 8;
-				case 0xc6:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_cvtepu16_epi32(tmp));
-					_mm_storeu_si128((__m128i *)to + 1, _mm_cvtepu16_epi32(_mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)))));
-					in += 16;
-					to += 8;
-				case 0xc7:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_cvtepu16_epi32(tmp));
-					_mm_storeu_si128((__m128i *)to + 1, _mm_cvtepu16_epi32(_mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)))));
-					in += 16;
-					to += 8;
-				case 0xc8:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_cvtepu16_epi32(tmp));
-					_mm_storeu_si128((__m128i *)to + 1, _mm_cvtepu16_epi32(_mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)))));
-					in += 16;
-					to += 8;
-				case 0xc9:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_cvtepu16_epi32(tmp));
-					_mm_storeu_si128((__m128i *)to + 1, _mm_cvtepu16_epi32(_mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)))));
-					in += 16;
-					to += 8;
-				case 0xca:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_cvtepu16_epi32(tmp));
-					_mm_storeu_si128((__m128i *)to + 1, _mm_cvtepu16_epi32(_mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)))));
-					in += 16;
-					to += 8;
-				case 0xcb:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_cvtepu16_epi32(tmp));
-					_mm_storeu_si128((__m128i *)to + 1, _mm_cvtepu16_epi32(_mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)))));
-					in += 16;
-					to += 8;
-				case 0xcc:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_cvtepu16_epi32(tmp));
-					_mm_storeu_si128((__m128i *)to + 1, _mm_cvtepu16_epi32(_mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)))));
-					in += 16;
-					to += 8;
-				case 0xcd:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_cvtepu16_epi32(tmp));
-					_mm_storeu_si128((__m128i *)to + 1, _mm_cvtepu16_epi32(_mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)))));
-					in += 16;
-					to += 8;
-				case 0xce:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_cvtepu16_epi32(tmp));
-					_mm_storeu_si128((__m128i *)to + 1, _mm_cvtepu16_epi32(_mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)))));
-					in += 16;
-					to += 8;
-				case 0xcf:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_cvtepu16_epi32(tmp));
-					_mm_storeu_si128((__m128i *)to + 1, _mm_cvtepu16_epi32(_mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)))));
-					in += 16;
-					to += 8;
-					break;
-				case 0xd0:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_21));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 11), _mm_srli_epi32(byte_stream, 21)), mask_21));
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(_mm_srli_epi32(byte_stream_2, 11), mask_21));
-					in += 32;
-					to += 12;
-				case 0xd1:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_21));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 11), _mm_srli_epi32(byte_stream, 21)), mask_21));
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(_mm_srli_epi32(byte_stream_2, 11), mask_21));
-					in += 32;
-					to += 12;
-				case 0xd2:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_21));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 11), _mm_srli_epi32(byte_stream, 21)), mask_21));
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(_mm_srli_epi32(byte_stream_2, 11), mask_21));
-					in += 32;
-					to += 12;
-				case 0xd3:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_21));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 11), _mm_srli_epi32(byte_stream, 21)), mask_21));
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(_mm_srli_epi32(byte_stream_2, 11), mask_21));
-					in += 32;
-					to += 12;
-				case 0xd4:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_21));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 11), _mm_srli_epi32(byte_stream, 21)), mask_21));
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(_mm_srli_epi32(byte_stream_2, 11), mask_21));
-					in += 32;
-					to += 12;
-				case 0xd5:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_21));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 11), _mm_srli_epi32(byte_stream, 21)), mask_21));
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(_mm_srli_epi32(byte_stream_2, 11), mask_21));
-					in += 32;
-					to += 12;
-				case 0xd6:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_21));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 11), _mm_srli_epi32(byte_stream, 21)), mask_21));
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(_mm_srli_epi32(byte_stream_2, 11), mask_21));
-					in += 32;
-					to += 12;
-				case 0xd7:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_21));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 11), _mm_srli_epi32(byte_stream, 21)), mask_21));
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(_mm_srli_epi32(byte_stream_2, 11), mask_21));
-					in += 32;
-					to += 12;
-				case 0xd8:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_21));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 11), _mm_srli_epi32(byte_stream, 21)), mask_21));
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(_mm_srli_epi32(byte_stream_2, 11), mask_21));
-					in += 32;
-					to += 12;
-				case 0xd9:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_21));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 11), _mm_srli_epi32(byte_stream, 21)), mask_21));
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(_mm_srli_epi32(byte_stream_2, 11), mask_21));
-					in += 32;
-					to += 12;
-				case 0xda:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_21));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 11), _mm_srli_epi32(byte_stream, 21)), mask_21));
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(_mm_srli_epi32(byte_stream_2, 11), mask_21));
-					in += 32;
-					to += 12;
-				case 0xdb:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_21));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 11), _mm_srli_epi32(byte_stream, 21)), mask_21));
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(_mm_srli_epi32(byte_stream_2, 11), mask_21));
-					in += 32;
-					to += 12;
-				case 0xdc:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_21));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 11), _mm_srli_epi32(byte_stream, 21)), mask_21));
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(_mm_srli_epi32(byte_stream_2, 11), mask_21));
-					in += 32;
-					to += 12;
-				case 0xdd:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_21));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 11), _mm_srli_epi32(byte_stream, 21)), mask_21));
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(_mm_srli_epi32(byte_stream_2, 11), mask_21));
-					in += 32;
-					to += 12;
-				case 0xde:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_21));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 11), _mm_srli_epi32(byte_stream, 21)), mask_21));
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(_mm_srli_epi32(byte_stream_2, 11), mask_21));
-					in += 32;
-					to += 12;
-				case 0xdf:
-					byte_stream = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_21));
-					byte_stream_2 = _mm_loadu_si128((__m128i *)in + 1);
-					_mm_storeu_si128((__m128i *)to + 1, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 11), _mm_srli_epi32(byte_stream, 21)), mask_21));
-					_mm_storeu_si128((__m128i *)to + 2, _mm_and_si128(_mm_srli_epi32(byte_stream_2, 11), mask_21));
-					in += 32;
-					to += 12;
-					break;
-				case 0xe0:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, tmp);
-					in += 16;
-					to += 4;
-				case 0xe1:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, tmp);
-					in += 16;
-					to += 4;
-				case 0xe2:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, tmp);
-					in += 16;
-					to += 4;
-				case 0xe3:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, tmp);
-					in += 16;
-					to += 4;
-				case 0xe4:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, tmp);
-					in += 16;
-					to += 4;
-				case 0xe5:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, tmp);
-					in += 16;
-					to += 4;
-				case 0xe6:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, tmp);
-					in += 16;
-					to += 4;
-				case 0xe7:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, tmp);
-					in += 16;
-					to += 4;
-				case 0xe8:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, tmp);
-					in += 16;
-					to += 4;
-				case 0xe9:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, tmp);
-					in += 16;
-					to += 4;
-				case 0xea:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, tmp);
-					in += 16;
-					to += 4;
-				case 0xeb:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, tmp);
-					in += 16;
-					to += 4;
-				case 0xec:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, tmp);
-					in += 16;
-					to += 4;
-				case 0xed:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, tmp);
-					in += 16;
-					to += 4;
-				case 0xee:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, tmp);
-					in += 16;
-					to += 4;
-				case 0xef:
-					tmp = _mm_loadu_si128((__m128i *)in);
-					_mm_storeu_si128((__m128i *)to, tmp);
-					in += 16;
-					to += 4;
-					break;
-				case 0xf0:
-					in++;// LCOV_EXCL_LINE
-				case 0xf1:
-					in++;// LCOV_EXCL_LINE
-				case 0xf2:
-					in++;// LCOV_EXCL_LINE
-				case 0xf3:
-					in++;// LCOV_EXCL_LINE
-				case 0xf4:
-					in++;// LCOV_EXCL_LINE
-				case 0xf5:
-					in++;// LCOV_EXCL_LINE
-				case 0xf6:
-					in++;// LCOV_EXCL_LINE
-				case 0xf7:
-					in++;// LCOV_EXCL_LINE
-				case 0xf8:
-					in++;// LCOV_EXCL_LINE
-				case 0xf9:
-					in++;// LCOV_EXCL_LINE
-				case 0xfa:
-					in++;// LCOV_EXCL_LINE
-				case 0xfb:
-					in++;// LCOV_EXCL_LINE
-				case 0xfc:
-					in++;// LCOV_EXCL_LINE
-				case 0xfd:
-					in++;// LCOV_EXCL_LINE
-				case 0xfe:
-					in++;// LCOV_EXCL_LINE
-				case 0xff:
-					in++;// LCOV_EXCL_LINE
-					break;
+				switch (*keys++)
+					{
+					case 0x00:
+			#ifdef NO_ZEROS
+						tmp = _mm_load_si128((__m128i *)static_mask_1);
+			#else
+						tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
+			#endif
+						_mm_store_si128((__m128i *)to, tmp);
+						_mm_store_si128((__m128i *)to + 1, tmp);
+						_mm_store_si128((__m128i *)to + 2, tmp);
+						_mm_store_si128((__m128i *)to + 3, tmp);
+						_mm_store_si128((__m128i *)to + 4, tmp);
+						_mm_store_si128((__m128i *)to + 5, tmp);
+						_mm_store_si128((__m128i *)to + 6, tmp);
+						_mm_store_si128((__m128i *)to + 7, tmp);
+						_mm_store_si128((__m128i *)to + 8, tmp);
+						_mm_store_si128((__m128i *)to + 9, tmp);
+						_mm_store_si128((__m128i *)to + 10, tmp);
+						_mm_store_si128((__m128i *)to + 11, tmp);
+						_mm_store_si128((__m128i *)to + 12, tmp);
+						_mm_store_si128((__m128i *)to + 13, tmp);
+						_mm_store_si128((__m128i *)to + 14, tmp);
+						_mm_store_si128((__m128i *)to + 15, tmp);
+						_mm_store_si128((__m128i *)to + 16, tmp);
+						_mm_store_si128((__m128i *)to + 17, tmp);
+						_mm_store_si128((__m128i *)to + 18, tmp);
+						_mm_store_si128((__m128i *)to + 19, tmp);
+						_mm_store_si128((__m128i *)to + 20, tmp);
+						_mm_store_si128((__m128i *)to + 21, tmp);
+						_mm_store_si128((__m128i *)to + 22, tmp);
+						_mm_store_si128((__m128i *)to + 23, tmp);
+						_mm_store_si128((__m128i *)to + 24, tmp);
+						_mm_store_si128((__m128i *)to + 25, tmp);
+						_mm_store_si128((__m128i *)to + 26, tmp);
+						_mm_store_si128((__m128i *)to + 27, tmp);
+						_mm_store_si128((__m128i *)to + 28, tmp);
+						_mm_store_si128((__m128i *)to + 29, tmp);
+						_mm_store_si128((__m128i *)to + 30, tmp);
+						_mm_store_si128((__m128i *)to + 31, tmp);
+						_mm_store_si128((__m128i *)to + 32, tmp);
+						_mm_store_si128((__m128i *)to + 33, tmp);
+						_mm_store_si128((__m128i *)to + 34, tmp);
+						_mm_store_si128((__m128i *)to + 35, tmp);
+						_mm_store_si128((__m128i *)to + 36, tmp);
+						_mm_store_si128((__m128i *)to + 37, tmp);
+						_mm_store_si128((__m128i *)to + 38, tmp);
+						_mm_store_si128((__m128i *)to + 39, tmp);
+						_mm_store_si128((__m128i *)to + 40, tmp);
+						_mm_store_si128((__m128i *)to + 41, tmp);
+						_mm_store_si128((__m128i *)to + 42, tmp);
+						_mm_store_si128((__m128i *)to + 43, tmp);
+						_mm_store_si128((__m128i *)to + 44, tmp);
+						_mm_store_si128((__m128i *)to + 45, tmp);
+						_mm_store_si128((__m128i *)to + 46, tmp);
+						_mm_store_si128((__m128i *)to + 47, tmp);
+						_mm_store_si128((__m128i *)to + 48, tmp);
+						_mm_store_si128((__m128i *)to + 49, tmp);
+						_mm_store_si128((__m128i *)to + 50, tmp);
+						_mm_store_si128((__m128i *)to + 51, tmp);
+						_mm_store_si128((__m128i *)to + 52, tmp);
+						_mm_store_si128((__m128i *)to + 53, tmp);
+						_mm_store_si128((__m128i *)to + 54, tmp);
+						_mm_store_si128((__m128i *)to + 55, tmp);
+						_mm_store_si128((__m128i *)to + 56, tmp);
+						_mm_store_si128((__m128i *)to + 57, tmp);
+						_mm_store_si128((__m128i *)to + 58, tmp);
+						_mm_store_si128((__m128i *)to + 59, tmp);
+						_mm_store_si128((__m128i *)to + 60, tmp);
+						_mm_store_si128((__m128i *)to + 61, tmp);
+						_mm_store_si128((__m128i *)to + 62, tmp);
+						_mm_store_si128((__m128i *)to + 63, tmp);
+						to += 256;
+					case 0x01:
+			#ifdef NO_ZEROS
+						tmp = _mm_load_si128((__m128i *)static_mask_1);
+			#else
+						tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
+			#endif
+						_mm_store_si128((__m128i *)to, tmp);
+						_mm_store_si128((__m128i *)to + 1, tmp);
+						_mm_store_si128((__m128i *)to + 2, tmp);
+						_mm_store_si128((__m128i *)to + 3, tmp);
+						_mm_store_si128((__m128i *)to + 4, tmp);
+						_mm_store_si128((__m128i *)to + 5, tmp);
+						_mm_store_si128((__m128i *)to + 6, tmp);
+						_mm_store_si128((__m128i *)to + 7, tmp);
+						_mm_store_si128((__m128i *)to + 8, tmp);
+						_mm_store_si128((__m128i *)to + 9, tmp);
+						_mm_store_si128((__m128i *)to + 10, tmp);
+						_mm_store_si128((__m128i *)to + 11, tmp);
+						_mm_store_si128((__m128i *)to + 12, tmp);
+						_mm_store_si128((__m128i *)to + 13, tmp);
+						_mm_store_si128((__m128i *)to + 14, tmp);
+						_mm_store_si128((__m128i *)to + 15, tmp);
+						_mm_store_si128((__m128i *)to + 16, tmp);
+						_mm_store_si128((__m128i *)to + 17, tmp);
+						_mm_store_si128((__m128i *)to + 18, tmp);
+						_mm_store_si128((__m128i *)to + 19, tmp);
+						_mm_store_si128((__m128i *)to + 20, tmp);
+						_mm_store_si128((__m128i *)to + 21, tmp);
+						_mm_store_si128((__m128i *)to + 22, tmp);
+						_mm_store_si128((__m128i *)to + 23, tmp);
+						_mm_store_si128((__m128i *)to + 24, tmp);
+						_mm_store_si128((__m128i *)to + 25, tmp);
+						_mm_store_si128((__m128i *)to + 26, tmp);
+						_mm_store_si128((__m128i *)to + 27, tmp);
+						_mm_store_si128((__m128i *)to + 28, tmp);
+						_mm_store_si128((__m128i *)to + 29, tmp);
+						_mm_store_si128((__m128i *)to + 30, tmp);
+						_mm_store_si128((__m128i *)to + 31, tmp);
+						_mm_store_si128((__m128i *)to + 32, tmp);
+						_mm_store_si128((__m128i *)to + 33, tmp);
+						_mm_store_si128((__m128i *)to + 34, tmp);
+						_mm_store_si128((__m128i *)to + 35, tmp);
+						_mm_store_si128((__m128i *)to + 36, tmp);
+						_mm_store_si128((__m128i *)to + 37, tmp);
+						_mm_store_si128((__m128i *)to + 38, tmp);
+						_mm_store_si128((__m128i *)to + 39, tmp);
+						_mm_store_si128((__m128i *)to + 40, tmp);
+						_mm_store_si128((__m128i *)to + 41, tmp);
+						_mm_store_si128((__m128i *)to + 42, tmp);
+						_mm_store_si128((__m128i *)to + 43, tmp);
+						_mm_store_si128((__m128i *)to + 44, tmp);
+						_mm_store_si128((__m128i *)to + 45, tmp);
+						_mm_store_si128((__m128i *)to + 46, tmp);
+						_mm_store_si128((__m128i *)to + 47, tmp);
+						_mm_store_si128((__m128i *)to + 48, tmp);
+						_mm_store_si128((__m128i *)to + 49, tmp);
+						_mm_store_si128((__m128i *)to + 50, tmp);
+						_mm_store_si128((__m128i *)to + 51, tmp);
+						_mm_store_si128((__m128i *)to + 52, tmp);
+						_mm_store_si128((__m128i *)to + 53, tmp);
+						_mm_store_si128((__m128i *)to + 54, tmp);
+						_mm_store_si128((__m128i *)to + 55, tmp);
+						_mm_store_si128((__m128i *)to + 56, tmp);
+						_mm_store_si128((__m128i *)to + 57, tmp);
+						_mm_store_si128((__m128i *)to + 58, tmp);
+						_mm_store_si128((__m128i *)to + 59, tmp);
+						_mm_store_si128((__m128i *)to + 60, tmp);
+						_mm_store_si128((__m128i *)to + 61, tmp);
+						_mm_store_si128((__m128i *)to + 62, tmp);
+						_mm_store_si128((__m128i *)to + 63, tmp);
+						to += 256;
+					case 0x02:
+			#ifdef NO_ZEROS
+						tmp = _mm_load_si128((__m128i *)static_mask_1);
+			#else
+						tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
+			#endif
+						_mm_store_si128((__m128i *)to, tmp);
+						_mm_store_si128((__m128i *)to + 1, tmp);
+						_mm_store_si128((__m128i *)to + 2, tmp);
+						_mm_store_si128((__m128i *)to + 3, tmp);
+						_mm_store_si128((__m128i *)to + 4, tmp);
+						_mm_store_si128((__m128i *)to + 5, tmp);
+						_mm_store_si128((__m128i *)to + 6, tmp);
+						_mm_store_si128((__m128i *)to + 7, tmp);
+						_mm_store_si128((__m128i *)to + 8, tmp);
+						_mm_store_si128((__m128i *)to + 9, tmp);
+						_mm_store_si128((__m128i *)to + 10, tmp);
+						_mm_store_si128((__m128i *)to + 11, tmp);
+						_mm_store_si128((__m128i *)to + 12, tmp);
+						_mm_store_si128((__m128i *)to + 13, tmp);
+						_mm_store_si128((__m128i *)to + 14, tmp);
+						_mm_store_si128((__m128i *)to + 15, tmp);
+						_mm_store_si128((__m128i *)to + 16, tmp);
+						_mm_store_si128((__m128i *)to + 17, tmp);
+						_mm_store_si128((__m128i *)to + 18, tmp);
+						_mm_store_si128((__m128i *)to + 19, tmp);
+						_mm_store_si128((__m128i *)to + 20, tmp);
+						_mm_store_si128((__m128i *)to + 21, tmp);
+						_mm_store_si128((__m128i *)to + 22, tmp);
+						_mm_store_si128((__m128i *)to + 23, tmp);
+						_mm_store_si128((__m128i *)to + 24, tmp);
+						_mm_store_si128((__m128i *)to + 25, tmp);
+						_mm_store_si128((__m128i *)to + 26, tmp);
+						_mm_store_si128((__m128i *)to + 27, tmp);
+						_mm_store_si128((__m128i *)to + 28, tmp);
+						_mm_store_si128((__m128i *)to + 29, tmp);
+						_mm_store_si128((__m128i *)to + 30, tmp);
+						_mm_store_si128((__m128i *)to + 31, tmp);
+						_mm_store_si128((__m128i *)to + 32, tmp);
+						_mm_store_si128((__m128i *)to + 33, tmp);
+						_mm_store_si128((__m128i *)to + 34, tmp);
+						_mm_store_si128((__m128i *)to + 35, tmp);
+						_mm_store_si128((__m128i *)to + 36, tmp);
+						_mm_store_si128((__m128i *)to + 37, tmp);
+						_mm_store_si128((__m128i *)to + 38, tmp);
+						_mm_store_si128((__m128i *)to + 39, tmp);
+						_mm_store_si128((__m128i *)to + 40, tmp);
+						_mm_store_si128((__m128i *)to + 41, tmp);
+						_mm_store_si128((__m128i *)to + 42, tmp);
+						_mm_store_si128((__m128i *)to + 43, tmp);
+						_mm_store_si128((__m128i *)to + 44, tmp);
+						_mm_store_si128((__m128i *)to + 45, tmp);
+						_mm_store_si128((__m128i *)to + 46, tmp);
+						_mm_store_si128((__m128i *)to + 47, tmp);
+						_mm_store_si128((__m128i *)to + 48, tmp);
+						_mm_store_si128((__m128i *)to + 49, tmp);
+						_mm_store_si128((__m128i *)to + 50, tmp);
+						_mm_store_si128((__m128i *)to + 51, tmp);
+						_mm_store_si128((__m128i *)to + 52, tmp);
+						_mm_store_si128((__m128i *)to + 53, tmp);
+						_mm_store_si128((__m128i *)to + 54, tmp);
+						_mm_store_si128((__m128i *)to + 55, tmp);
+						_mm_store_si128((__m128i *)to + 56, tmp);
+						_mm_store_si128((__m128i *)to + 57, tmp);
+						_mm_store_si128((__m128i *)to + 58, tmp);
+						_mm_store_si128((__m128i *)to + 59, tmp);
+						_mm_store_si128((__m128i *)to + 60, tmp);
+						_mm_store_si128((__m128i *)to + 61, tmp);
+						_mm_store_si128((__m128i *)to + 62, tmp);
+						_mm_store_si128((__m128i *)to + 63, tmp);
+						to += 256;
+					case 0x03:
+			#ifdef NO_ZEROS
+						tmp = _mm_load_si128((__m128i *)static_mask_1);
+			#else
+						tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
+			#endif
+						_mm_store_si128((__m128i *)to, tmp);
+						_mm_store_si128((__m128i *)to + 1, tmp);
+						_mm_store_si128((__m128i *)to + 2, tmp);
+						_mm_store_si128((__m128i *)to + 3, tmp);
+						_mm_store_si128((__m128i *)to + 4, tmp);
+						_mm_store_si128((__m128i *)to + 5, tmp);
+						_mm_store_si128((__m128i *)to + 6, tmp);
+						_mm_store_si128((__m128i *)to + 7, tmp);
+						_mm_store_si128((__m128i *)to + 8, tmp);
+						_mm_store_si128((__m128i *)to + 9, tmp);
+						_mm_store_si128((__m128i *)to + 10, tmp);
+						_mm_store_si128((__m128i *)to + 11, tmp);
+						_mm_store_si128((__m128i *)to + 12, tmp);
+						_mm_store_si128((__m128i *)to + 13, tmp);
+						_mm_store_si128((__m128i *)to + 14, tmp);
+						_mm_store_si128((__m128i *)to + 15, tmp);
+						_mm_store_si128((__m128i *)to + 16, tmp);
+						_mm_store_si128((__m128i *)to + 17, tmp);
+						_mm_store_si128((__m128i *)to + 18, tmp);
+						_mm_store_si128((__m128i *)to + 19, tmp);
+						_mm_store_si128((__m128i *)to + 20, tmp);
+						_mm_store_si128((__m128i *)to + 21, tmp);
+						_mm_store_si128((__m128i *)to + 22, tmp);
+						_mm_store_si128((__m128i *)to + 23, tmp);
+						_mm_store_si128((__m128i *)to + 24, tmp);
+						_mm_store_si128((__m128i *)to + 25, tmp);
+						_mm_store_si128((__m128i *)to + 26, tmp);
+						_mm_store_si128((__m128i *)to + 27, tmp);
+						_mm_store_si128((__m128i *)to + 28, tmp);
+						_mm_store_si128((__m128i *)to + 29, tmp);
+						_mm_store_si128((__m128i *)to + 30, tmp);
+						_mm_store_si128((__m128i *)to + 31, tmp);
+						_mm_store_si128((__m128i *)to + 32, tmp);
+						_mm_store_si128((__m128i *)to + 33, tmp);
+						_mm_store_si128((__m128i *)to + 34, tmp);
+						_mm_store_si128((__m128i *)to + 35, tmp);
+						_mm_store_si128((__m128i *)to + 36, tmp);
+						_mm_store_si128((__m128i *)to + 37, tmp);
+						_mm_store_si128((__m128i *)to + 38, tmp);
+						_mm_store_si128((__m128i *)to + 39, tmp);
+						_mm_store_si128((__m128i *)to + 40, tmp);
+						_mm_store_si128((__m128i *)to + 41, tmp);
+						_mm_store_si128((__m128i *)to + 42, tmp);
+						_mm_store_si128((__m128i *)to + 43, tmp);
+						_mm_store_si128((__m128i *)to + 44, tmp);
+						_mm_store_si128((__m128i *)to + 45, tmp);
+						_mm_store_si128((__m128i *)to + 46, tmp);
+						_mm_store_si128((__m128i *)to + 47, tmp);
+						_mm_store_si128((__m128i *)to + 48, tmp);
+						_mm_store_si128((__m128i *)to + 49, tmp);
+						_mm_store_si128((__m128i *)to + 50, tmp);
+						_mm_store_si128((__m128i *)to + 51, tmp);
+						_mm_store_si128((__m128i *)to + 52, tmp);
+						_mm_store_si128((__m128i *)to + 53, tmp);
+						_mm_store_si128((__m128i *)to + 54, tmp);
+						_mm_store_si128((__m128i *)to + 55, tmp);
+						_mm_store_si128((__m128i *)to + 56, tmp);
+						_mm_store_si128((__m128i *)to + 57, tmp);
+						_mm_store_si128((__m128i *)to + 58, tmp);
+						_mm_store_si128((__m128i *)to + 59, tmp);
+						_mm_store_si128((__m128i *)to + 60, tmp);
+						_mm_store_si128((__m128i *)to + 61, tmp);
+						_mm_store_si128((__m128i *)to + 62, tmp);
+						_mm_store_si128((__m128i *)to + 63, tmp);
+						to += 256;
+					case 0x04:
+			#ifdef NO_ZEROS
+						tmp = _mm_load_si128((__m128i *)static_mask_1);
+			#else
+						tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
+			#endif
+						_mm_store_si128((__m128i *)to, tmp);
+						_mm_store_si128((__m128i *)to + 1, tmp);
+						_mm_store_si128((__m128i *)to + 2, tmp);
+						_mm_store_si128((__m128i *)to + 3, tmp);
+						_mm_store_si128((__m128i *)to + 4, tmp);
+						_mm_store_si128((__m128i *)to + 5, tmp);
+						_mm_store_si128((__m128i *)to + 6, tmp);
+						_mm_store_si128((__m128i *)to + 7, tmp);
+						_mm_store_si128((__m128i *)to + 8, tmp);
+						_mm_store_si128((__m128i *)to + 9, tmp);
+						_mm_store_si128((__m128i *)to + 10, tmp);
+						_mm_store_si128((__m128i *)to + 11, tmp);
+						_mm_store_si128((__m128i *)to + 12, tmp);
+						_mm_store_si128((__m128i *)to + 13, tmp);
+						_mm_store_si128((__m128i *)to + 14, tmp);
+						_mm_store_si128((__m128i *)to + 15, tmp);
+						_mm_store_si128((__m128i *)to + 16, tmp);
+						_mm_store_si128((__m128i *)to + 17, tmp);
+						_mm_store_si128((__m128i *)to + 18, tmp);
+						_mm_store_si128((__m128i *)to + 19, tmp);
+						_mm_store_si128((__m128i *)to + 20, tmp);
+						_mm_store_si128((__m128i *)to + 21, tmp);
+						_mm_store_si128((__m128i *)to + 22, tmp);
+						_mm_store_si128((__m128i *)to + 23, tmp);
+						_mm_store_si128((__m128i *)to + 24, tmp);
+						_mm_store_si128((__m128i *)to + 25, tmp);
+						_mm_store_si128((__m128i *)to + 26, tmp);
+						_mm_store_si128((__m128i *)to + 27, tmp);
+						_mm_store_si128((__m128i *)to + 28, tmp);
+						_mm_store_si128((__m128i *)to + 29, tmp);
+						_mm_store_si128((__m128i *)to + 30, tmp);
+						_mm_store_si128((__m128i *)to + 31, tmp);
+						_mm_store_si128((__m128i *)to + 32, tmp);
+						_mm_store_si128((__m128i *)to + 33, tmp);
+						_mm_store_si128((__m128i *)to + 34, tmp);
+						_mm_store_si128((__m128i *)to + 35, tmp);
+						_mm_store_si128((__m128i *)to + 36, tmp);
+						_mm_store_si128((__m128i *)to + 37, tmp);
+						_mm_store_si128((__m128i *)to + 38, tmp);
+						_mm_store_si128((__m128i *)to + 39, tmp);
+						_mm_store_si128((__m128i *)to + 40, tmp);
+						_mm_store_si128((__m128i *)to + 41, tmp);
+						_mm_store_si128((__m128i *)to + 42, tmp);
+						_mm_store_si128((__m128i *)to + 43, tmp);
+						_mm_store_si128((__m128i *)to + 44, tmp);
+						_mm_store_si128((__m128i *)to + 45, tmp);
+						_mm_store_si128((__m128i *)to + 46, tmp);
+						_mm_store_si128((__m128i *)to + 47, tmp);
+						_mm_store_si128((__m128i *)to + 48, tmp);
+						_mm_store_si128((__m128i *)to + 49, tmp);
+						_mm_store_si128((__m128i *)to + 50, tmp);
+						_mm_store_si128((__m128i *)to + 51, tmp);
+						_mm_store_si128((__m128i *)to + 52, tmp);
+						_mm_store_si128((__m128i *)to + 53, tmp);
+						_mm_store_si128((__m128i *)to + 54, tmp);
+						_mm_store_si128((__m128i *)to + 55, tmp);
+						_mm_store_si128((__m128i *)to + 56, tmp);
+						_mm_store_si128((__m128i *)to + 57, tmp);
+						_mm_store_si128((__m128i *)to + 58, tmp);
+						_mm_store_si128((__m128i *)to + 59, tmp);
+						_mm_store_si128((__m128i *)to + 60, tmp);
+						_mm_store_si128((__m128i *)to + 61, tmp);
+						_mm_store_si128((__m128i *)to + 62, tmp);
+						_mm_store_si128((__m128i *)to + 63, tmp);
+						to += 256;
+					case 0x05:
+			#ifdef NO_ZEROS
+						tmp = _mm_load_si128((__m128i *)static_mask_1);
+			#else
+						tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
+			#endif
+						_mm_store_si128((__m128i *)to, tmp);
+						_mm_store_si128((__m128i *)to + 1, tmp);
+						_mm_store_si128((__m128i *)to + 2, tmp);
+						_mm_store_si128((__m128i *)to + 3, tmp);
+						_mm_store_si128((__m128i *)to + 4, tmp);
+						_mm_store_si128((__m128i *)to + 5, tmp);
+						_mm_store_si128((__m128i *)to + 6, tmp);
+						_mm_store_si128((__m128i *)to + 7, tmp);
+						_mm_store_si128((__m128i *)to + 8, tmp);
+						_mm_store_si128((__m128i *)to + 9, tmp);
+						_mm_store_si128((__m128i *)to + 10, tmp);
+						_mm_store_si128((__m128i *)to + 11, tmp);
+						_mm_store_si128((__m128i *)to + 12, tmp);
+						_mm_store_si128((__m128i *)to + 13, tmp);
+						_mm_store_si128((__m128i *)to + 14, tmp);
+						_mm_store_si128((__m128i *)to + 15, tmp);
+						_mm_store_si128((__m128i *)to + 16, tmp);
+						_mm_store_si128((__m128i *)to + 17, tmp);
+						_mm_store_si128((__m128i *)to + 18, tmp);
+						_mm_store_si128((__m128i *)to + 19, tmp);
+						_mm_store_si128((__m128i *)to + 20, tmp);
+						_mm_store_si128((__m128i *)to + 21, tmp);
+						_mm_store_si128((__m128i *)to + 22, tmp);
+						_mm_store_si128((__m128i *)to + 23, tmp);
+						_mm_store_si128((__m128i *)to + 24, tmp);
+						_mm_store_si128((__m128i *)to + 25, tmp);
+						_mm_store_si128((__m128i *)to + 26, tmp);
+						_mm_store_si128((__m128i *)to + 27, tmp);
+						_mm_store_si128((__m128i *)to + 28, tmp);
+						_mm_store_si128((__m128i *)to + 29, tmp);
+						_mm_store_si128((__m128i *)to + 30, tmp);
+						_mm_store_si128((__m128i *)to + 31, tmp);
+						_mm_store_si128((__m128i *)to + 32, tmp);
+						_mm_store_si128((__m128i *)to + 33, tmp);
+						_mm_store_si128((__m128i *)to + 34, tmp);
+						_mm_store_si128((__m128i *)to + 35, tmp);
+						_mm_store_si128((__m128i *)to + 36, tmp);
+						_mm_store_si128((__m128i *)to + 37, tmp);
+						_mm_store_si128((__m128i *)to + 38, tmp);
+						_mm_store_si128((__m128i *)to + 39, tmp);
+						_mm_store_si128((__m128i *)to + 40, tmp);
+						_mm_store_si128((__m128i *)to + 41, tmp);
+						_mm_store_si128((__m128i *)to + 42, tmp);
+						_mm_store_si128((__m128i *)to + 43, tmp);
+						_mm_store_si128((__m128i *)to + 44, tmp);
+						_mm_store_si128((__m128i *)to + 45, tmp);
+						_mm_store_si128((__m128i *)to + 46, tmp);
+						_mm_store_si128((__m128i *)to + 47, tmp);
+						_mm_store_si128((__m128i *)to + 48, tmp);
+						_mm_store_si128((__m128i *)to + 49, tmp);
+						_mm_store_si128((__m128i *)to + 50, tmp);
+						_mm_store_si128((__m128i *)to + 51, tmp);
+						_mm_store_si128((__m128i *)to + 52, tmp);
+						_mm_store_si128((__m128i *)to + 53, tmp);
+						_mm_store_si128((__m128i *)to + 54, tmp);
+						_mm_store_si128((__m128i *)to + 55, tmp);
+						_mm_store_si128((__m128i *)to + 56, tmp);
+						_mm_store_si128((__m128i *)to + 57, tmp);
+						_mm_store_si128((__m128i *)to + 58, tmp);
+						_mm_store_si128((__m128i *)to + 59, tmp);
+						_mm_store_si128((__m128i *)to + 60, tmp);
+						_mm_store_si128((__m128i *)to + 61, tmp);
+						_mm_store_si128((__m128i *)to + 62, tmp);
+						_mm_store_si128((__m128i *)to + 63, tmp);
+						to += 256;
+					case 0x06:
+			#ifdef NO_ZEROS
+						tmp = _mm_load_si128((__m128i *)static_mask_1);
+			#else
+						tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
+			#endif
+						_mm_store_si128((__m128i *)to, tmp);
+						_mm_store_si128((__m128i *)to + 1, tmp);
+						_mm_store_si128((__m128i *)to + 2, tmp);
+						_mm_store_si128((__m128i *)to + 3, tmp);
+						_mm_store_si128((__m128i *)to + 4, tmp);
+						_mm_store_si128((__m128i *)to + 5, tmp);
+						_mm_store_si128((__m128i *)to + 6, tmp);
+						_mm_store_si128((__m128i *)to + 7, tmp);
+						_mm_store_si128((__m128i *)to + 8, tmp);
+						_mm_store_si128((__m128i *)to + 9, tmp);
+						_mm_store_si128((__m128i *)to + 10, tmp);
+						_mm_store_si128((__m128i *)to + 11, tmp);
+						_mm_store_si128((__m128i *)to + 12, tmp);
+						_mm_store_si128((__m128i *)to + 13, tmp);
+						_mm_store_si128((__m128i *)to + 14, tmp);
+						_mm_store_si128((__m128i *)to + 15, tmp);
+						_mm_store_si128((__m128i *)to + 16, tmp);
+						_mm_store_si128((__m128i *)to + 17, tmp);
+						_mm_store_si128((__m128i *)to + 18, tmp);
+						_mm_store_si128((__m128i *)to + 19, tmp);
+						_mm_store_si128((__m128i *)to + 20, tmp);
+						_mm_store_si128((__m128i *)to + 21, tmp);
+						_mm_store_si128((__m128i *)to + 22, tmp);
+						_mm_store_si128((__m128i *)to + 23, tmp);
+						_mm_store_si128((__m128i *)to + 24, tmp);
+						_mm_store_si128((__m128i *)to + 25, tmp);
+						_mm_store_si128((__m128i *)to + 26, tmp);
+						_mm_store_si128((__m128i *)to + 27, tmp);
+						_mm_store_si128((__m128i *)to + 28, tmp);
+						_mm_store_si128((__m128i *)to + 29, tmp);
+						_mm_store_si128((__m128i *)to + 30, tmp);
+						_mm_store_si128((__m128i *)to + 31, tmp);
+						_mm_store_si128((__m128i *)to + 32, tmp);
+						_mm_store_si128((__m128i *)to + 33, tmp);
+						_mm_store_si128((__m128i *)to + 34, tmp);
+						_mm_store_si128((__m128i *)to + 35, tmp);
+						_mm_store_si128((__m128i *)to + 36, tmp);
+						_mm_store_si128((__m128i *)to + 37, tmp);
+						_mm_store_si128((__m128i *)to + 38, tmp);
+						_mm_store_si128((__m128i *)to + 39, tmp);
+						_mm_store_si128((__m128i *)to + 40, tmp);
+						_mm_store_si128((__m128i *)to + 41, tmp);
+						_mm_store_si128((__m128i *)to + 42, tmp);
+						_mm_store_si128((__m128i *)to + 43, tmp);
+						_mm_store_si128((__m128i *)to + 44, tmp);
+						_mm_store_si128((__m128i *)to + 45, tmp);
+						_mm_store_si128((__m128i *)to + 46, tmp);
+						_mm_store_si128((__m128i *)to + 47, tmp);
+						_mm_store_si128((__m128i *)to + 48, tmp);
+						_mm_store_si128((__m128i *)to + 49, tmp);
+						_mm_store_si128((__m128i *)to + 50, tmp);
+						_mm_store_si128((__m128i *)to + 51, tmp);
+						_mm_store_si128((__m128i *)to + 52, tmp);
+						_mm_store_si128((__m128i *)to + 53, tmp);
+						_mm_store_si128((__m128i *)to + 54, tmp);
+						_mm_store_si128((__m128i *)to + 55, tmp);
+						_mm_store_si128((__m128i *)to + 56, tmp);
+						_mm_store_si128((__m128i *)to + 57, tmp);
+						_mm_store_si128((__m128i *)to + 58, tmp);
+						_mm_store_si128((__m128i *)to + 59, tmp);
+						_mm_store_si128((__m128i *)to + 60, tmp);
+						_mm_store_si128((__m128i *)to + 61, tmp);
+						_mm_store_si128((__m128i *)to + 62, tmp);
+						_mm_store_si128((__m128i *)to + 63, tmp);
+						to += 256;
+					case 0x07:
+			#ifdef NO_ZEROS
+						tmp = _mm_load_si128((__m128i *)static_mask_1);
+			#else
+						tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
+			#endif
+						_mm_store_si128((__m128i *)to, tmp);
+						_mm_store_si128((__m128i *)to + 1, tmp);
+						_mm_store_si128((__m128i *)to + 2, tmp);
+						_mm_store_si128((__m128i *)to + 3, tmp);
+						_mm_store_si128((__m128i *)to + 4, tmp);
+						_mm_store_si128((__m128i *)to + 5, tmp);
+						_mm_store_si128((__m128i *)to + 6, tmp);
+						_mm_store_si128((__m128i *)to + 7, tmp);
+						_mm_store_si128((__m128i *)to + 8, tmp);
+						_mm_store_si128((__m128i *)to + 9, tmp);
+						_mm_store_si128((__m128i *)to + 10, tmp);
+						_mm_store_si128((__m128i *)to + 11, tmp);
+						_mm_store_si128((__m128i *)to + 12, tmp);
+						_mm_store_si128((__m128i *)to + 13, tmp);
+						_mm_store_si128((__m128i *)to + 14, tmp);
+						_mm_store_si128((__m128i *)to + 15, tmp);
+						_mm_store_si128((__m128i *)to + 16, tmp);
+						_mm_store_si128((__m128i *)to + 17, tmp);
+						_mm_store_si128((__m128i *)to + 18, tmp);
+						_mm_store_si128((__m128i *)to + 19, tmp);
+						_mm_store_si128((__m128i *)to + 20, tmp);
+						_mm_store_si128((__m128i *)to + 21, tmp);
+						_mm_store_si128((__m128i *)to + 22, tmp);
+						_mm_store_si128((__m128i *)to + 23, tmp);
+						_mm_store_si128((__m128i *)to + 24, tmp);
+						_mm_store_si128((__m128i *)to + 25, tmp);
+						_mm_store_si128((__m128i *)to + 26, tmp);
+						_mm_store_si128((__m128i *)to + 27, tmp);
+						_mm_store_si128((__m128i *)to + 28, tmp);
+						_mm_store_si128((__m128i *)to + 29, tmp);
+						_mm_store_si128((__m128i *)to + 30, tmp);
+						_mm_store_si128((__m128i *)to + 31, tmp);
+						_mm_store_si128((__m128i *)to + 32, tmp);
+						_mm_store_si128((__m128i *)to + 33, tmp);
+						_mm_store_si128((__m128i *)to + 34, tmp);
+						_mm_store_si128((__m128i *)to + 35, tmp);
+						_mm_store_si128((__m128i *)to + 36, tmp);
+						_mm_store_si128((__m128i *)to + 37, tmp);
+						_mm_store_si128((__m128i *)to + 38, tmp);
+						_mm_store_si128((__m128i *)to + 39, tmp);
+						_mm_store_si128((__m128i *)to + 40, tmp);
+						_mm_store_si128((__m128i *)to + 41, tmp);
+						_mm_store_si128((__m128i *)to + 42, tmp);
+						_mm_store_si128((__m128i *)to + 43, tmp);
+						_mm_store_si128((__m128i *)to + 44, tmp);
+						_mm_store_si128((__m128i *)to + 45, tmp);
+						_mm_store_si128((__m128i *)to + 46, tmp);
+						_mm_store_si128((__m128i *)to + 47, tmp);
+						_mm_store_si128((__m128i *)to + 48, tmp);
+						_mm_store_si128((__m128i *)to + 49, tmp);
+						_mm_store_si128((__m128i *)to + 50, tmp);
+						_mm_store_si128((__m128i *)to + 51, tmp);
+						_mm_store_si128((__m128i *)to + 52, tmp);
+						_mm_store_si128((__m128i *)to + 53, tmp);
+						_mm_store_si128((__m128i *)to + 54, tmp);
+						_mm_store_si128((__m128i *)to + 55, tmp);
+						_mm_store_si128((__m128i *)to + 56, tmp);
+						_mm_store_si128((__m128i *)to + 57, tmp);
+						_mm_store_si128((__m128i *)to + 58, tmp);
+						_mm_store_si128((__m128i *)to + 59, tmp);
+						_mm_store_si128((__m128i *)to + 60, tmp);
+						_mm_store_si128((__m128i *)to + 61, tmp);
+						_mm_store_si128((__m128i *)to + 62, tmp);
+						_mm_store_si128((__m128i *)to + 63, tmp);
+						to += 256;
+					case 0x08:
+			#ifdef NO_ZEROS
+						tmp = _mm_load_si128((__m128i *)static_mask_1);
+			#else
+						tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
+			#endif
+						_mm_store_si128((__m128i *)to, tmp);
+						_mm_store_si128((__m128i *)to + 1, tmp);
+						_mm_store_si128((__m128i *)to + 2, tmp);
+						_mm_store_si128((__m128i *)to + 3, tmp);
+						_mm_store_si128((__m128i *)to + 4, tmp);
+						_mm_store_si128((__m128i *)to + 5, tmp);
+						_mm_store_si128((__m128i *)to + 6, tmp);
+						_mm_store_si128((__m128i *)to + 7, tmp);
+						_mm_store_si128((__m128i *)to + 8, tmp);
+						_mm_store_si128((__m128i *)to + 9, tmp);
+						_mm_store_si128((__m128i *)to + 10, tmp);
+						_mm_store_si128((__m128i *)to + 11, tmp);
+						_mm_store_si128((__m128i *)to + 12, tmp);
+						_mm_store_si128((__m128i *)to + 13, tmp);
+						_mm_store_si128((__m128i *)to + 14, tmp);
+						_mm_store_si128((__m128i *)to + 15, tmp);
+						_mm_store_si128((__m128i *)to + 16, tmp);
+						_mm_store_si128((__m128i *)to + 17, tmp);
+						_mm_store_si128((__m128i *)to + 18, tmp);
+						_mm_store_si128((__m128i *)to + 19, tmp);
+						_mm_store_si128((__m128i *)to + 20, tmp);
+						_mm_store_si128((__m128i *)to + 21, tmp);
+						_mm_store_si128((__m128i *)to + 22, tmp);
+						_mm_store_si128((__m128i *)to + 23, tmp);
+						_mm_store_si128((__m128i *)to + 24, tmp);
+						_mm_store_si128((__m128i *)to + 25, tmp);
+						_mm_store_si128((__m128i *)to + 26, tmp);
+						_mm_store_si128((__m128i *)to + 27, tmp);
+						_mm_store_si128((__m128i *)to + 28, tmp);
+						_mm_store_si128((__m128i *)to + 29, tmp);
+						_mm_store_si128((__m128i *)to + 30, tmp);
+						_mm_store_si128((__m128i *)to + 31, tmp);
+						_mm_store_si128((__m128i *)to + 32, tmp);
+						_mm_store_si128((__m128i *)to + 33, tmp);
+						_mm_store_si128((__m128i *)to + 34, tmp);
+						_mm_store_si128((__m128i *)to + 35, tmp);
+						_mm_store_si128((__m128i *)to + 36, tmp);
+						_mm_store_si128((__m128i *)to + 37, tmp);
+						_mm_store_si128((__m128i *)to + 38, tmp);
+						_mm_store_si128((__m128i *)to + 39, tmp);
+						_mm_store_si128((__m128i *)to + 40, tmp);
+						_mm_store_si128((__m128i *)to + 41, tmp);
+						_mm_store_si128((__m128i *)to + 42, tmp);
+						_mm_store_si128((__m128i *)to + 43, tmp);
+						_mm_store_si128((__m128i *)to + 44, tmp);
+						_mm_store_si128((__m128i *)to + 45, tmp);
+						_mm_store_si128((__m128i *)to + 46, tmp);
+						_mm_store_si128((__m128i *)to + 47, tmp);
+						_mm_store_si128((__m128i *)to + 48, tmp);
+						_mm_store_si128((__m128i *)to + 49, tmp);
+						_mm_store_si128((__m128i *)to + 50, tmp);
+						_mm_store_si128((__m128i *)to + 51, tmp);
+						_mm_store_si128((__m128i *)to + 52, tmp);
+						_mm_store_si128((__m128i *)to + 53, tmp);
+						_mm_store_si128((__m128i *)to + 54, tmp);
+						_mm_store_si128((__m128i *)to + 55, tmp);
+						_mm_store_si128((__m128i *)to + 56, tmp);
+						_mm_store_si128((__m128i *)to + 57, tmp);
+						_mm_store_si128((__m128i *)to + 58, tmp);
+						_mm_store_si128((__m128i *)to + 59, tmp);
+						_mm_store_si128((__m128i *)to + 60, tmp);
+						_mm_store_si128((__m128i *)to + 61, tmp);
+						_mm_store_si128((__m128i *)to + 62, tmp);
+						_mm_store_si128((__m128i *)to + 63, tmp);
+						to += 256;
+					case 0x09:
+			#ifdef NO_ZEROS
+						tmp = _mm_load_si128((__m128i *)static_mask_1);
+			#else
+						tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
+			#endif
+						_mm_store_si128((__m128i *)to, tmp);
+						_mm_store_si128((__m128i *)to + 1, tmp);
+						_mm_store_si128((__m128i *)to + 2, tmp);
+						_mm_store_si128((__m128i *)to + 3, tmp);
+						_mm_store_si128((__m128i *)to + 4, tmp);
+						_mm_store_si128((__m128i *)to + 5, tmp);
+						_mm_store_si128((__m128i *)to + 6, tmp);
+						_mm_store_si128((__m128i *)to + 7, tmp);
+						_mm_store_si128((__m128i *)to + 8, tmp);
+						_mm_store_si128((__m128i *)to + 9, tmp);
+						_mm_store_si128((__m128i *)to + 10, tmp);
+						_mm_store_si128((__m128i *)to + 11, tmp);
+						_mm_store_si128((__m128i *)to + 12, tmp);
+						_mm_store_si128((__m128i *)to + 13, tmp);
+						_mm_store_si128((__m128i *)to + 14, tmp);
+						_mm_store_si128((__m128i *)to + 15, tmp);
+						_mm_store_si128((__m128i *)to + 16, tmp);
+						_mm_store_si128((__m128i *)to + 17, tmp);
+						_mm_store_si128((__m128i *)to + 18, tmp);
+						_mm_store_si128((__m128i *)to + 19, tmp);
+						_mm_store_si128((__m128i *)to + 20, tmp);
+						_mm_store_si128((__m128i *)to + 21, tmp);
+						_mm_store_si128((__m128i *)to + 22, tmp);
+						_mm_store_si128((__m128i *)to + 23, tmp);
+						_mm_store_si128((__m128i *)to + 24, tmp);
+						_mm_store_si128((__m128i *)to + 25, tmp);
+						_mm_store_si128((__m128i *)to + 26, tmp);
+						_mm_store_si128((__m128i *)to + 27, tmp);
+						_mm_store_si128((__m128i *)to + 28, tmp);
+						_mm_store_si128((__m128i *)to + 29, tmp);
+						_mm_store_si128((__m128i *)to + 30, tmp);
+						_mm_store_si128((__m128i *)to + 31, tmp);
+						_mm_store_si128((__m128i *)to + 32, tmp);
+						_mm_store_si128((__m128i *)to + 33, tmp);
+						_mm_store_si128((__m128i *)to + 34, tmp);
+						_mm_store_si128((__m128i *)to + 35, tmp);
+						_mm_store_si128((__m128i *)to + 36, tmp);
+						_mm_store_si128((__m128i *)to + 37, tmp);
+						_mm_store_si128((__m128i *)to + 38, tmp);
+						_mm_store_si128((__m128i *)to + 39, tmp);
+						_mm_store_si128((__m128i *)to + 40, tmp);
+						_mm_store_si128((__m128i *)to + 41, tmp);
+						_mm_store_si128((__m128i *)to + 42, tmp);
+						_mm_store_si128((__m128i *)to + 43, tmp);
+						_mm_store_si128((__m128i *)to + 44, tmp);
+						_mm_store_si128((__m128i *)to + 45, tmp);
+						_mm_store_si128((__m128i *)to + 46, tmp);
+						_mm_store_si128((__m128i *)to + 47, tmp);
+						_mm_store_si128((__m128i *)to + 48, tmp);
+						_mm_store_si128((__m128i *)to + 49, tmp);
+						_mm_store_si128((__m128i *)to + 50, tmp);
+						_mm_store_si128((__m128i *)to + 51, tmp);
+						_mm_store_si128((__m128i *)to + 52, tmp);
+						_mm_store_si128((__m128i *)to + 53, tmp);
+						_mm_store_si128((__m128i *)to + 54, tmp);
+						_mm_store_si128((__m128i *)to + 55, tmp);
+						_mm_store_si128((__m128i *)to + 56, tmp);
+						_mm_store_si128((__m128i *)to + 57, tmp);
+						_mm_store_si128((__m128i *)to + 58, tmp);
+						_mm_store_si128((__m128i *)to + 59, tmp);
+						_mm_store_si128((__m128i *)to + 60, tmp);
+						_mm_store_si128((__m128i *)to + 61, tmp);
+						_mm_store_si128((__m128i *)to + 62, tmp);
+						_mm_store_si128((__m128i *)to + 63, tmp);
+						to += 256;
+					case 0x0a:
+			#ifdef NO_ZEROS
+						tmp = _mm_load_si128((__m128i *)static_mask_1);
+			#else
+						tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
+			#endif
+						_mm_store_si128((__m128i *)to, tmp);
+						_mm_store_si128((__m128i *)to + 1, tmp);
+						_mm_store_si128((__m128i *)to + 2, tmp);
+						_mm_store_si128((__m128i *)to + 3, tmp);
+						_mm_store_si128((__m128i *)to + 4, tmp);
+						_mm_store_si128((__m128i *)to + 5, tmp);
+						_mm_store_si128((__m128i *)to + 6, tmp);
+						_mm_store_si128((__m128i *)to + 7, tmp);
+						_mm_store_si128((__m128i *)to + 8, tmp);
+						_mm_store_si128((__m128i *)to + 9, tmp);
+						_mm_store_si128((__m128i *)to + 10, tmp);
+						_mm_store_si128((__m128i *)to + 11, tmp);
+						_mm_store_si128((__m128i *)to + 12, tmp);
+						_mm_store_si128((__m128i *)to + 13, tmp);
+						_mm_store_si128((__m128i *)to + 14, tmp);
+						_mm_store_si128((__m128i *)to + 15, tmp);
+						_mm_store_si128((__m128i *)to + 16, tmp);
+						_mm_store_si128((__m128i *)to + 17, tmp);
+						_mm_store_si128((__m128i *)to + 18, tmp);
+						_mm_store_si128((__m128i *)to + 19, tmp);
+						_mm_store_si128((__m128i *)to + 20, tmp);
+						_mm_store_si128((__m128i *)to + 21, tmp);
+						_mm_store_si128((__m128i *)to + 22, tmp);
+						_mm_store_si128((__m128i *)to + 23, tmp);
+						_mm_store_si128((__m128i *)to + 24, tmp);
+						_mm_store_si128((__m128i *)to + 25, tmp);
+						_mm_store_si128((__m128i *)to + 26, tmp);
+						_mm_store_si128((__m128i *)to + 27, tmp);
+						_mm_store_si128((__m128i *)to + 28, tmp);
+						_mm_store_si128((__m128i *)to + 29, tmp);
+						_mm_store_si128((__m128i *)to + 30, tmp);
+						_mm_store_si128((__m128i *)to + 31, tmp);
+						_mm_store_si128((__m128i *)to + 32, tmp);
+						_mm_store_si128((__m128i *)to + 33, tmp);
+						_mm_store_si128((__m128i *)to + 34, tmp);
+						_mm_store_si128((__m128i *)to + 35, tmp);
+						_mm_store_si128((__m128i *)to + 36, tmp);
+						_mm_store_si128((__m128i *)to + 37, tmp);
+						_mm_store_si128((__m128i *)to + 38, tmp);
+						_mm_store_si128((__m128i *)to + 39, tmp);
+						_mm_store_si128((__m128i *)to + 40, tmp);
+						_mm_store_si128((__m128i *)to + 41, tmp);
+						_mm_store_si128((__m128i *)to + 42, tmp);
+						_mm_store_si128((__m128i *)to + 43, tmp);
+						_mm_store_si128((__m128i *)to + 44, tmp);
+						_mm_store_si128((__m128i *)to + 45, tmp);
+						_mm_store_si128((__m128i *)to + 46, tmp);
+						_mm_store_si128((__m128i *)to + 47, tmp);
+						_mm_store_si128((__m128i *)to + 48, tmp);
+						_mm_store_si128((__m128i *)to + 49, tmp);
+						_mm_store_si128((__m128i *)to + 50, tmp);
+						_mm_store_si128((__m128i *)to + 51, tmp);
+						_mm_store_si128((__m128i *)to + 52, tmp);
+						_mm_store_si128((__m128i *)to + 53, tmp);
+						_mm_store_si128((__m128i *)to + 54, tmp);
+						_mm_store_si128((__m128i *)to + 55, tmp);
+						_mm_store_si128((__m128i *)to + 56, tmp);
+						_mm_store_si128((__m128i *)to + 57, tmp);
+						_mm_store_si128((__m128i *)to + 58, tmp);
+						_mm_store_si128((__m128i *)to + 59, tmp);
+						_mm_store_si128((__m128i *)to + 60, tmp);
+						_mm_store_si128((__m128i *)to + 61, tmp);
+						_mm_store_si128((__m128i *)to + 62, tmp);
+						_mm_store_si128((__m128i *)to + 63, tmp);
+						to += 256;
+					case 0x0b:
+			#ifdef NO_ZEROS
+						tmp = _mm_load_si128((__m128i *)static_mask_1);
+			#else
+						tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
+			#endif
+						_mm_store_si128((__m128i *)to, tmp);
+						_mm_store_si128((__m128i *)to + 1, tmp);
+						_mm_store_si128((__m128i *)to + 2, tmp);
+						_mm_store_si128((__m128i *)to + 3, tmp);
+						_mm_store_si128((__m128i *)to + 4, tmp);
+						_mm_store_si128((__m128i *)to + 5, tmp);
+						_mm_store_si128((__m128i *)to + 6, tmp);
+						_mm_store_si128((__m128i *)to + 7, tmp);
+						_mm_store_si128((__m128i *)to + 8, tmp);
+						_mm_store_si128((__m128i *)to + 9, tmp);
+						_mm_store_si128((__m128i *)to + 10, tmp);
+						_mm_store_si128((__m128i *)to + 11, tmp);
+						_mm_store_si128((__m128i *)to + 12, tmp);
+						_mm_store_si128((__m128i *)to + 13, tmp);
+						_mm_store_si128((__m128i *)to + 14, tmp);
+						_mm_store_si128((__m128i *)to + 15, tmp);
+						_mm_store_si128((__m128i *)to + 16, tmp);
+						_mm_store_si128((__m128i *)to + 17, tmp);
+						_mm_store_si128((__m128i *)to + 18, tmp);
+						_mm_store_si128((__m128i *)to + 19, tmp);
+						_mm_store_si128((__m128i *)to + 20, tmp);
+						_mm_store_si128((__m128i *)to + 21, tmp);
+						_mm_store_si128((__m128i *)to + 22, tmp);
+						_mm_store_si128((__m128i *)to + 23, tmp);
+						_mm_store_si128((__m128i *)to + 24, tmp);
+						_mm_store_si128((__m128i *)to + 25, tmp);
+						_mm_store_si128((__m128i *)to + 26, tmp);
+						_mm_store_si128((__m128i *)to + 27, tmp);
+						_mm_store_si128((__m128i *)to + 28, tmp);
+						_mm_store_si128((__m128i *)to + 29, tmp);
+						_mm_store_si128((__m128i *)to + 30, tmp);
+						_mm_store_si128((__m128i *)to + 31, tmp);
+						_mm_store_si128((__m128i *)to + 32, tmp);
+						_mm_store_si128((__m128i *)to + 33, tmp);
+						_mm_store_si128((__m128i *)to + 34, tmp);
+						_mm_store_si128((__m128i *)to + 35, tmp);
+						_mm_store_si128((__m128i *)to + 36, tmp);
+						_mm_store_si128((__m128i *)to + 37, tmp);
+						_mm_store_si128((__m128i *)to + 38, tmp);
+						_mm_store_si128((__m128i *)to + 39, tmp);
+						_mm_store_si128((__m128i *)to + 40, tmp);
+						_mm_store_si128((__m128i *)to + 41, tmp);
+						_mm_store_si128((__m128i *)to + 42, tmp);
+						_mm_store_si128((__m128i *)to + 43, tmp);
+						_mm_store_si128((__m128i *)to + 44, tmp);
+						_mm_store_si128((__m128i *)to + 45, tmp);
+						_mm_store_si128((__m128i *)to + 46, tmp);
+						_mm_store_si128((__m128i *)to + 47, tmp);
+						_mm_store_si128((__m128i *)to + 48, tmp);
+						_mm_store_si128((__m128i *)to + 49, tmp);
+						_mm_store_si128((__m128i *)to + 50, tmp);
+						_mm_store_si128((__m128i *)to + 51, tmp);
+						_mm_store_si128((__m128i *)to + 52, tmp);
+						_mm_store_si128((__m128i *)to + 53, tmp);
+						_mm_store_si128((__m128i *)to + 54, tmp);
+						_mm_store_si128((__m128i *)to + 55, tmp);
+						_mm_store_si128((__m128i *)to + 56, tmp);
+						_mm_store_si128((__m128i *)to + 57, tmp);
+						_mm_store_si128((__m128i *)to + 58, tmp);
+						_mm_store_si128((__m128i *)to + 59, tmp);
+						_mm_store_si128((__m128i *)to + 60, tmp);
+						_mm_store_si128((__m128i *)to + 61, tmp);
+						_mm_store_si128((__m128i *)to + 62, tmp);
+						_mm_store_si128((__m128i *)to + 63, tmp);
+						to += 256;
+					case 0x0c:
+			#ifdef NO_ZEROS
+						tmp = _mm_load_si128((__m128i *)static_mask_1);
+			#else
+						tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
+			#endif
+						_mm_store_si128((__m128i *)to, tmp);
+						_mm_store_si128((__m128i *)to + 1, tmp);
+						_mm_store_si128((__m128i *)to + 2, tmp);
+						_mm_store_si128((__m128i *)to + 3, tmp);
+						_mm_store_si128((__m128i *)to + 4, tmp);
+						_mm_store_si128((__m128i *)to + 5, tmp);
+						_mm_store_si128((__m128i *)to + 6, tmp);
+						_mm_store_si128((__m128i *)to + 7, tmp);
+						_mm_store_si128((__m128i *)to + 8, tmp);
+						_mm_store_si128((__m128i *)to + 9, tmp);
+						_mm_store_si128((__m128i *)to + 10, tmp);
+						_mm_store_si128((__m128i *)to + 11, tmp);
+						_mm_store_si128((__m128i *)to + 12, tmp);
+						_mm_store_si128((__m128i *)to + 13, tmp);
+						_mm_store_si128((__m128i *)to + 14, tmp);
+						_mm_store_si128((__m128i *)to + 15, tmp);
+						_mm_store_si128((__m128i *)to + 16, tmp);
+						_mm_store_si128((__m128i *)to + 17, tmp);
+						_mm_store_si128((__m128i *)to + 18, tmp);
+						_mm_store_si128((__m128i *)to + 19, tmp);
+						_mm_store_si128((__m128i *)to + 20, tmp);
+						_mm_store_si128((__m128i *)to + 21, tmp);
+						_mm_store_si128((__m128i *)to + 22, tmp);
+						_mm_store_si128((__m128i *)to + 23, tmp);
+						_mm_store_si128((__m128i *)to + 24, tmp);
+						_mm_store_si128((__m128i *)to + 25, tmp);
+						_mm_store_si128((__m128i *)to + 26, tmp);
+						_mm_store_si128((__m128i *)to + 27, tmp);
+						_mm_store_si128((__m128i *)to + 28, tmp);
+						_mm_store_si128((__m128i *)to + 29, tmp);
+						_mm_store_si128((__m128i *)to + 30, tmp);
+						_mm_store_si128((__m128i *)to + 31, tmp);
+						_mm_store_si128((__m128i *)to + 32, tmp);
+						_mm_store_si128((__m128i *)to + 33, tmp);
+						_mm_store_si128((__m128i *)to + 34, tmp);
+						_mm_store_si128((__m128i *)to + 35, tmp);
+						_mm_store_si128((__m128i *)to + 36, tmp);
+						_mm_store_si128((__m128i *)to + 37, tmp);
+						_mm_store_si128((__m128i *)to + 38, tmp);
+						_mm_store_si128((__m128i *)to + 39, tmp);
+						_mm_store_si128((__m128i *)to + 40, tmp);
+						_mm_store_si128((__m128i *)to + 41, tmp);
+						_mm_store_si128((__m128i *)to + 42, tmp);
+						_mm_store_si128((__m128i *)to + 43, tmp);
+						_mm_store_si128((__m128i *)to + 44, tmp);
+						_mm_store_si128((__m128i *)to + 45, tmp);
+						_mm_store_si128((__m128i *)to + 46, tmp);
+						_mm_store_si128((__m128i *)to + 47, tmp);
+						_mm_store_si128((__m128i *)to + 48, tmp);
+						_mm_store_si128((__m128i *)to + 49, tmp);
+						_mm_store_si128((__m128i *)to + 50, tmp);
+						_mm_store_si128((__m128i *)to + 51, tmp);
+						_mm_store_si128((__m128i *)to + 52, tmp);
+						_mm_store_si128((__m128i *)to + 53, tmp);
+						_mm_store_si128((__m128i *)to + 54, tmp);
+						_mm_store_si128((__m128i *)to + 55, tmp);
+						_mm_store_si128((__m128i *)to + 56, tmp);
+						_mm_store_si128((__m128i *)to + 57, tmp);
+						_mm_store_si128((__m128i *)to + 58, tmp);
+						_mm_store_si128((__m128i *)to + 59, tmp);
+						_mm_store_si128((__m128i *)to + 60, tmp);
+						_mm_store_si128((__m128i *)to + 61, tmp);
+						_mm_store_si128((__m128i *)to + 62, tmp);
+						_mm_store_si128((__m128i *)to + 63, tmp);
+						to += 256;
+					case 0x0d:
+			#ifdef NO_ZEROS
+						tmp = _mm_load_si128((__m128i *)static_mask_1);
+			#else
+						tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
+			#endif
+						_mm_store_si128((__m128i *)to, tmp);
+						_mm_store_si128((__m128i *)to + 1, tmp);
+						_mm_store_si128((__m128i *)to + 2, tmp);
+						_mm_store_si128((__m128i *)to + 3, tmp);
+						_mm_store_si128((__m128i *)to + 4, tmp);
+						_mm_store_si128((__m128i *)to + 5, tmp);
+						_mm_store_si128((__m128i *)to + 6, tmp);
+						_mm_store_si128((__m128i *)to + 7, tmp);
+						_mm_store_si128((__m128i *)to + 8, tmp);
+						_mm_store_si128((__m128i *)to + 9, tmp);
+						_mm_store_si128((__m128i *)to + 10, tmp);
+						_mm_store_si128((__m128i *)to + 11, tmp);
+						_mm_store_si128((__m128i *)to + 12, tmp);
+						_mm_store_si128((__m128i *)to + 13, tmp);
+						_mm_store_si128((__m128i *)to + 14, tmp);
+						_mm_store_si128((__m128i *)to + 15, tmp);
+						_mm_store_si128((__m128i *)to + 16, tmp);
+						_mm_store_si128((__m128i *)to + 17, tmp);
+						_mm_store_si128((__m128i *)to + 18, tmp);
+						_mm_store_si128((__m128i *)to + 19, tmp);
+						_mm_store_si128((__m128i *)to + 20, tmp);
+						_mm_store_si128((__m128i *)to + 21, tmp);
+						_mm_store_si128((__m128i *)to + 22, tmp);
+						_mm_store_si128((__m128i *)to + 23, tmp);
+						_mm_store_si128((__m128i *)to + 24, tmp);
+						_mm_store_si128((__m128i *)to + 25, tmp);
+						_mm_store_si128((__m128i *)to + 26, tmp);
+						_mm_store_si128((__m128i *)to + 27, tmp);
+						_mm_store_si128((__m128i *)to + 28, tmp);
+						_mm_store_si128((__m128i *)to + 29, tmp);
+						_mm_store_si128((__m128i *)to + 30, tmp);
+						_mm_store_si128((__m128i *)to + 31, tmp);
+						_mm_store_si128((__m128i *)to + 32, tmp);
+						_mm_store_si128((__m128i *)to + 33, tmp);
+						_mm_store_si128((__m128i *)to + 34, tmp);
+						_mm_store_si128((__m128i *)to + 35, tmp);
+						_mm_store_si128((__m128i *)to + 36, tmp);
+						_mm_store_si128((__m128i *)to + 37, tmp);
+						_mm_store_si128((__m128i *)to + 38, tmp);
+						_mm_store_si128((__m128i *)to + 39, tmp);
+						_mm_store_si128((__m128i *)to + 40, tmp);
+						_mm_store_si128((__m128i *)to + 41, tmp);
+						_mm_store_si128((__m128i *)to + 42, tmp);
+						_mm_store_si128((__m128i *)to + 43, tmp);
+						_mm_store_si128((__m128i *)to + 44, tmp);
+						_mm_store_si128((__m128i *)to + 45, tmp);
+						_mm_store_si128((__m128i *)to + 46, tmp);
+						_mm_store_si128((__m128i *)to + 47, tmp);
+						_mm_store_si128((__m128i *)to + 48, tmp);
+						_mm_store_si128((__m128i *)to + 49, tmp);
+						_mm_store_si128((__m128i *)to + 50, tmp);
+						_mm_store_si128((__m128i *)to + 51, tmp);
+						_mm_store_si128((__m128i *)to + 52, tmp);
+						_mm_store_si128((__m128i *)to + 53, tmp);
+						_mm_store_si128((__m128i *)to + 54, tmp);
+						_mm_store_si128((__m128i *)to + 55, tmp);
+						_mm_store_si128((__m128i *)to + 56, tmp);
+						_mm_store_si128((__m128i *)to + 57, tmp);
+						_mm_store_si128((__m128i *)to + 58, tmp);
+						_mm_store_si128((__m128i *)to + 59, tmp);
+						_mm_store_si128((__m128i *)to + 60, tmp);
+						_mm_store_si128((__m128i *)to + 61, tmp);
+						_mm_store_si128((__m128i *)to + 62, tmp);
+						_mm_store_si128((__m128i *)to + 63, tmp);
+						to += 256;
+					case 0x0e:
+			#ifdef NO_ZEROS
+						tmp = _mm_load_si128((__m128i *)static_mask_1);
+			#else
+						tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
+			#endif
+						_mm_store_si128((__m128i *)to, tmp);
+						_mm_store_si128((__m128i *)to + 1, tmp);
+						_mm_store_si128((__m128i *)to + 2, tmp);
+						_mm_store_si128((__m128i *)to + 3, tmp);
+						_mm_store_si128((__m128i *)to + 4, tmp);
+						_mm_store_si128((__m128i *)to + 5, tmp);
+						_mm_store_si128((__m128i *)to + 6, tmp);
+						_mm_store_si128((__m128i *)to + 7, tmp);
+						_mm_store_si128((__m128i *)to + 8, tmp);
+						_mm_store_si128((__m128i *)to + 9, tmp);
+						_mm_store_si128((__m128i *)to + 10, tmp);
+						_mm_store_si128((__m128i *)to + 11, tmp);
+						_mm_store_si128((__m128i *)to + 12, tmp);
+						_mm_store_si128((__m128i *)to + 13, tmp);
+						_mm_store_si128((__m128i *)to + 14, tmp);
+						_mm_store_si128((__m128i *)to + 15, tmp);
+						_mm_store_si128((__m128i *)to + 16, tmp);
+						_mm_store_si128((__m128i *)to + 17, tmp);
+						_mm_store_si128((__m128i *)to + 18, tmp);
+						_mm_store_si128((__m128i *)to + 19, tmp);
+						_mm_store_si128((__m128i *)to + 20, tmp);
+						_mm_store_si128((__m128i *)to + 21, tmp);
+						_mm_store_si128((__m128i *)to + 22, tmp);
+						_mm_store_si128((__m128i *)to + 23, tmp);
+						_mm_store_si128((__m128i *)to + 24, tmp);
+						_mm_store_si128((__m128i *)to + 25, tmp);
+						_mm_store_si128((__m128i *)to + 26, tmp);
+						_mm_store_si128((__m128i *)to + 27, tmp);
+						_mm_store_si128((__m128i *)to + 28, tmp);
+						_mm_store_si128((__m128i *)to + 29, tmp);
+						_mm_store_si128((__m128i *)to + 30, tmp);
+						_mm_store_si128((__m128i *)to + 31, tmp);
+						_mm_store_si128((__m128i *)to + 32, tmp);
+						_mm_store_si128((__m128i *)to + 33, tmp);
+						_mm_store_si128((__m128i *)to + 34, tmp);
+						_mm_store_si128((__m128i *)to + 35, tmp);
+						_mm_store_si128((__m128i *)to + 36, tmp);
+						_mm_store_si128((__m128i *)to + 37, tmp);
+						_mm_store_si128((__m128i *)to + 38, tmp);
+						_mm_store_si128((__m128i *)to + 39, tmp);
+						_mm_store_si128((__m128i *)to + 40, tmp);
+						_mm_store_si128((__m128i *)to + 41, tmp);
+						_mm_store_si128((__m128i *)to + 42, tmp);
+						_mm_store_si128((__m128i *)to + 43, tmp);
+						_mm_store_si128((__m128i *)to + 44, tmp);
+						_mm_store_si128((__m128i *)to + 45, tmp);
+						_mm_store_si128((__m128i *)to + 46, tmp);
+						_mm_store_si128((__m128i *)to + 47, tmp);
+						_mm_store_si128((__m128i *)to + 48, tmp);
+						_mm_store_si128((__m128i *)to + 49, tmp);
+						_mm_store_si128((__m128i *)to + 50, tmp);
+						_mm_store_si128((__m128i *)to + 51, tmp);
+						_mm_store_si128((__m128i *)to + 52, tmp);
+						_mm_store_si128((__m128i *)to + 53, tmp);
+						_mm_store_si128((__m128i *)to + 54, tmp);
+						_mm_store_si128((__m128i *)to + 55, tmp);
+						_mm_store_si128((__m128i *)to + 56, tmp);
+						_mm_store_si128((__m128i *)to + 57, tmp);
+						_mm_store_si128((__m128i *)to + 58, tmp);
+						_mm_store_si128((__m128i *)to + 59, tmp);
+						_mm_store_si128((__m128i *)to + 60, tmp);
+						_mm_store_si128((__m128i *)to + 61, tmp);
+						_mm_store_si128((__m128i *)to + 62, tmp);
+						_mm_store_si128((__m128i *)to + 63, tmp);
+						to += 256;
+					case 0x0f:
+			#ifdef NO_ZEROS
+						tmp = _mm_load_si128((__m128i *)static_mask_1);
+			#else
+						tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
+			#endif
+						_mm_store_si128((__m128i *)to, tmp);
+						_mm_store_si128((__m128i *)to + 1, tmp);
+						_mm_store_si128((__m128i *)to + 2, tmp);
+						_mm_store_si128((__m128i *)to + 3, tmp);
+						_mm_store_si128((__m128i *)to + 4, tmp);
+						_mm_store_si128((__m128i *)to + 5, tmp);
+						_mm_store_si128((__m128i *)to + 6, tmp);
+						_mm_store_si128((__m128i *)to + 7, tmp);
+						_mm_store_si128((__m128i *)to + 8, tmp);
+						_mm_store_si128((__m128i *)to + 9, tmp);
+						_mm_store_si128((__m128i *)to + 10, tmp);
+						_mm_store_si128((__m128i *)to + 11, tmp);
+						_mm_store_si128((__m128i *)to + 12, tmp);
+						_mm_store_si128((__m128i *)to + 13, tmp);
+						_mm_store_si128((__m128i *)to + 14, tmp);
+						_mm_store_si128((__m128i *)to + 15, tmp);
+						_mm_store_si128((__m128i *)to + 16, tmp);
+						_mm_store_si128((__m128i *)to + 17, tmp);
+						_mm_store_si128((__m128i *)to + 18, tmp);
+						_mm_store_si128((__m128i *)to + 19, tmp);
+						_mm_store_si128((__m128i *)to + 20, tmp);
+						_mm_store_si128((__m128i *)to + 21, tmp);
+						_mm_store_si128((__m128i *)to + 22, tmp);
+						_mm_store_si128((__m128i *)to + 23, tmp);
+						_mm_store_si128((__m128i *)to + 24, tmp);
+						_mm_store_si128((__m128i *)to + 25, tmp);
+						_mm_store_si128((__m128i *)to + 26, tmp);
+						_mm_store_si128((__m128i *)to + 27, tmp);
+						_mm_store_si128((__m128i *)to + 28, tmp);
+						_mm_store_si128((__m128i *)to + 29, tmp);
+						_mm_store_si128((__m128i *)to + 30, tmp);
+						_mm_store_si128((__m128i *)to + 31, tmp);
+						_mm_store_si128((__m128i *)to + 32, tmp);
+						_mm_store_si128((__m128i *)to + 33, tmp);
+						_mm_store_si128((__m128i *)to + 34, tmp);
+						_mm_store_si128((__m128i *)to + 35, tmp);
+						_mm_store_si128((__m128i *)to + 36, tmp);
+						_mm_store_si128((__m128i *)to + 37, tmp);
+						_mm_store_si128((__m128i *)to + 38, tmp);
+						_mm_store_si128((__m128i *)to + 39, tmp);
+						_mm_store_si128((__m128i *)to + 40, tmp);
+						_mm_store_si128((__m128i *)to + 41, tmp);
+						_mm_store_si128((__m128i *)to + 42, tmp);
+						_mm_store_si128((__m128i *)to + 43, tmp);
+						_mm_store_si128((__m128i *)to + 44, tmp);
+						_mm_store_si128((__m128i *)to + 45, tmp);
+						_mm_store_si128((__m128i *)to + 46, tmp);
+						_mm_store_si128((__m128i *)to + 47, tmp);
+						_mm_store_si128((__m128i *)to + 48, tmp);
+						_mm_store_si128((__m128i *)to + 49, tmp);
+						_mm_store_si128((__m128i *)to + 50, tmp);
+						_mm_store_si128((__m128i *)to + 51, tmp);
+						_mm_store_si128((__m128i *)to + 52, tmp);
+						_mm_store_si128((__m128i *)to + 53, tmp);
+						_mm_store_si128((__m128i *)to + 54, tmp);
+						_mm_store_si128((__m128i *)to + 55, tmp);
+						_mm_store_si128((__m128i *)to + 56, tmp);
+						_mm_store_si128((__m128i *)to + 57, tmp);
+						_mm_store_si128((__m128i *)to + 58, tmp);
+						_mm_store_si128((__m128i *)to + 59, tmp);
+						_mm_store_si128((__m128i *)to + 60, tmp);
+						_mm_store_si128((__m128i *)to + 61, tmp);
+						_mm_store_si128((__m128i *)to + 62, tmp);
+						_mm_store_si128((__m128i *)to + 63, tmp);
+						to += 256;
+						break;
+					case 0x10:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 16, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 17, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 18, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 19, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 20, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 21, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 22, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 23, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 24, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 25, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 26, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 27, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 28, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 29, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 30, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 31, _mm_and_si128(byte_stream, mask_1));
+						in += 16;
+						to += 128;
+					case 0x11:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 16, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 17, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 18, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 19, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 20, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 21, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 22, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 23, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 24, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 25, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 26, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 27, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 28, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 29, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 30, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 31, _mm_and_si128(byte_stream, mask_1));
+						in += 16;
+						to += 128;
+					case 0x12:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 16, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 17, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 18, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 19, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 20, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 21, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 22, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 23, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 24, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 25, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 26, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 27, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 28, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 29, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 30, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 31, _mm_and_si128(byte_stream, mask_1));
+						in += 16;
+						to += 128;
+					case 0x13:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 16, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 17, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 18, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 19, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 20, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 21, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 22, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 23, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 24, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 25, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 26, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 27, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 28, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 29, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 30, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 31, _mm_and_si128(byte_stream, mask_1));
+						in += 16;
+						to += 128;
+					case 0x14:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 16, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 17, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 18, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 19, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 20, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 21, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 22, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 23, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 24, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 25, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 26, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 27, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 28, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 29, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 30, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 31, _mm_and_si128(byte_stream, mask_1));
+						in += 16;
+						to += 128;
+					case 0x15:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 16, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 17, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 18, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 19, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 20, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 21, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 22, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 23, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 24, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 25, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 26, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 27, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 28, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 29, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 30, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 31, _mm_and_si128(byte_stream, mask_1));
+						in += 16;
+						to += 128;
+					case 0x16:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 16, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 17, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 18, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 19, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 20, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 21, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 22, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 23, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 24, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 25, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 26, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 27, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 28, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 29, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 30, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 31, _mm_and_si128(byte_stream, mask_1));
+						in += 16;
+						to += 128;
+					case 0x17:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 16, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 17, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 18, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 19, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 20, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 21, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 22, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 23, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 24, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 25, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 26, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 27, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 28, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 29, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 30, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 31, _mm_and_si128(byte_stream, mask_1));
+						in += 16;
+						to += 128;
+					case 0x18:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 16, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 17, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 18, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 19, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 20, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 21, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 22, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 23, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 24, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 25, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 26, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 27, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 28, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 29, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 30, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 31, _mm_and_si128(byte_stream, mask_1));
+						in += 16;
+						to += 128;
+					case 0x19:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 16, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 17, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 18, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 19, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 20, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 21, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 22, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 23, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 24, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 25, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 26, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 27, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 28, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 29, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 30, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 31, _mm_and_si128(byte_stream, mask_1));
+						in += 16;
+						to += 128;
+					case 0x1a:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 16, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 17, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 18, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 19, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 20, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 21, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 22, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 23, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 24, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 25, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 26, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 27, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 28, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 29, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 30, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 31, _mm_and_si128(byte_stream, mask_1));
+						in += 16;
+						to += 128;
+					case 0x1b:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 16, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 17, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 18, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 19, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 20, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 21, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 22, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 23, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 24, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 25, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 26, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 27, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 28, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 29, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 30, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 31, _mm_and_si128(byte_stream, mask_1));
+						in += 16;
+						to += 128;
+					case 0x1c:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 16, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 17, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 18, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 19, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 20, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 21, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 22, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 23, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 24, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 25, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 26, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 27, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 28, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 29, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 30, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 31, _mm_and_si128(byte_stream, mask_1));
+						in += 16;
+						to += 128;
+					case 0x1d:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 16, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 17, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 18, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 19, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 20, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 21, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 22, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 23, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 24, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 25, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 26, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 27, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 28, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 29, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 30, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 31, _mm_and_si128(byte_stream, mask_1));
+						in += 16;
+						to += 128;
+					case 0x1e:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 16, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 17, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 18, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 19, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 20, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 21, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 22, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 23, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 24, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 25, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 26, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 27, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 28, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 29, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 30, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 31, _mm_and_si128(byte_stream, mask_1));
+						in += 16;
+						to += 128;
+					case 0x1f:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 16, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 17, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 18, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 19, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 20, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 21, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 22, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 23, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 24, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 25, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 26, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 27, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 28, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 29, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 30, _mm_and_si128(byte_stream, mask_1));
+						byte_stream = _mm_srli_epi64(byte_stream, 1);
+						_mm_store_si128((__m128i *)to + 31, _mm_and_si128(byte_stream, mask_1));
+						in += 16;
+						to += 128;
+						break;
+					case 0x20:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_2));
+						in += 16;
+						to += 64;
+					case 0x21:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_2));
+						in += 16;
+						to += 64;
+					case 0x22:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_2));
+						in += 16;
+						to += 64;
+					case 0x23:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_2));
+						in += 16;
+						to += 64;
+					case 0x24:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_2));
+						in += 16;
+						to += 64;
+					case 0x25:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_2));
+						in += 16;
+						to += 64;
+					case 0x26:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_2));
+						in += 16;
+						to += 64;
+					case 0x27:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_2));
+						in += 16;
+						to += 64;
+					case 0x28:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_2));
+						in += 16;
+						to += 64;
+					case 0x29:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_2));
+						in += 16;
+						to += 64;
+					case 0x2a:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_2));
+						in += 16;
+						to += 64;
+					case 0x2b:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_2));
+						in += 16;
+						to += 64;
+					case 0x2c:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_2));
+						in += 16;
+						to += 64;
+					case 0x2d:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_2));
+						in += 16;
+						to += 64;
+					case 0x2e:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_2));
+						in += 16;
+						to += 64;
+					case 0x2f:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 10, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 11, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 12, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 13, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 14, _mm_and_si128(byte_stream, mask_2));
+						byte_stream = _mm_srli_epi64(byte_stream, 2);
+						_mm_store_si128((__m128i *)to + 15, _mm_and_si128(byte_stream, mask_2));
+						in += 16;
+						to += 64;
+						break;
+					case 0x30:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_3));
+						in += 16;
+						to += 40;
+					case 0x31:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_3));
+						in += 16;
+						to += 40;
+					case 0x32:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_3));
+						in += 16;
+						to += 40;
+					case 0x33:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_3));
+						in += 16;
+						to += 40;
+					case 0x34:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_3));
+						in += 16;
+						to += 40;
+					case 0x35:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_3));
+						in += 16;
+						to += 40;
+					case 0x36:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_3));
+						in += 16;
+						to += 40;
+					case 0x37:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_3));
+						in += 16;
+						to += 40;
+					case 0x38:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_3));
+						in += 16;
+						to += 40;
+					case 0x39:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_3));
+						in += 16;
+						to += 40;
+					case 0x3a:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_3));
+						in += 16;
+						to += 40;
+					case 0x3b:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_3));
+						in += 16;
+						to += 40;
+					case 0x3c:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_3));
+						in += 16;
+						to += 40;
+					case 0x3d:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_3));
+						in += 16;
+						to += 40;
+					case 0x3e:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_3));
+						in += 16;
+						to += 40;
+					case 0x3f:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_3));
+						byte_stream = _mm_srli_epi64(byte_stream, 3);
+						_mm_store_si128((__m128i *)to + 9, _mm_and_si128(byte_stream, mask_3));
+						in += 16;
+						to += 40;
+						break;
+					case 0x40:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_4));
+						in += 16;
+						to += 32;
+					case 0x41:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_4));
+						in += 16;
+						to += 32;
+					case 0x42:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_4));
+						in += 16;
+						to += 32;
+					case 0x43:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_4));
+						in += 16;
+						to += 32;
+					case 0x44:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_4));
+						in += 16;
+						to += 32;
+					case 0x45:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_4));
+						in += 16;
+						to += 32;
+					case 0x46:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_4));
+						in += 16;
+						to += 32;
+					case 0x47:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_4));
+						in += 16;
+						to += 32;
+					case 0x48:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_4));
+						in += 16;
+						to += 32;
+					case 0x49:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_4));
+						in += 16;
+						to += 32;
+					case 0x4a:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_4));
+						in += 16;
+						to += 32;
+					case 0x4b:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_4));
+						in += 16;
+						to += 32;
+					case 0x4c:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_4));
+						in += 16;
+						to += 32;
+					case 0x4d:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_4));
+						in += 16;
+						to += 32;
+					case 0x4e:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_4));
+						in += 16;
+						to += 32;
+					case 0x4f:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_4));
+						byte_stream = _mm_srli_epi64(byte_stream, 4);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_4));
+						in += 16;
+						to += 32;
+						break;
+					case 0x50:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_5));
+						in += 16;
+						to += 24;
+					case 0x51:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_5));
+						in += 16;
+						to += 24;
+					case 0x52:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_5));
+						in += 16;
+						to += 24;
+					case 0x53:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_5));
+						in += 16;
+						to += 24;
+					case 0x54:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_5));
+						in += 16;
+						to += 24;
+					case 0x55:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_5));
+						in += 16;
+						to += 24;
+					case 0x56:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_5));
+						in += 16;
+						to += 24;
+					case 0x57:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_5));
+						in += 16;
+						to += 24;
+					case 0x58:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_5));
+						in += 16;
+						to += 24;
+					case 0x59:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_5));
+						in += 16;
+						to += 24;
+					case 0x5a:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_5));
+						in += 16;
+						to += 24;
+					case 0x5b:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_5));
+						in += 16;
+						to += 24;
+					case 0x5c:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_5));
+						in += 16;
+						to += 24;
+					case 0x5d:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_5));
+						in += 16;
+						to += 24;
+					case 0x5e:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_5));
+						in += 16;
+						to += 24;
+					case 0x5f:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_5));
+						byte_stream = _mm_srli_epi64(byte_stream, 5);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_5));
+						in += 16;
+						to += 24;
+						break;
+					case 0x60:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_6));
+						in += 16;
+						to += 20;
+					case 0x61:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_6));
+						in += 16;
+						to += 20;
+					case 0x62:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_6));
+						in += 16;
+						to += 20;
+					case 0x63:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_6));
+						in += 16;
+						to += 20;
+					case 0x64:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_6));
+						in += 16;
+						to += 20;
+					case 0x65:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_6));
+						in += 16;
+						to += 20;
+					case 0x66:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_6));
+						in += 16;
+						to += 20;
+					case 0x67:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_6));
+						in += 16;
+						to += 20;
+					case 0x68:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_6));
+						in += 16;
+						to += 20;
+					case 0x69:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_6));
+						in += 16;
+						to += 20;
+					case 0x6a:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_6));
+						in += 16;
+						to += 20;
+					case 0x6b:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_6));
+						in += 16;
+						to += 20;
+					case 0x6c:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_6));
+						in += 16;
+						to += 20;
+					case 0x6d:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_6));
+						in += 16;
+						to += 20;
+					case 0x6e:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_6));
+						in += 16;
+						to += 20;
+					case 0x6f:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_6));
+						byte_stream = _mm_srli_epi64(byte_stream, 6);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_6));
+						in += 16;
+						to += 20;
+						break;
+					case 0x70:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_7));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 4), _mm_srli_epi32(byte_stream, 7)), mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 3);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_7));
+						in += 32;
+						to += 36;
+					case 0x71:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_7));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 4), _mm_srli_epi32(byte_stream, 7)), mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 3);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_7));
+						in += 32;
+						to += 36;
+					case 0x72:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_7));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 4), _mm_srli_epi32(byte_stream, 7)), mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 3);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_7));
+						in += 32;
+						to += 36;
+					case 0x73:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_7));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 4), _mm_srli_epi32(byte_stream, 7)), mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 3);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_7));
+						in += 32;
+						to += 36;
+					case 0x74:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_7));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 4), _mm_srli_epi32(byte_stream, 7)), mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 3);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_7));
+						in += 32;
+						to += 36;
+					case 0x75:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_7));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 4), _mm_srli_epi32(byte_stream, 7)), mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 3);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_7));
+						in += 32;
+						to += 36;
+					case 0x76:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_7));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 4), _mm_srli_epi32(byte_stream, 7)), mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 3);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_7));
+						in += 32;
+						to += 36;
+					case 0x77:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_7));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 4), _mm_srli_epi32(byte_stream, 7)), mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 3);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_7));
+						in += 32;
+						to += 36;
+					case 0x78:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_7));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 4), _mm_srli_epi32(byte_stream, 7)), mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 3);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_7));
+						in += 32;
+						to += 36;
+					case 0x79:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_7));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 4), _mm_srli_epi32(byte_stream, 7)), mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 3);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_7));
+						in += 32;
+						to += 36;
+					case 0x7a:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_7));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 4), _mm_srli_epi32(byte_stream, 7)), mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 3);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_7));
+						in += 32;
+						to += 36;
+					case 0x7b:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_7));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 4), _mm_srli_epi32(byte_stream, 7)), mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 3);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_7));
+						in += 32;
+						to += 36;
+					case 0x7c:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_7));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 4), _mm_srli_epi32(byte_stream, 7)), mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 3);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_7));
+						in += 32;
+						to += 36;
+					case 0x7d:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_7));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 4), _mm_srli_epi32(byte_stream, 7)), mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 3);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_7));
+						in += 32;
+						to += 36;
+					case 0x7e:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_7));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 4), _mm_srli_epi32(byte_stream, 7)), mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 3);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_7));
+						in += 32;
+						to += 36;
+					case 0x7f:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_7));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 4), _mm_srli_epi32(byte_stream, 7)), mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 3);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 7, _mm_and_si128(byte_stream, mask_7));
+						byte_stream = _mm_srli_epi32(byte_stream, 7);
+						_mm_store_si128((__m128i *)to + 8, _mm_and_si128(byte_stream, mask_7));
+						in += 32;
+						to += 36;
+						break;
+					case 0x80:
+						tmp = _mm_loadu_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_cvtepu8_epi32(tmp));
+						tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
+						_mm_store_si128((__m128i *)to + 1, _mm_cvtepu8_epi32(tmp2));
+						tmp = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)));
+						_mm_store_si128((__m128i *)to + 2, _mm_cvtepu8_epi32(tmp));
+						tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
+						_mm_store_si128((__m128i *)to + 3, _mm_cvtepu8_epi32(tmp2));
+						in += 16;
+						to += 16;
+					case 0x81:
+						tmp = _mm_loadu_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_cvtepu8_epi32(tmp));
+						tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
+						_mm_store_si128((__m128i *)to + 1, _mm_cvtepu8_epi32(tmp2));
+						tmp = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)));
+						_mm_store_si128((__m128i *)to + 2, _mm_cvtepu8_epi32(tmp));
+						tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
+						_mm_store_si128((__m128i *)to + 3, _mm_cvtepu8_epi32(tmp2));
+						in += 16;
+						to += 16;
+					case 0x82:
+						tmp = _mm_loadu_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_cvtepu8_epi32(tmp));
+						tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
+						_mm_store_si128((__m128i *)to + 1, _mm_cvtepu8_epi32(tmp2));
+						tmp = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)));
+						_mm_store_si128((__m128i *)to + 2, _mm_cvtepu8_epi32(tmp));
+						tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
+						_mm_store_si128((__m128i *)to + 3, _mm_cvtepu8_epi32(tmp2));
+						in += 16;
+						to += 16;
+					case 0x83:
+						tmp = _mm_loadu_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_cvtepu8_epi32(tmp));
+						tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
+						_mm_store_si128((__m128i *)to + 1, _mm_cvtepu8_epi32(tmp2));
+						tmp = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)));
+						_mm_store_si128((__m128i *)to + 2, _mm_cvtepu8_epi32(tmp));
+						tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
+						_mm_store_si128((__m128i *)to + 3, _mm_cvtepu8_epi32(tmp2));
+						in += 16;
+						to += 16;
+					case 0x84:
+						tmp = _mm_loadu_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_cvtepu8_epi32(tmp));
+						tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
+						_mm_store_si128((__m128i *)to + 1, _mm_cvtepu8_epi32(tmp2));
+						tmp = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)));
+						_mm_store_si128((__m128i *)to + 2, _mm_cvtepu8_epi32(tmp));
+						tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
+						_mm_store_si128((__m128i *)to + 3, _mm_cvtepu8_epi32(tmp2));
+						in += 16;
+						to += 16;
+					case 0x85:
+						tmp = _mm_loadu_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_cvtepu8_epi32(tmp));
+						tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
+						_mm_store_si128((__m128i *)to + 1, _mm_cvtepu8_epi32(tmp2));
+						tmp = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)));
+						_mm_store_si128((__m128i *)to + 2, _mm_cvtepu8_epi32(tmp));
+						tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
+						_mm_store_si128((__m128i *)to + 3, _mm_cvtepu8_epi32(tmp2));
+						in += 16;
+						to += 16;
+					case 0x86:
+						tmp = _mm_loadu_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_cvtepu8_epi32(tmp));
+						tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
+						_mm_store_si128((__m128i *)to + 1, _mm_cvtepu8_epi32(tmp2));
+						tmp = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)));
+						_mm_store_si128((__m128i *)to + 2, _mm_cvtepu8_epi32(tmp));
+						tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
+						_mm_store_si128((__m128i *)to + 3, _mm_cvtepu8_epi32(tmp2));
+						in += 16;
+						to += 16;
+					case 0x87:
+						tmp = _mm_loadu_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_cvtepu8_epi32(tmp));
+						tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
+						_mm_store_si128((__m128i *)to + 1, _mm_cvtepu8_epi32(tmp2));
+						tmp = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)));
+						_mm_store_si128((__m128i *)to + 2, _mm_cvtepu8_epi32(tmp));
+						tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
+						_mm_store_si128((__m128i *)to + 3, _mm_cvtepu8_epi32(tmp2));
+						in += 16;
+						to += 16;
+					case 0x88:
+						tmp = _mm_loadu_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_cvtepu8_epi32(tmp));
+						tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
+						_mm_store_si128((__m128i *)to + 1, _mm_cvtepu8_epi32(tmp2));
+						tmp = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)));
+						_mm_store_si128((__m128i *)to + 2, _mm_cvtepu8_epi32(tmp));
+						tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
+						_mm_store_si128((__m128i *)to + 3, _mm_cvtepu8_epi32(tmp2));
+						in += 16;
+						to += 16;
+					case 0x89:
+						tmp = _mm_loadu_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_cvtepu8_epi32(tmp));
+						tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
+						_mm_store_si128((__m128i *)to + 1, _mm_cvtepu8_epi32(tmp2));
+						tmp = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)));
+						_mm_store_si128((__m128i *)to + 2, _mm_cvtepu8_epi32(tmp));
+						tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
+						_mm_store_si128((__m128i *)to + 3, _mm_cvtepu8_epi32(tmp2));
+						in += 16;
+						to += 16;
+					case 0x8a:
+						tmp = _mm_loadu_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_cvtepu8_epi32(tmp));
+						tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
+						_mm_store_si128((__m128i *)to + 1, _mm_cvtepu8_epi32(tmp2));
+						tmp = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)));
+						_mm_store_si128((__m128i *)to + 2, _mm_cvtepu8_epi32(tmp));
+						tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
+						_mm_store_si128((__m128i *)to + 3, _mm_cvtepu8_epi32(tmp2));
+						in += 16;
+						to += 16;
+					case 0x8b:
+						tmp = _mm_loadu_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_cvtepu8_epi32(tmp));
+						tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
+						_mm_store_si128((__m128i *)to + 1, _mm_cvtepu8_epi32(tmp2));
+						tmp = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)));
+						_mm_store_si128((__m128i *)to + 2, _mm_cvtepu8_epi32(tmp));
+						tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
+						_mm_store_si128((__m128i *)to + 3, _mm_cvtepu8_epi32(tmp2));
+						in += 16;
+						to += 16;
+					case 0x8c:
+						tmp = _mm_loadu_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_cvtepu8_epi32(tmp));
+						tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
+						_mm_store_si128((__m128i *)to + 1, _mm_cvtepu8_epi32(tmp2));
+						tmp = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)));
+						_mm_store_si128((__m128i *)to + 2, _mm_cvtepu8_epi32(tmp));
+						tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
+						_mm_store_si128((__m128i *)to + 3, _mm_cvtepu8_epi32(tmp2));
+						in += 16;
+						to += 16;
+					case 0x8d:
+						tmp = _mm_loadu_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_cvtepu8_epi32(tmp));
+						tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
+						_mm_store_si128((__m128i *)to + 1, _mm_cvtepu8_epi32(tmp2));
+						tmp = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)));
+						_mm_store_si128((__m128i *)to + 2, _mm_cvtepu8_epi32(tmp));
+						tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
+						_mm_store_si128((__m128i *)to + 3, _mm_cvtepu8_epi32(tmp2));
+						in += 16;
+						to += 16;
+					case 0x8e:
+						tmp = _mm_loadu_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_cvtepu8_epi32(tmp));
+						tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
+						_mm_store_si128((__m128i *)to + 1, _mm_cvtepu8_epi32(tmp2));
+						tmp = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)));
+						_mm_store_si128((__m128i *)to + 2, _mm_cvtepu8_epi32(tmp));
+						tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
+						_mm_store_si128((__m128i *)to + 3, _mm_cvtepu8_epi32(tmp2));
+						in += 16;
+						to += 16;
+					case 0x8f:
+						tmp = _mm_loadu_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_cvtepu8_epi32(tmp));
+						tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
+						_mm_store_si128((__m128i *)to + 1, _mm_cvtepu8_epi32(tmp2));
+						tmp = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)));
+						_mm_store_si128((__m128i *)to + 2, _mm_cvtepu8_epi32(tmp));
+						tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp), 0x01));
+						_mm_store_si128((__m128i *)to + 3, _mm_cvtepu8_epi32(tmp2));
+						in += 16;
+						to += 16;
+						break;
+					case 0x90:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_9));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 5), _mm_srli_epi32(byte_stream, 9)), mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 4);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_9));
+						in += 32;
+						to += 28;
+					case 0x91:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_9));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 5), _mm_srli_epi32(byte_stream, 9)), mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 4);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_9));
+						in += 32;
+						to += 28;
+					case 0x92:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_9));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 5), _mm_srli_epi32(byte_stream, 9)), mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 4);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_9));
+						in += 32;
+						to += 28;
+					case 0x93:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_9));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 5), _mm_srli_epi32(byte_stream, 9)), mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 4);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_9));
+						in += 32;
+						to += 28;
+					case 0x94:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_9));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 5), _mm_srli_epi32(byte_stream, 9)), mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 4);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_9));
+						in += 32;
+						to += 28;
+					case 0x95:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_9));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 5), _mm_srli_epi32(byte_stream, 9)), mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 4);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_9));
+						in += 32;
+						to += 28;
+					case 0x96:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_9));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 5), _mm_srli_epi32(byte_stream, 9)), mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 4);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_9));
+						in += 32;
+						to += 28;
+					case 0x97:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_9));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 5), _mm_srli_epi32(byte_stream, 9)), mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 4);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_9));
+						in += 32;
+						to += 28;
+					case 0x98:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_9));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 5), _mm_srli_epi32(byte_stream, 9)), mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 4);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_9));
+						in += 32;
+						to += 28;
+					case 0x99:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_9));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 5), _mm_srli_epi32(byte_stream, 9)), mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 4);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_9));
+						in += 32;
+						to += 28;
+					case 0x9a:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_9));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 5), _mm_srli_epi32(byte_stream, 9)), mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 4);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_9));
+						in += 32;
+						to += 28;
+					case 0x9b:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_9));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 5), _mm_srli_epi32(byte_stream, 9)), mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 4);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_9));
+						in += 32;
+						to += 28;
+					case 0x9c:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_9));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 5), _mm_srli_epi32(byte_stream, 9)), mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 4);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_9));
+						in += 32;
+						to += 28;
+					case 0x9d:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_9));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 5), _mm_srli_epi32(byte_stream, 9)), mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 4);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_9));
+						in += 32;
+						to += 28;
+					case 0x9e:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_9));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 5), _mm_srli_epi32(byte_stream, 9)), mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 4);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_9));
+						in += 32;
+						to += 28;
+					case 0x9f:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_9));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 5), _mm_srli_epi32(byte_stream, 9)), mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 4);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 5, _mm_and_si128(byte_stream, mask_9));
+						byte_stream = _mm_srli_epi32(byte_stream, 9);
+						_mm_store_si128((__m128i *)to + 6, _mm_and_si128(byte_stream, mask_9));
+						in += 32;
+						to += 28;
+						break;
+					case 0xa0:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_10));
+						byte_stream = _mm_srli_epi64(byte_stream, 10);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_10));
+						byte_stream = _mm_srli_epi64(byte_stream, 10);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_10));
+						in += 16;
+						to += 12;
+					case 0xa1:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_10));
+						byte_stream = _mm_srli_epi64(byte_stream, 10);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_10));
+						byte_stream = _mm_srli_epi64(byte_stream, 10);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_10));
+						in += 16;
+						to += 12;
+					case 0xa2:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_10));
+						byte_stream = _mm_srli_epi64(byte_stream, 10);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_10));
+						byte_stream = _mm_srli_epi64(byte_stream, 10);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_10));
+						in += 16;
+						to += 12;
+					case 0xa3:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_10));
+						byte_stream = _mm_srli_epi64(byte_stream, 10);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_10));
+						byte_stream = _mm_srli_epi64(byte_stream, 10);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_10));
+						in += 16;
+						to += 12;
+					case 0xa4:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_10));
+						byte_stream = _mm_srli_epi64(byte_stream, 10);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_10));
+						byte_stream = _mm_srli_epi64(byte_stream, 10);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_10));
+						in += 16;
+						to += 12;
+					case 0xa5:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_10));
+						byte_stream = _mm_srli_epi64(byte_stream, 10);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_10));
+						byte_stream = _mm_srli_epi64(byte_stream, 10);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_10));
+						in += 16;
+						to += 12;
+					case 0xa6:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_10));
+						byte_stream = _mm_srli_epi64(byte_stream, 10);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_10));
+						byte_stream = _mm_srli_epi64(byte_stream, 10);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_10));
+						in += 16;
+						to += 12;
+					case 0xa7:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_10));
+						byte_stream = _mm_srli_epi64(byte_stream, 10);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_10));
+						byte_stream = _mm_srli_epi64(byte_stream, 10);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_10));
+						in += 16;
+						to += 12;
+					case 0xa8:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_10));
+						byte_stream = _mm_srli_epi64(byte_stream, 10);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_10));
+						byte_stream = _mm_srli_epi64(byte_stream, 10);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_10));
+						in += 16;
+						to += 12;
+					case 0xa9:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_10));
+						byte_stream = _mm_srli_epi64(byte_stream, 10);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_10));
+						byte_stream = _mm_srli_epi64(byte_stream, 10);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_10));
+						in += 16;
+						to += 12;
+					case 0xaa:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_10));
+						byte_stream = _mm_srli_epi64(byte_stream, 10);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_10));
+						byte_stream = _mm_srli_epi64(byte_stream, 10);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_10));
+						in += 16;
+						to += 12;
+					case 0xab:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_10));
+						byte_stream = _mm_srli_epi64(byte_stream, 10);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_10));
+						byte_stream = _mm_srli_epi64(byte_stream, 10);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_10));
+						in += 16;
+						to += 12;
+					case 0xac:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_10));
+						byte_stream = _mm_srli_epi64(byte_stream, 10);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_10));
+						byte_stream = _mm_srli_epi64(byte_stream, 10);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_10));
+						in += 16;
+						to += 12;
+					case 0xad:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_10));
+						byte_stream = _mm_srli_epi64(byte_stream, 10);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_10));
+						byte_stream = _mm_srli_epi64(byte_stream, 10);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_10));
+						in += 16;
+						to += 12;
+					case 0xae:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_10));
+						byte_stream = _mm_srli_epi64(byte_stream, 10);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_10));
+						byte_stream = _mm_srli_epi64(byte_stream, 10);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_10));
+						in += 16;
+						to += 12;
+					case 0xaf:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_10));
+						byte_stream = _mm_srli_epi64(byte_stream, 10);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_10));
+						byte_stream = _mm_srli_epi64(byte_stream, 10);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(byte_stream, mask_10));
+						in += 16;
+						to += 12;
+						break;
+					case 0xb0:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream, 12);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_12));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 8), _mm_srli_epi32(byte_stream, 12)), mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 8);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream, 12);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_12));
+						in += 32;
+						to += 20;
+					case 0xb1:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream, 12);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_12));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 8), _mm_srli_epi32(byte_stream, 12)), mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 8);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream, 12);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_12));
+						in += 32;
+						to += 20;
+					case 0xb2:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream, 12);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_12));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 8), _mm_srli_epi32(byte_stream, 12)), mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 8);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream, 12);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_12));
+						in += 32;
+						to += 20;
+					case 0xb3:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream, 12);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_12));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 8), _mm_srli_epi32(byte_stream, 12)), mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 8);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream, 12);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_12));
+						in += 32;
+						to += 20;
+					case 0xb4:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream, 12);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_12));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 8), _mm_srli_epi32(byte_stream, 12)), mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 8);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream, 12);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_12));
+						in += 32;
+						to += 20;
+					case 0xb5:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream, 12);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_12));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 8), _mm_srli_epi32(byte_stream, 12)), mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 8);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream, 12);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_12));
+						in += 32;
+						to += 20;
+					case 0xb6:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream, 12);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_12));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 8), _mm_srli_epi32(byte_stream, 12)), mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 8);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream, 12);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_12));
+						in += 32;
+						to += 20;
+					case 0xb7:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream, 12);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_12));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 8), _mm_srli_epi32(byte_stream, 12)), mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 8);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream, 12);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_12));
+						in += 32;
+						to += 20;
+					case 0xb8:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream, 12);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_12));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 8), _mm_srli_epi32(byte_stream, 12)), mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 8);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream, 12);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_12));
+						in += 32;
+						to += 20;
+					case 0xb9:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream, 12);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_12));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 8), _mm_srli_epi32(byte_stream, 12)), mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 8);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream, 12);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_12));
+						in += 32;
+						to += 20;
+					case 0xba:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream, 12);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_12));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 8), _mm_srli_epi32(byte_stream, 12)), mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 8);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream, 12);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_12));
+						in += 32;
+						to += 20;
+					case 0xbb:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream, 12);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_12));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 8), _mm_srli_epi32(byte_stream, 12)), mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 8);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream, 12);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_12));
+						in += 32;
+						to += 20;
+					case 0xbc:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream, 12);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_12));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 8), _mm_srli_epi32(byte_stream, 12)), mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 8);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream, 12);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_12));
+						in += 32;
+						to += 20;
+					case 0xbd:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream, 12);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_12));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 8), _mm_srli_epi32(byte_stream, 12)), mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 8);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream, 12);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_12));
+						in += 32;
+						to += 20;
+					case 0xbe:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream, 12);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_12));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 8), _mm_srli_epi32(byte_stream, 12)), mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 8);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream, 12);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_12));
+						in += 32;
+						to += 20;
+					case 0xbf:
+						byte_stream = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream, 12);
+						_mm_store_si128((__m128i *)to + 1, _mm_and_si128(byte_stream, mask_12));
+						byte_stream_2 = _mm_load_si128((__m128i *)in + 1);
+						_mm_store_si128((__m128i *)to + 2, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 8), _mm_srli_epi32(byte_stream, 12)), mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream_2, 8);
+						_mm_store_si128((__m128i *)to + 3, _mm_and_si128(byte_stream, mask_12));
+						byte_stream = _mm_srli_epi32(byte_stream, 12);
+						_mm_store_si128((__m128i *)to + 4, _mm_and_si128(byte_stream, mask_12));
+						in += 32;
+						to += 20;
+						break;
+					case 0xc0:
+						tmp = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_cvtepu16_epi32(tmp));
+						_mm_store_si128((__m128i *)to + 1, _mm_cvtepu16_epi32(_mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)))));
+						in += 16;
+						to += 8;
+					case 0xc1:
+						tmp = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_cvtepu16_epi32(tmp));
+						_mm_store_si128((__m128i *)to + 1, _mm_cvtepu16_epi32(_mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)))));
+						in += 16;
+						to += 8;
+					case 0xc2:
+						tmp = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_cvtepu16_epi32(tmp));
+						_mm_store_si128((__m128i *)to + 1, _mm_cvtepu16_epi32(_mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)))));
+						in += 16;
+						to += 8;
+					case 0xc3:
+						tmp = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_cvtepu16_epi32(tmp));
+						_mm_store_si128((__m128i *)to + 1, _mm_cvtepu16_epi32(_mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)))));
+						in += 16;
+						to += 8;
+					case 0xc4:
+						tmp = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_cvtepu16_epi32(tmp));
+						_mm_store_si128((__m128i *)to + 1, _mm_cvtepu16_epi32(_mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)))));
+						in += 16;
+						to += 8;
+					case 0xc5:
+						tmp = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_cvtepu16_epi32(tmp));
+						_mm_store_si128((__m128i *)to + 1, _mm_cvtepu16_epi32(_mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)))));
+						in += 16;
+						to += 8;
+					case 0xc6:
+						tmp = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_cvtepu16_epi32(tmp));
+						_mm_store_si128((__m128i *)to + 1, _mm_cvtepu16_epi32(_mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)))));
+						in += 16;
+						to += 8;
+					case 0xc7:
+						tmp = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_cvtepu16_epi32(tmp));
+						_mm_store_si128((__m128i *)to + 1, _mm_cvtepu16_epi32(_mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)))));
+						in += 16;
+						to += 8;
+					case 0xc8:
+						tmp = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_cvtepu16_epi32(tmp));
+						_mm_store_si128((__m128i *)to + 1, _mm_cvtepu16_epi32(_mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)))));
+						in += 16;
+						to += 8;
+					case 0xc9:
+						tmp = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_cvtepu16_epi32(tmp));
+						_mm_store_si128((__m128i *)to + 1, _mm_cvtepu16_epi32(_mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)))));
+						in += 16;
+						to += 8;
+					case 0xca:
+						tmp = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_cvtepu16_epi32(tmp));
+						_mm_store_si128((__m128i *)to + 1, _mm_cvtepu16_epi32(_mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)))));
+						in += 16;
+						to += 8;
+					case 0xcb:
+						tmp = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_cvtepu16_epi32(tmp));
+						_mm_store_si128((__m128i *)to + 1, _mm_cvtepu16_epi32(_mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)))));
+						in += 16;
+						to += 8;
+					case 0xcc:
+						tmp = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_cvtepu16_epi32(tmp));
+						_mm_store_si128((__m128i *)to + 1, _mm_cvtepu16_epi32(_mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)))));
+						in += 16;
+						to += 8;
+					case 0xcd:
+						tmp = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_cvtepu16_epi32(tmp));
+						_mm_store_si128((__m128i *)to + 1, _mm_cvtepu16_epi32(_mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)))));
+						in += 16;
+						to += 8;
+					case 0xce:
+						tmp = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_cvtepu16_epi32(tmp));
+						_mm_store_si128((__m128i *)to + 1, _mm_cvtepu16_epi32(_mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)))));
+						in += 16;
+						to += 8;
+					case 0xcf:
+						tmp = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, _mm_cvtepu16_epi32(tmp));
+						_mm_store_si128((__m128i *)to + 1, _mm_cvtepu16_epi32(_mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp), _mm_castsi128_ps(tmp)))));
+						in += 16;
+						to += 8;
+						break;
+					case 0xd0:
+						byte_stream = _mm_load_si128((__m128i *)in);			_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_21));			byte_stream_2 = _mm_load_si128((__m128i *)in + 1);			_mm_store_si128((__m128i *)to + 1, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 11), _mm_srli_epi32(byte_stream, 21)), mask_21));			_mm_store_si128((__m128i *)to + 2, _mm_and_si128(_mm_srli_epi32(byte_stream_2, 11), mask_21));			in += 32;
+						to += 12;
+					case 0xd1:
+						byte_stream = _mm_load_si128((__m128i *)in);			_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_21));			byte_stream_2 = _mm_load_si128((__m128i *)in + 1);			_mm_store_si128((__m128i *)to + 1, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 11), _mm_srli_epi32(byte_stream, 21)), mask_21));			_mm_store_si128((__m128i *)to + 2, _mm_and_si128(_mm_srli_epi32(byte_stream_2, 11), mask_21));			in += 32;
+						to += 12;
+					case 0xd2:
+						byte_stream = _mm_load_si128((__m128i *)in);			_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_21));			byte_stream_2 = _mm_load_si128((__m128i *)in + 1);			_mm_store_si128((__m128i *)to + 1, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 11), _mm_srli_epi32(byte_stream, 21)), mask_21));			_mm_store_si128((__m128i *)to + 2, _mm_and_si128(_mm_srli_epi32(byte_stream_2, 11), mask_21));			in += 32;
+						to += 12;
+					case 0xd3:
+						byte_stream = _mm_load_si128((__m128i *)in);			_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_21));			byte_stream_2 = _mm_load_si128((__m128i *)in + 1);			_mm_store_si128((__m128i *)to + 1, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 11), _mm_srli_epi32(byte_stream, 21)), mask_21));			_mm_store_si128((__m128i *)to + 2, _mm_and_si128(_mm_srli_epi32(byte_stream_2, 11), mask_21));			in += 32;
+						to += 12;
+					case 0xd4:
+						byte_stream = _mm_load_si128((__m128i *)in);			_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_21));			byte_stream_2 = _mm_load_si128((__m128i *)in + 1);			_mm_store_si128((__m128i *)to + 1, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 11), _mm_srli_epi32(byte_stream, 21)), mask_21));			_mm_store_si128((__m128i *)to + 2, _mm_and_si128(_mm_srli_epi32(byte_stream_2, 11), mask_21));			in += 32;
+						to += 12;
+					case 0xd5:
+						byte_stream = _mm_load_si128((__m128i *)in);			_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_21));			byte_stream_2 = _mm_load_si128((__m128i *)in + 1);			_mm_store_si128((__m128i *)to + 1, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 11), _mm_srli_epi32(byte_stream, 21)), mask_21));			_mm_store_si128((__m128i *)to + 2, _mm_and_si128(_mm_srli_epi32(byte_stream_2, 11), mask_21));			in += 32;
+						to += 12;
+					case 0xd6:
+						byte_stream = _mm_load_si128((__m128i *)in);			_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_21));			byte_stream_2 = _mm_load_si128((__m128i *)in + 1);			_mm_store_si128((__m128i *)to + 1, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 11), _mm_srli_epi32(byte_stream, 21)), mask_21));			_mm_store_si128((__m128i *)to + 2, _mm_and_si128(_mm_srli_epi32(byte_stream_2, 11), mask_21));			in += 32;
+						to += 12;
+					case 0xd7:
+						byte_stream = _mm_load_si128((__m128i *)in);			_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_21));			byte_stream_2 = _mm_load_si128((__m128i *)in + 1);			_mm_store_si128((__m128i *)to + 1, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 11), _mm_srli_epi32(byte_stream, 21)), mask_21));			_mm_store_si128((__m128i *)to + 2, _mm_and_si128(_mm_srli_epi32(byte_stream_2, 11), mask_21));			in += 32;
+						to += 12;
+					case 0xd8:
+						byte_stream = _mm_load_si128((__m128i *)in);			_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_21));			byte_stream_2 = _mm_load_si128((__m128i *)in + 1);			_mm_store_si128((__m128i *)to + 1, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 11), _mm_srli_epi32(byte_stream, 21)), mask_21));			_mm_store_si128((__m128i *)to + 2, _mm_and_si128(_mm_srli_epi32(byte_stream_2, 11), mask_21));			in += 32;
+						to += 12;
+					case 0xd9:
+						byte_stream = _mm_load_si128((__m128i *)in);			_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_21));			byte_stream_2 = _mm_load_si128((__m128i *)in + 1);			_mm_store_si128((__m128i *)to + 1, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 11), _mm_srli_epi32(byte_stream, 21)), mask_21));			_mm_store_si128((__m128i *)to + 2, _mm_and_si128(_mm_srli_epi32(byte_stream_2, 11), mask_21));			in += 32;
+						to += 12;
+					case 0xda:
+						byte_stream = _mm_load_si128((__m128i *)in);			_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_21));			byte_stream_2 = _mm_load_si128((__m128i *)in + 1);			_mm_store_si128((__m128i *)to + 1, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 11), _mm_srli_epi32(byte_stream, 21)), mask_21));			_mm_store_si128((__m128i *)to + 2, _mm_and_si128(_mm_srli_epi32(byte_stream_2, 11), mask_21));			in += 32;
+						to += 12;
+					case 0xdb:
+						byte_stream = _mm_load_si128((__m128i *)in);			_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_21));			byte_stream_2 = _mm_load_si128((__m128i *)in + 1);			_mm_store_si128((__m128i *)to + 1, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 11), _mm_srli_epi32(byte_stream, 21)), mask_21));			_mm_store_si128((__m128i *)to + 2, _mm_and_si128(_mm_srli_epi32(byte_stream_2, 11), mask_21));			in += 32;
+						to += 12;
+					case 0xdc:
+						byte_stream = _mm_load_si128((__m128i *)in);			_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_21));			byte_stream_2 = _mm_load_si128((__m128i *)in + 1);			_mm_store_si128((__m128i *)to + 1, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 11), _mm_srli_epi32(byte_stream, 21)), mask_21));			_mm_store_si128((__m128i *)to + 2, _mm_and_si128(_mm_srli_epi32(byte_stream_2, 11), mask_21));			in += 32;
+						to += 12;
+					case 0xdd:
+						byte_stream = _mm_load_si128((__m128i *)in);			_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_21));			byte_stream_2 = _mm_load_si128((__m128i *)in + 1);			_mm_store_si128((__m128i *)to + 1, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 11), _mm_srli_epi32(byte_stream, 21)), mask_21));			_mm_store_si128((__m128i *)to + 2, _mm_and_si128(_mm_srli_epi32(byte_stream_2, 11), mask_21));			in += 32;
+						to += 12;
+					case 0xde:
+						byte_stream = _mm_load_si128((__m128i *)in);			_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_21));			byte_stream_2 = _mm_load_si128((__m128i *)in + 1);			_mm_store_si128((__m128i *)to + 1, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 11), _mm_srli_epi32(byte_stream, 21)), mask_21));			_mm_store_si128((__m128i *)to + 2, _mm_and_si128(_mm_srli_epi32(byte_stream_2, 11), mask_21));			in += 32;
+						to += 12;
+					case 0xdf:
+						byte_stream = _mm_load_si128((__m128i *)in);			_mm_store_si128((__m128i *)to, _mm_and_si128(byte_stream, mask_21));			byte_stream_2 = _mm_load_si128((__m128i *)in + 1);			_mm_store_si128((__m128i *)to + 1, _mm_and_si128(_mm_or_si128(_mm_slli_epi32(byte_stream_2, 11), _mm_srli_epi32(byte_stream, 21)), mask_21));			_mm_store_si128((__m128i *)to + 2, _mm_and_si128(_mm_srli_epi32(byte_stream_2, 11), mask_21));			in += 32;
+						to += 12;
+						break;
+					case 0xe0:
+						tmp = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, tmp);
+						in += 16;
+						to += 4;
+					case 0xe1:
+						tmp = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, tmp);
+						in += 16;
+						to += 4;
+					case 0xe2:
+						tmp = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, tmp);
+						in += 16;
+						to += 4;
+					case 0xe3:
+						tmp = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, tmp);
+						in += 16;
+						to += 4;
+					case 0xe4:
+						tmp = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, tmp);
+						in += 16;
+						to += 4;
+					case 0xe5:
+						tmp = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, tmp);
+						in += 16;
+						to += 4;
+					case 0xe6:
+						tmp = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, tmp);
+						in += 16;
+						to += 4;
+					case 0xe7:
+						tmp = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, tmp);
+						in += 16;
+						to += 4;
+					case 0xe8:
+						tmp = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, tmp);
+						in += 16;
+						to += 4;
+					case 0xe9:
+						tmp = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, tmp);
+						in += 16;
+						to += 4;
+					case 0xea:
+						tmp = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, tmp);
+						in += 16;
+						to += 4;
+					case 0xeb:
+						tmp = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, tmp);
+						in += 16;
+						to += 4;
+					case 0xec:
+						tmp = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, tmp);
+						in += 16;
+						to += 4;
+					case 0xed:
+						tmp = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, tmp);
+						in += 16;
+						to += 4;
+					case 0xee:
+						tmp = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, tmp);
+						in += 16;
+						to += 4;
+					case 0xef:
+						tmp = _mm_load_si128((__m128i *)in);
+						_mm_store_si128((__m128i *)to, tmp);
+						in += 16;
+						to += 4;
+						break;
+					case 0xf0:
+						in++;
+					case 0xf1:
+						in++;
+					case 0xf2:
+						in++;
+					case 0xf3:
+						in++;
+					case 0xf4:
+						in++;
+					case 0xf5:
+						in++;
+					case 0xf6:
+						in++;
+					case 0xf7:
+						in++;
+					case 0xf8:
+						in++;
+					case 0xf9:
+						in++;
+					case 0xfa:
+						in++;
+					case 0xfb:
+						in++;
+					case 0xfc:
+						in++;
+					case 0xfd:
+						in++;
+					case 0xfe:
+						in++;
+					case 0xff:
+						in++;
+						break;
+					}
 				}
 			}
-		}
 	}
