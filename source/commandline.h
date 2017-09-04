@@ -538,7 +538,6 @@ namespace JASS
 					"-2147483649 Numeric underflow on parameter\n"
 					"--nonexistant Unknown parameter\n"
 					"-f (--funny) Unknown parameter type\n";
-				std::cout << error;
 				JASS_assert(error == answer);
 
 				auto how_to = usage("exename", error_commands);

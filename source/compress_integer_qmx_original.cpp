@@ -846,20 +846,14 @@ namespace JASS
 		/*
 			Allocate memory for the compressed version and the decompressed version (and initialise it)
 		*/
-		std::array<uint8_t, 100'000 * sizeof(uint32_t)> compress_buffer_memory;
-		std::array<uint32_t, 100'000> decompress_buffer_memory;
-		compress_buffer_memory.fill(0);
-		decompress_buffer_memory.fill(0);
+		std::array<__m128, 100'000> compress_buffer_memory;
+		std::array<__m128, 100'000> decompress_buffer_memory;
 
 		/*
 			Allocatte a compresser
 		*/
 		compress_integer_qmx_original compressor;
-
-		/*
-			Make sure the place we're putting the compresed data is alligned to an odd address location, then compress.
-		*/
-		uint8_t *compress_buffer = &compress_buffer_memory[1];
+		uint8_t *compress_buffer = (uint8_t *)&compress_buffer_memory[0];
 		size_t size_once_compressed = compressor.encode(compress_buffer, compress_buffer_memory.size() - 1, &sequence[0], sequence.size());
 
 		/*
@@ -873,7 +867,7 @@ namespace JASS
 		/*
 			Make sure we're decompressing to an odd memory address, then decompress the compressed sequence
 		*/
-		uint32_t *decompress_buffer = (uint32_t *)(((uint8_t *)&decompress_buffer_memory[0]) + 1);
+		uint32_t *decompress_buffer = (uint32_t *)&decompress_buffer_memory[0];
 		compressor.decode(decompress_buffer, sequence.size(), compress_buffer, size_once_compressed);
 
 		uint32_t pass;
