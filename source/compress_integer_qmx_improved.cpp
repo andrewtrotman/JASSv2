@@ -25,11 +25,11 @@
 	This gives us 15 possible combinations.  The combinaton is stored in the top 4 bits of a selector byte.  The
 	bottom 4-bits of the selector store a run-length (the number of such sequences seen in a row.
 
-	The 128-bit (or 256-bit) packed binary values are stored first.  Then we store the selectors,  Finally,
-	stored variable byte encoded, is a pointer to the start of the selector (from the end of the sequence).
+	The 128-bit (or 256-bit) packed binary values are stored first.  Then we store the selectors,  In QMX
+	improced the variable byte encoded pointer to the start of the selectors is not needed
+	because selectors are encoded from the end of the string to the start.
 
-	This way, all reads and writes are 128-bit word aligned, except addressing the selector (and the pointer
-	the selector).  These reads are byte aligned.
+	This way, all reads and writes are 128-bit word aligned, except addressing the selectors, which are byte aligned.
 
 	Note:  There is currently 1 unused encoding (i.e. 16 unused selecvtor values).  These might in the future be
 	used for encoding exceptions, much as PForDelta does.

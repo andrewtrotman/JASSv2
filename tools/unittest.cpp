@@ -41,6 +41,7 @@
 #include "index_postings_impact.h"
 #include "instream_document_trec.h"
 #include "index_manager_sequential.h"
+#include "compress_integer_qmx_original.h"
 #include "compress_integer_qmx_improved.h"
 #include "compress_integer_variable_byte.h"
 
@@ -176,6 +177,9 @@ int main(void)
 
 		puts("compress_integer_variable_byte");
 		JASS::compress_integer_variable_byte::unittest();
+
+		puts("compress_integer_qmx_original");
+		JASS::compress_integer_qmx_original::unittest();
 
 		puts("compress_integer_qmx_improved");
 		JASS::compress_integer_qmx_improved::unittest();

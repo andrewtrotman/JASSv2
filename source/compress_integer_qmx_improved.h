@@ -30,7 +30,7 @@ namespace JASS
 		At the request of Matthias Petri (University of Melbourne), the code no longer requires SIMD-word alignment to decode (the read and write 
 		instructions have been changed from aligned to unaligned since Intel made them faster).
 		
-		For details on the orioginal QMX encoding see:
+		For details on the original QMX encoding see:
 		
 		A. Trotman (2014), Compression, SIMD, and Postings Lists, Proceedings of the 19th Australasian Document Computing Symposium (ADCS 2014)
 	*/

@@ -10,6 +10,7 @@
 #include "compress_integer_none.h"
 #include "compress_integer_variable_byte.h"
 #include "compress_integer_qmx_improved.h"
+#include "compress_integer_qmx_original.h"
 
 namespace JASS
 	{
@@ -17,6 +18,7 @@ namespace JASS
 		List of known compressors
 	*/
 	static compress_integer_none none;
+	static compress_integer_qmx_original qmx_original;
 	static compress_integer_qmx_improved qmx_improved;
 	static compress_integer_variable_byte variable_byte;
 
@@ -29,6 +31,7 @@ namespace JASS
 			{"-cn", "--compress_none", "None", &none},
 			{"-cv", "--compress_vbyte", "Variable Byte", &variable_byte},
 			{"-cq", "--compress_qmx_improved", "QMX Improved", &qmx_improved},
+			{"-cQ", "--compress_qmx_original", "QMX Original with bug fixes (always large and slower than QMX improved)", &qmx_original},
 			}
 		};
 
