@@ -54,13 +54,32 @@ namespace JASS
 
 	Note:  There is currently 1 unused encoding (i.e. 16 unused selector values).  These might in the future be
 	used for encoding exceptions, much as PForDelta does.
-
+	
+	This code differes from the original as published in two ways.  First, two bugs are fixed (an overflow on reading 
+	the buffer to be encoded, and an edge case at end of encoded string), and it has been changed to remove SIMD-word
+	alignment requirement.
 	*/
 	class compress_integer_qmx_original : public compress_integer
 		{
 		private:
 			uint8_t *length_buffer;					///< Stores the number of bits needed to compress each integer
-			uint64_t length_buffer_length;		///< The length of length_buffer
+			uint64_t length_buffer_length;			///< The length of length_buffer
+			uint32_t *full_length_buffer;			///< If the run_length is too short then 0-pad into this buffer
+
+		private:
+			/*
+				COMPRESS_INTEGER_QMX_ORIGINAL::WRITE_OUT()
+				------------------------------------------
+			*/
+			/*!
+				@brief Encode and write out the sequence into the buffer
+				@param buffer [in] where to write the encoded sequence
+				@param source [in] the integer sequence to encode
+				@param raw_count [in] the numnber of integers to encode
+				@param size_in_bits [in] the size, in bits, of the largest integer
+				@param buffer_length [in] the length of buffer, in bytes
+			*/
+			void write_out(uint8_t **buffer, uint32_t *source, uint32_t raw_count, uint32_t size_in_bits, uint8_t **length_buffer);
 
 		public:
 			/*
