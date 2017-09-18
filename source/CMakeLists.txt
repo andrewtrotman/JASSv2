@@ -38,6 +38,8 @@ set(JASSlib_FILES
 	compress_integer_qmx_improved.cpp
 	compress_integer_qmx_original.h
 	compress_integer_qmx_original.cpp
+	compress_integer_simple_9.h
+	compress_integer_simple_9.cpp
 	compress_integer_variable_byte.h
 	compress_integer_variable_byte.cpp
 	document.h

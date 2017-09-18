@@ -83,6 +83,13 @@ namespace JASS
 
 		JASS_assert(floor_log2(10) == 3);
 		JASS_assert(ceiling_log2(10) == 4);
+		
+		auto got = find_first_set_bit((uint32_t)0b0101000);
+		JASS_assert(got == 3);
+ 		JASS_assert(find_first_set_bit((uint64_t)0b0101001) == 0);
+
+		JASS_assert(find_first_set_bit((uint32_t)0) == 0);
+ 		JASS_assert(find_first_set_bit((uint64_t)0) == 0);
 
 		puts("maths::PASSED");
 		}
