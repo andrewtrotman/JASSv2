@@ -41,6 +41,7 @@
 #include "index_postings_impact.h"
 #include "instream_document_trec.h"
 #include "index_manager_sequential.h"
+#include "compress_integer_simple_9.h"
 #include "compress_integer_qmx_original.h"
 #include "compress_integer_qmx_improved.h"
 #include "compress_integer_variable_byte.h"
@@ -67,7 +68,7 @@ int main(void)
 		{
 		puts("compress_integer_all");
 		JASS::compress_integer_all::unittest();
-		
+
 		puts("timer");
 		JASS::timer::unittest();
 
@@ -183,6 +184,9 @@ int main(void)
 
 		puts("compress_integer_qmx_improved");
 		JASS::compress_integer_qmx_improved::unittest();
+
+		puts("compress_integer_simple_9");
+		JASS::compress_integer_simple_9::unittest();
 
 		puts("accumulator_2d");
 		JASS::accumulator_2d<uint32_t>::unittest();
