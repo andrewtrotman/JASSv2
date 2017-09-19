@@ -68,6 +68,7 @@ int main(void)
 
 	try
 		{
+#ifdef NEVER
 		puts("compress_integer_all");
 		JASS::compress_integer_all::unittest();
 
@@ -186,6 +187,7 @@ int main(void)
 
 		puts("compress_integer_qmx_improved");
 		JASS::compress_integer_qmx_improved::unittest();
+#endif
 
 		puts("compress_integer_simple_9");
 		JASS::compress_integer_simple_9::unittest();

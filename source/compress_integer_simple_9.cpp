@@ -115,7 +115,8 @@ namespace JASS
 		0x01e0, 0x00e0, 0x0060, 0x0020, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
 		0x01c0, 0x00c0, 0x0040, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
 		0x0180, 0x0080, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
-		0x0100, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000
+		0x0100, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+		0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000
 		};
 
 	/*
@@ -135,7 +136,8 @@ namespace JASS
 	*/
 	const size_t compress_integer_simple_9::row_for_bits_needed[] =
 		{
-		0, 0, 28, 56, 84, 112, 140, 140, 168, 168, 196, 196, 196, 196, 196, 224, 224, 224, 224, 224, 224, 224, 224, 224, 224, 224, 224, 224, 224, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+		0, 0, 28, 56, 84, 112, 140, 140, 168, 168, 196, 196, 196, 196, 196, 224, 224, 224, 224, 224, 224, 224, 224, 224, 224, 224, 224, 224, 224,			///< all valid
+		252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252		///< overflow
 		};
 
 	/*
@@ -150,9 +152,16 @@ namespace JASS
 		size_t pos = 0;
 		for (words_in_compressed_string = 0; pos < source_integers; words_in_compressed_string++)
 			{
+			/*
+				Check for overflow (before we overflow)
+			*/
+			if (into + 1 > end)
+				return 0;
+
 			size_t remaining = (pos + 28 < source_integers) ? 28 : source_integers - pos;
 			size_t last_bitmask = 0x0000;
 			size_t bitmask = 0xFFFF;
+
 			/*
 				Constrain last_bitmask to contain only bits for masks we can pack with
 			*/
@@ -161,8 +170,9 @@ namespace JASS
 				bitmask &= can_pack_table[row_for_bits_needed[maths::ceiling_log2(source[pos + offset])] + offset];
 				last_bitmask |= (bitmask & invalid_masks_for_offset[offset + 1]);
 				}
+
 			/*
-				Ensure valid input
+				Ensure valid input (this is triggered when and integer greater than 2^28 is in the unput stream
 			*/
 			if (last_bitmask == 0)
 				return 0;
@@ -183,12 +193,6 @@ namespace JASS
 			*into = (*into << 4) | mask_type;
 			pos += num_to_pack;
 			into++;
-
-			/*
-				Check for =overflow
-			*/
-			if (into > end)
-				return 0;
 			}
 
 		return words_in_compressed_string * sizeof(*into);
@@ -347,6 +351,28 @@ namespace JASS
 		compressor.decode(&decompressed[0], every_case.size(), &compressed[0], size_once_compressed);
 		decompressed.resize(every_case.size());
 		JASS_assert(decompressed == every_case);
+		
+		/*
+			Try the error cases
+			(1) no integers
+			(2) Integer overflow
+			(3) buffer overflow
+		*/
+		every_case.clear();
+		size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &every_case[0], every_case.size());
+		JASS_assert(size_once_compressed == 0);
+
+		every_case.clear();
+		every_case.push_back(0xFFFFFFFF);
+		size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &every_case[0], every_case.size());
+		JASS_assert(size_once_compressed == 0);
+
+		every_case.clear();
+		for (instance = 0; instance < 28; instance++)
+			every_case.push_back(0x01);
+		size_once_compressed = compressor.encode(&compressed[0], 1, &every_case[0], every_case.size());
+		JASS_assert(size_once_compressed == 0);
+
 		puts("compress_integer_simple_9::PASSED");
 		}
 	}

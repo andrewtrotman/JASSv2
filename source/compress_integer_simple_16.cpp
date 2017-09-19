@@ -136,6 +136,7 @@ namespace JASS
 			*into = (*into << 4) | mask_type;
 			pos += num_to_pack;
 			into++;
+			
 			if (into > end)
 				return 0;
 			}
@@ -387,11 +388,11 @@ namespace JASS
 			7 * 1-bit and 7 * 2-bits and 7 * 1-bit
 		*/
 		for (instance = 0; instance < 7; instance++)
-			every_case.push_back(0x03);
-		for (instance = 0; instance < 7; instance++)
 			every_case.push_back(0x01);
 		for (instance = 0; instance < 7; instance++)
 			every_case.push_back(0x03);
+		for (instance = 0; instance < 7; instance++)
+			every_case.push_back(0x01);
 			
 		/*
 			14 * 1-bit and 7 * 2-bits
@@ -497,6 +498,23 @@ namespace JASS
 		compressor.decode(&decompressed[0], every_case.size(), &compressed[0], size_once_compressed);
 		decompressed.resize(every_case.size());
 		JASS_assert(decompressed == every_case);
+		
+		/*
+			Try the error cases
+			(1) Integer overflow
+			(2) buffer overflow
+		*/
+		every_case.clear();
+		every_case.push_back(0xFFFFFFFF);
+		size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &every_case[0], every_case.size());
+		JASS_assert(size_once_compressed == 0);
+
+		every_case.clear();
+		for (instance = 0; instance < 28; instance++)
+			every_case.push_back(0x01);
+		size_once_compressed = compressor.encode(&compressed[0], 1, &every_case[0], every_case.size());
+		JASS_assert(size_once_compressed == 0);
+		
 		puts("compress_integer_simple_16::PASSED");
 		}
 	}
