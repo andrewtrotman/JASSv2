@@ -192,8 +192,8 @@ namespace JASS
 		}
 
 	/*
-		COMPRESS_INTEGER_SIMPLE_9::DECOMPRESS()
-		---------------------------------------
+		COMPRESS_INTEGER_SIMPLE_9::DECODE()
+		-----------------------------------
 	*/
 	void compress_integer_simple_9::decode(integer *destination, size_t destination_integers, const void *source, size_t source_length)
 		{
