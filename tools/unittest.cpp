@@ -42,6 +42,7 @@
 #include "instream_document_trec.h"
 #include "index_manager_sequential.h"
 #include "compress_integer_simple_9.h"
+#include "compress_integer_simple_8b.h"
 #include "compress_integer_simple_16.h"
 #include "compress_integer_qmx_original.h"
 #include "compress_integer_qmx_improved.h"
@@ -193,6 +194,9 @@ int main(void)
 
 		puts("compress_integer_simple_16");
 		JASS::compress_integer_simple_16::unittest();
+
+		puts("compress_integer_simple_8b");
+		JASS::compress_integer_simple_8b::unittest();
 
 		puts("accumulator_2d");
 		JASS::accumulator_2d<uint32_t>::unittest();

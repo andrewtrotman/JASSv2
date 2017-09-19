@@ -1,6 +1,9 @@
 /*
 	COMPRESS_SIMPLE8B.C
 	------------------
+	Copyright (c) 2014-2017 Blake Burgess and Andrew Trotman
+	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
+
 	Simple-8b, a 64-bit extension of Simple-9.
 
 	This code is an adaptation of compress_simple16.c, merged with the ideas developed in the following paper:
@@ -62,7 +65,10 @@ namespace JASS
 		---------------------------------------------
 		Number of integers packed into a 64-bit word, given its mask type
 	*/
-	const size_t compress_integer_simple_8b::ints_packed_table[] = {240, 120, 60, 30, 20, 15, 12, 10, 8, 7, 6, 5, 4, 3, 2, 1};
+	const size_t compress_integer_simple_8b::ints_packed_table[] =
+		{
+		240, 120, 60, 30, 20, 15, 12, 10, 8, 7, 6, 5, 4, 3, 2, 1}
+		;
 
 	/*
 		COMPRESS_INTEGER_SIMPLE_8B::CAN_PACK_TABLE
@@ -108,7 +114,7 @@ namespace JASS
 		};
 
 	/*
-		compress_integer_simple_8b::ENCODE()
+		COMPRESS_INTEGER_SIMPLE_8B::ENCODE()
 		------------------------------------
 	*/
 	size_t compress_integer_simple_8b::encode(void *destination, size_t destination_length, const integer *source, size_t source_integers)
@@ -123,21 +129,36 @@ namespace JASS
 			size_t remaining = (pos + 240 < source_integers) ? 240 : source_integers - pos;
 			size_t last_bitmask = 0x0000;
 			size_t bitmask = 0xFFFF;
-			/* constrain last_bitmask to contain only bits for masks we can pack with */
+
+			/* 
+				constrain last_bitmask to contain only bits for masks we can pack with
+			*/
 			for (size_t offset = 0; offset < remaining && bitmask; offset++)
 				{
-				bitmask &= can_pack_table[row_for_bits_needed[maths::find_first_set_bit(source[pos + offset])] + offset];
+				bitmask &= can_pack_table[row_for_bits_needed[maths::ceiling_log2(source[pos + offset])] + offset];
 				last_bitmask |= (bitmask & invalid_masks_for_offset[offset + 1]);
 				}
-			/* ensure valid input */
+
+			/*
+				ensure valid input
+			*/
 			if (last_bitmask == 0)
 				return 0;
-			/* get position of lowest set bit */
+
+			/*
+				get position of lowest set bit
+			*/
 			size_t mask_type = maths::find_first_set_bit((uint32_t)last_bitmask);
 			size_t num_to_pack = ints_packed_table[mask_type];
-			/* pack the word */
+
+			/*
+				pack the word
+			*/
 			*into = 0;
-			/* Simple8b masks 0 and 1 are magic */
+
+			/*
+				Simple8b masks 0 and 1 are magic
+			*/
 			if (mask_type > 1)
 				{
 				size_t mask_type_offset = 240 * mask_type;
@@ -147,6 +168,7 @@ namespace JASS
 			*into = (*into << 4) | mask_type;
 			pos += num_to_pack;
 			into++;
+
 			if (into > end)
 				return 0;
 			}
@@ -160,18 +182,20 @@ namespace JASS
 	void compress_integer_simple_8b::decode(integer *destination, size_t destination_integers, const void *source, size_t source_length)
 		{
 		uint64_t *compressed_sequence = (uint64_t *)source;
-		uint32_t mask_type;
-		uint64_t value;
 		integer *end = destination + destination_integers;
 
 		while (destination < end)
 			{
-			// Load next compressed int, pull out the mask type used, shift to the values
-			value = *compressed_sequence++;
-			mask_type = value & 0xF;
+			/*
+				Load next compressed int, pull out the mask type used, shift to the values
+			*/
+			uint64_t value = *compressed_sequence++;
+			uint32_t mask_type = value & 0xF;
 			value >>= 4;
 
-			// Unrolled loop to enable pipelining
+			/*
+				Unrolled loop to enable pipelining
+			*/
 			switch (mask_type)
 				{
 				case 0x0:
@@ -751,5 +775,124 @@ namespace JASS
 					break;
 				}
 			}
+		}
+
+	/*
+		COMPRESS_INTEGER_SIMPLE_8B::UNITTEST()
+		--------------------------------------
+	*/
+	void compress_integer_simple_8b::unittest(void)
+		{
+		std::vector<integer> every_case;
+		size_t instance;
+
+		/*
+			240 * 1
+		*/
+		for (instance = 0; instance < 240; instance++)
+			every_case.push_back(0x01);
+
+		/*
+			120 * 1
+		*/
+		for (instance = 0; instance < 120; instance++)
+			every_case.push_back(0x01);
+
+		/*
+			60 * 1-bit
+		*/
+		for (instance = 0; instance < 60; instance++)
+			every_case.push_back(0x01);
+
+		/*
+			30 * 2-bit
+		*/
+		for (instance = 0; instance < 30; instance++)
+			every_case.push_back(0x03);
+
+		/*
+			20 * 3-bit
+		*/
+		for (instance = 0; instance < 20; instance++)
+			every_case.push_back(0x07);
+
+		/*
+			15 * 4-bit
+		*/
+		for (instance = 0; instance < 15; instance++)
+			every_case.push_back(0x0F);
+
+		/*
+			12 * 5-bit
+		*/
+		for (instance = 0; instance < 12; instance++)
+			every_case.push_back(0x1F);
+
+		/*
+			10 * 6-bit
+		*/
+		for (instance = 0; instance < 10; instance++)
+			every_case.push_back(0x3F);
+
+		/*
+			8 * 7-bit
+		*/
+		for (instance = 0; instance < 8; instance++)
+			every_case.push_back(0x7F);
+
+		/*
+			7 * 8-bit
+		*/
+		for (instance = 0; instance < 7; instance++)
+			every_case.push_back(0xFF);
+
+		/*
+			6 * 10-bit
+		*/
+		for (instance = 0; instance < 6; instance++)
+			every_case.push_back(0x3FF);
+
+		/*
+			5 * 12-bit
+		*/
+		for (instance = 0; instance < 5; instance++)
+			every_case.push_back(0xFFF);
+
+		/*
+			4 * 15-bit
+		*/
+		for (instance = 0; instance < 4; instance++)
+			every_case.push_back(0x7FFF);
+
+		/*
+			3 * 16-bit
+		*/
+		for (instance = 0; instance < 3; instance++)
+			every_case.push_back(0xFFFF);
+
+		/*
+			2 * 30-bit
+		*/
+		for (instance = 0; instance < 2; instance++)
+			every_case.push_back(0x3FFFFFFF);
+
+		/*
+			1 * 60-bit
+		*/
+		for (instance = 0; instance < 1; instance++)
+			every_case.push_back(0xFFFFFFFF);
+
+		/*
+			Check it works
+		*/
+		compress_integer_simple_8b compressor;
+		std::vector<uint32_t>compressed(every_case.size() * 2);
+		std::vector<uint32_t>decompressed(every_case.size() + 256);
+
+		auto size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &every_case[0], every_case.size());
+		compressor.decode(&decompressed[0], every_case.size(), &compressed[0], size_once_compressed);
+		decompressed.resize(every_case.size());
+		JASS_assert(decompressed == every_case);
+		puts("compress_integer_simple_8b::PASSED");
 		}
 	}

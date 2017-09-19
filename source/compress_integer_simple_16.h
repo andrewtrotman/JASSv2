@@ -17,7 +17,7 @@ namespace JASS
 		--------------------------------
 	*/
 	/*!
-		@brief  Simple-16 integer compression
+		@brief Simple-16 integer compression
 		@details Simple-16 is an extension to Simple-9 that uses all 16 selectors (rather than just 9) for encoding
 		the payloads.  This resulrs in a more effective encoding that performs faster than Simple-9.  This is because
 		fewer reads ar eneeded and hence its faster.  Note that, because there are only 28 bits in a payload, the maximum 
