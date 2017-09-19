@@ -177,7 +177,7 @@ namespace JASS
 				@brief Compute position of lowest set bit. 1 == LSB.
 				@details  This uses  De Bruijn sequences to compute the lowest set bit.  See https://stackoverflow.com/questions/3465098/bit-twiddling-which-bit-is-set for more details.
 				@param x [in] the value to find the first bit of.
-				@return The position of the least significant set bit (counting from 1)
+				@return The position of the least significant set bit (counting from 1), or 0 is no bit is set.
 			*/
 			static inline size_t find_first_set_bit(uint32_t x)
 				{
@@ -193,7 +193,7 @@ namespace JASS
 				@brief Compute position of lowest set bit. 1 == LSB.
 				@details  This uses  De Bruijn sequences to compute the lowest set bit.  See https://stackoverflow.com/questions/3465098/bit-twiddling-which-bit-is-set for more details.
 				@param x [in] the value to find the first bit of.
-				@return The position of the least significant set bit (counting from 1)
+				@return The position of the least significant set bit (counting from 1), or 0 is no bit is set.
 			*/
 			static inline size_t find_first_set_bit(uint64_t x)
 				{

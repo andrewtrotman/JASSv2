@@ -1,7 +1,7 @@
 /*
 	COMPRESS_SIMPLE9.H
 	------------------
-	Copyright (c) 2014-2017 Andrew Trotman
+	Copyright (c) 2014-2017 Vikram Subramanya, Andrew Trotman, Blake Burgess
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 
 	Anh and Moffat's Simple-9 Compression scheme from:
@@ -28,10 +28,16 @@ namespace JASS
 		@brief Simple-9 integer compression
 		@details Simple-9 compression bit-packs as many integers as possible into a 32-bit word.  All integers
 		are packed into the same number of bits.  The encoding is stored in a selector stored in the top 4 bits of the 
-		32-bit word and 28-bits for the payload.
+		32-bit word and 28-bits for the payload.  Note that, because there are only 28 bits in a payload, the maximum 
+		integer that can be encoded with simple-9 is (2^29) - 1 = 536,870,911.  This is less than the number of documens in
+		a large collection (such as ClueWeb).
+		
+		In essence, it encodes into a 32-bit word: 28 * 1-bit integers, or 14 * 2-bit integers, 9 * 3-bit integers,
+		7 * 4-bit integers, 5 * 5-bit integers 4 * 7 bit integers, 3 * 9-bit integers, 2 * 14-bit integers, or 1 * 28-bit integer
 		
 		See:
 			V. Anh, A. Moffat (2005), Inverted Index Compression Using Word-Alligned Binary Codes, Information Retrieval, 8(1):151-166
+			
 	*/
 	class compress_integer_simple_9 : public compress_integer
 		{

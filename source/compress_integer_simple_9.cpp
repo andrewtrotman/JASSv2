@@ -1,7 +1,7 @@
 /*
 	COMPRESS_INTEGER_SIMPLE_9.CPP
 	-----------------------------
-	Copyright (c) 2014-2017 Andrew Trotman
+	Copyright (c) 2014-2017 Vikram Subramanya, Andrew Trotman, Blake Burgess
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 
 	Anh and Moffat's Simple-9 Compression scheme from:
@@ -197,7 +197,7 @@ namespace JASS
 	*/
 	void compress_integer_simple_9::decode(integer *destination, size_t destination_integers, const void *source, size_t source_length)
 		{
-		uint32_t *compressed_sequence = (uint32_t *)source;
+		const uint32_t *compressed_sequence = reinterpret_cast<const uint32_t *>(source);
 		integer *end = destination + destination_integers;
 
 		while (destination < end)
