@@ -33,7 +33,7 @@ namespace JASS
 	class compress_integer_all
 		{
 		public:
-			static constexpr size_t compressors_size = 5;					///< There are currently this many compressors know to JASS
+			static constexpr size_t compressors_size = 6;					///< There are currently this many compressors know to JASS
 			static constexpr size_t default_compressor = 0;					///< The default one to use is at this position in the compressors array
 
 		private:
