@@ -95,7 +95,10 @@ namespace JASS
 		--------------------------------------------
 		Number of integers packed into a 32-bit word, given its mask type
 	*/
-	const size_t compress_integer_simple_9::ints_packed_table[] = {28, 14, 9, 7, 5, 4, 3, 2, 1};
+	const size_t compress_integer_simple_9::ints_packed_table[] =
+		{
+		28, 14, 9, 7, 5, 4, 3, 2, 1
+		};
 
 	/*
 		COMPRESS_INTEGER_SIMPLE_9::CAN_PACK_TABLE

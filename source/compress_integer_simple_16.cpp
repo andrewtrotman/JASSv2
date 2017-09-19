@@ -43,8 +43,10 @@ namespace JASS
 		---------------------------------------------
 		Number of integers packed into a word, given its mask type
 	*/
-	const size_t compress_integer_simple_16::ints_packed_table[] = {28, 21, 21, 21, 14, 9, 8, 7, 6, 6, 5, 5, 4, 3, 2, 1};
-
+	const size_t compress_integer_simple_16::ints_packed_table[] =
+		{
+		28, 21, 21, 21, 14, 9, 8, 7, 6, 6, 5, 5, 4, 3, 2, 1
+		};
 
 	/*
 		COMPRESS_INTEGER_SIMPLE_16::CAN_PACK_TABLE

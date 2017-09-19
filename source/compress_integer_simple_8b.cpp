@@ -67,8 +67,8 @@ namespace JASS
 	*/
 	const size_t compress_integer_simple_8b::ints_packed_table[] =
 		{
-		240, 120, 60, 30, 20, 15, 12, 10, 8, 7, 6, 5, 4, 3, 2, 1}
-		;
+		240, 120, 60, 30, 20, 15, 12, 10, 8, 7, 6, 5, 4, 3, 2, 1
+		};
 
 	/*
 		COMPRESS_INTEGER_SIMPLE_8B::CAN_PACK_TABLE
