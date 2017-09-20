@@ -47,6 +47,9 @@
 #include "compress_integer_qmx_original.h"
 #include "compress_integer_qmx_improved.h"
 #include "compress_integer_variable_byte.h"
+#include "compress_integer_simple_9_packed.h"
+#include "compress_integer_simple_8b_packed.h"
+#include "compress_integer_simple_16_packed.h"
 
 /*
 	MAIN()
@@ -68,7 +71,6 @@ int main(void)
 
 	try
 		{
-#ifdef NEVER
 		puts("compress_integer_all");
 		JASS::compress_integer_all::unittest();
 
@@ -187,16 +189,24 @@ int main(void)
 
 		puts("compress_integer_qmx_improved");
 		JASS::compress_integer_qmx_improved::unittest();
-#endif
 
 		puts("compress_integer_simple_9");
 		JASS::compress_integer_simple_9::unittest();
 
+		puts("compress_integer_simple_9_packed");
+		JASS::compress_integer_simple_9_packed::unittest();
+
 		puts("compress_integer_simple_16");
 		JASS::compress_integer_simple_16::unittest();
 
+		puts("compress_integer_simple_16_packed");
+		JASS::compress_integer_simple_16_packed::unittest();
+
 		puts("compress_integer_simple_8b");
 		JASS::compress_integer_simple_8b::unittest();
+
+		puts("compress_integer_simple_8b_packed");
+		JASS::compress_integer_simple_8b_packed::unittest();
 
 		puts("accumulator_2d");
 		JASS::accumulator_2d<uint32_t>::unittest();

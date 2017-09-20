@@ -1,83 +1,30 @@
 /*
-	COMPRESS_INTEGER_SIMPLE_9.CPP
-	-----------------------------
-	Copyright (c) 2014-2017 Vikram Subramanya, Andrew Trotman, Blake Burgess
+	COMPRESS_INTEGER_SIMPLE_9_PACKED.CPP
+	------------------------------------
+	Copyright (c) 2014-2017 Vikram Subramanya, Andrew Trotman, Michael Albert, Blake Burgess
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 
-	Anh and Moffat's Simple-9 Compression scheme from:
-	V. Anh, A. Moffat (2005), Inverted Index Compression Using Word-Alligned Binary Codes, Information Retrieval, 8(1):151-166
+	Michael Albert - use of block packing in Java (generic algorithm)
+	Rewritten in C and then substantially adapted for use in ATIRE by Blake Burgess (Sep 2014)
+	(Via modifications from compress_simple{9,16}.c in ATIRE)
 
-	This code was originally written by Vikram Subramanya while working on:
-	A. Trotman, V. Subramanya (2007), Sigma encoded inverted files, Proceedings of CIKM 2007, pp 983-986
-
-	Substantially re-written and converted for use in ATIRE by Andrew Trotman (2009)
-	but then adapted for Simple-8b and back ported by Blake Burgess.  This version has been
-	refactored for JASS by Andrew Trotman.
+	Currently a splice of simple9 and simple16. Implementation could be cleaner.
 */
 #include <stdio.h>
 
 #include <vector>
 
 #include "maths.h"
-#include "asserts.h"
-#include "compress_integer_simple_9.h"
+#include "compress_integer_simple_9_packed.h"
 
 namespace JASS
 	{
 	/*
-		COMPRESS_INTEGER_SIMPLE_9::SIMPLE9_TABLE
-		----------------------------------------
-		The simple-9 selector table (top 4 bits)
+		COMPRESS_INTEGER_SIMPLE_9_PACKED::SIMPLE9_PACKED_SHIFT_TABLE
+		------------------------------------------------------------
+		Number of bits to shift across when packing -- is sum of prior packed ints (see above)
 	*/
-	const compress_integer_simple_9::lookup compress_integer_simple_9::simple9_table[] =
-		{
-		{1, 28, 0xFFFFFFF},		// integers, bits, bit-mask
-		{2, 14, 0x3FFF},
-		{3,  9, 0x1FF},
-		{4,  7, 0x7F},
-		{5,  5, 0x1F},
-		{7,  4, 0xF},
-		{9,  3, 0x7},
-		{14, 2, 0x3},
-		{28, 1, 0x1}
-		};
-
-	/*
-		COMPRESS_INTEGER_SIMPLE_9::BITS_TO_USE
-		--------------------------------------
-		The number of bits that simple-9 will be used to store an integer of the given the number of bits in length
-	*/
-	const size_t compress_integer_simple_9::bits_to_use[] =
-		{
-		 1,  1,  2,  3,  4,  5,  7,  7, 
-		 9,  9, 14, 14, 14, 14, 14, 28, 
-		28, 28, 28, 28, 28, 28, 28, 28, 
-		28, 28, 28, 28, 28, 64, 64, 64,
-		64, 64, 64, 64, 64, 64, 64, 64,
-		64, 64, 64, 64, 64, 64, 64, 64,
-		64, 64, 64, 64, 64, 64, 64, 64,
-		64, 64, 64, 64, 64, 64, 64, 64
-		};
-
-	/*
-		COMPRESS_INTEGER_SIMPLE_9::TABLE_ROW
-		------------------------------------
-		The row of the table to use given the number of integers we can pack into the word
-	*/
-	const size_t compress_integer_simple_9::table_row[] =
-		{
-		0, 1, 2, 3, 4, 4, 5, 5, 
-		6, 6, 6, 6, 6, 7, 7, 7, 
-		7, 7, 7, 7, 7, 7, 7, 7, 
-		7, 7, 7, 8, 8
-		};
-
-	/*
-		COMPRESS_INTEGER_SIMPLE_9::SIMPLE9_SHIFT_TABLE
-		----------------------------------------------
-		Number of bits to shift across when packing - is sum of prior packed ints
-	*/
-	const size_t compress_integer_simple_9::simple9_shift_table[] =
+	const size_t compress_integer_simple_9_packed::simple9_packed_shift_table[] =
 		{
 		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,
 		0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28,
@@ -91,21 +38,21 @@ namespace JASS
 		};
 
 	/*
-		COMPRESS_INTEGER_SIMPLE_9::INTS_PACKED_TABLE
-		--------------------------------------------
-		Number of integers packed into a 32-bit word, given its mask type
+		COMPRESS_INTEGER_SIMPLE_9_PACKED::INTS_PACKED_TABLE
+		---------------------------------------------------
+		Number of integers packed into a word, given its mask type
 	*/
-	const size_t compress_integer_simple_9::ints_packed_table[] =
+	const size_t compress_integer_simple_9_packed::ints_packed_table[] =
 		{
 		28, 14, 9, 7, 5, 4, 3, 2, 1
 		};
 
 	/*
-		COMPRESS_INTEGER_SIMPLE_9::CAN_PACK_TABLE
-		-----------------------------------------
+		COMPRESS_INTEGER_SIMPLE_9_PACKED::CAN_PACK_TABLE
+		------------------------------------------------
 		Bitmask map for valid masks at an offset (column) for some num_bits_needed (row).
 	*/
-	const size_t compress_integer_simple_9::can_pack_table[] =
+	const size_t compress_integer_simple_9_packed::can_pack_table[] =
 		{
 		0x01ff, 0x00ff, 0x007f, 0x003f, 0x001f, 0x000f, 0x000f, 0x0007, 0x0007, 0x0003, 0x0003, 0x0003, 0x0003, 0x0003, 0x0001, 0x0001, 0x0001, 0x0001, 0x0001, 0x0001, 0x0001, 0x0001, 0x0001, 0x0001, 0x0001, 0x0001, 0x0001, 0x0001,
 		0x01fe, 0x00fe, 0x007e, 0x003e, 0x001e, 0x000e, 0x000e, 0x0006, 0x0006, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
@@ -120,102 +67,194 @@ namespace JASS
 		};
 
 	/*
-		COMPRESS_INTEGER_SIMPLE_9::INVALID_MASKS_FOR_OFFSET
-		---------------------------------------------------
+		COMPRESS_INTEGER_SIMPLE_9_PACKED::INVALID_MASKS_FOR_OFFSET
+		----------------------------------------------------------
 		We AND out masks for offsets where we don't know if we can fully pack for that offset
 	*/
-	const size_t compress_integer_simple_9::invalid_masks_for_offset[] =
+	const size_t compress_integer_simple_9_packed::invalid_masks_for_offset[] =
 		{
 		0x0000, 0x0100, 0x0180, 0x01c0, 0x01e0, 0x01f0, 0x01f0, 0x01f8, 0x01f8, 0x01fc, 0x01fc, 0x01fc, 0x01fc, 0x01fc, 0x01fe, 0x01fe, 0x01fe, 0x01fe, 0x01fe, 0x01fe, 0x01fe, 0x01fe, 0x01fe, 0x01fe, 0x01fe, 0x01fe, 0x01fe, 0x01fe, 0x01ff
 		};
 
 	/*
-		COMPRESS_INTEGER_SIMPLE_9::ROW_FOR_BITS_NEEDED
-		----------------------------------------------
+		COMPRESS_INTEGER_SIMPLE_9_PACKED::ROW_FOR_BITS_NEEDED
+		-----------------------------------------------------
 		Translates the 'bits_needed' to the appropriate 'row' offset for use with can_pack table.
 	*/
-	const size_t compress_integer_simple_9::row_for_bits_needed[] =
+	const size_t compress_integer_simple_9_packed::row_for_bits_needed[] =
 		{
-		0, 0, 28, 56, 84, 112, 140, 140, 168, 168, 196, 196, 196, 196, 196, 224, 224, 224, 224, 224, 224, 224, 224, 224, 224, 224, 224, 224, 224,			// Valid
+		0, 0, 28, 56, 84, 112, 140, 140, 168, 168, 196, 196, 196, 196, 196, 224, 224, 224, 224, 224, 224, 224, 224, 224, 224, 224, 224, 224, 224,		// valid
 		252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252		// Overflow
 		};
 
 	/*
-		COMPRESS_INTEGER_SIMPLE_9::ENCODE()
-		-----------------------------------
+		COMPRESS_INTEGER_SIMPLE_9_PACKED::ENCODE()
+		------------------------------------------
 	*/
-	size_t compress_integer_simple_9::encode(void *destination, size_t destination_length, const integer *source, size_t source_integers)
+	size_t compress_integer_simple_9_packed::encode(void *destination, size_t destination_length, const integer *source, size_t source_integers)
 		{
 		size_t words_in_compressed_string;
-		uint32_t *into = reinterpret_cast<uint32_t *>(destination);
+		uint32_t *into = (uint32_t *)destination;
 		uint32_t *end = reinterpret_cast<uint32_t *>(reinterpret_cast<uint8_t *>(destination) + destination_length);
-		size_t pos = 0;
-		for (words_in_compressed_string = 0; pos < source_integers; words_in_compressed_string++)
+		
+		/*
+			Possibly allocate more memory
+		*/
+		if (source_integers > blocks_length)
+			{
+			delete [] blocks_needed;
+			delete [] masks;
+			blocks_needed = new size_t [source_integers];
+			masks = new uint8_t [source_integers];
+			blocks_length = source_integers;
+			}
+			
+		words_in_compressed_string = 0;
+		
+		/*
+			Optimization fails if we only have one integer (due to out-of-bounds access)
+		*/
+		if (source_integers == 1)
 			{
 			/*
-				Check for overflow (before we overflow)
+				Check for overflow - and if not then just store 1 integer.
 			*/
-			if (into + 1 > end)
+			if (*source > 1 << 28)
 				return 0;
-
+				
+			/*
+				choose largest bits-per-integer mask, single integer => '8'
+			*/
+			*into = (*source << simple9_packed_shift_table[28 * 8]);
+			*into = (*into << 4) | 8;
+			words_in_compressed_string++;
+			
+			return words_in_compressed_string * sizeof(*into);
+			}
+		/*
+			initialize
+		*/
+		int64_t pos = 0;
+		while (pos < source_integers)
+			{
+			blocks_needed[pos] = -1; // INFINITY value
+			masks[pos] = 255; // JUNK mask value
+			pos++;
+			}
+			
+		/*
+			init last value to pack-by-self
+		*/
+		pos = source_integers - 1;
+		blocks_needed[pos] = 0;
+		masks[pos] = 8;
+		
+		/*
+			optimize from second-last value
+		*/
+		pos = source_integers - 2;
+		
+		/*
+			optimize packing masks to use
+		*/
+		while (pos >= 0)
+			{
 			size_t remaining = (pos + 28 < source_integers) ? 28 : source_integers - pos;
 			size_t last_bitmask = 0x0000;
 			size_t bitmask = 0xFFFF;
-
 			/*
-				Constrain last_bitmask to contain only bits for masks we can pack with
+				constrain last_bitmask to contain only bits for masks we can pack with
 			*/
 			for (size_t offset = 0; offset < remaining && bitmask; offset++)
 				{
 				bitmask &= can_pack_table[row_for_bits_needed[maths::ceiling_log2(source[pos + offset])] + offset];
 				last_bitmask |= (bitmask & invalid_masks_for_offset[offset + 1]);
 				}
-
+				
 			/*
-				Ensure valid input (this is triggered when and integer greater than 2^28 is in the unput stream
+				no bits set => no masks work => invalid input
 			*/
-			if (last_bitmask == 0)
+			if (!last_bitmask)
 				return 0;
-
+				
 			/*
-				Get position of lowest set bit
+				iterate through the bitmask bit-wise and try the optimization.
 			*/
-			size_t mask_type = maths::find_first_set_bit((uint32_t)last_bitmask);
-			size_t num_to_pack = ints_packed_table[mask_type];
-
+			for (size_t offset = 0; offset < 9; offset++)
+				if ((1 << offset) & last_bitmask)
+					{
+					size_t num_to_pack = ints_packed_table[offset];
+					/*
+						if we can pack til end w/ this mask, blocks_needed is one
+					*/
+					if (pos + num_to_pack >= source_integers)
+						{
+						blocks_needed[pos] = 1;
+						masks[pos] = offset;
+						}
+					/* 
+						otherwise, update blocks_needed if it is 'infinity' or if we have a shorter path
+					*/
+					else if (blocks_needed[pos] == -1 || blocks_needed[pos] > blocks_needed[pos+num_to_pack] + 1)
+						{
+						blocks_needed[pos] = blocks_needed[pos+num_to_pack] + 1;
+						masks[pos] = offset;
+						}
+					}
 			/*
-				Pack the word
+				fail case: can't pack current block (i.e. x > 2^28)
+			*/
+			if (masks[pos] == 255)
+				return 0;
+			pos--;
+			}
+			
+		/*
+			now actually pack
+		*/
+		pos = 0;
+		while (pos < source_integers)
+			{
+			/*
+				Check for overflow
+			*/
+			if (into + 1 > end)
+				return 0;
+				
+			size_t mask_type = masks[pos];
+			size_t num_to_pack = (pos + ints_packed_table[mask_type] > source_integers) ? source_integers - pos : ints_packed_table[mask_type];
+			/*
+				pack the word
 			*/
 			*into = 0;
 			size_t mask_type_offset = 28 * mask_type;
 			for (size_t offset = 0; offset < num_to_pack; offset++)
-				*into |= ((source[pos + offset]) << simple9_shift_table[mask_type_offset + offset]);
+				*into |= (source[pos + offset] << simple9_packed_shift_table[mask_type_offset + offset]);
 			*into = (*into << 4) | mask_type;
 			pos += num_to_pack;
 			into++;
+			words_in_compressed_string++;
 			}
-
+			
 		return words_in_compressed_string * sizeof(*into);
 		}
 
 	/*
-		COMPRESS_INTEGER_SIMPLE_9::DECODE()
-		-----------------------------------
+		COMPRESS_INTEGER_SIMPLE_9_PACKED::DECODE()
+		------------------------------------------
 	*/
-	void compress_integer_simple_9::decode(integer *destination, size_t destination_integers, const void *source, size_t source_length)
+	void compress_integer_simple_9_packed::decode(integer *destination, size_t destination_integers, const void *source, size_t source_length)
 		{
 		const uint32_t *compressed_sequence = reinterpret_cast<const uint32_t *>(source);
 		integer *end = destination + destination_integers;
 
 		while (destination < end)
 			{
-			integer value = *compressed_sequence++;
-			integer mask_type = value & 0xF;
+			size_t value = *compressed_sequence++;
+			size_t mask_type = value & 0xF;
 			value >>= 4;
 
-			/*
-				Unrolled loop to enable pipelining
-			*/
+			// Unrolled loop to enable pipelining
 			switch (mask_type)
 				{
 				case 0x0:
@@ -312,12 +351,11 @@ namespace JASS
 				}
 			}
 		}
-
 	/*
-		COMPRESS_INTEGER_SIMPLE_9::UNITTEST()
-		-------------------------------------
+		COMPRESS_INTEGER_SIMPLE_9_PACKED::UNITTEST()
+		--------------------------------------------
 	*/
-	void compress_integer_simple_9::unittest(void)
+	void compress_integer_simple_9_packed::unittest(void)
 		{
 		std::vector<integer> every_case;
 
@@ -342,7 +380,7 @@ namespace JASS
 		for (instance = 0; instance < 1; instance++)
 			every_case.push_back(0x0FFFFFFF);
 
-		compress_integer_simple_9 compressor;
+		compress_integer_simple_9_packed compressor;
 		std::vector<uint32_t>compressed(every_case.size() * 2);
 		std::vector<uint32_t>decompressed(every_case.size() + 256);
 
@@ -354,8 +392,9 @@ namespace JASS
 		/*
 			Try the error cases
 			(1) no integers
-			(2) Integer overflow
-			(3) buffer overflow
+			(2) Integer overflow (1 integer)
+			(3) Integer overflow (more than one integer)
+			(4) buffer overflow
 		*/
 		every_case.clear();
 		size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &every_case[0], every_case.size());
@@ -367,11 +406,17 @@ namespace JASS
 		JASS_assert(size_once_compressed == 0);
 
 		every_case.clear();
+		every_case.push_back(0xFFFFFFFF);
+		every_case.push_back(0xFFFFFFFF);
+		size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &every_case[0], every_case.size());
+		JASS_assert(size_once_compressed == 0);
+
+		every_case.clear();
 		for (instance = 0; instance < 28; instance++)
 			every_case.push_back(0x01);
 		size_once_compressed = compressor.encode(&compressed[0], 1, &every_case[0], every_case.size());
 		JASS_assert(size_once_compressed == 0);
 
-		puts("compress_integer_simple_9::PASSED");
+		puts("compress_integer_simple_9_packed::PASSED");
 		}
 	}

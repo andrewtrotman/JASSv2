@@ -3,7 +3,7 @@
 # --------------
 #
 # Build file for JASS
-# Copyright (c) 2016 Andrew Trotman
+# Copyright (c) 2016 - 2017 Andrew Trotman
 #
 # Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 #
@@ -40,10 +40,16 @@ set(JASSlib_FILES
 	compress_integer_qmx_original.cpp
 	compress_integer_simple_8b.h
 	compress_integer_simple_8b.cpp
+	compress_integer_simple_8b_packed.h
+	compress_integer_simple_8b_packed.cpp
 	compress_integer_simple_9.h
 	compress_integer_simple_9.cpp
+	compress_integer_simple_9_packed.h
+	compress_integer_simple_9_packed.cpp
 	compress_integer_simple_16.h
 	compress_integer_simple_16.cpp
+	compress_integer_simple_16_packed.h
+	compress_integer_simple_16_packed.cpp
 	compress_integer_variable_byte.h
 	compress_integer_variable_byte.cpp
 	document.h

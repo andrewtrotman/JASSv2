@@ -9,10 +9,12 @@
 #include "compress_integer_all.h"
 #include "compress_integer_none.h"
 #include "compress_integer_simple_9.h"
+#include "compress_integer_simple_8b.h"
 #include "compress_integer_simple_16.h"
 #include "compress_integer_variable_byte.h"
 #include "compress_integer_qmx_improved.h"
 #include "compress_integer_qmx_original.h"
+#include "compress_integer_simple_9_packed.h"
 
 namespace JASS
 	{
@@ -20,11 +22,13 @@ namespace JASS
 		List of known compressors
 	*/
 	static compress_integer_none none;
+	static compress_integer_simple_9 simple_9;
+	static compress_integer_simple_8b simple_8b;
+	static compress_integer_simple_16 simple_16;
+	static compress_integer_simple_9 simple_9_packed;
 	static compress_integer_qmx_original qmx_original;
 	static compress_integer_qmx_improved qmx_improved;
 	static compress_integer_variable_byte variable_byte;
-	static compress_integer_simple_9 simple_9;
-	static compress_integer_simple_9 simple_16;
 
 	/*
 		Table of known copressors and their command line parameter names and actual names
@@ -35,9 +39,11 @@ namespace JASS
 			{"-cn", "--compress_none", "None", &none},
 			{"-cv", "--compress_vbyte", "Variable Byte", &variable_byte},
 			{"-cs", "--compress_simple_9", "Simple-9", &simple_9},
+			{"-cp", "--compress_simple_9_packed", "Optimal Simple-9 packing", &simple_9_packed},
 			{"-ct", "--compress_simple_16", "Simple-16", &simple_16},
-			{"-cq", "--compress_qmx_improved", "QMX Improved", &qmx_improved},
-			{"-cQ", "--compress_qmx_original", "QMX Original with bug fixes (always large and slower than QMX improved)", &qmx_original},
+			{"-cT", "--compress_simple_8b", "Simple-8b", &simple_8b},
+			{"-cX", "--compress_qmx_improved", "QMX Improved", &qmx_improved},
+			{"-cx", "--compress_qmx_original", "QMX Original with bug fixes (always large and slower than QMX improved)", &qmx_original},
 			}
 		};
 
