@@ -104,7 +104,7 @@ namespace JASS
 			{
 			delete [] blocks_needed;
 			delete [] masks;
-			blocks_needed = new size_t [source_integers];
+			blocks_needed = new int64_t [source_integers];
 			masks = new uint8_t [source_integers];
 			blocks_length = source_integers;
 			}
@@ -114,8 +114,14 @@ namespace JASS
 		/*
 			Optimization fails if we only have one integer (due to out-of-bounds access)
 		*/
-		if (source_integers == 1)
+		if (source_integers <= 1)
 			{
+			/*
+				Check for 0 integers
+			*/
+			if (source_integers == 0)
+				return 0;
+				
 			/*
 				Check for overflow - and if not then just store 1 integer.
 			*/
@@ -135,7 +141,7 @@ namespace JASS
 			initialize
 		*/
 		int64_t pos = 0;
-		while (pos < source_integers)
+		while (pos < static_cast<int64_t>(source_integers))
 			{
 			blocks_needed[pos] = -1; // INFINITY value
 			masks[pos] = 255; // JUNK mask value
@@ -159,7 +165,7 @@ namespace JASS
 		*/
 		while (pos >= 0)
 			{
-			size_t remaining = (pos + 28 < source_integers) ? 28 : source_integers - pos;
+			size_t remaining = (pos + 28 < static_cast<int64_t>(source_integers)) ? 28 : source_integers - pos;
 			size_t last_bitmask = 0x0000;
 			size_t bitmask = 0xFFFF;
 			/*
@@ -213,7 +219,7 @@ namespace JASS
 			now actually pack
 		*/
 		pos = 0;
-		while (pos < source_integers)
+		while (pos < static_cast<int64_t>(source_integers))
 			{
 			/*
 				Check for overflow

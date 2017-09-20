@@ -97,152 +97,158 @@ namespace JASS
 		-------------------------------------------
 	*/
 	size_t compress_integer_simple_16_packed::encode(void *destination, size_t destination_length, const integer *source, size_t source_integers)
-	{
-	size_t words_in_compressed_string;
-	uint32_t *into = reinterpret_cast<uint32_t *>(destination);
-	uint32_t *end = reinterpret_cast<uint32_t *>(reinterpret_cast<uint8_t *>(destination) + destination_length);
-	
-	/*
-		Possibly allocate more memory
-	*/
-	if (source_integers > blocks_length)
 		{
-		delete [] blocks_needed;
-		delete [] masks;
-		blocks_needed = new size_t [source_integers];
-		masks = new uint8_t [source_integers];
-		blocks_length = source_integers;
-		}
-	words_in_compressed_string = 0;
-	
-	/*
-		Optimization fails if we only have one integer (due to out-of-bounds access)
-	*/
-	if (source_integers == 1)
-		{
-		/*
-			Check for overflow - and if not then just store 1 integer.
-		*/
-		if (*source > 1 << 28)
-			return 0;
-
-		/*
-			Choose largest bits-per-integer mask, single integer => '15'
-		*/
-		*into = (*source << simple16_shift_table[28 * 15]);
-		*into = (*into << 4) | 15;
-		words_in_compressed_string++;
-		return words_in_compressed_string * sizeof(*into);
-		}
+		size_t words_in_compressed_string;
+		uint32_t *into = reinterpret_cast<uint32_t *>(destination);
+		uint32_t *end = reinterpret_cast<uint32_t *>(reinterpret_cast<uint8_t *>(destination) + destination_length);
 		
-	/*
-		Initialize
-	*/
-	int64_t pos = 0;
-	while (pos < source_integers)
-		{
-		blocks_needed[pos] = -1; // INFINITY value
-		masks[pos] = 255; // JUNK mask value
-		pos++;
-		}
-		
-	/*
-		Init last value to pack-by-self
-	*/
-	pos = source_integers - 1;
-	blocks_needed[pos] = 0;
-	masks[pos] = 15;
-	
-	/*
-		Optimize from second-last value
-	*/
-	pos = source_integers - 2;
-	
-	/*
-		Optimize packing masks to use
-	*/
-	while (pos >= 0)
-		{
-		size_t remaining = (pos + 28 < source_integers) ? 28 : source_integers - pos;
-		size_t last_bitmask = 0x0000;
-		size_t bitmask = 0xFFFF;
 		/*
-			Constrain last_bitmask to contain only bits for masks we can pack with
+			Possibly allocate more memory
 		*/
-		for (size_t offset = 0; offset < remaining && bitmask; offset++)
+		if (source_integers > blocks_length)
 			{
-			bitmask &= can_pack_table[row_for_bits_needed[maths::ceiling_log2(source[pos + offset])] + offset];
-			last_bitmask |= (bitmask & invalid_masks_for_offset[offset + 1]);
+			delete [] blocks_needed;
+			delete [] masks;
+			blocks_needed = new int64_t [source_integers];
+			masks = new uint8_t [source_integers];
+			blocks_length = source_integers;
+			}
+		words_in_compressed_string = 0;
+		
+		/*
+			Optimization fails if we only have one integer (due to out-of-bounds access)
+		*/
+		if (source_integers <= 1)
+			{
+			/*
+				Check for 0 integers
+			*/
+			if (source_integers == 0)
+				return 0;
+				
+			/*
+				Check for overflow - and if not then just store 1 integer.
+			*/
+			if (*source > 1 << 28)
+				return 0;
+
+			/*
+				Choose largest bits-per-integer mask, single integer => '15'
+			*/
+			*into = (*source << simple16_shift_table[28 * 15]);
+			*into = (*into << 4) | 15;
+			words_in_compressed_string++;
+			return words_in_compressed_string * sizeof(*into);
 			}
 			
 		/*
-			No bits set => no masks work => invalid input
+			Initialize
 		*/
-		if (!last_bitmask)
-			return 0;
+		int64_t pos = 0;
+		while (pos < static_cast<int64_t>(source_integers))
+			{
+			blocks_needed[pos] = -1; // INFINITY value
+			masks[pos] = 255; // JUNK mask value
+			pos++;
+			}
 			
 		/*
-			Iterate through the bitmask bit-wise and try the optimization.
+			Init last value to pack-by-self
 		*/
-		for (size_t offset = 0; offset < 16; offset++)
-			if ((1 << offset) & last_bitmask)
+		pos = source_integers - 1;
+		blocks_needed[pos] = 0;
+		masks[pos] = 15;
+		
+		/*
+			Optimize from second-last value
+		*/
+		pos = source_integers - 2;
+		
+		/*
+			Optimize packing masks to use
+		*/
+		while (pos >= 0)
+			{
+			size_t remaining = (pos + 28 < static_cast<int64_t>(source_integers)) ? 28 : source_integers - pos;
+			size_t last_bitmask = 0x0000;
+			size_t bitmask = 0xFFFF;
+			/*
+				Constrain last_bitmask to contain only bits for masks we can pack with
+			*/
+			for (size_t offset = 0; offset < remaining && bitmask; offset++)
 				{
-				size_t num_to_pack = ints_packed_table[offset];
-				
-				/*
-					If we can pack til end w/ this mask, blocks_needed is one
-				*/
-				if (pos + num_to_pack >= source_integers)
-					{
-					blocks_needed[pos] = 1;
-					masks[pos] = offset;
-					}
-					
-				/*
-					Otherwise, update blocks_needed if it is 'infinity' or if we have a shorter path
-				*/
-				else if (blocks_needed[pos] == -1 || blocks_needed[pos] > blocks_needed[pos+num_to_pack] + 1)
-					{
-					blocks_needed[pos] = blocks_needed[pos+num_to_pack] + 1;
-					masks[pos] = offset;
-					}
+				bitmask &= can_pack_table[row_for_bits_needed[maths::ceiling_log2(source[pos + offset])] + offset];
+				last_bitmask |= (bitmask & invalid_masks_for_offset[offset + 1]);
 				}
+				
+			/*
+				No bits set => no masks work => invalid input
+			*/
+			if (!last_bitmask)
+				return 0;
+				
+			/*
+				Iterate through the bitmask bit-wise and try the optimization.
+			*/
+			for (size_t offset = 0; offset < 16; offset++)
+				if ((1 << offset) & last_bitmask)
+					{
+					size_t num_to_pack = ints_packed_table[offset];
+					
+					/*
+						If we can pack til end w/ this mask, blocks_needed is one
+					*/
+					if (pos + num_to_pack >= source_integers)
+						{
+						blocks_needed[pos] = 1;
+						masks[pos] = offset;
+						}
+						
+					/*
+						Otherwise, update blocks_needed if it is 'infinity' or if we have a shorter path
+					*/
+					else if (blocks_needed[pos] == -1 || blocks_needed[pos] > blocks_needed[pos+num_to_pack] + 1)
+						{
+						blocks_needed[pos] = blocks_needed[pos+num_to_pack] + 1;
+						masks[pos] = offset;
+						}
+					}
+			/*
+				fail case: can't pack current block (i.e. x > 2^28)
+			*/
+			if (masks[pos] == 255)
+				return 0;
+				
+			pos--;
+			}
 		/*
-			fail case: can't pack current block (i.e. x > 2^28)
+			now actually pack
 		*/
-		if (masks[pos] == 255)
-			return 0;
-			
-		pos--;
+		pos = 0;
+		while (pos < static_cast<int64_t>(source_integers))
+			{
+			/*
+				Check for overflow
+			*/
+			if (into + 1 > end)
+				return 0;
+				
+			size_t mask_type = masks[pos];
+			size_t num_to_pack = (pos + ints_packed_table[mask_type] > source_integers) ? source_integers - pos : ints_packed_table[mask_type];
+			/*
+				pack the word
+			*/
+			*into = 0;
+			size_t mask_type_offset = 28 * mask_type;
+			for (size_t offset = 0; offset < num_to_pack; offset++)
+				*into |= (source[pos + offset] << simple16_shift_table[mask_type_offset + offset]);
+			*into = (*into << 4) | mask_type;
+			pos += num_to_pack;
+			into++;
+			words_in_compressed_string++;
+			}
+		return words_in_compressed_string * sizeof(*into);
 		}
-	/*
-		now actually pack
-	*/
-	pos = 0;
-	while (pos < source_integers)
-		{
-		/*
-			Check for overflow
-		*/
-		if (into + 1 > end)
-			return 0;
-			
-		size_t mask_type = masks[pos];
-		size_t num_to_pack = (pos + ints_packed_table[mask_type] > source_integers) ? source_integers - pos : ints_packed_table[mask_type];
-		/*
-			pack the word
-		*/
-		*into = 0;
-		size_t mask_type_offset = 28 * mask_type;
-		for (size_t offset = 0; offset < num_to_pack; offset++)
-			*into |= (source[pos + offset] << simple16_shift_table[mask_type_offset + offset]);
-		*into = (*into << 4) | mask_type;
-		pos += num_to_pack;
-		into++;
-		words_in_compressed_string++;
-		}
-	return words_in_compressed_string * sizeof(*into);
-	}
 
 	/*
 		COMPRESS_INTEGER_SIMPLE_16_PACKED::DECODE()

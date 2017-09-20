@@ -30,7 +30,7 @@ namespace JASS
 			/*
 				memory for packing compresser (i.e. determining optimal blocking)
 			*/
-			size_t *blocks_needed;								///< The optimal number of blocks needed to encode from here to the end of the sequence
+			int64_t *blocks_needed;								///< The optimal number of blocks needed to encode from here to the end of the sequence
 			uint8_t *masks;										///< Possible ways to encode this integer in the sequence
 			size_t blocks_length;								///< Length of the block_needed and masks dynamic arrays
 

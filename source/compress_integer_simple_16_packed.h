@@ -19,7 +19,7 @@ namespace JASS
 	class compress_integer_simple_16_packed : public compress_integer
 		{
 		protected:
-			size_t *blocks_needed;								///< The optimal number of blocks needed to encode from here to the end of the sequence
+			int64_t *blocks_needed;								///< The optimal number of blocks needed to encode from here to the end of the sequence
 			uint8_t *masks;										///< Possible ways to encode this integer in the sequence
 			size_t blocks_length;								///< Length of the block_needed and masks dynamic arrays
 
