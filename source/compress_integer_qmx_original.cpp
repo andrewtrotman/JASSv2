@@ -704,8 +704,8 @@ namespace JASS
 						}
 					break;
 				default:
-					exit(printf("Selecting on a non whole power of 2, must exit\n"));
-					break;
+					exit(printf("Selecting on a non whole power of 2, must exit\n"));			// LCOV_EXCL_LINE
+					break;				// LCOV_EXCL_LINE
 				}
 			}
 
@@ -922,6 +922,31 @@ namespace JASS
 		*/
 		static const std::vector<uint32_t> pathalogical = {0X01, 0x01, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x03, 0x03, 0x03, 0x03, 0x07, 0x07, 0x07, 0x07, 0x0F, 0x0F, 0x0F, 0x0F, 0x1F, 0x1F, 0x1F, 0x1F, 0x3F, 0x3F, 0x3F, 0x3F, 0x7F, 0x7F, 0x7F, 0x7F, 0xFF, 0xFF, 0xFF, 0xFF, 0x1FF, 0x1FF, 0x1FF, 0x1FF, 0x3FF, 0x3FF, 0x3FF, 0x3FF, 0xFFF, 0xFFF, 0xFFF, 0xFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0x1FFFFF, 0x1FFFFF, 0x1FFFFF, 0x1FFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF};
 		unittest_one(pathalogical);
+
+		/*
+			Check the variable byte encoding code
+		*/
+		JASS_assert(vbyte_bytes_needed_for(1 << 6) == 1);
+		JASS_assert(vbyte_bytes_needed_for(1 << 13) == 2);
+		JASS_assert(vbyte_bytes_needed_for(1 << 20) == 3);
+		JASS_assert(vbyte_bytes_needed_for(1 << 27) == 4);
+		JASS_assert(vbyte_bytes_needed_for(1 << 30) == 5);
+
+		uint8_t buffer[6];
+		vbyte_compress_into(buffer, 1 << 6);
+		JASS_assert(vbyte_decompress(buffer + 1) == 1 << 6);
+
+		vbyte_compress_into(buffer, 1 << 13);
+		JASS_assert(vbyte_decompress(buffer + 2) == 1 << 13);
+
+		vbyte_compress_into(buffer, 1 << 20);
+		JASS_assert(vbyte_decompress(buffer + 3) == 1 << 20);
+
+		vbyte_compress_into(buffer, 1 << 27);
+		JASS_assert(vbyte_decompress(buffer + 4) == 1 << 27);
+
+		vbyte_compress_into(buffer, 1 << 30);
+		JASS_assert(vbyte_decompress(buffer + 5) == 1 << 30);
 
 		puts("compress_integer_qmx_original::PASSED");
 		}
@@ -6726,38 +6751,38 @@ namespace JASS
 						to += 4;
 						break;
 					case 0xf0:
-						in++;
+						in++;			// LCOV_EXCL_LINE
 					case 0xf1:
-						in++;
+						in++;			// LCOV_EXCL_LINE
 					case 0xf2:
-						in++;
+						in++;			// LCOV_EXCL_LINE
 					case 0xf3:
-						in++;
+						in++;			// LCOV_EXCL_LINE
 					case 0xf4:
-						in++;
+						in++;			// LCOV_EXCL_LINE
 					case 0xf5:
-						in++;
+						in++;			// LCOV_EXCL_LINE
 					case 0xf6:
-						in++;
+						in++;			// LCOV_EXCL_LINE
 					case 0xf7:
-						in++;
+						in++;			// LCOV_EXCL_LINE
 					case 0xf8:
-						in++;
+						in++;			// LCOV_EXCL_LINE
 					case 0xf9:
-						in++;
+						in++;			// LCOV_EXCL_LINE
 					case 0xfa:
-						in++;
+						in++;			// LCOV_EXCL_LINE
 					case 0xfb:
-						in++;
+						in++;			// LCOV_EXCL_LINE
 					case 0xfc:
-						in++;
+						in++;			// LCOV_EXCL_LINE
 					case 0xfd:
-						in++;
+						in++;			// LCOV_EXCL_LINE
 					case 0xfe:
-						in++;
+						in++;			// LCOV_EXCL_LINE
 					case 0xff:
-						in++;
-						break;
+						in++;			// LCOV_EXCL_LINE
+						break;		// LCOV_EXCL_LINE
 					}
 				}
 			}

@@ -396,11 +396,12 @@ namespace JASS
 		JASS_assert(decompressed == every_case);
 		
 		/*
-			Try the error cases
+			Try the error cases and edge cases
 			(1) no integers
 			(2) Integer overflow (1 integer)
 			(3) Integer overflow (more than one integer)
 			(4) buffer overflow
+			(5) one valid integer
 		*/
 		integer one = 1;
 		size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &one, 0);
@@ -422,6 +423,11 @@ namespace JASS
 			every_case.push_back(0x01);
 		size_once_compressed = compressor.encode(&compressed[0], 1, &every_case[0], every_case.size());
 		JASS_assert(size_once_compressed == 0);
+
+		every_case.clear();
+		every_case.push_back(0xFFFF);
+		size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &every_case[0], every_case.size());
+		JASS_assert(size_once_compressed == 4);
 
 		puts("compress_integer_simple_9_packed::PASSED");
 		}
