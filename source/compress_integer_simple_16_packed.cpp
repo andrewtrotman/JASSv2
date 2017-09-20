@@ -1,6 +1,9 @@
 /*
 	COMPRESS_INTEGER_SIMPLE_16_PACKED.CPP
 	-------------------------------------
+	Copyright (c) 2014-2017 Blake Burgess and Andrew Trotman
+	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
+
 	Simple-16-Packed, an adaptation of Simple-16.
 
 	Author: Blake Burgess
@@ -510,7 +513,7 @@ namespace JASS
 		/*
 			14 * 2-bits
 		*/
-		for (instance = 0; instance < 4; instance++)
+		for (instance = 0; instance < 14; instance++)
 			every_case.push_back(0x03);
 
 		/*

@@ -144,7 +144,7 @@ namespace JASS
 			*into = (*into << 4) | mask_type;
 			pos += num_to_pack;
 			into++;
-						}
+			}
 		return words_in_compressed_string * sizeof(*into);
 		}
 
@@ -410,7 +410,7 @@ namespace JASS
 		/*
 			14 * 2-bits
 		*/
-		for (instance = 0; instance < 4; instance++)
+		for (instance = 0; instance < 14; instance++)
 			every_case.push_back(0x03);
 
 		/*
