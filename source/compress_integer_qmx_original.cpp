@@ -934,19 +934,20 @@ namespace JASS
 
 		uint8_t buffer[6];
 		vbyte_compress_into(buffer, 1 << 6);
-		JASS_assert(vbyte_decompress(buffer + 1) == 1 << 6);
+		uint64_t got = vbyte_decompress(buffer);
+		JASS_assert(got == (1 << 6));
 
 		vbyte_compress_into(buffer, 1 << 13);
-		JASS_assert(vbyte_decompress(buffer + 2) == 1 << 13);
+		JASS_assert(vbyte_decompress(buffer + 1) == 1 << 13);
 
 		vbyte_compress_into(buffer, 1 << 20);
-		JASS_assert(vbyte_decompress(buffer + 3) == 1 << 20);
+		JASS_assert(vbyte_decompress(buffer + 2) == 1 << 20);
 
 		vbyte_compress_into(buffer, 1 << 27);
-		JASS_assert(vbyte_decompress(buffer + 4) == 1 << 27);
+		JASS_assert(vbyte_decompress(buffer + 3) == 1 << 27);
 
 		vbyte_compress_into(buffer, 1 << 30);
-		JASS_assert(vbyte_decompress(buffer + 5) == 1 << 30);
+		JASS_assert(vbyte_decompress(buffer + 4) == 1 << 30);
 
 		puts("compress_integer_qmx_original::PASSED");
 		}
