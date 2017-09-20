@@ -1001,8 +1001,8 @@ namespace JASS
 			(2) buffer overflow
 			Note that integer too large can't happen as simple-8b can encode up-to 2^60 which is greater than 2^32.
 		*/
-		every_case.clear();
-		size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &every_case[0], every_case.size());
+		integer one = 1;
+		size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &one, 0);
 		JASS_assert(size_once_compressed == 0);
 
 		every_case.clear();

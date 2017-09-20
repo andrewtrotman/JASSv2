@@ -357,8 +357,7 @@ namespace JASS
 			(2) Integer overflow
 			(3) buffer overflow
 		*/
-		every_case.clear();
-		integer one = 1024;
+		integer one = 1;
 		size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &one, 0);
 		JASS_assert(size_once_compressed == 0);
 
