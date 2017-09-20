@@ -517,7 +517,7 @@ namespace JASS
 			1 * 8-bit and 8 * 3-bits
 		*/
 		for (instance = 0; instance < 1; instance++)
-			every_case.push_back(0x0F);
+			every_case.push_back(0xFF);
 		for (instance = 0; instance < 8; instance++)
 			every_case.push_back(0x07);
 
@@ -541,17 +541,17 @@ namespace JASS
 			4 * 9 bits and 2 * 8 bits
 		*/
 		for (instance = 0; instance < 4; instance++)
-			every_case.push_back(0x1F);
+			every_case.push_back(0x1FF);
 		for (instance = 0; instance < 2; instance++)
-			every_case.push_back(0x0F);
+			every_case.push_back(0xFF);
 
 		/*
 			2 * 8-bits and 4 * 9-bits
 		*/
 		for (instance = 0; instance < 2; instance++)
-			every_case.push_back(0x0F);
+			every_case.push_back(0xFF);
 		for (instance = 0; instance < 4; instance++)
-			every_case.push_back(0x1F);
+			every_case.push_back(0x1FF);
 
 		/*
 			3 * 6-bits and 2 * 5-bits
