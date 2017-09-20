@@ -1,6 +1,10 @@
 /*
-	COMPRESS_INTEGER_SIMPLE1_6_PACKED.H
+	COMPRESS_INTEGER_SIMPLE_16_PACKED.H
 	------------------------------------
+	Copyright (c) 2014-2017 Blake Burgess and Andrew Trotman
+	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
+	
+	This code is from ATIRE, where it was written by Blake Burgess.
 */
 #pragma once
 

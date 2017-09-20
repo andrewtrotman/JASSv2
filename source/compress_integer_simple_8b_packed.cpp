@@ -1,6 +1,6 @@
 /*
-	COMPRESS_SIMPLE8B_PACKED.CPP
-	----------------------------
+	COMPRESS_INTEGER_SIMPLE_8B_PACKED.CPP
+	-------------------------------------
 	Copyright (c) 2014-2017 Andrew Trotman, Michael Albert, Blake Burgess
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 

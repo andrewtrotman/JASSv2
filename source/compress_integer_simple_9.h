@@ -1,6 +1,6 @@
 /*
-	COMPRESS_SIMPLE9.H
-	------------------
+	COMPRESS_INTEGER_SIMPLE9.H
+	--------------------------
 	Copyright (c) 2014-2017 Vikram Subramanya, Andrew Trotman, Blake Burgess
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 

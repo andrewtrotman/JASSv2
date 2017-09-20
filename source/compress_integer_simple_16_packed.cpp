@@ -1,6 +1,6 @@
 /*
-	COMPRESS_SIMPLE16_PACKED.C
-	------------------
+	COMPRESS_INTEGER_SIMPLE_16_PACKED.CPP
+	-------------------------------------
 	Simple-16-Packed, an adaptation of Simple-16.
 
 	Author: Blake Burgess
