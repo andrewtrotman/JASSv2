@@ -25,10 +25,23 @@ namespace JASS
 		a large collection (such as ClueWeb).
 		
 		The encodings are:
-			28 * 1-bit | 7 * 2-bits and 14 * 1-bit | 7 * 1-bit and 7 * 2-bits and 7 * 1-bit | 14 * 1-bit and 7 * 2-bits | 14 * 2-bits |
-			1 * 8-bit and 8 * 3-bits | 1 * 3-bits and 4 * 4-bits and 3 * 3-bits | 7 * 4-bits | 4 * 9 bits and 2 * 8 bits | 2 * 8-bits and 4 * 9-bits
-			3 * 6-bits and 2 * 5-bits | 2 * 5-bits and 3 * 6 bits | 4 * 7-bits | 1 * 10-bits and 2 * 9 bits | 2 * 14-bits |1 * 28-bits
-		
+			28 * 1-bit
+			7 * 2-bits and 14 * 1-bit
+			7 * 1-bit and 7 * 2-bits and 7 * 1-bit
+			14 * 1-bit and 7 * 2-bits
+			14 * 2-bits
+			1 * 4-bit and 8 * 3-bits
+			1 * 3-bits and 4 * 4-bits and 3 * 3-bits
+			7 * 4-bits
+			4 * 5 bits and 2 * 4 bits
+			2 * 4-bits and 4 * 5-bits
+			3 * 6-bits and 2 * 5-bits
+			2 * 5-bits and 3 * 6 bits
+			4 * 7-bits
+			1 * 10-bits and 2 * 9 bits
+			2 * 14-bits
+			1 * 28-bits
+
 		See:
 			Zhang J, Long X, Suel T. (2008) Performance of compressed inverted list caching in search engines. Proceeedings of 17th Conference on the World Wide Web, pp 387-396
 			Yan H, Ding S, Suel T (2009) Inverted index compression and query processing with optimized document ordering. roceeedings of 18th Conference on the World Wide Web, 401-410
