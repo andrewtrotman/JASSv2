@@ -492,6 +492,7 @@ namespace JASS
 				std::string parameter_string = "Something";
 				int parameter_integer = 0;
 				unsigned int parameter_unsigned = 0;
+				unsigned long long parameter_unsigned_long_long;
 
 				/* 
 					Declare the parameter object to parse
@@ -502,14 +503,15 @@ namespace JASS
 					commandline::parameter("-b", "--boolean", "Extract a boolean", parameter_boolean),
 					commandline::parameter("-s", "--string", "Extractr a string", parameter_string),
 					commandline::parameter("-i", "--integer", "Extract an integer", parameter_integer),
-					commandline::parameter("-u", "--unsigned", "Extract an unsigned integer", parameter_unsigned)
+					commandline::parameter("-u", "--unsigned", "Extract an unsigned integer", parameter_unsigned),
+					commandline::parameter("-h", "--huge", "Extract an unsigned integer", parameter_unsigned_long_long)
 					);
 
 				/*
 					Declare a command line like argc and argv[].
 				*/
-				int argc = 7;
-				const char *argv[] = {"program", "-b", "-s", "string", "-i3", "-u", "4"};
+				int argc = 8;
+				const char *argv[] = {"program", "-b", "-s", "string", "-i3", "-u", "4", "-h0"};
 
 				/*
 					Call the parser
@@ -523,13 +525,14 @@ namespace JASS
 				JASS_assert(success);
 				JASS_assert(error == "");
 				std::ostringstream results;
-				results << parameter_boolean << parameter_string << parameter_integer << parameter_unsigned;
-				JASS_assert(results.str() == "1string34");
+				results << parameter_boolean << parameter_string << parameter_integer << parameter_unsigned << parameter_unsigned_long_long;
+				JASS_assert(results.str() == "1string340");
 
 				/*
 					Check longnames
 				*/
 				parameter_boolean = false;
+				argc = 7;
 				const char *argv2[] = {"program", "--boolean", "--string", "four", "--integer5", "--unsigned", "6"};
 				success = commandline::parse(argc, argv2, all_commands, error);
 				JASS_assert(success);

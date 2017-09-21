@@ -926,6 +926,12 @@ namespace JASS
 		unittest_one(pathalogical);
 
 		/*
+			 Case to test the remaining overflow lines
+		*/
+		static const std::vector<uint32_t> remainder ={0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFFF};
+		unittest_one(remainder);
+
+		/*
 			Check the variable byte encoding code
 		*/
 		JASS_assert(vbyte_bytes_needed_for(1 << 6) == 1);

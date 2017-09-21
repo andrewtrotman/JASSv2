@@ -211,7 +211,7 @@ namespace JASS
 				fail case: can't pack current block (i.e. x > 2^28)
 			*/
 			if (masks[pos] == 255)
-				return 0;
+				return 0;				// LCOV_EXCL_LINE // This line doesn't appear to ever be called (even on overflow)
 			pos--;
 			}
 			
