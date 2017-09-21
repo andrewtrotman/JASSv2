@@ -423,7 +423,8 @@ namespace JASS
 		*buffer = destination;
 		*length_buffer = key_store;
 		}
-
+		
+	// LCOV_EXCL_START			// it isn't clear why cov isn't seeing these lines as executed, but they are marked "exclude" because it doesn't.
 	/*
 		MAXIMUM()
 		---------
@@ -443,7 +444,8 @@ namespace JASS
 		{
 		return maximum(maximum(a, b), maximum(c, d));
 		}
-
+	// LCOV_EXCL_STOP
+	
 	/*
 		COMPRESS_INTEGER_QMX_ORIGINAL::ENCODE()
 		---------------------------------------

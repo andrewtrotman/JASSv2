@@ -210,7 +210,7 @@ namespace JASS
 				no bits set => no masks work => invalid input
 			*/
 			if (!last_bitmask)
-				return 0;
+				return 0;			// LCOV_EXCL_LINE		// this can't happen with 32-bit integers (as they can all be represented)
 				
 			/*
 				iterate through the bitmask bit-wise and try the optimization.
@@ -241,7 +241,7 @@ namespace JASS
 				fail case: can't pack current block (i.e. x > 2^60)
 			*/
 			if (masks[pos] == 255)
-				return 0;
+				return 0;			// LCOV_EXCL_LINE		// this can't happen with 32-bit integers (as they can all be represented)
 			pos--;
 			}
 		/*
