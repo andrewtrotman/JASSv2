@@ -776,7 +776,7 @@ namespace JASS
 					*destination++ = (value >> 30) & 0x3FFFFFFF;
 					break;
 				case 0xF:
-					*destination++ = value & 0xFFFFFFFFFFFFFFFL;
+					*destination++ = value & (integer)(0xFFFFFFFFFFFFFFFL);
 					break;
 				}
 			}

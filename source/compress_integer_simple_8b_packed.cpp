@@ -194,8 +194,8 @@ namespace JASS
 		while (pos >= 0)
 			{
 			size_t remaining = (pos + 240 < static_cast<int64_t>(source_integers)) ? 240 : source_integers - pos;
-			size_t last_bitmask = 0x0000;
-			size_t bitmask = 0xFFFF;
+			uint16_t last_bitmask = 0x0000;
+			uint16_t bitmask = 0xFFFF;
 			
 			/*
 				constrain last_bitmask to contain only bits for masks we can pack with
@@ -215,7 +215,7 @@ namespace JASS
 			/*
 				iterate through the bitmask bit-wise and try the optimization.
 			*/
-			for (size_t offset = 0; offset < 16; offset++)
+			for (uint8_t offset = 0; offset < 16; offset++)
 				if ((1 << offset) & last_bitmask)
 					{
 					size_t num_to_pack = ints_packed_table[offset];
@@ -873,7 +873,7 @@ namespace JASS
 					*destination++ = (value >> 30) & 0x3FFFFFFF;
 					break;
 				case 0xF:
-					*destination++ = value & 0xFFFFFFFFFFFFFFFL;
+					*destination++ = value & (integer)(0xFFFFFFFFFFFFFFFL);
 					break;
 				}
 			}

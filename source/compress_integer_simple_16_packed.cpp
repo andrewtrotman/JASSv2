@@ -173,8 +173,8 @@ namespace JASS
 		while (pos >= 0)
 			{
 			size_t remaining = (pos + 28 < static_cast<int64_t>(source_integers)) ? 28 : source_integers - pos;
-			size_t last_bitmask = 0x0000;
-			size_t bitmask = 0xFFFF;
+			uint16_t last_bitmask = 0x0000;
+			uint16_t bitmask = 0xFFFF;
 			/*
 				Constrain last_bitmask to contain only bits for masks we can pack with
 			*/
@@ -193,7 +193,7 @@ namespace JASS
 			/*
 				Iterate through the bitmask bit-wise and try the optimization.
 			*/
-			for (size_t offset = 0; offset < 16; offset++)
+			for (uint8_t offset = 0; offset < 16; offset++)
 				if ((1 << offset) & last_bitmask)
 					{
 					size_t num_to_pack = ints_packed_table[offset];
@@ -236,7 +236,7 @@ namespace JASS
 			if (into + 1 > end)
 				return 0;
 				
-			size_t mask_type = masks[pos];
+			uint32_t mask_type = masks[pos];
 			size_t num_to_pack = (pos + ints_packed_table[mask_type] > source_integers) ? source_integers - pos : ints_packed_table[mask_type];
 			/*
 				pack the word

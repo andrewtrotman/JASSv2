@@ -131,7 +131,7 @@ namespace JASS
 			/*
 				get position of lowest set bit
 			*/
-			size_t mask_type = maths::find_first_set_bit((uint32_t)last_bitmask);
+			uint32_t mask_type = maths::find_first_set_bit((uint32_t)last_bitmask);
 			size_t num_to_pack = ints_packed_table[mask_type];
 			
 			/*
