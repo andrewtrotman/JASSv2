@@ -136,12 +136,18 @@ namespace JASS
 			static void extract(std::ostringstream &messages, const char *parameter, command<TYPE> element)
 				{
 				long long answer = strtoll(parameter, NULL, 0);
-				if (answer > (std::numeric_limits<TYPE>::max)())
-					messages << parameter << " Numeric overflow on parameter\n";
-				else if (answer < std::numeric_limits<TYPE>::min())
-					messages << parameter << " Numeric underflow on parameter\n";
+
+				if ((std::is_same<TYPE, unsigned long long>::value))
+						element.parameter = static_cast<TYPE>(answer);
 				else
-					element.parameter = static_cast<TYPE>(answer);
+					{
+					if (answer > (std::numeric_limits<TYPE>::max)())
+						messages << parameter << " Numeric overflow on parameter\n";
+					else if (answer < std::numeric_limits<TYPE>::min())
+						messages << parameter << " Numeric underflow on parameter\n";
+					else
+						element.parameter = static_cast<TYPE>(answer);
+					}
 				}
 
 			/*
@@ -162,8 +168,12 @@ namespace JASS
 			static void extract(std::ostringstream &messages, const char *parameter, command<TYPE> element)
 				{
 				unsigned long long answer = strtoull(parameter, NULL, 0);
-				if (answer > (std::numeric_limits<TYPE>::max)())
-					messages << parameter << " Numeric overflow on parameter\n";
+				
+				if (!(std::is_same<TYPE, unsigned long long>::value))
+					{
+					if (answer > (std::numeric_limits<TYPE>::max)())
+						messages << parameter << " Numeric overflow on parameter\n";
+					}
 				element.parameter = static_cast<TYPE>(answer);
 				}
 
@@ -338,11 +348,26 @@ namespace JASS
 					out << std::left << std::get<I>(tuple).description << '\n';
 				else
 					{
+
+					/*
+						Save the state of the stream (because we're going to manipulate it)
+					*/
+					std::ios  state(NULL);
+					state.copyfmt(std::cout);
+					
+					/*
+						Dump out the usage
+					*/
 					out.width(width_of_shortname + 1);
 					out << std::left << std::get<I>(tuple).shortname;
 					out.width(width_of_longname + 1);
-					out << std::left << std::get<I>(tuple).longname;
-					out << std::left << std::get<I>(tuple).description << '\n';
+					out << std::get<I>(tuple).longname;
+					out << std::get<I>(tuple).description << '\n';
+
+					/*
+						Return the state to how it was before we changed it
+					*/
+					std::cout.copyfmt(state);
 					}
 
 				for_each_usage_print<I + 1, Tp...>(out, width_of_shortname, width_of_longname, tuple);

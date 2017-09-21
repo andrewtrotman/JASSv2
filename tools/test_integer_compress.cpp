@@ -95,7 +95,7 @@ void generate_example(const std::string &filename)
 	Write out the useage statistics.
 */
 template <typename TYPE>
-void usage(const char *exename, TYPE command_line_parameters)
+void usage(const char *exename, TYPE &command_line_parameters)
 	{
 	std::cout << JASS::commandline::usage(exename, command_line_parameters);
 	exit(0);
@@ -184,6 +184,14 @@ int main(int argc, const char *argv[])
 	while (fread(&length, sizeof(length), 1, fp)  == 1)
 		{
 		term_count++;
+		
+		/*
+			Coverity points out that length is "tainted" and that bad input can, therefore, be used to attack this program.
+			So we make sure length is not too large.
+		*/
+		if (length > postings_list.size())
+			exit(printf("fatal error: NUMBER_OF_DOCUMENTS is smaller than the length of this postings list (%lld vs %lld)", (long long)NUMBER_OF_DOCUMENTS, (long long)length));
+			
 		/*
 			Read one postings list (and make sure we did so successfully)
 		*/

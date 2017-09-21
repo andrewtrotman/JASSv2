@@ -152,8 +152,9 @@ namespace JASS
 			/*
 				Check for overflow - and if not then just store 1 integer.
 			*/
-			if (static_cast<uint64_t>(*source) > 1ULL << 60)
-				return 0;
+			if (std::is_same<integer, uint64_t>::value)
+				if (static_cast<uint64_t>(*source) > 1ULL << 60)
+					return 0;
 				
 			/*
 				Choose largest bits-per-integer mask, single integer => '15'
