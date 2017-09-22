@@ -493,6 +493,7 @@ namespace JASS
 				int parameter_integer = 0;
 				unsigned int parameter_unsigned = 0;
 				unsigned long long parameter_unsigned_long_long;
+				long long parameter_long_long;
 
 				/* 
 					Declare the parameter object to parse
@@ -504,14 +505,15 @@ namespace JASS
 					commandline::parameter("-s", "--string", "Extractr a string", parameter_string),
 					commandline::parameter("-i", "--integer", "Extract an integer", parameter_integer),
 					commandline::parameter("-u", "--unsigned", "Extract an unsigned integer", parameter_unsigned),
-					commandline::parameter("-h", "--huge", "Extract an unsigned integer", parameter_unsigned_long_long)
+					commandline::parameter("-h", "--huge", "Extract an unsigned ilong long nteger", parameter_unsigned_long_long),
+					commandline::parameter("-H", "--Huge", "Extract an long log integer", parameter_long_long)
 					);
 
 				/*
 					Declare a command line like argc and argv[].
 				*/
-				int argc = 8;
-				const char *argv[] = {"program", "-b", "-s", "string", "-i3", "-u", "4", "-h0"};
+				int argc = 9;
+				const char *argv[] = {"program", "-b", "-s", "string", "-i3", "-u", "4", "-h0", "-H0"};
 
 				/*
 					Call the parser

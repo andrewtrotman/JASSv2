@@ -697,7 +697,7 @@ namespace JASS
 				case 32:
 					for (block = 0; block < 4; block += 4)
 						if (*(current_length + block) > 32)
-							*current_length = *(current_length + 1) = *(current_length + 2) = *(current_length + 3) = 64;				// promote
+							*current_length = *(current_length + 1) = *(current_length + 2) = *(current_length + 3) = 64;			// LCOV_EXCL_LINE  // can't happen	// promote
 					if (*current_length == 32)
 						{
 						for (block = 0; block < 4; block++)
@@ -928,7 +928,7 @@ namespace JASS
 		/*
 			 Case to test the remaining overflow lines
 		*/
-		static const std::vector<uint32_t> remainder ={0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFFF};
+		static const std::vector<uint32_t> remainder ={0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFFF};
 		unittest_one(remainder);
 
 		/*

@@ -1,6 +1,9 @@
 /*
 	COMPRESS_INTEGER_RELATIVE_10.CPP
 	--------------------------------
+	Copyright (c) 2007-2017 Vikram Subramanya, Andrew Trotman
+	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
+
 	Anh and Moffat's Relative-10 Compression scheme from:
 	V. Anh, A. Moffat (2005), Inverted Index Compression Using Word-Aligned Binary Codes, Information Retrieval, 8(1):151-166
 
@@ -79,6 +82,11 @@ namespace JASS
 	*/
 	size_t compress_integer_relative_10::encode(void *destination, size_t destination_length, const integer *source, size_t source_integers)
 		{
+		if (source_integers == 0)
+			return 0;
+		if (destination_length < 4)
+			return 0;
+			
 		const integer *from = source;
 		uint64_t words_in_compressed_string;
 
@@ -148,74 +156,6 @@ namespace JASS
 		}
 
 	/*
-		COMPRESS_INTEGER_RELATIVE_10::DECODE_wound_up()
-		--------------------------------------
-	*/
-	void compress_integer_relative_10::decode_wound_up(integer *destination, size_t destination_integers, const void *source, size_t source_length)
-		{
-		long long numbers;
-		long mask, bits;
-		uint32_t *compressed_sequence = (uint32_t *)source;
-		uint32_t value, row;
-		integer *end = destination + destination_integers;
-
-		/*
-			The first word is encoded in Simple-9
-		*/
-		value = *compressed_sequence++;
-		row = value >> 28;
-		value &= 0x0fffffff;
-
-		bits = simple9_table[row].bits;
-		mask = simple9_table[row].mask;
-		numbers = simple9_table[row].numbers;
-
-		if (numbers > destination_integers)
-			numbers = destination_integers;
-
-		while (numbers-- > 0)
-			{
-			*destination++ = value & mask;
-			value >>= bits;
-			}
-
-		if (numbers == destination_integers)
-			return;			// we're done as it all fits in the first word!
-
-		/*
-			The remainder is in relative-10
-		*/
-		for (;;)		/* empty loop */
-			{
-			value = *compressed_sequence++;
-			row = relative10_table[row].relative_row[value >> 30];
-
-			value &= 0x3fffffff;		// top 2 bits are the relative selector, botton 30 are the encoded integer
-
-			bits = relative10_table[row].bits;
-			mask = relative10_table[row].mask;
-			numbers = relative10_table[row].numbers;
-
-			if (destination + numbers < end)
-				while (numbers-- > 0)
-					{
-					*destination++ = value & mask;
-					value >>= bits;
-					}
-			else
-				{
-				numbers = end - destination;
-				while (numbers-- > 0)
-					{
-					*destination++ = value & mask;
-					value >>= bits;
-					}
-				break;
-				}
-			}
-		}
-
-	/*
 		COMPRESS_INTEGER_RELATIVE_10::DECODE()
 		--------------------------------------
 	*/
@@ -238,16 +178,13 @@ namespace JASS
 		mask = simple9_table[row].mask;
 		numbers = simple9_table[row].numbers;
 
-		if (numbers > destination_integers)
-			numbers = destination_integers;
-
 		while (numbers-- > 0)
 			{
 			*destination++ = value & mask;
 			value >>= bits;
 			}
 
-		if (numbers == destination_integers)
+		if (destination >= end)
 			return;			// we're done as it all fits in the first word!
 
 		/*
@@ -261,7 +198,7 @@ namespace JASS
 			switch (row)
 				{
 				case 0:
-						*destination++ = value & 0x3fffffff;
+						*destination++ = value & 0X3FFFFFFF;
 						break;
 				case 1:
 						*destination++ = value & 0x7FFF;
@@ -414,6 +351,47 @@ namespace JASS
 		compressor.decode(&decompressed[0], every_case.size(), &compressed[0], size_once_compressed);
 		decompressed.resize(every_case.size());
 		JASS_assert(decompressed == every_case);
+
+		compressor.decode(&decompressed[0], 1, &compressed[0], size_once_compressed);
+		JASS_assert(decompressed[0] == every_case[0]);
+
+		/*
+			Try the error cases
+			(1) 1 integer (encoded with Simple-9)
+			(2) no integers
+			(3) Integer overflow
+			(4) Integer overflow in the Relative-10 encoder
+			(5) buffer overflow on simple-9 encoder
+			(6) buffer overflow on Relatice-10 encoder
+		*/
+		compressor.decode(&decompressed[0], 1, &compressed[0], size_once_compressed);
+		JASS_assert(decompressed[0] == every_case[0]);
+
+		integer one = 1;
+		size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &one, 0);
+		JASS_assert(size_once_compressed == 0);
+
+		every_case.clear();
+		every_case.push_back(0xFFFFFFFF);
+		size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &every_case[0], every_case.size());
+		JASS_assert(size_once_compressed == 0);
+
+		every_case.clear();
+		every_case.push_back(0x0FFFFFFF);
+		every_case.push_back(0xFFFFFFFF);
+		size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &every_case[0], every_case.size());
+		JASS_assert(size_once_compressed == 0);
+
+		every_case.clear();
+		for (size_t instance = 0; instance < 28; instance++)
+			every_case.push_back(0x01);
+		size_once_compressed = compressor.encode(&compressed[0], 1, &every_case[0], every_case.size());
+		JASS_assert(size_once_compressed == 0);
+
+		for (size_t instance = 0; instance < 28; instance++)
+			every_case.push_back(0xFF);
+		size_once_compressed = compressor.encode(&compressed[0], 5, &every_case[0], every_case.size());
+		JASS_assert(size_once_compressed == 0);
 
 		puts("compress_integer_relative_10::PASSED");
 		}

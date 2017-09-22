@@ -67,6 +67,13 @@ namespace JASS
 		CLASS COMPRESS_INTEGER_CARRYOVER_12
 		-----------------------------------
 	*/
+	/*!
+		@brief Carryover-12 integer compression
+		@details Similar to Simple-9, except that it uses the wasted bits between words.
+
+		See:
+			V. Anh, A. Moffat (2005), Inverted Index Compression Using Word-Aligned Binary Codes, Information Retrieval, 8(1):151-166
+	*/
 	class compress_integer_carryover_12 : public compress_integer
 		{
 		public:

@@ -60,6 +60,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <vector>
+
+#include "asserts.h"
 #include "compress_integer_carryover_12.h"
 
 namespace JASS
@@ -354,6 +357,9 @@ namespace JASS
 		*/
 		size_t compress_integer_carryover_12::encode(void *destination, size_t destination_length, const compress_integer::integer *a, size_t n)
 			{
+			if (n == 0)
+				return 0;
+				
 			int32_t max_bits;
 			uint32_t __values[32];			// can't compress integers larger than 2^28 so they will all fit in a uint32_t
 			uint32_t __bits[32];
@@ -423,5 +429,67 @@ namespace JASS
 			{
 			CARRY_DECODE(*destination++);
 			}
+		}
+
+	/*
+		COMPRESS_INTEGER_CARRYOVER_12::UNITTEST()
+		-----------------------------------------
+	*/
+	void compress_integer_carryover_12::unittest(void)
+		{
+		std::vector<integer> every_case;
+
+		size_t instance;
+
+		for (instance = 0; instance < 28; instance++)
+			every_case.push_back(0x01);
+		for (instance = 0; instance < 14; instance++)
+			every_case.push_back(0x03);
+		for (instance = 0; instance < 9; instance++)
+			every_case.push_back(0x07);
+		for (instance = 0; instance < 7; instance++)
+			every_case.push_back(0x0F);
+		for (instance = 0; instance < 5; instance++)
+			every_case.push_back(0x1F);
+		for (instance = 0; instance < 4; instance++)
+			every_case.push_back(0x7F);
+		for (instance = 0; instance < 3; instance++)
+			every_case.push_back(0x1FF);
+		for (instance = 0; instance < 2; instance++)
+			every_case.push_back(0x3FFF);
+		for (instance = 0; instance < 1; instance++)
+			every_case.push_back(0x0FFFFFFF);
+
+		compress_integer_carryover_12 compressor;
+		std::vector<uint32_t>compressed(every_case.size() * 2);
+		std::vector<uint32_t>decompressed(every_case.size() + 256);
+
+		auto size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &every_case[0], every_case.size());
+		compressor.decode(&decompressed[0], every_case.size(), &compressed[0], size_once_compressed);
+		decompressed.resize(every_case.size());
+		JASS_assert(decompressed == every_case);
+		
+		/*
+			Try the error cases
+			(1) no integers
+			(2) Integer overflow
+			(3) buffer overflow
+		*/
+		integer one = 1;
+		size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &one, 0);
+		JASS_assert(size_once_compressed == 0);
+
+		every_case.clear();
+		every_case.push_back(0xFFFFFFFF);
+		size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &every_case[0], every_case.size());
+		JASS_assert(size_once_compressed == 0);
+
+		every_case.clear();
+		for (instance = 0; instance < 28; instance++)
+			every_case.push_back(0x01);
+		size_once_compressed = compressor.encode(&compressed[0], 1, &every_case[0], every_case.size());
+		JASS_assert(size_once_compressed == 0);
+
+		puts("compress_integer_carryover_12::PASSED");
 		}
 	}

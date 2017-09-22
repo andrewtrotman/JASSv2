@@ -1,7 +1,7 @@
 /*
 	COMPRESS_INTEGER_SIMPLE9.H
 	--------------------------
-	Copyright (c) 2014-2017 Vikram Subramanya, Andrew Trotman, Blake Burgess
+	Copyright (c) 2007-2017 Vikram Subramanya, Andrew Trotman, Blake Burgess
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 
 	Anh and Moffat's Simple-9 Compression scheme from:
@@ -36,8 +36,7 @@ namespace JASS
 		7 * 4-bit integers, 5 * 5-bit integers 4 * 7 bit integers, 3 * 9-bit integers, 2 * 14-bit integers, or 1 * 28-bit integer
 		
 		See:
-			V. Anh, A. Moffat (2005), Inverted Index Compression Using Word-Alligned Binary Codes, Information Retrieval, 8(1):151-166
-			
+			V. Anh, A. Moffat (2005), Inverted Index Compression Using Word-Aligned Binary Codes, Information Retrieval, 8(1):151-166
 	*/
 	class compress_integer_simple_9 : public compress_integer
 		{

@@ -1,6 +1,8 @@
 /*
 	COMPRESS_INTEGER_RELATIVE_10.H
 	------------------------------
+	Copyright (c) 2007-2017 Vikram Subramanya, Andrew Trotman
+	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 #pragma once
 
@@ -12,6 +14,28 @@ namespace JASS
 		CLASS COMPRESS_INTEGER_RELATIVE_10
 		----------------------------------
 	*/
+	/*!
+		@brief Relative-10 integer compression
+		@details Relative-10 is an encoding almost identical to Simple-9, exceot that the selector
+		encodes realtive to the previous selector - with the first encoding being in Simple-9.  In this
+		way the selector can be encoded in 2 bits rather than 4, and hence it is more effective than
+		Simple-9.  The largest integet that can be encoded is 2^28.
+
+		The encodings are:
+			1 * 30-bit
+			2 * 15-bit
+			3 * 10-bit
+			4 * 7-bit
+			5 * 6-bit
+			6 * 5-bit
+			7 * 4-bit
+			10 * 3-bit
+			15 * 2-bit
+			30 * 1-bit
+
+		See:
+			V. Anh, A. Moffat (2005), Inverted Index Compression Using Word-Aligned Binary Codes, Information Retrieval, 8(1):151-166
+	*/
 	class compress_integer_relative_10 : public compress_integer_simple_9
 		{
 		protected:
@@ -19,20 +43,23 @@ namespace JASS
 				CLASS RELATIVE_10_LOOKUP
 				------------------------
 			*/
+			/*!
+				@brief lookup table storing how many integers are encoded and how they are encoded,
+			*/
 			class relative_10_lookup
 				{
 				public:
-					size_t numbers;
-					size_t bits;
-					size_t mask;
-					size_t transfer_array[10];
-					size_t relative_row[4];
+					size_t numbers;					///< how many integers
+					size_t bits;						///< how many bits they take
+					size_t mask;						///< the mask to extract one
+					size_t transfer_array[10];		///< which selector to use when encoding
+					size_t relative_row[4];			///< given the previous row and a 2 bit selector, this is the new row to use
 				};
 
 		protected:
-			static const relative_10_lookup relative10_table[];
-			static const size_t bits_to_use10[];
-			static const size_t table_row10[];
+			static const relative_10_lookup relative10_table[];	///< The Relative-10 selector table explaining how the encoding works.
+			static const size_t bits_to_use10[];						///< The number of bits that Relative-10 will be used to store an integer of the given the number of bits in length
+			static const size_t table_row10[];							///< The row of the table to use given the number of integers to can pack into the word
 
 		public:
 			/*
@@ -84,7 +111,6 @@ namespace JASS
 				@param source [in] The encoded integers.
 				@param source_length [in] The length (in bytes) of the source buffer.
 			*/
-			virtual void decode_wound_up(integer *decoded, size_t integers_to_decode, const void *source, size_t source_length);
 			virtual void decode(integer *decoded, size_t integers_to_decode, const void *source, size_t source_length);
 
 			/*
