@@ -73,7 +73,6 @@ int main(void)
 
 	try
 		{
-#ifdef NEVER
 		puts("compress_integer_all");
 		JASS::compress_integer_all::unittest();
 
@@ -180,8 +179,6 @@ int main(void)
 
 		puts("serialise_ci");
 		JASS::serialise_ci::unittest();
-
-#endif
 
 		puts("compress_integer_none");
 		JASS::compress_integer_none::unittest();
