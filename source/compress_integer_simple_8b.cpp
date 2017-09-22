@@ -17,7 +17,7 @@
 	Original notice for compress_simple9.c:
 
 	Anh and Moffat's Simple-9 Compression scheme from:
-	V. Anh, A. Moffat (2005), Inverted Index Compression Using Word-Alligned Binary Codes, Information Retrieval, 8(1):151-166
+	V. Anh, A. Moffat (2005), Inverted Index Compression Using Word-Aligned Binary Codes, Information Retrieval, 8(1):151-166
 
 	This code was originally written by Vikram Subramanya while working on:
 	A. Trotman, V. Subramanya (2007), Sigma encoded inverted files, Proceedings of CIKM 2007, pp 983-986

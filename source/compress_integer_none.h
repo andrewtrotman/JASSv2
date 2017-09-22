@@ -43,7 +43,7 @@ namespace JASS
 				-----------------------------------------------
 			*/
 			/*!
-				@brief Constructor.
+				@brief Destructor.
 			*/
 			virtual ~compress_integer_none()
 				{

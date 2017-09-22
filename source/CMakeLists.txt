@@ -32,12 +32,20 @@ set(JASSlib_FILES
 	compress_integer.h
 	compress_integer_all.h
 	compress_integer_all.cpp
+	compress_integer_carryover_12.h
+	compress_integer_carryover_12.cpp
 	compress_integer_none.h
 	compress_integer_none.cpp
 	compress_integer_qmx_improved.h
 	compress_integer_qmx_improved.cpp
 	compress_integer_qmx_original.h
 	compress_integer_qmx_original.cpp
+	compress_integer_relative_10.h
+	compress_integer_relative_10.cpp
+	compress_integer_simple_16.h
+	compress_integer_simple_16.cpp
+	compress_integer_simple_16_packed.h
+	compress_integer_simple_16_packed.cpp
 	compress_integer_simple_8b.h
 	compress_integer_simple_8b.cpp
 	compress_integer_simple_8b_packed.h
@@ -46,10 +54,6 @@ set(JASSlib_FILES
 	compress_integer_simple_9.cpp
 	compress_integer_simple_9_packed.h
 	compress_integer_simple_9_packed.cpp
-	compress_integer_simple_16.h
-	compress_integer_simple_16.cpp
-	compress_integer_simple_16_packed.h
-	compress_integer_simple_16_packed.cpp
 	compress_integer_variable_byte.h
 	compress_integer_variable_byte.cpp
 	document.h

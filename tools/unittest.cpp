@@ -44,6 +44,7 @@
 #include "compress_integer_simple_9.h"
 #include "compress_integer_simple_8b.h"
 #include "compress_integer_simple_16.h"
+#include "compress_integer_relative_10.h"
 #include "compress_integer_qmx_original.h"
 #include "compress_integer_qmx_improved.h"
 #include "compress_integer_variable_byte.h"
@@ -207,6 +208,9 @@ int main(void)
 
 		puts("compress_integer_simple_8b_packed");
 		JASS::compress_integer_simple_8b_packed::unittest();
+
+		puts("compress_integer_relative_10");
+		JASS::compress_integer_relative_10::unittest();
 
 		puts("accumulator_2d");
 		JASS::accumulator_2d<uint32_t>::unittest();
