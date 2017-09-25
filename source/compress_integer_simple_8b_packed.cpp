@@ -151,11 +151,12 @@ namespace JASS
 				
 			/*
 				Check for overflow - and if not then just store 1 integer.
+				Note: Coverity Scan complains about the line below because integer is a uint32_t and a uin32_t cannot exceed 1<<60
 			*/
-			if (std::is_same<integer, uint64_t>::value)
-				if (static_cast<uint64_t>(*source) > 1ULL << 60)
-					return 0;
-				
+			/* coverity[CONSTANT_EXPRESSION_RESULT] */
+			if (static_cast<uint64_t>(*source) > (1ULL << 60))
+				return 0;
+
 			/*
 				Choose largest bits-per-integer mask, single integer => '15'
 			*/

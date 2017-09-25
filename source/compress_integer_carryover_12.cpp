@@ -12,7 +12,7 @@
 		the Free Software Foundation; either version 2 of the License, or
 		(at your option) any later version.
 
-		This program is distributed in the hope that it will be useful,
+		This program is distributed in the hope that it will be useful, 
 		but WITHOUT ANY WARRANTY; without even the implied warranty of
 		MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 		GNU General Public License for more details.
@@ -29,17 +29,17 @@
 		>
 		>
 		>
-		> Hi Andrew,
+		> Hi Andrew, 
 		> Thank you for your interest. To tell the truth, I don't have enough 
 		> knowledge on the license matter. From my side, the answer is Yes. Please 
 		> let me know if I need to do anything for that.
 		>
-		> Cheers,
+		> Cheers, 
 		> Anh.
 		>
 		> On Fri, 22 Jan 2010, Andrew Trotman wrote:
 		>
-		>> Hi,
+		>> Hi, 
 		>>
 		>> At ADCS I spoke biefly to Alistair about licenses for your source code to 
 		>> the Carryover 12 compression scheme.  I have a copy I downloaded shortly 
@@ -72,7 +72,7 @@ namespace JASS
 	#define GET_NEW_WORD														\
 		__wval= *__wpos++
 	  
-	#define WORD_DECODE(x,b)													\
+	#define WORD_DECODE(x, b)													\
 		do 																		\
 			{																	\
 			if (__wremaining < (b))												\
@@ -120,8 +120,6 @@ namespace JASS
 			__wremaining = 30; 													\
 			}
 
-
-
 	#define CARRY_DECODE(x)													\
 		do 																		\
 			{																	\
@@ -161,61 +159,61 @@ namespace JASS
 	*/
 	static const unsigned char trans_B1_30_big[]=
 		{
-		0,0,0,0, 1,2,3,28, 1,2,3,28, 2,3,4,28, 3,4,5,28, 4,5,6,28,
-		5,6,7,28, 6,7,8,28, 6,7,10,28, 8,10,15,28, 9,10,14,28,
-		0,0,0,0, 0,0,0,0, 0,0,0,0, 10,15,16,28, 10,14,15,28,
-		7,10,15,28, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
-		0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
-		6,10,16,28, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 4,9,15,28
+		0, 0, 0, 0, 1, 2, 3, 28, 1, 2, 3, 28, 2, 3, 4, 28, 3, 4, 5, 28, 4, 5, 6, 28, 
+		5, 6, 7, 28, 6, 7, 8, 28, 6, 7, 10, 28, 8, 10, 15, 28, 9, 10, 14, 28, 
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 15, 16, 28, 10, 14, 15, 28, 
+		7, 10, 15, 28, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+		6, 10, 16, 28, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 9, 15, 28
 		};
 
 	static const unsigned char trans_B1_32_big[]=
 		{
-		0,0,0,0, 1,2,3,28, 1,2,3,28, 2,3,4,28, 3,4,5,28, 4,5,6,28,
-		5,6,7,28, 6,7,8,28, 7,9,10,28, 7,10,15,28, 8,10,15,28,
-		0,0,0,0, 0,0,0,0, 0,0,0,0, 7,10,15,28, 10,15,16,28,
-		10,14,15,28, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
-		0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
-		6,10,16,28, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 4,10,16,28
+		0, 0, 0, 0, 1, 2, 3, 28, 1, 2, 3, 28, 2, 3, 4, 28, 3, 4, 5, 28, 4, 5, 6, 28, 
+		5, 6, 7, 28, 6, 7, 8, 28, 7, 9, 10, 28, 7, 10, 15, 28, 8, 10, 15, 28, 
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 10, 15, 28, 10, 15, 16, 28, 
+		10, 14, 15, 28, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+		6, 10, 16, 28, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 10, 16, 28
 		};
 
 	static const unsigned char trans_B1_30_small[]=
 		{
-		0,0,0,0, 1,2,3,16, 1,2,3,16, 2,3,4,16, 3,4,5,16, 4,5,6,16,
-		5,6,7,16, 6,7,8,16, 6,7,10,16, 7,8,10,16, 9,10,14,16, 0,0,0,0,
-		0,0,0,0, 0,0,0,0, 8,10,15,16, 10,14,15,16,  7,10,15,16, 0,0,0,0,
-		0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
-		0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
-		0,0,0,0, 0,0,0,0, 0,0,0,0, 3,7,10,16
+		0, 0, 0, 0, 1, 2, 3, 16, 1, 2, 3, 16, 2, 3, 4, 16, 3, 4, 5, 16, 4, 5, 6, 16, 
+		5, 6, 7, 16, 6, 7, 8, 16, 6, 7, 10, 16, 7, 8, 10, 16, 9, 10, 14, 16, 0, 0, 0, 0, 
+		0, 0, 0, 0, 0, 0, 0, 0, 8, 10, 15, 16, 10, 14, 15, 16,  7, 10, 15, 16, 0, 0, 0, 0, 
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 7, 10, 16
 		};
 
 	static const unsigned char trans_B1_32_small[] =
 		{
-		0,0,0,0, 1,2,3,16, 1,2,3,16, 2,3,4,16, 3,4,5,16, 4,5,6,16,
-		5,6,7,16, 6,7,8,16, 7,9,10,16, 7,10,15,16, 8,10,15,16, 0,0,0,0,
-		0,0,0,0, 0,0,0,0, 7,10,15,16, 8,10,15,16, 10,14,15,16, 0,0,0,0,
-		0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
-		0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
-		0,0,0,0, 3,7,10,16
+		0, 0, 0, 0, 1, 2, 3, 16, 1, 2, 3, 16, 2, 3, 4, 16, 3, 4, 5, 16, 4, 5, 6, 16, 
+		5, 6, 7, 16, 6, 7, 8, 16, 7, 9, 10, 16, 7, 10, 15, 16, 8, 10, 15, 16, 0, 0, 0, 0, 
+		0, 0, 0, 0, 0, 0, 0, 0, 7, 10, 15, 16, 8, 10, 15, 16, 10, 14, 15, 16, 0, 0, 0, 0, 
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+		0, 0, 0, 0, 3, 7, 10, 16
 		};
 	 
 	static const unsigned char CLOG2TAB[] =
 		{
-		0, 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4,
-		5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
-		6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
-		6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
-		7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-		7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-		7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-		7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-		8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-		8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-		8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-		8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-		8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-		8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-		8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+		0, 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 
+		5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 
+		6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 
+		6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 
+		7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 
+		7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 
+		7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 
+		7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 
+		8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 
+		8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 
+		8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 
+		8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 
+		8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 
+		8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 
+		8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 
 		8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8
 		};
 
@@ -228,13 +226,13 @@ namespace JASS
 	*/
 	static const unsigned __mask[33]=
 		{
-		0x00U, 0x01U, 0x03U, 0x07U, 0x0FU,
-		0x1FU, 0x3FU, 0x7FU, 0xFFU,
-		0x01FFU, 0x03FFU, 0x07FFU, 0x0FFFU,
-		0x1FFFU, 0x3FFFU, 0x7FFFU, 0xFFFFU,
-		0x01FFFFU, 0x03FFFFU, 0x07FFFFU, 0x0FFFFFU,
-		0x1FFFFFU, 0x3FFFFFU, 0x7FFFFFU, 0xFFFFFFU,
-		0x01FFFFFFU, 0x03FFFFFFU, 0x07FFFFFFU, 0x0FFFFFFFU,
+		0x00U, 0x01U, 0x03U, 0x07U, 0x0FU, 
+		0x1FU, 0x3FU, 0x7FU, 0xFFU, 
+		0x01FFU, 0x03FFU, 0x07FFU, 0x0FFFU, 
+		0x1FFFU, 0x3FFFU, 0x7FFFU, 0xFFFFU, 
+		0x01FFFFU, 0x03FFFFU, 0x07FFFFU, 0x0FFFFFU, 
+		0x1FFFFFU, 0x3FFFFFU, 0x7FFFFFU, 0xFFFFFFU, 
+		0x01FFFFFFU, 0x03FFFFFFU, 0x07FFFFFFU, 0x0FFFFFFFU, 
 		0x1FFFFFFFU, 0x3FFFFFFFU, 0x7FFFFFFFU, 0xFFFFFFFFU
 		};
 
@@ -261,7 +259,7 @@ namespace JASS
 			}																	\
 		while(0)
 
-	#define WORD_ENCODE(x,b)													\
+	#define WORD_ENCODE(x, b)													\
 		do 																		\
 			{																	\
 			if (__wremaining < (b))												\
@@ -290,9 +288,9 @@ namespace JASS
 		{
 		compress_integer::integer _B_x  = x - 1;
 
-		return _B_x >> 16 ?
-		(_B_x >> 24 ? 24 + CLOG2TAB[_B_x >> 24] : 16 | CLOG2TAB[_B_x >> 16]) :
-		(_B_x >> 8 ? 8 + CLOG2TAB[_B_x >> 8] : CLOG2TAB[_B_x]);
+		return (_B_x >> 16) ?
+		((_B_x >> 24) ? 24 + CLOG2TAB[_B_x >> 24] : 16 | CLOG2TAB[_B_x >> 16]) :
+		((_B_x >> 8) ? 8 + CLOG2TAB[_B_x >> 8] : CLOG2TAB[_B_x]);
 		}
 
 	/*
@@ -303,12 +301,14 @@ namespace JASS
 	static inline int32_t calc_min_bits(const compress_integer::integer *gaps, size_t n)
 		{
 		int64_t i;
-		int32_t bits, max = 0;
+		int32_t max = 0;
 
 		for (i = 0; i < n; i++)
-
-		if (max < (bits = qceillog_2(gaps[i] + 1)))
-			max = bits;
+			{
+			int32_t bits;
+			if (max < (bits = qceillog_2(gaps[i] + 1)))
+				max = bits;
+			}
 
 		return max > 28 ? -1 : max;
 		}
@@ -316,19 +316,19 @@ namespace JASS
 	/*
 		ELEMS_CODED()
 		-------------
-		given codeleng of "len" bits, and "avail" bits available for coding,
+		given codeleng of "len" bits, and "avail" bits available for coding, 
 		Return number_of_elems_coded (possible) if "avail" bits can be used to
 		code the number of elems  with the remaining < "len"
 		Returns 0 (impossible) otherwise
 	*/
 	static int64_t elems_coded(int32_t avail, int32_t len, const compress_integer::integer *gaps, int64_t start, size_t end)
 		{
-		int64_t i, real_end, max;
+		int64_t i;
 
 		if (len)
 			{
-			max = avail/len;
-			real_end = start + max - 1 <= end ? start + max: end + 1;
+			int64_t max = avail/len;
+			int64_t real_end = start + max - 1 <= end ? start + max: end + 1;
 			for (i = start; i < real_end && qceillog_2(gaps[i] + 1) <= len; i++);			// empty loop
 			if (i < real_end)
 				return 0;
