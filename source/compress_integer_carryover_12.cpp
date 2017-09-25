@@ -131,7 +131,7 @@ namespace JASS
 			__wval >>= __wbits;													\
 			__wremaining -= __wbits;											\
 			}																	\
-		while(0)
+		while (0)
 
 
 	#define MAX_ELEM_PER_WORD		64
@@ -364,7 +364,7 @@ namespace JASS
 			uint32_t __values[32];			// can't compress integers larger than 2^28 so they will all fit in a uint32_t
 			uint32_t __bits[32];
 			int64_t i;
-			int32_t j, __wremaining = 32, __pvalue = 0, size, avail;
+			int32_t j, __wremaining = 32, __pvalue = 0, size;
 			int64_t elems = 0;
 			const unsigned char *table, *base;
 			unsigned char *destination_end, *original_destination = static_cast<uint8_t *>(destination);
@@ -380,7 +380,7 @@ namespace JASS
 
 			for (i = 0; i < n; )
 				{
-				avail = __wremaining;
+				int32_t avail = __wremaining;
 				table = GET_TRANS_TABLE(avail);
 				base = table + (size << 2);       /* row in trans table */
 
