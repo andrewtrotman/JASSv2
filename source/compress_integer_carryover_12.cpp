@@ -67,6 +67,46 @@
 
 namespace JASS
 	{
+	class selector
+		{
+		public:
+			const char *name;
+			size_t bits;
+			size_t integers;
+			bool next_selector;
+		};
+
+	static const selector transition_table[] =
+		{
+		{"a32", 1, 32, false},
+		{"b32", 2, 16, false},
+		{"c32", 3, 10, true},
+		{"d32", 4, 8, false},
+		{"e32", 5, 6, true},
+		{"f32", 6, 5, true},
+		{"g32", 7, 4, true},
+		{"h32", 8, 4, false},
+		{"i32", 10, 3, true},
+		{"j32", 15, 2, true},
+		{"k32", 16, 2, false},
+		{"l32", 28, 1, true},
+		{"a30", 1, 30, false},
+		{"b30", 2, 15, false},
+		{"c30", 3, 10, false},
+		{"d30", 4, 7, true},
+		{"e30", 5, 6, false},
+		{"f30", 6, 5, false},
+		{"g30", 7, 4, true},
+		{"h30", 9, 3, true},
+		{"i30", 10, 3, false},
+		{"j30", 14, 2, true},
+		{"k30", 15, 2, false},
+		{"l30", 28, 1, true},
+		};
+
+
+
+
 	#define TRANS_TABLE_STARTER	33
 
 	#define GET_NEW_WORD														\
@@ -119,20 +159,6 @@ namespace JASS
 			__wval >>= 2;														\
 			__wremaining = 30; 													\
 			}
-
-	#define CARRY_DECODE(x)													\
-		do 																		\
-			{																	\
-			if (__wremaining < __wbits)											\
-				{																\
-				CARRY_DECODE_GET_SELECTOR											\
-				}																		\
-			x = (__wval & __mask[__wbits]);										\
-			__wval >>= __wbits;													\
-			__wremaining -= __wbits;											\
-			}																	\
-		while (0)
-
 
 	#define MAX_ELEM_PER_WORD		64
 
@@ -427,7 +453,18 @@ namespace JASS
 		CARRY_BLOCK_DECODE_START;
 		for (i = 0; i < n; i++)
 			{
-			CARRY_DECODE(*destination++);
+			do
+				{
+				if (__wremaining < __wbits)
+					{
+					CARRY_DECODE_GET_SELECTOR
+					}
+
+				*destination++ = (__wval & __mask[__wbits]);
+				__wval >>= __wbits;
+				__wremaining -= __wbits;
+				}
+			while (0);
 			}
 		}
 
