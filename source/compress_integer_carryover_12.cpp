@@ -74,37 +74,436 @@ namespace JASS
 			size_t bits;
 			size_t integers;
 			bool next_selector;
+			size_t new_selector[4];				// the row in this table that holds the new selector data.
 		};
 
 	static const selector transition_table[] =
 		{
-		{"a32", 1, 32, false},
-		{"b32", 2, 16, false},
-		{"c32", 3, 10, true},
-		{"d32", 4, 8, false},
-		{"e32", 5, 6, true},
-		{"f32", 6, 5, true},
-		{"g32", 7, 4, true},
-		{"h32", 8, 4, false},
-		{"i32", 10, 3, true},
-		{"j32", 15, 2, true},
-		{"k32", 16, 2, false},
-		{"l32", 28, 1, true},
-		{"a30", 1, 30, false},
-		{"b30", 2, 15, false},
-		{"c30", 3, 10, false},
-		{"d30", 4, 7, true},
-		{"e30", 5, 6, false},
-		{"f30", 6, 5, false},
-		{"g30", 7, 4, true},
-		{"h30", 9, 3, true},
-		{"i30", 10, 3, false},
-		{"j30", 14, 2, true},
-		{"k30", 15, 2, false},
-		{"l30", 28, 1, true},
+			/* Selector in the 32-bit integer (30-bit payload) */
+		/*0*/		{"a30", 1, 30, false, {0, 1, 2, 11}},
+		/*1*/		{"b30", 2, 15, false, {0, 1, 2, 11}},
+		/*2*/		{"c30", 3, 10, false, {1, 2, 3, 11}},
+		/*3*/		{"d30", 4,  7, true,  {14, 15, 16, 23}},
+		/*4*/		{"e30", 5, 6, false, {3, 4, 5, 11}},
+		/*5*/		{"f30", 6, 5, false, {4, 5, 6, 11}},
+		/*6*/		{"g30", 7, 4, true, {17, 18, 19, 23}},
+		/*7*/		{"h30", 9, 3, true, {18, 19, 20, 23}},
+		/*8*/		{"i30", 10, 3, false, {7, 8, 9, 11}},
+		/*9*/		{"j30", 14, 2, true, {20, 21, 22, 23}},
+		/*10*/	{"k30", 15, 2, false, {8, 9, 10, 11}},
+		/*11*/	{"l30", 28, 1, true, {17, 20, 22, 23}},
+
+			/* Selector in the previous 32-bit integer (32-bit payload) */
+		/*12*/	{"a32", 1, 32, false, {0, 1, 2, 11}},
+		/*13*/	{"b32", 2, 16, false, {0, 1, 2, 11}},
+		/*14*/	{"c32", 3, 10, true, {13, 14, 15, 23}},
+		/*15*/	{"d32", 4, 8, false, {2, 3, 4, 11}},
+		/*16*/	{"e32", 5, 6, true, {15, 16, 17, 23}},
+		/*17*/	{"f32", 6, 5, true, {16, 17, 18, 23}},
+		/*18*/	{"g32", 7, 4, true, {17, 18, 19, 23}},
+		/*19*/	{"h32", 8, 4, false, {6, 7, 8, 11}},
+		/*20*/	{"i32", 10, 3, true, {19, 20, 21, 23}},
+		/*21*/	{"j32", 15, 2, true, {20, 21, 22, 23}},
+		/*22*/	{"k32", 16, 2, false, {8, 9, 10, 11}},
+		/*23*/	{"l32", 28, 1, true, {17, 20, 22, 23}},
+
+			/* Special starting conditions because the initial payload is 1 bit short (its 31-bits long due to the 16 / 28 bit thing) */
+		/*24*/	{"d32", 4, 7, true, {14, 15, 16, 23}},		// X X X X
+		/*25*/	{"i32", 10, 2, true, {19, 20, 21, 23}},	// X X X X
+		/*26*/	{"k32", 16, 1, true, {8, 8, 10, 11}},		// X Y X X
+		/*27*/	{"l32", 28, 1, true, {17, 20, 28, 23}},	// X X Y X
+		/*28*/	{"k32", 16, 1, true, {8, 9, 10, 11}},		// X X X X
 		};
 
+void fast_decode(uint32_t *destination, size_t integers_to_decode, const void *compressed, size_t compressed_size_in_bytes)
+	{
+	const uint32_t *end = destination + integers_to_decode;
+	const uint32_t *source = static_cast<const uint32_t *>(compressed);
+	static const size_t initial_selector[] = {24, 25, 26, 27};
 
+	/*
+		Get the initial selector
+	*/
+	size_t selector = initial_selector[(*source >> 1) & 0x03];
+	size_t payload = *source >> 3;
+
+	while (destination < end)
+		{
+		switch (selector)
+			{
+			/*
+				30-bit payload
+			*/
+			case 0:
+				*(destination + 0) = payload >> 0 & 0x01;
+				*(destination + 1) = payload >> 1 & 0x01;
+				*(destination + 2) = payload >> 2 & 0x01;
+				*(destination + 3) = payload >> 3 & 0x01;
+				*(destination + 4) = payload >> 4 & 0x01;
+				*(destination + 5) = payload >> 5 & 0x01;
+				*(destination + 6) = payload >> 6 & 0x01;
+				*(destination + 7) = payload >> 7 & 0x01;
+				*(destination + 8) = payload >> 8 & 0x01;
+				*(destination + 9) = payload >> 9 & 0x01;
+				*(destination + 10) = payload >> 10 & 0x01;
+				*(destination + 11) = payload >> 11 & 0x01;
+				*(destination + 12) = payload >> 12 & 0x01;
+				*(destination + 13) = payload >> 13 & 0x01;
+				*(destination + 14) = payload >> 14 & 0x01;
+				*(destination + 15) = payload >> 15 & 0x01;
+				*(destination + 16) = payload >> 16 & 0x01;
+				*(destination + 17) = payload >> 17 & 0x01;
+				*(destination + 18) = payload >> 18 & 0x01;
+				*(destination + 19) = payload >> 19 & 0x01;
+				*(destination + 20) = payload >> 20 & 0x01;
+				*(destination + 21) = payload >> 21 & 0x01;
+				*(destination + 22) = payload >> 22 & 0x01;
+				*(destination + 23) = payload >> 23 & 0x01;
+				*(destination + 24) = payload >> 24 & 0x01;
+				*(destination + 25) = payload >> 25 & 0x01;
+				*(destination + 26) = payload >> 26 & 0x01;
+				*(destination + 27) = payload >> 27 & 0x01;
+				*(destination + 28) = payload >> 28 & 0x01;
+				*(destination + 29) = payload >> 29 & 0x01;
+				destination += 30;
+
+				source++;
+				selector = transition_table[selector].new_selector[*source & 0x03];
+				payload = *source >> 2;
+				break;
+			case 1:
+				*(destination + 0) = payload >> 0 & 0x03;
+				*(destination + 1) = payload >> 2 & 0x03;
+				*(destination + 2) = payload >> 4 & 0x03;
+				*(destination + 3) = payload >> 6 & 0x03;
+				*(destination + 4) = payload >> 8 & 0x03;
+				*(destination + 5) = payload >> 10 & 0x03;
+				*(destination + 6) = payload >> 12 & 0x03;
+				*(destination + 7) = payload >> 14 & 0x03;
+				*(destination + 8) = payload >> 16 & 0x03;
+				*(destination + 9) = payload >> 18 & 0x03;
+				*(destination + 10) = payload >> 20 & 0x03;
+				*(destination + 11) = payload >> 22 & 0x03;
+				*(destination + 12) = payload >> 24 & 0x03;
+				*(destination + 13) = payload >> 26 & 0x03;
+				*(destination + 14) = payload >> 28 & 0x03;
+				destination += 15;
+
+				source++;
+				selector = transition_table[selector].new_selector[*source & 0x03];
+				payload = *source >> 2;
+				break;
+			case 2:
+				*(destination + 0) = payload >> 0 & 0x07;
+				*(destination + 1) = payload >> 3 & 0x07;
+				*(destination + 2) = payload >> 6 & 0x07;
+				*(destination + 3) = payload >> 9 & 0x07;
+				*(destination + 4) = payload >> 12 & 0x07;
+				*(destination + 5) = payload >> 15 & 0x07;
+				*(destination + 6) = payload >> 18 & 0x07;
+				*(destination + 7) = payload >> 21 & 0x07;
+				*(destination + 8) = payload >> 24 & 0x07;
+				*(destination + 9) = payload >> 27 & 0x07;
+				destination += 10;
+
+				source++;
+				selector = transition_table[selector].new_selector[*source & 0x03];
+				payload = *source >> 2;
+				break;
+			case 3:
+				*(destination + 0) = payload >> 0 & 0x0F;
+				*(destination + 1) = payload >> 4 & 0x0F;
+				*(destination + 2) = payload >> 8 & 0x0F;
+				*(destination + 3) = payload >> 12 & 0x0F;
+				*(destination + 4) = payload >> 16 & 0x0F;
+				*(destination + 5) = payload >> 20 & 0x0F;
+				*(destination + 6) = payload >> 24 & 0x0F;
+				destination += 7;
+
+				selector = transition_table[selector].new_selector[(payload >> 28) & 0x03];
+				source++;
+				payload = *source;
+				break;
+			case 4:
+				*(destination + 0) = payload >> 0 & 0x1F;
+				*(destination + 1) = payload >> 5 & 0x1F;
+				*(destination + 2) = payload >> 10 & 0x1F;
+				*(destination + 3) = payload >> 15 & 0x1F;
+				*(destination + 4) = payload >> 20 & 0x1F;
+				*(destination + 5) = payload >> 25 & 0x1F;
+				destination += 6;
+
+				source++;
+				selector = transition_table[selector].new_selector[*source & 0x03];
+				payload = *source >> 2;
+				break;
+			case 5:
+				*(destination + 0) = payload >> 0 & 0x3F;
+				*(destination + 1) = payload >> 6 & 0x3F;
+				*(destination + 2) = payload >> 12 & 0x3F;
+				*(destination + 3) = payload >> 18 & 0x3F;
+				*(destination + 4) = payload >> 24 & 0x3F;
+				destination += 5;
+
+				source++;
+				selector = transition_table[selector].new_selector[*source & 0x03];
+				payload = *source >> 2;
+				break;
+			case 6:
+				*(destination + 0) = payload >> 0 & 0x7F;
+				*(destination + 1) = payload >> 7 & 0x7F;
+				*(destination + 2) = payload >> 14 & 0x7F;
+				*(destination + 3) = payload >> 21 & 0x7F;
+				destination += 4;
+
+				selector = transition_table[selector].new_selector[(payload >> 28) & 0x03];
+				source++;
+				payload = *source;
+				break;
+			case 7:
+				*(destination + 0) = payload >> 0 & 0x1FF;
+				*(destination + 1) = payload >> 9 & 0x1FF;
+				*(destination + 2) = payload >> 18 & 0x1FF;
+				destination += 3;
+
+				selector = transition_table[selector].new_selector[(payload >> 27) & 0x03];
+				source++;
+				payload = *source;
+				break;
+			case 8:
+				*(destination + 0) = payload >> 0 & 0x3FF;
+				*(destination + 1) = payload >> 10 & 0x3FF;
+				*(destination + 2) = payload >> 20 & 0x3FF;
+				destination += 3;
+
+				source++;
+				selector = transition_table[selector].new_selector[*source & 0x03];
+				payload = *source >> 2;
+				break;
+			case 9:
+				*(destination + 0) = payload >> 0 & 0x3FFF;
+				*(destination + 1) = payload >> 14 & 0x3FFF;
+				destination += 2;
+
+				selector = transition_table[selector].new_selector[(payload >> 28) & 0x03];
+				source++;
+				payload = *source;
+				break;
+			case 10:
+				*(destination + 0) = payload >> 0 & 0x7FFF;
+				*(destination + 1) = payload >> 15 & 0x7FFF;
+				destination += 2;
+
+				source++;
+				selector = transition_table[selector].new_selector[*source & 0x03];
+				payload = *source >> 2;
+				break;
+			case 11:
+				*(destination + 0) = payload >> 0 & 0x0FFFFFFF;
+				destination++;
+
+				selector = transition_table[selector].new_selector[(payload >> 28) & 0x03];
+				source++;
+				payload = *source;
+				break;
+			/*
+				32-bit payload
+			*/
+			case 12:			// Can't happen!
+				JASS_assert(false);
+				break;
+			case 13:
+				*(destination + 0) = payload >> 0 & 0x03;
+				*(destination + 1) = payload >> 2 & 0x03;
+				*(destination + 2) = payload >> 4 & 0x03;
+				*(destination + 3) = payload >> 6 & 0x03;
+				*(destination + 4) = payload >> 8 & 0x03;
+				*(destination + 5) = payload >> 10 & 0x03;
+				*(destination + 6) = payload >> 12 & 0x03;
+				*(destination + 7) = payload >> 14 & 0x03;
+				*(destination + 8) = payload >> 16 & 0x03;
+				*(destination + 9) = payload >> 18 & 0x03;
+				*(destination + 10) = payload >> 20 & 0x03;
+				*(destination + 11) = payload >> 22 & 0x03;
+				*(destination + 12) = payload >> 24 & 0x03;
+				*(destination + 13) = payload >> 26 & 0x03;
+				*(destination + 14) = payload >> 28 & 0x03;
+				*(destination + 15) = payload >> 30 & 0x03;
+				destination += 16;
+
+				source++;
+				selector = transition_table[selector].new_selector[*source & 0x03];
+				payload = *source >> 2;
+				break;
+			case 14:
+				*(destination + 0) = payload >> 0 & 0x07;
+				*(destination + 1) = payload >> 3 & 0x07;
+				*(destination + 2) = payload >> 6 & 0x07;
+				*(destination + 3) = payload >> 9 & 0x07;
+				*(destination + 4) = payload >> 12 & 0x07;
+				*(destination + 5) = payload >> 15 & 0x07;
+				*(destination + 6) = payload >> 18 & 0x07;
+				*(destination + 7) = payload >> 21 & 0x07;
+				*(destination + 8) = payload >> 24 & 0x07;
+				*(destination + 9) = payload >> 27 & 0x07;
+				destination += 10;
+
+				selector = transition_table[selector].new_selector[(payload >> 30) & 0x03];
+				source++;
+				payload = *source;
+				break;
+			case 15:
+				*(destination + 0) = payload >> 0 & 0x0F;
+				*(destination + 1) = payload >> 4 & 0x0F;
+				*(destination + 2) = payload >> 8 & 0x0F;
+				*(destination + 3) = payload >> 12 & 0x0F;
+				*(destination + 4) = payload >> 16 & 0x0F;
+				*(destination + 5) = payload >> 20 & 0x0F;
+				*(destination + 6) = payload >> 24 & 0x0F;
+				*(destination + 7) = payload >> 28 & 0x0F;
+				destination += 8;
+
+				source++;
+				selector = transition_table[selector].new_selector[*source & 0x03];
+				payload = *source >> 2;
+				break;
+			case 16:
+				*(destination + 0) = payload >> 0 & 0x1F;
+				*(destination + 1) = payload >> 5 & 0x1F;
+				*(destination + 2) = payload >> 10 & 0x1F;
+				*(destination + 3) = payload >> 15 & 0x1F;
+				*(destination + 4) = payload >> 20 & 0x1F;
+				*(destination + 5) = payload >> 25 & 0x1F;
+				destination += 6;
+
+				selector = transition_table[selector].new_selector[(payload >> 30) & 0x03];
+				source++;
+				payload = *source;
+				break;
+			case 17:
+				*(destination + 0) = payload >> 0 & 0x3F;
+				*(destination + 1) = payload >> 6 & 0x3F;
+				*(destination + 2) = payload >> 12 & 0x3F;
+				*(destination + 3) = payload >> 18 & 0x3F;
+				*(destination + 4) = payload >> 24 & 0x3F;
+				destination += 5;
+
+				selector = transition_table[selector].new_selector[(payload >> 30) & 0x03];
+				source++;
+				payload = *source;
+				break;
+			case 18:
+				*(destination + 0) = payload >> 0 & 0x7F;
+				*(destination + 1) = payload >> 7 & 0x7F;
+				*(destination + 2) = payload >> 14 & 0x7F;
+				*(destination + 3) = payload >> 21 & 0x7F;
+				destination += 4;
+
+				selector = transition_table[selector].new_selector[(payload >> 28) & 0x03];
+				source++;
+				payload = *source;
+				break;
+			case 19:
+				*(destination + 0) = payload >> 0 & 0xFF;
+				*(destination + 1) = payload >> 8 & 0xFF;
+				*(destination + 2) = payload >> 16 & 0xFF;
+				*(destination + 3) = payload >> 24 & 0xFF;
+				destination += 4;
+
+				source++;
+				selector = transition_table[selector].new_selector[*source & 0x03];
+				payload = *source >> 2;
+				break;
+			case 20:
+				*(destination + 0) = payload >> 0 & 0x3FF;
+				*(destination + 1) = payload >> 10 & 0x3FF;
+				*(destination + 2) = payload >> 20 & 0x3FF;
+				destination += 3;
+
+				selector = transition_table[selector].new_selector[(payload >> 30) & 0x03];
+				source++;
+				payload = *source;
+				break;
+			case 21:
+				*(destination + 0) = payload >> 0 & 0x7FFF;
+				*(destination + 1) = payload >> 15 & 0x7FFF;
+				destination += 2;
+
+				selector = transition_table[selector].new_selector[(payload >> 30) & 0x03];
+				source++;
+				payload = *source;
+				break;
+			case 22:
+				*(destination + 0) = payload >> 0 & 0xFFFF;
+				*(destination + 1) = payload >> 16 & 0xFFFF;
+				destination += 2;
+
+				source++;
+				selector = transition_table[selector].new_selector[*source & 0x03];
+				payload = *source >> 2;
+				break;
+			case 23:
+				*(destination + 0) = payload >> 0 & 0x0FFFFFFF;
+				destination++;
+
+				selector = transition_table[selector].new_selector[(payload >> 28) & 0x03];
+				source++;
+				payload = *source;
+				break;
+
+			/*
+				Starting conditions
+			*/
+			case 24:
+				*(destination + 0) = payload >> 0 & 0x0F;
+				*(destination + 1) = payload >> 4 & 0x0F;
+				*(destination + 2) = payload >> 8 & 0x0F;
+				*(destination + 3) = payload >> 12 & 0x0F;
+				*(destination + 4) = payload >> 16 & 0x0F;
+				*(destination + 5) = payload >> 20 & 0x0F;
+				*(destination + 6) = payload >> 24 & 0x0F;
+				destination += 7;
+
+				source++;
+				selector = transition_table[selector].new_selector[*source & 0x03];
+				payload = *source >> 2;
+				break;
+			case 25:
+				*(destination + 0) = payload >> 0 & 0x3FF;
+				*(destination + 1) = payload >> 10 & 0x3FF;
+				destination += 2;
+
+				selector = transition_table[selector].new_selector[(payload >> 20) & 0x03];
+				source++;
+				payload = *source;
+				break;
+			case 26:
+				*(destination + 0) = payload >> 0 & 0xFFFF;
+				destination++;
+
+				source++;
+				selector = transition_table[selector].new_selector[*source & 0x03];
+				payload = *source >> 2;
+				break;
+			case 27:
+				*(destination + 0) = payload >> 0 & 0x0FFFFFFF;
+				destination++;
+
+				source++;
+				selector = transition_table[selector].new_selector[*source & 0x03];
+				payload = *source >> 2;
+				break;
+			case 28:
+				*(destination + 0) = payload >> 0 & 0xFFFF;
+				destination++;
+
+				selector = transition_table[selector].new_selector[(payload >> 16) & 0x03];
+				source++;
+				payload = *source;
+				break;
+			}
+		}
+	}
 
 
 	#define TRANS_TABLE_STARTER	33
@@ -450,10 +849,22 @@ namespace JASS
 		int32_t __wremaining = -1;
 		uint32_t *__wpos = (uint32_t *)compressed, __wval = 0;
 
-		CARRY_BLOCK_DECODE_START;
-		for (i = 0; i < n; i++)
+		{
+		int32_t tmp;
+		WORD_DECODE(tmp, 1);
+
+		__pc30 = tmp == 1 ? trans_B1_30_small : trans_B1_30_big;
+		__pc32 = tmp == 1 ? trans_B1_32_small : trans_B1_32_big;
+		__pcbase = __pc30;
+		}
+
+		if (__pcbase == trans_B1_30_big)
+			fast_decode(destination, n, compressed, source_length);
+		else
 			{
-			do
+			CARRY_DECODE_GET_SELECTOR
+
+			for (i = 0; i < n; i++)
 				{
 				if (__wremaining < __wbits)
 					{
@@ -464,7 +875,6 @@ namespace JASS
 				__wval >>= __wbits;
 				__wremaining -= __wbits;
 				}
-			while (0);
 			}
 		}
 
@@ -475,8 +885,16 @@ namespace JASS
 	void compress_integer_carryover_12::unittest(void)
 		{
 		std::vector<integer> every_case;
-
 		size_t instance;
+
+//		for (instance = 0; instance < 1; instance++)
+//			every_case.push_back(0x0FFFFFFF);
+
+		for (instance = 0; instance < 1; instance++)
+			every_case.push_back(0xFFFF);
+
+		for (instance = 0; instance < 3; instance++)
+			every_case.push_back(0x3FF);
 
 		for (instance = 0; instance < 28; instance++)
 			every_case.push_back(0x01);
