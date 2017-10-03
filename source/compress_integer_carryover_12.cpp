@@ -106,16 +106,6 @@ namespace JASS
 		/*21*/	{"j32", 15, 2, true, {20, 21, 22, 23}},
 		/*22*/	{"k32", 16, 2, false, {8, 9, 10, 11}},
 		/*23*/	{"l32", 28, 1, true, {17, 20, 22, 23}},
-
-			/* Special starting conditions because the initial payload is 1 bit short (its 31-bits long due to the 16 / 28 bit thing) */
-		/*24*/	{"d32", 4, 7, true, {14, 15, 16, 23}},		// X X X X
-		/*25*/	{"i32", 10, 2, true, {19, 20, 21, 23}},	// X X X X
-		/*26*/	{"k32", 16, 1, true, {8, 29, 10, 11}},		// X Y X X
-		/*27*/	{"l32", 28, 1, true, {17, 20, 28, 23}},	// X X Y X
-
-			/* extras needed because the implementation doesn't store the first value in Simple-9 */
-		/*28*/	{"k32", 16, 1, true, {8, 9, 10, 11}},		// X X X X
-		/*29*/	{"i32", 10, 1, true, {7, 8, 9, 11}},		// X X X X
 		};
 
 void fast_decode(uint32_t *destination, size_t integers_to_decode, const void *compressed, size_t compressed_size_in_bytes)
