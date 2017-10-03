@@ -1,0 +1,8 @@
+To install, run:
+  make all
+
+One of the ways for testing is to download
+  test-coders
+	test_resource/
+into the package directory, and run test-coders.
+	

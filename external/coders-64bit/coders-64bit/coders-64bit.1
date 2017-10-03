@@ -1,0 +1,206 @@
+.\"------------------------------------------------------------
+.\" Man page for coders-64bit.  Written by alistair.
+.\"------------------------------------------------------------
+.TH coders-64bit 1 "September 2009" "Vo Ngoc Anh and Alistair Moffat"
+.SH NAME
+Static coders for streams of integers.
+.P
+.B Simple: 
+.I Simple coding using 64-bit word buffer
+.P
+.B Carry: 
+.I Carry coding using 64-bit word buffer
+.P
+.B Slide: 
+.I Slide coding using 64-bit word buffer
+.P
+.B PForDelta: 
+.I PForDelta coding using 64-bit word buffer
+.P
+.B Byte:
+.I byte-coding
+.P
+For each of these programs (except \fBByte\fR)
+a 32-bit buffer version can be built by changing the Makefile flag
+\fB-D_BYTES_PER_WORD=8\fR
+to
+\fB-D_BYTES_PER_WORD=4\fR.
+.P
+In addition, except for
+\fBSlide\fR,
+a slower no-bulk-decoding version can be built by removing
+the compiler flag
+\fB-DFAST_DECODE\fR
+from the Makefile.
+.P
+For testing, run the script
+\fBtest-coder\fR
+which also demonstrates usage.
+.P
+
+.SH SYNOPSIS
+.B <coder>
+[\fB\-h]
+[\fB\-d]
+[\fB\-t]
+[\fB\-v]
+[\fB\-i \fIinput_file\fR]
+[\fB\-o \fIoutput_file\fR]
+.P
+.B <coder> 
+\fB\-x\fR
+[\fB\-d\fR]
+[\fB\-t\fR]
+[\fB\-v\fR]
+[\fB\-i \fIinput_file\fR]
+[\fB\-o \fIoutput_file\fR]
+.P
+
+.SH DESCRIPTION
+The various
+programs encode and decode binary files of unsigned integers (or text
+files containing positive integers) using five different static codes.
+Good compression is achieved if the integers are generally small.
+Most of the methods are also sensitive to localized clustering.
+.P
+Input is assumed to be a sequence of independent values.
+The
+.B \-d
+option indicates that the input values are monotonically increasing,
+and in this case
+consecutive differences are calculated before compression is undertaken.
+.P
+The main virtue of 
+these implementations
+is speed \- they all obtain plausible compression rates
+at very high throughput speeds.
+Output is to
+.I stdout
+unless changed with the
+.B \-o
+option; input is from
+.I stdin
+unless changed with the
+.B \-i
+option.
+
+
+.SH USAGE
+To use \fBcoder\fR to encode a file
+.I numbers
+containing unsigned integers
+into a file 
+.I numbers-enc
+and then decode that file to create
+.I numbers-dec
+the following two commands are used:
+.P
+.B coder
+<
+.I numbers
+>
+.I numbers-enc
+.P
+.B coder \-x
+<
+.I numbers-enc 
+>
+.I numbers-dec
+.P
+The files
+.I numbers
+and
+.I numbers-dec
+should be the same, and can be checked with
+.P
+.B cmp 
+.I numbers
+.I numbers-dec
+.P
+Other options can be seen using
+.B coder \-h
+
+.SH OPTIONS
+
+.B \-h
+display a help message
+.P
+.B \-x
+decode (default is to encode)
+.P
+.B \-v
+generate details of the input and output files (encoding only)
+.P
+.B \-t
+input (or output if
+.B \-x
+is specified) is a text file.
+NB, in this case the output file may differ from the input file
+because of leading zeros and/or whitespace considerations.
+.P
+.B \-d
+input (or output if
+.B \-x
+is specified) is a monotonically increasing list of integers; what is
+coded is the differences between consecutive values.
+
+.SH ORIGINS
+\fBSimple\fR, \fBCarry\fR, and \fBSlide\fR
+are primarily based on research work of the two authors [publication
+details will be provide here after paper review is complete].
+For details of the implementation of these three methods, see
+the paper;
+the 32-bit versions of the compression schemes were described
+elsewhere, see the reference list of our paper.
+.P
+The \fBPForDelta\fR implementation is based on the work 
+of Zukowski, Heman, New, and Boncz,
+"Super-scalar RAM-CPU cache compression",
+\fIInternational Conference on Data Engineering\fR, page 59, April 2006;
+and
+of
+Zhang, Long, and Suel,
+"Performance of compressed inverted list caching in search engines",
+\fIConference on the World Wide Web\fR, page 387, 2008.
+.P
+The \fBByte\fR coder has a long history, see, for example,
+Scholer, Williams, Yiannis, and Zobel,
+"Compression of inverted indexes for fast query evaluation",
+\fISIGIR International Conference on Research and Development in
+Information Retrieval\fR, page 222, 2002.
+.P
+For general information about compression and coding, see
+.I Compression and Coding Algorithms 
+A. Moffat and A. Turpin,
+Kluwer Academic Press, February 2002.
+Further information about this book is available at
+http://www.cs.mu.oz.au/caca/
+
+We ask that, if you use this software to derive experimental results
+that are reported in any way, you cite the original work in which the
+underlying processes are described (by referencing the listed paper);
+and also acknowledge our authorship of the implementation you have
+used.
+
+.SH BUGS
+These coders have not been extensively tested, and should be used for
+research purposes only.
+Portability of the software or of the compressed files is not
+guaranteed.
+There is no warranty, either express or implied, that the software is
+fit for any purpose whatsoever, and neither the authors nor The
+University of Melbourne accept any responsibility for any
+consequences that may arise from your use of this software.
+
+.SH LICENSE
+Use and modify for your personal use, but do not distribute in any
+way shape or form (for commercial or noncommercial purposes, modified
+or unmodified, including by passively making it available on any
+internet site) without prior consent of the authors.
+
+.SH AUTHORS
+Vo Ngoc Anh and Alistair Moffat,
+Department of Computer Science and Software Engineering,
+The University of Melbourne,
+Victoria 3010, Australia.
+Email: vo@csse.unimelb.edu.au, alistair@csse.unimelb.edu.au.
