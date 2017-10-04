@@ -1,65 +1,11 @@
 /*
 	COMPRESS_INTEGER_CARRYOVER_12.H
 	-------------------------------
-	Functions for Vo Ngoc Anh and Alistair Moffat's Carryover-12 compression scheme
-	This is a port of Anh and Moffat's code to ATIRE then ported to JASS.
-
-	Originally (http://www.cs.mu.oz.au/~alistair/carry/)
-		Copyright (C) 2003  Authors: Vo Ngoc Anh & Alistair Moffat
-
-		This program is free software; you can redistribute it and/or modify
-		it under the terms of the GNU General Public License as published by
-		the Free Software Foundation; either version 2 of the License, or
-		(at your option) any later version.
-
-		This program is distributed in the hope that it will be useful,
-		but WITHOUT ANY WARRANTY; without even the implied warranty of
-		MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-		GNU General Public License for more details.
-
-	These Changes
-		Copyright (C) 2006, 2009 Authors: Andrew Trotman
-		22 January 2010, Vo Ngoc Anh and Alistair Moffat gave permission to BSD this code and derivitaves of it:
-
-		> From: "Vo Ngoc ANH" <vo@csse.unimelb.edu.au>
-		> To: "Andrew Trotman" <andrew@cs.otago.ac.nz>
-		> Cc: "Alistair Moffat" <alistair@csse.unimelb.edu.au>; "andrew Trotman" <andrew.trotman@otago.ac.nz>
-		> Sent: Friday, January 22, 2010 1:11 PM
-		> Subject: Re: Carryover 12
-		>
-		>
-		>
-		> Hi Andrew,
-		> Thank you for your interest. To tell the truth, I don't have enough
-		> knowledge on the license matter. From my side, the answer is Yes. Please
-		> let me know if I need to do anything for that.
-		>
-		> Cheers,
-		> Anh.
-		>
-		> On Fri, 22 Jan 2010, Andrew Trotman wrote:
-		>
-		>> Hi,
-		>>
-		>> At ADCS I spoke biefly to Alistair about licenses for your source code to
-		>> the Carryover 12 compression scheme.  I have a copy I downloaded shortly
-		>> after you released it, and I've hacked it quite a bit.  The problem I
-		>> have is that I want to release my hacked version using a BSD license and
-		>> your code is GPL. The two licenses are not compatible.  I want to use the
-		>> BSD license because my code includes other stuff that is already BSD
-		>> (such as a hashing algorithm). As far as I know the only GPL code I'm
-		>> using is yours.
-		>>
-		>> Could I please have a "special" license to release my derivitave of your
-		>> code (and derivitaves of my derivitaves) under the BSD license.
-		>>
-		>> Thanks
-		>> Andrew.
 
 */
 #pragma once
 
-#include "compress_integer.h"
+#include "compress_integer_simple_9.h"
 
 namespace JASS
 	{
@@ -74,7 +20,7 @@ namespace JASS
 		See:
 			V. Anh, A. Moffat (2005), Inverted Index Compression Using Word-Aligned Binary Codes, Information Retrieval, 8(1):151-166
 	*/
-	class compress_integer_carryover_12 : public compress_integer
+	class compress_integer_carryover_12 : public compress_integer_simple_9
 		{
 		public:
 			/*
