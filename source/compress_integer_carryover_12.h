@@ -1,7 +1,11 @@
 /*
 	COMPRESS_INTEGER_CARRYOVER_12.H
 	-------------------------------
+	Copyright (c) 2017 Andrew Trotman
+	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 
+	This is not a port of the ATIRE code, as close inspection suggersts that the ATIRE code was not Carryover-12.
+	It is also not a port of the Anh & Moffat code, which also isn't Carryover-12.
 */
 #pragma once
 
@@ -15,13 +19,37 @@ namespace JASS
 	*/
 	/*!
 		@brief Carryover-12 integer compression
-		@details Similar to Simple-9, except that it uses the wasted bits between words.
+		@details Simple-9 compression bin-packs as many integers as possible into a single 28-bit word with a 4-bit selector (to make 32-bits).
+		Relative-10 uses 2-bit selector to encode the current word reltive to the previous word.  In Carryover-12 the 2-bit selector is stored
+		in the previous word if there is room.  This means that sometimes its possible to use 30-bits in the integer and sometimes 32-bits (if the
+		selector is in the previous word).
 
 		See:
 			V. Anh, A. Moffat (2005), Inverted Index Compression Using Word-Aligned Binary Codes, Information Retrieval, 8(1):151-166
 	*/
 	class compress_integer_carryover_12 : public compress_integer_simple_9
 		{
+		private:
+			/*
+		 		CLASS COMPRESS_INTEGER_CARRYOVER_12::SELECTOR
+		 		---------------------------------------------
+			*/
+			/*!
+				@brief Details of the 23 selectors used in Carryover-12.
+			*/
+			class selector
+				{
+				public:
+					const char *name;						///< The name of this selector (not used)
+					size_t bits;							///< The number of bits per integer
+					size_t integers;						///< The numner of integers of the given width
+					bool next_selector;					///< Is the next selector stored in this word?
+					size_t new_selector[4];				///< The 2-bit selector take you to the table row stored here
+				};
+
+		private:
+			static const compress_integer_carryover_12::selector transition_table[];			///< The selector table for Carryover-12
+
 		public:
 			/*
 				COMPRESS_INTEGER_CARRYOVER_12::COMPRESS_INTEGER_CARRYOVER_12

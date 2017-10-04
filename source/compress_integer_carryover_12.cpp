@@ -1,8 +1,8 @@
 /*
 	COMPRESS_INTEGER_CARRYOVER_12.H
 	-------------------------------
-	Fresh implementaiton of Carryover-12 by Andrew Trotman
-	the old code (from ATIRE) wasn't Carryover-12!
+	Copyright (c) 2017 Andrew Trotman
+	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 #include <vector>
 
@@ -11,19 +11,14 @@
 #include "compress_integer_carryover_12.h"
 
 
+/*
+	By defining CARRY_DEBUG this code will dump out encoding and decoding details.
+*/
+//#define CARRY_DEBUG
+
 namespace JASS
 	{
-	class selector
-		{
-		public:
-			const char *name;
-			size_t bits;
-			size_t integers;
-			bool next_selector;					// is the next selector in this word?
-			size_t new_selector[4];				// the row in this table that holds the new selector data.
-		};
-
-	static const selector transition_table[] =
+	const compress_integer_carryover_12::selector compress_integer_carryover_12::transition_table[] =
 		{
 			/* Selector in the 32-bit integer (30-bit payload) */
 		/*0*/		{"a30", 1, 30, false, {0, 1, 2, 11}},
@@ -54,7 +49,6 @@ namespace JASS
 		/*23*/	{"l32", 30, 1, true, {17, 20, 22, 23}},
 		};
 
-
 	/*
 		COMPRESS_INTEGER_CARRYOVER_12::ENCODE()
 		---------------------------------------
@@ -62,8 +56,6 @@ namespace JASS
 	size_t compress_integer_carryover_12::encode(void *encoded, size_t destination_length, const integer *source, size_t source_integers)
 		{
 		const integer *from = source;
-		size_t used = 0;
-
 		uint32_t *destination = static_cast<uint32_t *>(encoded);
 		uint32_t *end = destination + (destination_length >> 2);
 
@@ -78,19 +70,24 @@ namespace JASS
 			In all of the experiments described here, row j was assumed as an initial configuration.".  That is, 1 30-bit integer.  Because of
 			this we can set the first selector to 00 and that fills the codeword.
 		*/
-		uint32_t current_selector = 0b00;
-		*destination++ = *from++;
-		bool next_selector_in_previous_word = false;
-
+		uint32_t current_selector = 23;	// first selector is 1 integer of 28-bits
+		if (maths::ceiling_log2(*from) > transition_table[current_selector].bits)
+			return 0;			// the first integer does not fit into the first encoded word.
+		*destination++ = *from;
+		bool next_selector_in_previous_word = true;
+		size_t used = 1;
+#ifdef CARRY_DEBUG
+printf("source[0] %d * %d-bits [11]\n", (int)transition_table[current_selector].integers, (int)transition_table[current_selector].bits);
+#endif
 		/*
 			Now encode the remainder using the transition tables.
 		*/
 		do
 			{
 			/*
-				Check that the next codeword fits
+				Check that the next codeword fits into the output buffer
 			*/
-			if (destination > end)
+			if (destination >= end)
 				return 0;
 
 			/*
@@ -103,23 +100,27 @@ namespace JASS
 			/*
 				Find out how many integers we can pack
 			*/
+			trial = transition_table[current_selector].new_selector[selector];
 			do
 				{
 				/*
-					Try each selector starting with the densest selector first
+					Try each selector starting with the most dense selector first
 				*/
-				trial = transition_table[current_selector].new_selector[selector];
-				for (terms = 0; terms < transition_table[trial].integers; terms++)
+				for (terms = 0; terms < transition_table[trial].integers && used + terms < source_integers; terms++)
 					if (maths::ceiling_log2(from[used + terms]) > transition_table[trial].bits)
+						{
 						selector++;
+						break;
+						}
 
 				/*
 					if we fit then we've got a selector
 				*/
-				if (terms >= transition_table[trial].integers)
+				trial = transition_table[current_selector].new_selector[selector];
+				if (terms >= transition_table[trial].integers || used + terms >= source_integers)
 					break;
 				}
-			while (selector <= 3);
+			while (selector < 4);
 
 			/*
 				If we exceed the maximum number allowed in the worst transition then we must have an integer that is too large (i.e. x > 2^28 or x > 2^30)
@@ -131,17 +132,14 @@ namespace JASS
 			terms = transition_table[trial].integers;
 
 			/*
-				Make sure we don't overflow the input buffer
-			*/
-			if (used + terms > source_integers)
-				terms = source_integers - used;
-
-			/*
 				Pack into an integer;
 			*/
 			uint32_t word = 0;
-			for (size_t term = 0; term < terms; term++)
-				word = word << bits_per_integer | from[used + term];
+			for (int term = terms - 1; term >= 0; term--)
+				{
+				size_t value = (used + term >= source_integers) ? 0 : from[used + term];		// Make sure we don't overflow the input buffer
+				word = word << bits_per_integer | value;
+				}
 
 			/*
 				add the selector
@@ -151,9 +149,13 @@ namespace JASS
 			else
 				word = word << 2 | selector;						// shove it in the low 2 bits on the current word.
 
+#ifdef CARRY_DEBUG
+printf("source[%d] %d * %d-bits [%d->%d]\n", (int)used, (int)transition_table[trial].integers, (int)transition_table[trial].bits, (int)selector, (int)trial);
+#endif
+
 			*destination++ = word;
 			used += terms;
-			next_selector_in_previous_word = transition_table[current_selector].next_selector;
+			next_selector_in_previous_word = transition_table[trial].next_selector;
 			current_selector = trial;
 			}
 		while (used < source_integers);
@@ -169,337 +171,406 @@ namespace JASS
 		{
 		const uint32_t *end = destination + integers_to_decode;
 		const uint32_t *source = static_cast<const uint32_t *>(compressed);
-			static const size_t initial_selector[] = {24, 25, 26, 27};
 
-			/*
-				Get the initial selector
-			*/
-			size_t selector = initial_selector[(*source >> 1) & 0x03];
-			size_t payload = *source >> 3;
+		/*
+			Get the initial selector
+		*/
+		size_t selector = 23;						// first selector is 1 integer of 28 bits
+		size_t payload = *source;
 
-			while (destination < end)
+		while (destination < end)
+			{
+			switch (selector)
 				{
-				switch (selector)
-					{
-					/*
-						30-bit payload
-					*/
-					case 0:
-						*(destination + 0) = payload >> 0 & 0x01;
-						*(destination + 1) = payload >> 1 & 0x01;
-						*(destination + 2) = payload >> 2 & 0x01;
-						*(destination + 3) = payload >> 3 & 0x01;
-						*(destination + 4) = payload >> 4 & 0x01;
-						*(destination + 5) = payload >> 5 & 0x01;
-						*(destination + 6) = payload >> 6 & 0x01;
-						*(destination + 7) = payload >> 7 & 0x01;
-						*(destination + 8) = payload >> 8 & 0x01;
-						*(destination + 9) = payload >> 9 & 0x01;
-						*(destination + 10) = payload >> 10 & 0x01;
-						*(destination + 11) = payload >> 11 & 0x01;
-						*(destination + 12) = payload >> 12 & 0x01;
-						*(destination + 13) = payload >> 13 & 0x01;
-						*(destination + 14) = payload >> 14 & 0x01;
-						*(destination + 15) = payload >> 15 & 0x01;
-						*(destination + 16) = payload >> 16 & 0x01;
-						*(destination + 17) = payload >> 17 & 0x01;
-						*(destination + 18) = payload >> 18 & 0x01;
-						*(destination + 19) = payload >> 19 & 0x01;
-						*(destination + 20) = payload >> 20 & 0x01;
-						*(destination + 21) = payload >> 21 & 0x01;
-						*(destination + 22) = payload >> 22 & 0x01;
-						*(destination + 23) = payload >> 23 & 0x01;
-						*(destination + 24) = payload >> 24 & 0x01;
-						*(destination + 25) = payload >> 25 & 0x01;
-						*(destination + 26) = payload >> 26 & 0x01;
-						*(destination + 27) = payload >> 27 & 0x01;
-						*(destination + 28) = payload >> 28 & 0x01;
-						*(destination + 29) = payload >> 29 & 0x01;
-						destination += 30;
+				/*
+					30-bit payload
+				*/
+				case 0:
+					*(destination + 0) = payload >> 0 & 0x01;
+					*(destination + 1) = payload >> 1 & 0x01;
+					*(destination + 2) = payload >> 2 & 0x01;
+					*(destination + 3) = payload >> 3 & 0x01;
+					*(destination + 4) = payload >> 4 & 0x01;
+					*(destination + 5) = payload >> 5 & 0x01;
+					*(destination + 6) = payload >> 6 & 0x01;
+					*(destination + 7) = payload >> 7 & 0x01;
+					*(destination + 8) = payload >> 8 & 0x01;
+					*(destination + 9) = payload >> 9 & 0x01;
+					*(destination + 10) = payload >> 10 & 0x01;
+					*(destination + 11) = payload >> 11 & 0x01;
+					*(destination + 12) = payload >> 12 & 0x01;
+					*(destination + 13) = payload >> 13 & 0x01;
+					*(destination + 14) = payload >> 14 & 0x01;
+					*(destination + 15) = payload >> 15 & 0x01;
+					*(destination + 16) = payload >> 16 & 0x01;
+					*(destination + 17) = payload >> 17 & 0x01;
+					*(destination + 18) = payload >> 18 & 0x01;
+					*(destination + 19) = payload >> 19 & 0x01;
+					*(destination + 20) = payload >> 20 & 0x01;
+					*(destination + 21) = payload >> 21 & 0x01;
+					*(destination + 22) = payload >> 22 & 0x01;
+					*(destination + 23) = payload >> 23 & 0x01;
+					*(destination + 24) = payload >> 24 & 0x01;
+					*(destination + 25) = payload >> 25 & 0x01;
+					*(destination + 26) = payload >> 26 & 0x01;
+					*(destination + 27) = payload >> 27 & 0x01;
+					*(destination + 28) = payload >> 28 & 0x01;
+					*(destination + 29) = payload >> 29 & 0x01;
+					destination += 30;
 
-						source++;
-						selector = transition_table[selector].new_selector[*source & 0x03];
-						payload = *source >> 2;
-						break;
-					case 1:
-						*(destination + 0) = payload >> 0 & 0x03;
-						*(destination + 1) = payload >> 2 & 0x03;
-						*(destination + 2) = payload >> 4 & 0x03;
-						*(destination + 3) = payload >> 6 & 0x03;
-						*(destination + 4) = payload >> 8 & 0x03;
-						*(destination + 5) = payload >> 10 & 0x03;
-						*(destination + 6) = payload >> 12 & 0x03;
-						*(destination + 7) = payload >> 14 & 0x03;
-						*(destination + 8) = payload >> 16 & 0x03;
-						*(destination + 9) = payload >> 18 & 0x03;
-						*(destination + 10) = payload >> 20 & 0x03;
-						*(destination + 11) = payload >> 22 & 0x03;
-						*(destination + 12) = payload >> 24 & 0x03;
-						*(destination + 13) = payload >> 26 & 0x03;
-						*(destination + 14) = payload >> 28 & 0x03;
-						destination += 15;
+					source++;
+#ifdef CARRY_DEBUG
+printf("at %d, Transiton:%d NextSelector:%d\n", (int)selector, (int)(*source & 0x03), (int)transition_table[selector].new_selector[*source & 0x03]);
+#endif
+					selector = transition_table[selector].new_selector[*source & 0x03];
+					payload = *source >> 2;
+					break;
+				case 1:
+					*(destination + 0) = payload >> 0 & 0x03;
+					*(destination + 1) = payload >> 2 & 0x03;
+					*(destination + 2) = payload >> 4 & 0x03;
+					*(destination + 3) = payload >> 6 & 0x03;
+					*(destination + 4) = payload >> 8 & 0x03;
+					*(destination + 5) = payload >> 10 & 0x03;
+					*(destination + 6) = payload >> 12 & 0x03;
+					*(destination + 7) = payload >> 14 & 0x03;
+					*(destination + 8) = payload >> 16 & 0x03;
+					*(destination + 9) = payload >> 18 & 0x03;
+					*(destination + 10) = payload >> 20 & 0x03;
+					*(destination + 11) = payload >> 22 & 0x03;
+					*(destination + 12) = payload >> 24 & 0x03;
+					*(destination + 13) = payload >> 26 & 0x03;
+					*(destination + 14) = payload >> 28 & 0x03;
+					destination += 15;
 
-						source++;
-						selector = transition_table[selector].new_selector[*source & 0x03];
-						payload = *source >> 2;
-						break;
-					case 2:
-						*(destination + 0) = payload >> 0 & 0x07;
-						*(destination + 1) = payload >> 3 & 0x07;
-						*(destination + 2) = payload >> 6 & 0x07;
-						*(destination + 3) = payload >> 9 & 0x07;
-						*(destination + 4) = payload >> 12 & 0x07;
-						*(destination + 5) = payload >> 15 & 0x07;
-						*(destination + 6) = payload >> 18 & 0x07;
-						*(destination + 7) = payload >> 21 & 0x07;
-						*(destination + 8) = payload >> 24 & 0x07;
-						*(destination + 9) = payload >> 27 & 0x07;
-						destination += 10;
+					source++;
+#ifdef CARRY_DEBUG
+printf("at %d, Transiton:%d NextSelector:%d\n", (int)selector, (int)(*source & 0x03), (int)transition_table[selector].new_selector[*source & 0x03]);
+#endif
+					selector = transition_table[selector].new_selector[*source & 0x03];
+					payload = *source >> 2;
+					break;
+				case 2:
+					*(destination + 0) = payload >> 0 & 0x07;
+					*(destination + 1) = payload >> 3 & 0x07;
+					*(destination + 2) = payload >> 6 & 0x07;
+					*(destination + 3) = payload >> 9 & 0x07;
+					*(destination + 4) = payload >> 12 & 0x07;
+					*(destination + 5) = payload >> 15 & 0x07;
+					*(destination + 6) = payload >> 18 & 0x07;
+					*(destination + 7) = payload >> 21 & 0x07;
+					*(destination + 8) = payload >> 24 & 0x07;
+					*(destination + 9) = payload >> 27 & 0x07;
+					destination += 10;
 
-						source++;
-						selector = transition_table[selector].new_selector[*source & 0x03];
-						payload = *source >> 2;
-						break;
-					case 3:
-						*(destination + 0) = payload >> 0 & 0x0F;
-						*(destination + 1) = payload >> 4 & 0x0F;
-						*(destination + 2) = payload >> 8 & 0x0F;
-						*(destination + 3) = payload >> 12 & 0x0F;
-						*(destination + 4) = payload >> 16 & 0x0F;
-						*(destination + 5) = payload >> 20 & 0x0F;
-						*(destination + 6) = payload >> 24 & 0x0F;
-						destination += 7;
+					source++;
+#ifdef CARRY_DEBUG
+printf("at %d, Transiton:%d NextSelector:%d\n", (int)selector, (int)(*source & 0x03), (int)transition_table[selector].new_selector[*source & 0x03]);
+#endif
+					selector = transition_table[selector].new_selector[*source & 0x03];
+					payload = *source >> 2;
+					break;
+				case 3:
+					*(destination + 0) = payload >> 0 & 0x0F;
+					*(destination + 1) = payload >> 4 & 0x0F;
+					*(destination + 2) = payload >> 8 & 0x0F;
+					*(destination + 3) = payload >> 12 & 0x0F;
+					*(destination + 4) = payload >> 16 & 0x0F;
+					*(destination + 5) = payload >> 20 & 0x0F;
+					*(destination + 6) = payload >> 24 & 0x0F;
+					destination += 7;
 
-						selector = transition_table[selector].new_selector[(payload >> 28) & 0x03];
-						source++;
-						payload = *source;
-						break;
-					case 4:
-						*(destination + 0) = payload >> 0 & 0x1F;
-						*(destination + 1) = payload >> 5 & 0x1F;
-						*(destination + 2) = payload >> 10 & 0x1F;
-						*(destination + 3) = payload >> 15 & 0x1F;
-						*(destination + 4) = payload >> 20 & 0x1F;
-						*(destination + 5) = payload >> 25 & 0x1F;
-						destination += 6;
+#ifdef CARRY_DEBUG
+printf("at %d, Transiton:%d NextSelector:%d\n", (int)selector, (int)((payload >> 28) & 0x03), (int)transition_table[selector].new_selector[(payload >> 28) & 0x03]);
+#endif
+					selector = transition_table[selector].new_selector[(payload >> 28) & 0x03];
+					source++;
+					payload = *source;
+					break;
+				case 4:
+					*(destination + 0) = payload >> 0 & 0x1F;
+					*(destination + 1) = payload >> 5 & 0x1F;
+					*(destination + 2) = payload >> 10 & 0x1F;
+					*(destination + 3) = payload >> 15 & 0x1F;
+					*(destination + 4) = payload >> 20 & 0x1F;
+					*(destination + 5) = payload >> 25 & 0x1F;
+					destination += 6;
 
-						source++;
-						selector = transition_table[selector].new_selector[*source & 0x03];
-						payload = *source >> 2;
-						break;
-					case 5:
-						*(destination + 0) = payload >> 0 & 0x3F;
-						*(destination + 1) = payload >> 6 & 0x3F;
-						*(destination + 2) = payload >> 12 & 0x3F;
-						*(destination + 3) = payload >> 18 & 0x3F;
-						*(destination + 4) = payload >> 24 & 0x3F;
-						destination += 5;
+					source++;
+#ifdef CARRY_DEBUG
+printf("at %d, Transiton:%d NextSelector:%d\n", (int)selector, (int)(*source & 0x03), (int)transition_table[selector].new_selector[*source & 0x03]);
+#endif
+					selector = transition_table[selector].new_selector[*source & 0x03];
+					payload = *source >> 2;
+					break;
+				case 5:
+					*(destination + 0) = payload >> 0 & 0x3F;
+					*(destination + 1) = payload >> 6 & 0x3F;
+					*(destination + 2) = payload >> 12 & 0x3F;
+					*(destination + 3) = payload >> 18 & 0x3F;
+					*(destination + 4) = payload >> 24 & 0x3F;
+					destination += 5;
 
-						source++;
-						selector = transition_table[selector].new_selector[*source & 0x03];
-						payload = *source >> 2;
-						break;
-					case 6:
-						*(destination + 0) = payload >> 0 & 0x7F;
-						*(destination + 1) = payload >> 7 & 0x7F;
-						*(destination + 2) = payload >> 14 & 0x7F;
-						*(destination + 3) = payload >> 21 & 0x7F;
-						destination += 4;
+					source++;
+#ifdef CARRY_DEBUG
+printf("at %d, Transiton:%d NextSelector:%d\n", (int)selector, (int)(*source & 0x03), (int)transition_table[selector].new_selector[*source & 0x03]);
+#endif
+					selector = transition_table[selector].new_selector[*source & 0x03];
+					payload = *source >> 2;
+					break;
+				case 6:
+					*(destination + 0) = payload >> 0 & 0x7F;
+					*(destination + 1) = payload >> 7 & 0x7F;
+					*(destination + 2) = payload >> 14 & 0x7F;
+					*(destination + 3) = payload >> 21 & 0x7F;
+					destination += 4;
 
-						selector = transition_table[selector].new_selector[(payload >> 28) & 0x03];
-						source++;
-						payload = *source;
-						break;
-					case 7:
-						*(destination + 0) = payload >> 0 & 0x1FF;
-						*(destination + 1) = payload >> 9 & 0x1FF;
-						*(destination + 2) = payload >> 18 & 0x1FF;
-						destination += 3;
+#ifdef CARRY_DEBUG
+printf("at %d, Transiton:%d NextSelector:%d\n", (int)selector, (int)((payload >> 28) & 0x03), (int)transition_table[selector].new_selector[(payload >> 28) & 0x03]);
+#endif
+					selector = transition_table[selector].new_selector[(payload >> 28) & 0x03];
+					source++;
+					payload = *source;
+					break;
+				case 7:
+					*(destination + 0) = payload >> 0 & 0x1FF;
+					*(destination + 1) = payload >> 9 & 0x1FF;
+					*(destination + 2) = payload >> 18 & 0x1FF;
+					destination += 3;
 
-						selector = transition_table[selector].new_selector[(payload >> 27) & 0x03];
-						source++;
-						payload = *source;
-						break;
-					case 8:
-						*(destination + 0) = payload >> 0 & 0x3FF;
-						*(destination + 1) = payload >> 10 & 0x3FF;
-						*(destination + 2) = payload >> 20 & 0x3FF;
-						destination += 3;
+#ifdef CARRY_DEBUG
+printf("at %d, Transiton:%d NextSelector:%d\n", (int)selector, (int)((payload >> 28) & 0x03), (int)transition_table[selector].new_selector[(payload >> 28) & 0x03]);
+#endif
+					selector = transition_table[selector].new_selector[(payload >> 28) & 0x03];
+					source++;
+					payload = *source;
+					break;
+				case 8:
+					*(destination + 0) = payload >> 0 & 0x3FF;
+					*(destination + 1) = payload >> 10 & 0x3FF;
+					*(destination + 2) = payload >> 20 & 0x3FF;
+					destination += 3;
 
-						source++;
-						selector = transition_table[selector].new_selector[*source & 0x03];
-						payload = *source >> 2;
-						break;
-					case 9:
-						*(destination + 0) = payload >> 0 & 0x3FFF;
-						*(destination + 1) = payload >> 14 & 0x3FFF;
-						destination += 2;
+					source++;
+#ifdef CARRY_DEBUG
+printf("at %d, Transiton:%d NextSelector:%d\n", (int)selector, (int)(*source & 0x03), (int)transition_table[selector].new_selector[*source & 0x03]);
+#endif
+					selector = transition_table[selector].new_selector[*source & 0x03];
+					payload = *source >> 2;
+					break;
+				case 9:
+					*(destination + 0) = payload >> 0 & 0x3FFF;
+					*(destination + 1) = payload >> 14 & 0x3FFF;
+					destination += 2;
 
-						selector = transition_table[selector].new_selector[(payload >> 28) & 0x03];
-						source++;
-						payload = *source;
-						break;
-					case 10:
-						*(destination + 0) = payload >> 0 & 0x7FFF;
-						*(destination + 1) = payload >> 15 & 0x7FFF;
-						destination += 2;
+#ifdef CARRY_DEBUG
+printf("at %d, Transiton:%d NextSelector:%d\n", (int)selector, (int)((payload >> 28) & 0x03), (int)transition_table[selector].new_selector[(payload >> 28) & 0x03]);
+#endif
+					selector = transition_table[selector].new_selector[(payload >> 28) & 0x03];
+					source++;
+					payload = *source;
+					break;
+				case 10:
+					*(destination + 0) = payload >> 0 & 0x7FFF;
+					*(destination + 1) = payload >> 15 & 0x7FFF;
+					destination += 2;
 
-						source++;
-						selector = transition_table[selector].new_selector[*source & 0x03];
-						payload = *source >> 2;
-						break;
-					case 11:
-						*(destination + 0) = payload >> 0 & 0x0FFFFFFF;
-						destination++;
+					source++;
+#ifdef CARRY_DEBUG
+printf("at %d, Transiton:%d NextSelector:%d\n", (int)selector, (int)(*source & 0x03), (int)transition_table[selector].new_selector[*source & 0x03]);
+#endif
+					selector = transition_table[selector].new_selector[*source & 0x03];
+					payload = *source >> 2;
+					break;
+				case 11:
+					*(destination + 0) = payload >> 0 & 0x0FFFFFFF;
+					destination++;
 
-						selector = transition_table[selector].new_selector[(payload >> 28) & 0x03];
-						source++;
-						payload = *source;
-						break;
-					/*
-						32-bit payload
-					*/
-					case 12:			// Can't happen!
-						JASS_assert(false);
-						break;
-					case 13:
-						*(destination + 0) = payload >> 0 & 0x03;
-						*(destination + 1) = payload >> 2 & 0x03;
-						*(destination + 2) = payload >> 4 & 0x03;
-						*(destination + 3) = payload >> 6 & 0x03;
-						*(destination + 4) = payload >> 8 & 0x03;
-						*(destination + 5) = payload >> 10 & 0x03;
-						*(destination + 6) = payload >> 12 & 0x03;
-						*(destination + 7) = payload >> 14 & 0x03;
-						*(destination + 8) = payload >> 16 & 0x03;
-						*(destination + 9) = payload >> 18 & 0x03;
-						*(destination + 10) = payload >> 20 & 0x03;
-						*(destination + 11) = payload >> 22 & 0x03;
-						*(destination + 12) = payload >> 24 & 0x03;
-						*(destination + 13) = payload >> 26 & 0x03;
-						*(destination + 14) = payload >> 28 & 0x03;
-						*(destination + 15) = payload >> 30 & 0x03;
-						destination += 16;
+#ifdef CARRY_DEBUG
+printf("at %d, Transiton:%d NextSelector:%d\n", (int)selector, (int)((payload >> 28) & 0x03), (int)transition_table[selector].new_selector[(payload >> 28) & 0x03]);
+#endif
+					selector = transition_table[selector].new_selector[(payload >> 28) & 0x03];
+					source++;
+					payload = *source;
+					break;
 
-						source++;
-						selector = transition_table[selector].new_selector[*source & 0x03];
-						payload = *source >> 2;
-						break;
-					case 14:
-						*(destination + 0) = payload >> 0 & 0x07;
-						*(destination + 1) = payload >> 3 & 0x07;
-						*(destination + 2) = payload >> 6 & 0x07;
-						*(destination + 3) = payload >> 9 & 0x07;
-						*(destination + 4) = payload >> 12 & 0x07;
-						*(destination + 5) = payload >> 15 & 0x07;
-						*(destination + 6) = payload >> 18 & 0x07;
-						*(destination + 7) = payload >> 21 & 0x07;
-						*(destination + 8) = payload >> 24 & 0x07;
-						*(destination + 9) = payload >> 27 & 0x07;
-						destination += 10;
+				/*
+					32-bit payload
+				*/
+				case 12:			// Can't happen!
+					JASS_assert(false);
+					break;
+				case 13:
+					*(destination + 0) = payload >> 0 & 0x03;
+					*(destination + 1) = payload >> 2 & 0x03;
+					*(destination + 2) = payload >> 4 & 0x03;
+					*(destination + 3) = payload >> 6 & 0x03;
+					*(destination + 4) = payload >> 8 & 0x03;
+					*(destination + 5) = payload >> 10 & 0x03;
+					*(destination + 6) = payload >> 12 & 0x03;
+					*(destination + 7) = payload >> 14 & 0x03;
+					*(destination + 8) = payload >> 16 & 0x03;
+					*(destination + 9) = payload >> 18 & 0x03;
+					*(destination + 10) = payload >> 20 & 0x03;
+					*(destination + 11) = payload >> 22 & 0x03;
+					*(destination + 12) = payload >> 24 & 0x03;
+					*(destination + 13) = payload >> 26 & 0x03;
+					*(destination + 14) = payload >> 28 & 0x03;
+					*(destination + 15) = payload >> 30 & 0x03;
+					destination += 16;
 
-						selector = transition_table[selector].new_selector[(payload >> 30) & 0x03];
-						source++;
-						payload = *source;
-						break;
-					case 15:
-						*(destination + 0) = payload >> 0 & 0x0F;
-						*(destination + 1) = payload >> 4 & 0x0F;
-						*(destination + 2) = payload >> 8 & 0x0F;
-						*(destination + 3) = payload >> 12 & 0x0F;
-						*(destination + 4) = payload >> 16 & 0x0F;
-						*(destination + 5) = payload >> 20 & 0x0F;
-						*(destination + 6) = payload >> 24 & 0x0F;
-						*(destination + 7) = payload >> 28 & 0x0F;
-						destination += 8;
+					source++;
+#ifdef CARRY_DEBUG
+printf("at %d, Transiton:%d NextSelector:%d\n", (int)selector, (int)(*source & 0x03), (int)transition_table[selector].new_selector[*source & 0x03]);
+#endif
+					selector = transition_table[selector].new_selector[*source & 0x03];
+					payload = *source >> 2;
+					break;
+				case 14:
+					*(destination + 0) = payload >> 0 & 0x07;
+					*(destination + 1) = payload >> 3 & 0x07;
+					*(destination + 2) = payload >> 6 & 0x07;
+					*(destination + 3) = payload >> 9 & 0x07;
+					*(destination + 4) = payload >> 12 & 0x07;
+					*(destination + 5) = payload >> 15 & 0x07;
+					*(destination + 6) = payload >> 18 & 0x07;
+					*(destination + 7) = payload >> 21 & 0x07;
+					*(destination + 8) = payload >> 24 & 0x07;
+					*(destination + 9) = payload >> 27 & 0x07;
+					destination += 10;
 
-						source++;
-						selector = transition_table[selector].new_selector[*source & 0x03];
-						payload = *source >> 2;
-						break;
-					case 16:
-						*(destination + 0) = payload >> 0 & 0x1F;
-						*(destination + 1) = payload >> 5 & 0x1F;
-						*(destination + 2) = payload >> 10 & 0x1F;
-						*(destination + 3) = payload >> 15 & 0x1F;
-						*(destination + 4) = payload >> 20 & 0x1F;
-						*(destination + 5) = payload >> 25 & 0x1F;
-						destination += 6;
+#ifdef CARRY_DEBUG
+printf("at %d, Transiton:%d NextSelector:%d\n", (int)selector, (int)((payload >> 30) & 0x03), (int)transition_table[selector].new_selector[(payload >> 30) & 0x03]);
+#endif
+					selector = transition_table[selector].new_selector[(payload >> 30) & 0x03];
+					source++;
+					payload = *source;
+					break;
+				case 15:
+					*(destination + 0) = payload >> 0 & 0x0F;
+					*(destination + 1) = payload >> 4 & 0x0F;
+					*(destination + 2) = payload >> 8 & 0x0F;
+					*(destination + 3) = payload >> 12 & 0x0F;
+					*(destination + 4) = payload >> 16 & 0x0F;
+					*(destination + 5) = payload >> 20 & 0x0F;
+					*(destination + 6) = payload >> 24 & 0x0F;
+					*(destination + 7) = payload >> 28 & 0x0F;
+					destination += 8;
 
-						selector = transition_table[selector].new_selector[(payload >> 30) & 0x03];
-						source++;
-						payload = *source;
-						break;
-					case 17:
-						*(destination + 0) = payload >> 0 & 0x3F;
-						*(destination + 1) = payload >> 6 & 0x3F;
-						*(destination + 2) = payload >> 12 & 0x3F;
-						*(destination + 3) = payload >> 18 & 0x3F;
-						*(destination + 4) = payload >> 24 & 0x3F;
-						destination += 5;
+					source++;
+#ifdef CARRY_DEBUG
+printf("at %d, Transiton:%d NextSelector:%d\n", (int)selector, (int)(*source & 0x03), (int)transition_table[selector].new_selector[*source & 0x03]);
+#endif
+					selector = transition_table[selector].new_selector[*source & 0x03];
+					payload = *source >> 2;
+					break;
+				case 16:
+					*(destination + 0) = payload >> 0 & 0x1F;
+					*(destination + 1) = payload >> 5 & 0x1F;
+					*(destination + 2) = payload >> 10 & 0x1F;
+					*(destination + 3) = payload >> 15 & 0x1F;
+					*(destination + 4) = payload >> 20 & 0x1F;
+					*(destination + 5) = payload >> 25 & 0x1F;
+					destination += 6;
 
-						selector = transition_table[selector].new_selector[(payload >> 30) & 0x03];
-						source++;
-						payload = *source;
-						break;
-					case 18:
-						*(destination + 0) = payload >> 0 & 0x7F;
-						*(destination + 1) = payload >> 7 & 0x7F;
-						*(destination + 2) = payload >> 14 & 0x7F;
-						*(destination + 3) = payload >> 21 & 0x7F;
-						destination += 4;
+#ifdef CARRY_DEBUG
+printf("at %d, Transiton:%d NextSelector:%d\n", (int)selector, (int)((payload >> 30) & 0x03), (int)transition_table[selector].new_selector[(payload >> 30) & 0x03]);
+#endif
+					selector = transition_table[selector].new_selector[(payload >> 30) & 0x03];
+					source++;
+					payload = *source;
+					break;
+				case 17:
+					*(destination + 0) = payload >> 0 & 0x3F;
+					*(destination + 1) = payload >> 6 & 0x3F;
+					*(destination + 2) = payload >> 12 & 0x3F;
+					*(destination + 3) = payload >> 18 & 0x3F;
+					*(destination + 4) = payload >> 24 & 0x3F;
+					destination += 5;
 
-						selector = transition_table[selector].new_selector[(payload >> 28) & 0x03];
-						source++;
-						payload = *source;
-						break;
-					case 19:
-						*(destination + 0) = payload >> 0 & 0xFF;
-						*(destination + 1) = payload >> 8 & 0xFF;
-						*(destination + 2) = payload >> 16 & 0xFF;
-						*(destination + 3) = payload >> 24 & 0xFF;
-						destination += 4;
+#ifdef CARRY_DEBUG
+printf("at %d, Transiton:%d NextSelector:%d\n", (int)selector, (int)((payload >> 30) & 0x03), (int)transition_table[selector].new_selector[(payload >> 30) & 0x03]);
+#endif
+					selector = transition_table[selector].new_selector[(payload >> 30) & 0x03];
+					source++;
+					payload = *source;
+					break;
+				case 18:
+					*(destination + 0) = payload >> 0 & 0x7F;
+					*(destination + 1) = payload >> 7 & 0x7F;
+					*(destination + 2) = payload >> 14 & 0x7F;
+					*(destination + 3) = payload >> 21 & 0x7F;
+					destination += 4;
 
-						source++;
-						selector = transition_table[selector].new_selector[*source & 0x03];
-						payload = *source >> 2;
-						break;
-					case 20:
-						*(destination + 0) = payload >> 0 & 0x3FF;
-						*(destination + 1) = payload >> 10 & 0x3FF;
-						*(destination + 2) = payload >> 20 & 0x3FF;
-						destination += 3;
+#ifdef CARRY_DEBUG
+printf("at %d, Transiton:%d NextSelector:%d\n", (int)selector, (int)((payload >> 30) & 0x03), (int)transition_table[selector].new_selector[(payload >> 30) & 0x03]);
+#endif
+					selector = transition_table[selector].new_selector[(payload >> 30) & 0x03];
+					source++;
+					payload = *source;
+					break;
+				case 19:
+					*(destination + 0) = payload >> 0 & 0xFF;
+					*(destination + 1) = payload >> 8 & 0xFF;
+					*(destination + 2) = payload >> 16 & 0xFF;
+					*(destination + 3) = payload >> 24 & 0xFF;
+					destination += 4;
 
-						selector = transition_table[selector].new_selector[(payload >> 30) & 0x03];
-						source++;
-						payload = *source;
-						break;
-					case 21:
-						*(destination + 0) = payload >> 0 & 0x7FFF;
-						*(destination + 1) = payload >> 15 & 0x7FFF;
-						destination += 2;
+					source++;
+#ifdef CARRY_DEBUG
+printf("at %d, Transiton:%d NextSelector:%d\n", (int)selector, (int)(*source & 0x03), (int)transition_table[selector].new_selector[*source & 0x03]);
+#endif
+					selector = transition_table[selector].new_selector[*source & 0x03];
+					payload = *source >> 2;
+					break;
+				case 20:
+					*(destination + 0) = payload >> 0 & 0x3FF;
+					*(destination + 1) = payload >> 10 & 0x3FF;
+					*(destination + 2) = payload >> 20 & 0x3FF;
+					destination += 3;
 
-						selector = transition_table[selector].new_selector[(payload >> 30) & 0x03];
-						source++;
-						payload = *source;
-						break;
-					case 22:
-						*(destination + 0) = payload >> 0 & 0xFFFF;
-						*(destination + 1) = payload >> 16 & 0xFFFF;
-						destination += 2;
+#ifdef CARRY_DEBUG
+printf("at %d, Transiton:%d NextSelector:%d\n", (int)selector, (int)((payload >> 30) & 0x03), (int)transition_table[selector].new_selector[(payload >> 30) & 0x03]);
+#endif
+					selector = transition_table[selector].new_selector[(payload >> 30) & 0x03];
+					source++;
+					payload = *source;
+					break;
+				case 21:
+					*(destination + 0) = payload >> 0 & 0x7FFF;
+					*(destination + 1) = payload >> 15 & 0x7FFF;
+					destination += 2;
 
-						source++;
-						selector = transition_table[selector].new_selector[*source & 0x03];
-						payload = *source >> 2;
-						break;
-					case 23:
-						*(destination + 0) = payload >> 0 & 0x0FFFFFFF;
-						destination++;
+#ifdef CARRY_DEBUG
+printf("at %d, Transiton:%d NextSelector:%d\n", (int)selector, (int)((payload >> 30) & 0x03), (int)transition_table[selector].new_selector[(payload >> 30) & 0x03]);
+#endif
+					selector = transition_table[selector].new_selector[(payload >> 30) & 0x03];
+					source++;
+					payload = *source;
+					break;
+				case 22:
+					*(destination + 0) = payload >> 0 & 0xFFFF;
+					*(destination + 1) = payload >> 16 & 0xFFFF;
+					destination += 2;
 
-						selector = transition_table[selector].new_selector[(payload >> 28) & 0x03];
-						source++;
-						payload = *source;
-						break;
+					source++;
+#ifdef CARRY_DEBUG
+printf("at %d, Transiton:%d NextSelector:%d\n", (int)selector, (int)(*source & 0x03), (int)transition_table[selector].new_selector[*source & 0x03]);
+#endif
+					selector = transition_table[selector].new_selector[*source & 0x03];
+					payload = *source >> 2;
+					break;
+				case 23:
+					*(destination + 0) = payload >> 0 & 0x0FFFFFFF;
+					destination++;
+
+#ifdef CARRY_DEBUG
+printf("at %d, Transiton:%d NextSelector:%d\n", (int)selector, (int)((payload >> 30) & 0x03), (int)transition_table[selector].new_selector[(payload >> 30) & 0x03]);
+#endif
+					selector = transition_table[selector].new_selector[(payload >> 30) & 0x03];
+					source++;
+					payload = *source;
+					break;
 				}
 			}
 		}
@@ -513,15 +584,12 @@ namespace JASS
 		std::vector<integer> every_case;
 		size_t instance;
 
-//		for (instance = 0; instance < 1; instance++)
-//			every_case.push_back(0x0FFFFFFF);
-
+		for (instance = 0; instance < 1; instance++)
+			every_case.push_back(0x0FFFFFFF);
 		for (instance = 0; instance < 1; instance++)
 			every_case.push_back(0xFFFF);
-
 		for (instance = 0; instance < 3; instance++)
 			every_case.push_back(0x3FF);
-
 		for (instance = 0; instance < 28; instance++)
 			every_case.push_back(0x01);
 		for (instance = 0; instance < 14; instance++)
@@ -552,10 +620,16 @@ namespace JASS
 		
 		/*
 			Try the error cases
-			(1) no integers
-			(2) Integer overflow
-			(3) buffer overflow
+			(1) 1 integer (encoded with Simple-9)
+			(2) no integers
+			(3) Integer overflow
+			(4) Integer overflow in the Relative-10 encoder
+			(5) buffer overflow on simple-9 encoder
+			(6) buffer overflow on Relatice-10 encoder
 		*/
+		compressor.decode(&decompressed[0], 1, &compressed[0], size_once_compressed);
+		JASS_assert(decompressed[0] == every_case[0]);
+
 		integer one = 1;
 		size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &one, 0);
 		JASS_assert(size_once_compressed == 0);
@@ -566,9 +640,20 @@ namespace JASS
 		JASS_assert(size_once_compressed == 0);
 
 		every_case.clear();
-		for (instance = 0; instance < 28; instance++)
+		every_case.push_back(0x0FFFFFFF);
+		every_case.push_back(0xFFFFFFFF);
+		size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &every_case[0], every_case.size());
+		JASS_assert(size_once_compressed == 0);
+
+		every_case.clear();
+		for (size_t instance = 0; instance < 28; instance++)
 			every_case.push_back(0x01);
 		size_once_compressed = compressor.encode(&compressed[0], 1, &every_case[0], every_case.size());
+		JASS_assert(size_once_compressed == 0);
+
+		for (size_t instance = 0; instance < 28; instance++)
+			every_case.push_back(0xFF);
+		size_once_compressed = compressor.encode(&compressed[0], 5, &every_case[0], every_case.size());
 		JASS_assert(size_once_compressed == 0);
 
 		puts("compress_integer_carryover_12::PASSED");

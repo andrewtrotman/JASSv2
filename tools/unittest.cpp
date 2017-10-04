@@ -1,7 +1,7 @@
 /*
 	UNITTEST.CPP
 	------------
-	Copyright (c) 2016 Andrew Trotman
+	Copyright (c) 2016-2017 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 #include "file.h"
@@ -213,10 +213,8 @@ int main(void)
 		puts("compress_integer_relative_10");
 		JASS::compress_integer_relative_10::unittest();
 
-#ifdef NEVER
 		puts("compress_integer_carryover_12");
 		JASS::compress_integer_carryover_12::unittest();
-#endif
 
 		puts("accumulator_2d");
 		JASS::accumulator_2d<uint32_t>::unittest();
