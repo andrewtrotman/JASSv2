@@ -21,32 +21,32 @@ namespace JASS
 	const compress_integer_carryover_12::selector compress_integer_carryover_12::transition_table[] =
 		{
 			/* Selector in the 32-bit integer (30-bit payload) */
-		/*0*/		{"a30", 1, 30, false, {0, 1, 2, 11}},
-		/*1*/		{"b30", 2, 15, false, {0, 1, 2, 11}},
-		/*2*/		{"c30", 3, 10, false, {1, 2, 3, 11}},
-		/*3*/		{"d30", 4,  7, true,  {14, 15, 16, 23}},
-		/*4*/		{"e30", 5, 6, false, {3, 4, 5, 11}},
-		/*5*/		{"f30", 6, 5, false, {4, 5, 6, 11}},
-		/*6*/		{"g30", 7, 4, true, {17, 18, 19, 23}},
-		/*7*/		{"h30", 9, 3, true, {18, 19, 20, 23}},
-		/*8*/		{"i30", 10, 3, false, {7, 8, 9, 11}},
-		/*9*/		{"j30", 14, 2, true, {20, 21, 22, 23}},
-		/*10*/	{"k30", 15, 2, false, {8, 9, 10, 11}},
-		/*11*/	{"l30", 28, 1, true, {17, 20, 22, 23}},
+		/*0*/  {"a30", 1, 30, false, {0, 1, 2, 11}},
+		/*1*/  {"b30", 2, 15, false, {0, 1, 2, 11}},
+		/*2*/  {"c30", 3, 10, false, {1, 2, 3, 11}},
+		/*3*/  {"d30", 4,  7, true,  {14, 15, 16, 23}},
+		/*4*/  {"e30", 5, 6, false, {3, 4, 5, 11}},
+		/*5*/  {"f30", 6, 5, false, {4, 5, 6, 11}},
+		/*6*/  {"g30", 7, 4, true, {17, 18, 19, 23}},
+		/*7*/  {"h30", 9, 3, true, {18, 19, 20, 23}},
+		/*8*/  {"i30", 10, 3, false, {7, 8, 9, 11}},
+		/*9*/  {"j30", 14, 2, true, {20, 21, 22, 23}},
+		/*10*/ {"k30", 15, 2, false, {8, 9, 10, 11}},
+		/*11*/ {"l30", 28, 1, true, {17, 20, 22, 23}},
 
 			/* Selector in the previous 32-bit integer (32-bit payload) */
-		/*12*/	{"a32", 1, 32, false, {0, 1, 2, 11}},
-		/*13*/	{"b32", 2, 16, false, {0, 1, 2, 11}},
-		/*14*/	{"c32", 3, 10, true, {13, 14, 15, 23}},
-		/*15*/	{"d32", 4, 8, false, {2, 3, 4, 11}},
-		/*16*/	{"e32", 5, 6, true, {15, 16, 17, 23}},
-		/*17*/	{"f32", 6, 5, true, {16, 17, 18, 23}},
-		/*18*/	{"g32", 7, 4, true, {17, 18, 19, 23}},
-		/*19*/	{"h32", 8, 4, false, {6, 7, 8, 11}},
-		/*20*/	{"i32", 10, 3, true, {19, 20, 21, 23}},
-		/*21*/	{"j32", 15, 2, true, {20, 21, 22, 23}},
-		/*22*/	{"k32", 16, 2, false, {8, 9, 10, 11}},
-		/*23*/	{"l32", 30, 1, true, {17, 20, 22, 23}},
+		/*12*/ {"a32", 1, 32, false, {0, 1, 2, 11}},
+		/*13*/ {"b32", 2, 16, false, {0, 1, 2, 11}},
+		/*14*/ {"c32", 3, 10, true, {13, 14, 15, 23}},
+		/*15*/ {"d32", 4, 8, false, {2, 3, 4, 11}},
+		/*16*/ {"e32", 5, 6, true, {15, 16, 17, 23}},
+		/*17*/ {"f32", 6, 5, true, {16, 17, 18, 23}},
+		/*18*/ {"g32", 7, 4, true, {17, 18, 19, 23}},
+		/*19*/ {"h32", 8, 4, false, {6, 7, 8, 11}},
+		/*20*/ {"i32", 10, 3, true, {19, 20, 21, 23}},
+		/*21*/ {"j32", 15, 2, true, {20, 21, 22, 23}},
+		/*22*/ {"k32", 16, 2, false, {8, 9, 10, 11}},
+		/*23*/ {"l32", 30, 1, true, {17, 20, 22, 23}},
 		};
 
 	/*
@@ -59,6 +59,9 @@ namespace JASS
 		uint32_t *destination = static_cast<uint32_t *>(encoded);
 		uint32_t *end = destination + (destination_length >> 2);
 
+		/*
+			Check for 0 input or 0 sized output buffer
+		*/
 		if (source_integers == 0)
 			return 0;
 
@@ -77,7 +80,7 @@ namespace JASS
 		bool next_selector_in_previous_word = true;
 		size_t used = 1;
 #ifdef CARRY_DEBUG
-printf("source[0] %d * %d-bits [11]\n", (int)transition_table[current_selector].integers, (int)transition_table[current_selector].bits);
+printf("source[0] %d * %d-bits [23]\n", (int)transition_table[current_selector].integers, (int)transition_table[current_selector].bits);
 #endif
 		/*
 			Now encode the remainder using the transition tables.
@@ -116,9 +119,12 @@ printf("source[0] %d * %d-bits [11]\n", (int)transition_table[current_selector].
 				/*
 					if we fit then we've got a selector
 				*/
-				trial = transition_table[current_selector].new_selector[selector];
-				if (terms >= transition_table[trial].integers || used + terms >= source_integers)
-					break;
+				if (selector < 4)
+					{
+					trial = transition_table[current_selector].new_selector[selector];
+					if (terms >= transition_table[trial].integers || used + terms >= source_integers)
+						break;
+					}
 				}
 			while (selector < 4);
 
@@ -169,6 +175,9 @@ printf("source[%d] %d * %d-bits [%d->%d]\n", (int)used, (int)transition_table[tr
 	*/
 	void compress_integer_carryover_12::decode(integer *destination, size_t integers_to_decode, const void *compressed, size_t compressed_size_in_bytes)
 		{
+#ifdef CARRY_DEBUG
+		integer *start_of_output = destination;
+#endif
 		const uint32_t *end = destination + integers_to_decode;
 		const uint32_t *source = static_cast<const uint32_t *>(compressed);
 
@@ -180,6 +189,9 @@ printf("source[%d] %d * %d-bits [%d->%d]\n", (int)used, (int)transition_table[tr
 
 		while (destination < end)
 			{
+#ifdef CARRY_DEBUG
+printf("destination[%d] ", (int)(destination - start_of_output));
+#endif
 			switch (selector)
 				{
 				/*
