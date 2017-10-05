@@ -5,7 +5,6 @@
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 
-#ifdef NEVER
 #include <vector>
 
 #include "maths.h"
@@ -91,6 +90,23 @@ namespace JASS
 	static const size_t sixty_four_start = 22;			///< the start of the table for 64-bit payloads
 
 
+	/*
+		given the number of bits in the largest integer, what should the starting point in selector_table be?
+		Note, this must be the smaller of the 60-bit and 64-bit sub-tables from above.
+	*/
+	size_t compress_integer_carry_8b::base_table[] =
+		{
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		1, 1, 1, 2, 2, 3, 3, 3,
+		3, 3, 3, 3, 3, 4, 4, 5,
+		5, 5, 5, 5, 5, 5, 5, 5,
+		5, 5, 5, 5, 5, 5, 5, 5,
+		5, 5, 5, 5, 5, 5, 5, 5,
+		5, 6, 6, 6, 6, 7, 7, 7,
+	 	7
+		};
+
 /*
 	COMPRESS_INTEGER_CARRY_8B::PACK_ONE_WORD()
 	------------------------------------------
@@ -167,7 +183,7 @@ size_t compress_integer_carry_8b::pack_one_word(size_t base, size_t highest, uin
 		uint64_t *destination = static_cast<uint64_t *>(encoded);
 		uint64_t *end = destination + (destination_length >> 3);
 		size_t took;
-		size_t used;
+		size_t used = 0;
 
 		bool next_selector_in_previous_word = false;
 		/*
@@ -183,10 +199,10 @@ size_t compress_integer_carry_8b::pack_one_word(size_t base, size_t highest, uin
 			We need to work out which parts of the Carryover table to use - which we do by finding the largest integers in the sequence and
 			seeing which part of the table is that bit-ness or smaller.
 		*/
+		integer largest = 0;
 		for (const integer *current = source; current < source + source_integers; current++)
 			largest = maths::maximum(largest, *current);
-		for
-
+		size_t base = base_table[maths::ceiling_log2(largest)];
 
 		/*
 			The paper states: "Note that for the 60 data bits case, there are more selector options than presented in Table I for Simple-8b,
@@ -236,6 +252,8 @@ size_t compress_integer_carry_8b::pack_one_word(size_t base, size_t highest, uin
 			destination++;
 			}
 		while (used < source_integers);
+
+		return reinterpret_cast<uint8_t *>(destination) - reinterpret_cast<uint8_t *>(encoded);
 		}
 
 	/*
@@ -654,4 +672,4 @@ size_t compress_integer_carry_8b::pack_one_word(size_t base, size_t highest, uin
 		puts("compress_integer_carry_8b::PASSED");
 		}
 	}
-#endif
+

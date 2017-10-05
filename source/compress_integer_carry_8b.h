@@ -48,6 +48,7 @@ namespace JASS
 
 		private:
 			static const compress_integer_carry_8b::selector selector_table[];			///< The selector table for Carry-8b
+			static size_t base_table[];																///< The starting point in the selector table.
 
 		private:
 			/*
