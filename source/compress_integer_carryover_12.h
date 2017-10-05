@@ -4,7 +4,7 @@
 	Copyright (c) 2017 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 
-	This is not a port of the ATIRE code, as close inspection suggersts that the ATIRE code was not Carryover-12.
+	This is not a port of the ATIRE code, as close inspection suggests that the ATIRE code was not Carryover-12.
 	It is also not a port of the Anh & Moffat code, which also isn't Carryover-12.
 */
 #pragma once

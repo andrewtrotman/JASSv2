@@ -178,7 +178,7 @@ printf("source[%d] %d * %d-bits [%d->%d]\n", (int)used, (int)transition_table[tr
 #ifdef CARRY_DEBUG
 		integer *start_of_output = destination;
 #endif
-		const uint32_t *end = destination + integers_to_decode;
+		const integer *end = destination + integers_to_decode;
 		const uint32_t *source = static_cast<const uint32_t *>(compressed);
 
 		/*

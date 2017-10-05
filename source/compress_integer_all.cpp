@@ -8,9 +8,12 @@
 
 #include "compress_integer_all.h"
 #include "compress_integer_none.h"
+#include "compress_integer_carry_8b.h"
 #include "compress_integer_simple_9.h"
 #include "compress_integer_simple_8b.h"
 #include "compress_integer_simple_16.h"
+#include "compress_integer_relative_10.h"
+#include "compress_integer_carryover_12.h"
 #include "compress_integer_variable_byte.h"
 #include "compress_integer_qmx_improved.h"
 #include "compress_integer_qmx_original.h"
@@ -24,15 +27,18 @@ namespace JASS
 		List of known compressors
 	*/
 	static compress_integer_none none;
+	static compress_integer_carry_8b carry_8b;
 	static compress_integer_simple_9 simple_9;
 	static compress_integer_simple_8b simple_8b;
 	static compress_integer_simple_16 simple_16;
-	static compress_integer_simple_9_packed simple_9_packed;
-	static compress_integer_simple_16_packed simple_16_packed;
-	static compress_integer_simple_8b_packed simple_8b_packed;
+	static compress_integer_relative_10 relative_10;
+	static compress_integer_carryover_12 carryover_12;
 	static compress_integer_qmx_original qmx_original;
 	static compress_integer_qmx_improved qmx_improved;
 	static compress_integer_variable_byte variable_byte;
+	static compress_integer_simple_9_packed simple_9_packed;
+	static compress_integer_simple_16_packed simple_16_packed;
+	static compress_integer_simple_8b_packed simple_8b_packed;
 
 	/*
 		Table of known copressors and their command line parameter names and actual names
@@ -42,6 +48,9 @@ namespace JASS
 			{
 			{"-cn", "--compress_none", "None", &none},
 			{"-cv", "--compress_vbyte", "Variable Byte", &variable_byte},
+			{"-cr", "--compress_relative_10", "Relative-10", &relative_10},
+			{"-cc", "--compress_carryover_12", "Carryover-12", &carryover_12},
+			{"-cC", "--compress_carry_8b", "Carry-8b", &carry_8b},
 			{"-cs", "--compress_simple_9", "Simple-9", &simple_9},
 			{"-cp", "--compress_simple_9_packed", "Optimal Packed Simple-9", &simple_9_packed},
 			{"-ct", "--compress_simple_16", "Simple-16", &simple_16},

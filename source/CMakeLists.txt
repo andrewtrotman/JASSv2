@@ -32,6 +32,8 @@ set(JASSlib_FILES
 	compress_integer.h
 	compress_integer_all.h
 	compress_integer_all.cpp
+	compress_integer_carry_8b.h
+	compress_integer_carry_8b.cpp
 	compress_integer_carryover_12.h
 	compress_integer_carryover_12.cpp
 	compress_integer_none.h

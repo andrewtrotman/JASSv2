@@ -40,7 +40,7 @@ namespace JASS
 			1 * 60-bit
 
 		See:
-			Anh V, Moffat A (2010), Index compression using 64-bit words, Software Practive & Experience, pp 131-147
+			V. Anh, A. Moffat (2010), Index compression using 64-bit words, Software Practive & Experience, pp 131-147
 	*/
 	class compress_integer_simple_8b : public compress_integer
 		{
