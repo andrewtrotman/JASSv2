@@ -41,6 +41,7 @@
 #include "index_postings_impact.h"
 #include "instream_document_trec.h"
 #include "index_manager_sequential.h"
+#include "compress_integer_carry_8b.h"
 #include "compress_integer_simple_9.h"
 #include "compress_integer_simple_8b.h"
 #include "compress_integer_simple_16.h"
@@ -215,6 +216,10 @@ int main(void)
 
 		puts("compress_integer_carryover_12");
 		JASS::compress_integer_carryover_12::unittest();
+#ifdef NEVER
+		puts("compress_integer_carry_8b");
+		JASS::compress_integer_carry_8b::unittest();
+#endif
 
 		puts("accumulator_2d");
 		JASS::accumulator_2d<uint32_t>::unittest();

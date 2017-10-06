@@ -14,7 +14,7 @@
 /*
 	By defining CARRY_DEBUG this code will dump out encoding and decoding details.
 */
-//#define CARRY_DEBUG
+#define CARRY_DEBUG
 
 namespace JASS
 	{
@@ -44,45 +44,45 @@ namespace JASS
 		/*20*/  {"u60", 56, 1, false},
 		/*21*/  {"v60", 60, 1, false},
 			/* Selector in the previous 64-bit integer (64-bit payload) */
-		/*0*/   {"a64", 1, 255, true},
-		/*1*/   {"b64", 1, 180, true},
-		/*2*/   {"c64", 1, 120, true},
-		/*3*/   {"d64", 1, 64, false},
-		/*4*/   {"e64", 2, 32, false},
-		/*5*/   {"f64", 3, 21, false},
-		/*6*/   {"g64", 4, 16, false},
-		/*7*/   {"h64", 5, 12, true},
-		/*8*/   {"i64", 6, 10, true},
-		/*9*/   {"j64", 7, 9, false},
-		/*10*/   {"k64", 8, 8, false},
-		/*11*/   {"l64", 9, 7, false},
-		/*12*/   {"m64", 10, 6, true},
-		/*13*/   {"n64", 12, 5, true},
-		/*14*/   {"o64", 15, 4, true},
-		/*15*/   {"p64", 16, 4, false},
-		/*16*/   {"q64", 20, 3, true},
-		/*17*/   {"r64", 21, 3, false},
-		/*18*/   {"s64", 30, 2, true},
-		/*19*/   {"t64", 32, 2, false},
-		/*20*/   {"u64", 60, 1, true},
-		/*21*/   {"v64", 64, 1, false},
+		/*22*/   {"a64", 1, 255, true},
+		/*23*/   {"b64", 1, 180, true},
+		/*24*/   {"c64", 1, 120, true},
+		/*25*/   {"d64", 1, 64, false},
+		/*26*/   {"e64", 2, 32, false},
+		/*27*/   {"f64", 3, 21, false},
+		/*28*/   {"g64", 4, 16, false},
+		/*29*/   {"h64", 5, 12, true},
+		/*30*/   {"i64", 6, 10, true},
+		/*31*/   {"j64", 7, 9, false},
+		/*32*/   {"k64", 8, 8, false},
+		/*33*/   {"l64", 9, 7, false},
+		/*34*/   {"m64", 10, 6, true},
+		/*35*/   {"n64", 12, 5, true},
+		/*36*/   {"o64", 15, 4, true},
+		/*37*/   {"p64", 16, 4, false},
+		/*38*/   {"q64", 20, 3, true},
+		/*39*/   {"r64", 21, 3, false},
+		/*40*/   {"s64", 30, 2, true},
+		/*41*/   {"t64", 32, 2, false},
+		/*42*/   {"u64", 60, 1, true},
+		/*43*/   {"v64", 64, 1, false},
 			/* First integer has 3-bit base then 4-bit selector then 57 bit payload */
-		/*0*/   {"a57", 1, 57, false},
-		/*1*/   {"b57", 2, 28, false},
-		/*2*/   {"c57", 3, 19, false},
-		/*3*/   {"d57", 4, 14, false},
-		/*4*/   {"e57", 5, 11, false},
-		/*5*/   {"f57", 6, 9, false},
-		/*6*/   {"g57", 7, 8, false},
-		/*7*/   {"h57", 8, 7, false},
-		/*8*/   {"i57", 9, 6, false},
-		/*9*/   {"j57", 10, 5, true},
-		/*10*/   {"k57", 11, 5, false},
-		/*11*/   {"l57", 12, 4, true},
-		/*12*/   {"m57", 14, 4, false},
-		/*13*/   {"n57", 19, 3, false},
-		/*14*/   {"o57", 28, 2, false},
-		/*15*/   {"p57", 57, 1, false},
+		/*44*/   {"a57", 1, 57, false},
+		/*45*/   {"b57", 2, 28, false},
+		/*46*/   {"c57", 3, 19, false},
+		/*47*/   {"d57", 4, 14, false},
+		/*48*/   {"e57", 5, 11, false},
+		/*49*/   {"f57", 6, 9, false},
+		/*50*/   {"g57", 7, 8, false},
+		/*51*/   {"h57", 8, 7, false},
+		/*52*/   {"i57", 9, 6, false},
+		/*53*/   {"j57", 10, 5, true},
+		/*54*/   {"k57", 11, 5, false},
+		/*55*/   {"l57", 12, 4, true},
+		/*56*/   {"m57", 14, 4, false},
+		/*57*/   {"n57", 19, 3, false},
+		/*58*/   {"o57", 28, 2, false},
+		/*59*/   {"p57", 57, 1, false},
 		};
 
 	static const size_t fifty_seven_start = 44;			///< the start of the table for 57-bit payloads
@@ -94,7 +94,7 @@ namespace JASS
 		given the number of bits in the largest integer, what should the starting point in selector_table be?
 		Note, this must be the smaller of the 60-bit and 64-bit sub-tables from above.
 	*/
-	size_t compress_integer_carry_8b::base_table[] =
+	const size_t compress_integer_carry_8b::base_table[] =
 		{
 		0, 0, 0, 0, 0, 0, 0, 0,
 		0, 0, 0, 0, 0, 0, 0, 0,
@@ -123,7 +123,7 @@ size_t compress_integer_carry_8b::pack_one_word(size_t base, size_t highest, uin
 		{
 		while (terms < selector_table[base + selector].integers && terms < source_integers)
 			{
-			if (maths::ceiling_log2(source[terms]) > selector_table[base + selector].integers)
+			if (maths::ceiling_log2(source[terms]) > selector_table[base + selector].bits)
 				{
 				selector++;
 				break;
@@ -131,7 +131,7 @@ size_t compress_integer_carry_8b::pack_one_word(size_t base, size_t highest, uin
 			terms++;
 			}
 		}
-	while (selector < highest);
+	while (terms < selector_table[base + selector].integers && terms < source_integers && selector < highest);
 
 	/*
 		We have an integer that is too large to pack into a single codeword.
@@ -140,10 +140,14 @@ size_t compress_integer_carry_8b::pack_one_word(size_t base, size_t highest, uin
 		return 0;
 
 	/*
-		Pack integers into codewords
+		Pack integers into codewords - note that in the case of 255 * 1 (value, not bit), this will wrap, but that's OK because the payload is ignored
 	*/
 	uint64_t integers_to_encode = selector_table[base + selector].integers <= source_integers ? selector_table[base + selector].integers : source_integers;
 	uint64_t bits_per_integer = selector_table[base + selector].bits;
+
+#ifdef CARRY_DEBUG
+printf("Selector:%d (%d x %d-bits)\n", (int)(base + selector), (int)integers_to_encode, (int) bits_per_integer);
+#endif
 
 	uint64_t word = 0;
 	for (int term = integers_to_encode - 1; term >= 0; term--)
@@ -153,10 +157,10 @@ size_t compress_integer_carry_8b::pack_one_word(size_t base, size_t highest, uin
 		}
 
 	/*
-		pack the selector into the codeword
+		Pack the selector into the codeword.  If we're bungingin into the previous selector then we first turn off the top 4 bits as they might be crud from low selectors that over-pack value 1's into a word.
 	*/
 	if (next_selector_in_previous_word)
-		*(destination - 1) |= selector << ((uint64_t)60);
+		*(destination - 1) = (*(destination - 1) & (uint64_t)0x0FFFFFFFFFFFFFFF) | (selector << ((uint64_t)60));
 	else
 		word = word << 4 | selector;
 
@@ -202,7 +206,7 @@ size_t compress_integer_carry_8b::pack_one_word(size_t base, size_t highest, uin
 		integer largest = 0;
 		for (const integer *current = source; current < source + source_integers; current++)
 			largest = maths::maximum(largest, *current);
-		size_t base = base_table[maths::ceiling_log2(largest)];
+		uint64_t base = base_table[maths::ceiling_log2(largest)];
 
 		/*
 			The paper states: "Note that for the 60 data bits case, there are more selector options than presented in Table I for Simple-8b,
@@ -222,6 +226,11 @@ size_t compress_integer_carry_8b::pack_one_word(size_t base, size_t highest, uin
 		if (took == 0)
 			return 0;
 		used += took;
+
+		/*
+			shove the "base" into the high bits of the first codeword
+		*/
+		*destination = (*destination & (uint64_t)0x1FFFFFFFFFFFFFFF) | ((base & 0x07) << ((uint64_t)61));
 		destination++;
 
 		/*
@@ -268,11 +277,684 @@ size_t compress_integer_carry_8b::pack_one_word(size_t base, size_t highest, uin
 		size_t base = fifty_seven_start;
 		size_t selector = *source & 0x0F;
 		uint64_t payload = (*source & 0x1FFFFFFFFFFFFFF0) >> 4;
-
+		size_t offset_to_use = *source >> 61;
+		size_t offset = 0;
+#ifdef CARRY_DEBUG
+integer *destination_at_start = destination;
+#endif
 		while (destination < end)
 			{
-			switch (selector + base)
+			if (source != compressed)
+				offset = offset_to_use;
+#ifdef CARRY_DEBUG
+printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(selector + base + offset));
+#endif
+			switch (selector + base + offset)
 				{
+				/*
+					60-bit selector
+				*/
+				case 0:			// {"a60", 1, 255, true}
+					std::fill(destination, (destination + selector_table[0].integers), 1);
+					destination += selector_table[0].integers;
+
+					selector = *source >> 60;
+					source++;
+					payload = *source >> 4;
+					base = sixty_four_start;
+					break;
+				case 1:			// {"b60", 1, 128, true}
+					std::fill(destination, (destination + selector_table[1].integers), 1);
+					destination += selector_table[1].integers;
+
+					selector = *source >> 60;
+					source++;
+					payload = *source >> 4;
+					base = sixty_four_start;
+					break;
+				case 2:			// {"c60", 1, 60, false}
+					/*
+						Since we're not permitted to encode a '0', a 1-bit integer must be a 1
+					*/
+					std::fill(destination, (destination + selector_table[2].integers), 1);
+					destination += selector_table[2].integers;
+
+					source++;
+					selector = *source & 0x0F;
+					payload = *source >> 4;
+					base = sixty_start;
+					break;
+				case 3:		// 	{"d60", 2, 30, false}
+					*(destination + 0) = payload >> 0 & 0x03;
+					*(destination + 1) = payload >> 2 & 0x03;
+					*(destination + 2) = payload >> 4 & 0x03;
+					*(destination + 3) = payload >> 6 & 0x03;
+					*(destination + 4) = payload >> 8 & 0x03;
+					*(destination + 5) = payload >> 10 & 0x03;
+					*(destination + 6) = payload >> 12 & 0x03;
+					*(destination + 7) = payload >> 14 & 0x03;
+					*(destination + 8) = payload >> 16 & 0x03;
+					*(destination + 9) = payload >> 18 & 0x03;
+					*(destination + 10) = payload >> 20 & 0x03;
+					*(destination + 11) = payload >> 22 & 0x03;
+					*(destination + 12) = payload >> 24 & 0x03;
+					*(destination + 13) = payload >> 26 & 0x03;
+					*(destination + 14) = payload >> 28 & 0x03;
+					*(destination + 15) = payload >> 30 & 0x03;
+					*(destination + 16) = payload >> 32 & 0x03;
+					*(destination + 17) = payload >> 34 & 0x03;
+					*(destination + 18) = payload >> 36 & 0x03;
+					*(destination + 19) = payload >> 38 & 0x03;
+					*(destination + 20) = payload >> 40 & 0x03;
+					*(destination + 21) = payload >> 42 & 0x03;
+					*(destination + 22) = payload >> 44 & 0x03;
+					*(destination + 23) = payload >> 46 & 0x03;
+					*(destination + 24) = payload >> 48 & 0x03;
+					*(destination + 25) = payload >> 50 & 0x03;
+					*(destination + 26) = payload >> 52 & 0x03;
+					*(destination + 27) = payload >> 54 & 0x03;
+					*(destination + 28) = payload >> 56 & 0x03;
+					*(destination + 29) = payload >> 58 & 0x03;
+					destination += 30;
+
+					source++;
+					selector = *source & 0x0F;
+					payload = *source >> 4;
+					base = sixty_start;
+					break;
+				case 4:			// {"e60", 3, 20, false}
+					*(destination + 0) = payload >> 0 & 0x07;
+					*(destination + 1) = payload >> 3 & 0x07;
+					*(destination + 2) = payload >> 6 & 0x07;
+					*(destination + 3) = payload >> 9 & 0x07;
+					*(destination + 4) = payload >> 12 & 0x07;
+					*(destination + 5) = payload >> 15 & 0x07;
+					*(destination + 6) = payload >> 18 & 0x07;
+					*(destination + 7) = payload >> 21 & 0x07;
+					*(destination + 8) = payload >> 24 & 0x07;
+					*(destination + 9) = payload >> 27 & 0x07;
+					*(destination + 10) = payload >> 30 & 0x07;
+					*(destination + 11) = payload >> 33 & 0x07;
+					*(destination + 12) = payload >> 36 & 0x07;
+					*(destination + 13) = payload >> 39 & 0x07;
+					*(destination + 14) = payload >> 42 & 0x07;
+					*(destination + 15) = payload >> 45 & 0x07;
+					*(destination + 16) = payload >> 48 & 0x07;
+					*(destination + 17) = payload >> 51 & 0x07;
+					*(destination + 18) = payload >> 54 & 0x07;
+					*(destination + 19) = payload >> 57 & 0x07;
+					destination += 20;
+
+					source++;
+					selector = *source & 0x0F;
+					payload = *source >> 4;
+					base = sixty_start;
+					break;
+				case 5:			// {"f60", 4, 15, false}
+					*(destination + 0) = payload >> 0 & 0x0F;
+					*(destination + 1) = payload >> 4 & 0x0F;
+					*(destination + 2) = payload >> 8 & 0x0F;
+					*(destination + 3) = payload >> 12 & 0x0F;
+					*(destination + 4) = payload >> 16 & 0x0F;
+					*(destination + 5) = payload >> 20 & 0x0F;
+					*(destination + 6) = payload >> 24 & 0x0F;
+					*(destination + 7) = payload >> 28 & 0x0F;
+					*(destination + 8) = payload >> 32 & 0x0F;
+					*(destination + 9) = payload >> 36 & 0x0F;
+					*(destination + 10) = payload >> 40 & 0x0F;
+					*(destination + 11) = payload >> 44 & 0x0F;
+					*(destination + 12) = payload >> 48 & 0x0F;
+					*(destination + 13) = payload >> 52 & 0x0F;
+					*(destination + 14) = payload >> 56 & 0x0F;
+					destination += 15;
+
+					source++;
+					selector = *source & 0x0F;
+					payload = *source >> 4;
+					base = sixty_start;
+					break;
+				case 6:			// {"g60", 5, 12, false}
+					*(destination + 0) = payload >> 0 & 0x1F;
+					*(destination + 1) = payload >> 5 & 0x1F;
+					*(destination + 2) = payload >> 10 & 0x1F;
+					*(destination + 3) = payload >> 15 & 0x1F;
+					*(destination + 4) = payload >> 20 & 0x1F;
+					*(destination + 5) = payload >> 25 & 0x1F;
+					*(destination + 6) = payload >> 30 & 0x1F;
+					*(destination + 7) = payload >> 35 & 0x1F;
+					*(destination + 8) = payload >> 40 & 0x1F;
+					*(destination + 9) = payload >> 45 & 0x1F;
+					*(destination + 10) = payload >> 50 & 0x1F;
+					*(destination + 11) = payload >> 55 & 0x1F;
+					destination += 12;
+
+					source++;
+					selector = *source & 0x0F;
+					payload = *source >> 4;
+					base = sixty_start;
+					break;
+				case 7:			//		{"h60", 6, 10, false}
+					*(destination + 0) = payload >> 0 & 0x3F;
+					*(destination + 1) = payload >> 6 & 0x3F;
+					*(destination + 2) = payload >> 12 & 0x3F;
+					*(destination + 3) = payload >> 18 & 0x3F;
+					*(destination + 4) = payload >> 24 & 0x3F;
+					*(destination + 5) = payload >> 30 & 0x3F;
+					*(destination + 6) = payload >> 36 & 0x3F;
+					*(destination + 7) = payload >> 42 & 0x3F;
+					*(destination + 8) = payload >> 48 & 0x3F;
+					*(destination + 9) = payload >> 54 & 0x3F;
+					destination += 10;
+
+					source++;
+					selector = *source & 0x0F;
+					payload = *source >> 4;
+					base = sixty_start;
+					break;
+				case 8:			//	{"i60", 7,  8, true}
+					*(destination + 0) = payload >> 0 & 0x7F;
+					*(destination + 1) = payload >> 7 & 0x7F;
+					*(destination + 2) = payload >> 14 & 0x7F;
+					*(destination + 3) = payload >> 21 & 0x7F;
+					*(destination + 4) = payload >> 28 & 0x7F;
+					*(destination + 5) = payload >> 35 & 0x7F;
+					*(destination + 6) = payload >> 42 & 0x7F;
+					*(destination + 7) = payload >> 49 & 0x7F;
+					destination += 8;
+
+					selector = *source >> 60;
+					source++;
+					payload = *source >> 4;
+					base = sixty_four_start;
+					break;
+				case 9:			//	{"j60", 8,  7, true}
+					*(destination + 0) = payload >> 0 & 0xFF;
+					*(destination + 1) = payload >> 8 & 0xFF;
+					*(destination + 2) = payload >> 16 & 0xFF;
+					*(destination + 3) = payload >> 24 & 0xFF;
+					*(destination + 4) = payload >> 32 & 0xFF;
+					*(destination + 5) = payload >> 40 & 0xFF;
+					*(destination + 6) = payload >> 48 & 0xFF;
+					destination += 7;
+
+					selector = *source >> 60;
+					source++;
+					payload = *source >> 4;
+					base = sixty_four_start;
+					break;
+ 				case 10:			//	{"k60", 9, 6, true}
+					*(destination + 0) = payload >> 0 & 0x1FF;
+					*(destination + 1) = payload >> 9 & 0x1FF;
+					*(destination + 2) = payload >> 18 & 0x1FF;
+					*(destination + 3) = payload >> 27 & 0x1FF;
+					*(destination + 4) = payload >> 36 & 0x1FF;
+					*(destination + 5) = payload >> 45 & 0x1FF;
+					destination += 6;
+
+					selector = *source >> 60;
+					source++;
+					payload = *source >> 4;
+					base = sixty_four_start;
+					break;
+				case 11:			// {"l60", 10, 6, false}
+					*(destination + 0) = payload >> 0 & 0x3FF;
+					*(destination + 1) = payload >> 10 & 0x3FF;
+					*(destination + 2) = payload >> 20 & 0x3FF;
+					*(destination + 3) = payload >> 30 & 0x3FF;
+					*(destination + 4) = payload >> 40 & 0x3FF;
+					*(destination + 5) = payload >> 50 & 0x3FF;
+					destination += 6;
+
+					source++;
+					selector = *source & 0x0F;
+					payload = *source >> 4;
+					base = sixty_start;
+					break;
+				case 12:			// {"m60", 11, 5, true}
+					*(destination + 0) = payload >> 0 & 0x7FF;
+					*(destination + 1) = payload >> 11 & 0x7FF;
+					*(destination + 2) = payload >> 22 & 0x7FF;
+					*(destination + 3) = payload >> 33 & 0x7FF;
+					*(destination + 4) = payload >> 44 & 0x7FF;
+					destination += 5;
+
+					selector = *source >> 60;
+					source++;
+					payload = *source >> 4;
+					base = sixty_four_start;
+					break;
+				case 13:			//		{"n60", 12, 5, false}
+					*(destination + 0) = payload >> 0 & 0xFFF;
+					*(destination + 1) = payload >> 12 & 0xFFF;
+					*(destination + 2) = payload >> 24 & 0xFFF;
+					*(destination + 3) = payload >> 36 & 0xFFF;
+					*(destination + 4) = payload >> 48 & 0xFFF;
+					destination += 5;
+
+					source++;
+					selector = *source & 0x0F;
+					payload = *source >> 4;
+					base = sixty_start;
+					break;
+				case 14:			//		{"o60", 14, 4, true}
+					*(destination + 0) = payload >> 0 & 0x3FFF;
+					*(destination + 1) = payload >> 14 & 0x3FFF;
+					*(destination + 2) = payload >> 28 & 0x3FFF;
+					*(destination + 3) = payload >> 42 & 0x3FFF;
+					destination += 4;
+
+					selector = *source >> 60;
+					source++;
+					payload = *source >> 4;
+					base = sixty_four_start;
+					break;
+				case 15:			//		{"p60", 15, 4, false}
+					*(destination + 0) = payload >> 0 & 0x7FFF;
+					*(destination + 1) = payload >> 15 & 0x7FFF;
+					*(destination + 2) = payload >> 30 & 0x7FFF;
+					*(destination + 3) = payload >> 15 & 0x7FFF;
+					destination += 4;
+
+					source++;
+					selector = *source & 0x0F;
+					payload = *source >> 4;
+					base = sixty_start;
+					break;
+				case 16:			//		{"q60", 18, 3, true}
+					*(destination + 0) = payload >> 0 & 0x3FFFF;
+					*(destination + 1) = payload >> 18 & 0x3FFFF;
+					*(destination + 2) = payload >> 36 & 0x3FFFF;
+					destination += 3;
+
+					selector = *source >> 60;
+					source++;
+					payload = *source >> 4;
+					base = sixty_four_start;
+					break;
+				case 17:			//		{"r60", 20, 3, false}
+					*(destination + 0) = payload >> 0 & 0xFFFFF;
+					*(destination + 1) = payload >> 20 & 0xFFFFF;
+					*(destination + 2) = payload >> 40 & 0xFFFFF;
+					destination += 3;
+
+					source++;
+					selector = *source & 0x0F;
+					payload = *source >> 4;
+					base = sixty_start;
+					break;
+				case 18:			// {"s60", 28, 2, true}
+					*(destination + 0) = payload >> 0 & 0xFFFFFFF;
+					*(destination + 1) = payload >> 28 & 0xFFFFFFF;
+					destination += 2;
+
+					selector = *source >> 60;
+					source++;
+					payload = *source >> 4;
+					base = sixty_four_start;
+					break;
+				case 19:			//		{"t60", 30, 2, false}
+					*(destination + 0) = payload >> 0 & 0x3FFFFFFF;
+					*(destination + 1) = payload >> 30 & 0x3FFFFFFF;
+					destination += 2;
+
+					source++;
+					selector = *source & 0x0F;
+					payload = *source >> 4;
+					base = sixty_start;
+					break;
+				case 20:			//		{"u60", 56, 1, false}
+					*(destination + 0) = payload >> 0 & 0xFFFFFFFFFFFFFF;
+					destination += 1;
+
+					source++;
+					selector = *source & 0x0F;
+					payload = *source >> 4;
+					base = sixty_start;
+					break;
+				case 21:			//		{"v60", 60, 1, false}
+					*(destination + 0) = payload >> 0 & 0x0FFFFFFFFFFFFFFF;
+					destination += 1;
+
+					source++;
+					selector = *source & 0x0F;
+					payload = *source >> 4;
+					base = sixty_start;
+					break;
+				/*
+					64-bit selector
+				*/
+				case 22:			//		{"a64", 1, 255, true}
+					std::fill(destination, (destination + selector_table[22].integers), 1);
+					destination += selector_table[22].integers;
+
+					selector = *source >> 60;
+					source++;
+					payload = *source >> 4;
+					base = sixty_four_start;
+					break;
+				case 23:			//		{"a64", 1, 180, true}
+					std::fill(destination, (destination + selector_table[23].integers), 1);
+					destination += selector_table[23].integers;
+
+					selector = *source >> 60;
+					source++;
+					payload = *source >> 4;
+					base = sixty_four_start;
+					break;
+				case 24:			//		{"a64", 1, 128, true}
+					std::fill(destination, (destination + selector_table[24].integers), 1);
+					destination += selector_table[24].integers;
+
+					selector = *source >> 60;
+					source++;
+					payload = *source >> 4;
+					base = sixty_four_start;
+					break;
+				case 25:			//		{"d64", 1, 64, false}
+					/*
+						Since we're not permitted to encode a '0', a 1-bit integer must be a 1
+					*/
+					std::fill(destination, (destination + selector_table[25].integers), 1);
+					destination += selector_table[25].integers;
+
+					source++;
+					selector = *source & 0x0F;
+					payload = *source >> 4;
+					base = sixty_start;
+					break;
+				case 26:			//		{"e64", 2, 32, false}
+					*(destination + 0) = payload >> 0 & 0x03;
+					*(destination + 1) = payload >> 2 & 0x03;
+					*(destination + 2) = payload >> 4 & 0x03;
+					*(destination + 3) = payload >> 6 & 0x03;
+					*(destination + 4) = payload >> 8 & 0x03;
+					*(destination + 5) = payload >> 10 & 0x03;
+					*(destination + 6) = payload >> 12 & 0x03;
+					*(destination + 7) = payload >> 14 & 0x03;
+					*(destination + 8) = payload >> 16 & 0x03;
+					*(destination + 9) = payload >> 18 & 0x03;
+					*(destination + 10) = payload >> 20 & 0x03;
+					*(destination + 11) = payload >> 22 & 0x03;
+					*(destination + 12) = payload >> 24 & 0x03;
+					*(destination + 13) = payload >> 26 & 0x03;
+					*(destination + 14) = payload >> 28 & 0x03;
+					*(destination + 15) = payload >> 30 & 0x03;
+					*(destination + 16) = payload >> 32 & 0x03;
+					*(destination + 17) = payload >> 34 & 0x03;
+					*(destination + 18) = payload >> 36 & 0x03;
+					*(destination + 19) = payload >> 38 & 0x03;
+					*(destination + 20) = payload >> 40 & 0x03;
+					*(destination + 21) = payload >> 42 & 0x03;
+					*(destination + 22) = payload >> 44 & 0x03;
+					*(destination + 23) = payload >> 46 & 0x03;
+					*(destination + 24) = payload >> 48 & 0x03;
+					*(destination + 25) = payload >> 50 & 0x03;
+					*(destination + 26) = payload >> 52 & 0x03;
+					*(destination + 27) = payload >> 54 & 0x03;
+					*(destination + 28) = payload >> 56 & 0x03;
+					*(destination + 29) = payload >> 58 & 0x03;
+					*(destination + 30) = payload >> 60 & 0x03;
+					*(destination + 31) = payload >> 62 & 0x03;
+					destination += 32;
+
+					source++;
+					selector = *source & 0x0F;
+					payload = *source >> 4;
+					base = sixty_start;
+					break;
+				case 27:			//		{"f64", 3, 21, false}
+					*(destination + 0) = payload >> 0 & 0x07;
+					*(destination + 1) = payload >> 3 & 0x07;
+					*(destination + 2) = payload >> 6 & 0x07;
+					*(destination + 3) = payload >> 9 & 0x07;
+					*(destination + 4) = payload >> 12 & 0x07;
+					*(destination + 5) = payload >> 15 & 0x07;
+					*(destination + 6) = payload >> 18 & 0x07;
+					*(destination + 7) = payload >> 21 & 0x07;
+					*(destination + 8) = payload >> 24 & 0x07;
+					*(destination + 9) = payload >> 27 & 0x07;
+					*(destination + 10) = payload >> 30 & 0x07;
+					*(destination + 11) = payload >> 33 & 0x07;
+					*(destination + 12) = payload >> 36 & 0x07;
+					*(destination + 13) = payload >> 39 & 0x07;
+					*(destination + 14) = payload >> 42 & 0x07;
+					*(destination + 15) = payload >> 45 & 0x07;
+					*(destination + 16) = payload >> 48 & 0x07;
+					*(destination + 17) = payload >> 51 & 0x07;
+					*(destination + 18) = payload >> 54 & 0x07;
+					*(destination + 19) = payload >> 57 & 0x07;
+					*(destination + 20) = payload >> 60 & 0x07;
+					destination += 21;
+
+					source++;
+					selector = *source & 0x0F;
+					payload = *source >> 4;
+					base = sixty_start;
+					break;
+				case 28:			//	{"g64", 4, 16, false}
+					*(destination + 0) = payload >> 0 & 0x0F;
+					*(destination + 1) = payload >> 4 & 0x0F;
+					*(destination + 2) = payload >> 8 & 0x0F;
+					*(destination + 3) = payload >> 12 & 0x0F;
+					*(destination + 4) = payload >> 16 & 0x0F;
+					*(destination + 5) = payload >> 20 & 0x0F;
+					*(destination + 6) = payload >> 24 & 0x0F;
+					*(destination + 7) = payload >> 28 & 0x0F;
+					*(destination + 8) = payload >> 32 & 0x0F;
+					*(destination + 9) = payload >> 36 & 0x0F;
+					*(destination + 10) = payload >> 40 & 0x0F;
+					*(destination + 11) = payload >> 44 & 0x0F;
+					*(destination + 12) = payload >> 48 & 0x0F;
+					*(destination + 13) = payload >> 52 & 0x0F;
+					*(destination + 14) = payload >> 56 & 0x0F;
+					*(destination + 15) = payload >> 60 & 0x0F;
+					destination += 16;
+
+					source++;
+					selector = *source & 0x0F;
+					payload = *source >> 4;
+					base = sixty_start;
+					break;
+				case 29:			//	{"h64", 5, 12, true}
+					*(destination + 0) = payload >> 0 & 0x1F;
+					*(destination + 1) = payload >> 5 & 0x1F;
+					*(destination + 2) = payload >> 10 & 0x1F;
+					*(destination + 3) = payload >> 15 & 0x1F;
+					*(destination + 4) = payload >> 20 & 0x1F;
+					*(destination + 5) = payload >> 25 & 0x1F;
+					*(destination + 6) = payload >> 30 & 0x1F;
+					*(destination + 7) = payload >> 35 & 0x1F;
+					*(destination + 8) = payload >> 40 & 0x1F;
+					*(destination + 9) = payload >> 45 & 0x1F;
+					*(destination + 10) = payload >> 50 & 0x1F;
+					*(destination + 10) = payload >> 55 & 0x1F;
+					destination += 12;
+
+					selector = *source >> 60;
+					source++;
+					payload = *source >> 4;
+					base = sixty_four_start;
+					break;
+				case 30:			//		{"i64", 6, 10, true}
+					*(destination + 0) = payload >> 0 & 0x3F;
+					*(destination + 1) = payload >> 6 & 0x3F;
+					*(destination + 2) = payload >> 12 & 0x3F;
+					*(destination + 3) = payload >> 18 & 0x3F;
+					*(destination + 4) = payload >> 24 & 0x3F;
+					*(destination + 5) = payload >> 30 & 0x3F;
+					*(destination + 6) = payload >> 36 & 0x3F;
+					*(destination + 7) = payload >> 42 & 0x3F;
+					*(destination + 8) = payload >> 48 & 0x3F;
+					*(destination + 9) = payload >> 54 & 0x3F;
+					destination += 10;
+
+					selector = *source >> 60;
+					source++;
+					payload = *source >> 4;
+					base = sixty_four_start;
+					break;
+				case 31:			//		{"j64", 7, 9, false}
+					*(destination + 0) = payload >> 0 & 0x7F;
+					*(destination + 1) = payload >> 7 & 0x7F;
+					*(destination + 2) = payload >> 14 & 0x7F;
+					*(destination + 3) = payload >> 21 & 0x7F;
+					*(destination + 4) = payload >> 28 & 0x7F;
+					*(destination + 5) = payload >> 35 & 0x7F;
+					*(destination + 6) = payload >> 42 & 0x7F;
+					*(destination + 7) = payload >> 49 & 0x7F;
+					*(destination + 8) = payload >> 56 & 0x7F;
+					destination += 9;
+
+					source++;
+					selector = *source & 0x0F;
+					payload = *source >> 4;
+					base = sixty_start;
+					break;
+				case 32:			//	{"k64", 8, 8, false}
+					*(destination + 0) = payload >> 0 & 0xFF;
+					*(destination + 1) = payload >> 8 & 0xFF;
+					*(destination + 2) = payload >> 16 & 0xFF;
+					*(destination + 3) = payload >> 24 & 0xFF;
+					*(destination + 4) = payload >> 32 & 0xFF;
+					*(destination + 5) = payload >> 40 & 0xFF;
+					*(destination + 6) = payload >> 48 & 0xFF;
+					*(destination + 7) = payload >> 56 & 0xFF;
+					destination += 8;
+
+					source++;
+					selector = *source & 0x0F;
+					payload = *source >> 4;
+					base = sixty_start;
+					break;
+				case 33:			//	{"l64", 9, 7, false}
+					*(destination + 0) = payload >> 0 & 0x1FF;
+					*(destination + 1) = payload >> 9 & 0x1FF;
+					*(destination + 2) = payload >> 18 & 0x1FF;
+					*(destination + 3) = payload >> 27 & 0x1FF;
+					*(destination + 4) = payload >> 36 & 0x1FF;
+					*(destination + 5) = payload >> 45 & 0x1FF;
+					*(destination + 6) = payload >> 54 & 0x1FF;
+					destination += 7;
+
+					source++;
+					selector = *source & 0x0F;
+					payload = *source >> 4;
+					base = sixty_start;
+					break;
+				case 34:			// {"m64", 10, 6, true}
+					*(destination + 0) = payload >> 0 & 0x3FF;
+					*(destination + 1) = payload >> 10 & 0x3FF;
+					*(destination + 2) = payload >> 20 & 0x3FF;
+					*(destination + 3) = payload >> 30 & 0x3FF;
+					*(destination + 4) = payload >> 40 & 0x3FF;
+					*(destination + 5) = payload >> 50 & 0x3FF;
+					destination += 6;
+
+					selector = *source >> 60;
+					source++;
+					payload = *source >> 4;
+					base = sixty_four_start;
+					break;
+				case 35:			// {"n64", 12, 5, true}
+					*(destination + 0) = payload >> 0 & 0xFFF;
+					*(destination + 1) = payload >> 12 & 0xFFF;
+					*(destination + 2) = payload >> 24 & 0xFFF;
+					*(destination + 3) = payload >> 36 & 0xFFF;
+					*(destination + 4) = payload >> 48 & 0xFFF;
+					destination += 5;
+
+					selector = *source >> 60;
+					source++;
+					payload = *source >> 4;
+					base = sixty_four_start;
+					break;
+				case 36:			//		{"o64", 15, 4, true}
+					*(destination + 0) = payload >> 0 & 0x7FFF;
+					*(destination + 1) = payload >> 15 & 0x7FFF;
+					*(destination + 2) = payload >> 30 & 0x7FFF;
+					*(destination + 3) = payload >> 45 & 0x7FFF;
+					destination += 4;
+
+					selector = *source >> 60;
+					source++;
+					payload = *source >> 4;
+					base = sixty_four_start;
+					break;
+				case 37:			//		{"p64", 16, 4, false}
+					*(destination + 0) = payload >> 0 & 0xFFFF;
+					*(destination + 1) = payload >> 16 & 0xFFFF;
+					*(destination + 2) = payload >> 32 & 0xFFFF;
+					*(destination + 3) = payload >> 48 & 0xFFFF;
+					destination += 4;
+
+					source++;
+					selector = *source & 0x0F;
+					payload = *source >> 4;
+					base = sixty_start;
+					break;
+				case 38:			//		{"q64", 20, 3, true}
+					*(destination + 0) = payload >> 0 & 0xFFFFF;
+					*(destination + 1) = payload >> 20 & 0xFFFFF;
+					*(destination + 2) = payload >> 40 & 0xFFFFF;
+					destination += 3;
+
+					selector = *source >> 60;
+					source++;
+					payload = *source >> 4;
+					base = sixty_four_start;
+					break;
+				case 39:			//		{"r64", 21, 3, false}
+					*(destination + 0) = payload >> 0 & 0x1FFFFF;
+					*(destination + 1) = payload >> 21 & 0x1FFFFF;
+					*(destination + 2) = payload >> 42 & 0x1FFFFF;
+					destination += 3;
+
+					source++;
+					selector = *source & 0x0F;
+					payload = *source >> 4;
+					base = sixty_start;
+					break;
+				case 40:			//		{"s64", 30, 2, true}
+					*(destination + 0) = payload >> 0 & 0x3FFFFFFF;
+					*(destination + 1) = payload >> 30 & 0x3FFFFFFF;
+					destination += 2;
+
+					selector = *source >> 60;
+					source++;
+					payload = *source >> 4;
+					base = sixty_four_start;
+					break;
+				case 41:			//		{"t64", 32, 2, false}
+					*(destination + 0) = payload >> 0 & 0xFFFFFFFF;
+					*(destination + 1) = payload >> 32 & 0xFFFFFFFF;
+					destination += 2;
+
+					source++;
+					selector = *source & 0x0F;
+					payload = *source >> 4;
+					base = sixty_start;
+					break;
+				case 42:			//		{"u64", 60, 1, true}
+					*(destination + 0) = payload >> 0 & 0x0FFFFFFFFFFFFFFF;
+					destination += 1;
+
+					selector = *source >> 60;
+					source++;
+					payload = *source >> 4;
+					base = sixty_four_start;
+					break;
+				case 43:			//		{"v64", 64, 1, false},
+					*(destination + 0) = payload >> 0 & 0xFFFFFFFFFFFFFFFF;
+					destination += 1;
+
+					source++;
+					selector = *source & 0x0F;
+					payload = *source >> 4;
+					base = sixty_start;
+					break;
+				/*
+					57-bit selector
+				*/
 				case 44:			//   {"a57", 1, 57, false}
 					*(destination + 0) = payload >> 0 & 0x01;
 					*(destination + 1) = payload >> 1 & 0x01;
@@ -512,7 +1194,7 @@ size_t compress_integer_carry_8b::pack_one_word(size_t base, size_t highest, uin
 					*(destination + 4) = payload >> 40 & 0x3FF;
 					destination += 5;
 
-					selector = *source >> 28;
+					selector = *source >> 60;
 					source++;
 					payload = *source >> 4;
 					base = sixty_four_start;
@@ -537,7 +1219,7 @@ size_t compress_integer_carry_8b::pack_one_word(size_t base, size_t highest, uin
 					*(destination + 3) = payload >> 36 & 0xFFF;
 					destination += 4;
 
-					selector = *source >> 28;
+					selector = *source >> 60;
 					source++;
 					payload = *source >> 4;
 					base = sixty_four_start;
