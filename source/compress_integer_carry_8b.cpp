@@ -14,7 +14,7 @@
 /*
 	By defining CARRY_DEBUG this code will dump out encoding and decoding details.
 */
-//#define CARRY_DEBUG
+#define CARRY_DEBUG
 
 namespace JASS
 	{
@@ -41,8 +41,8 @@ namespace JASS
 		/*17*/  {"r60", 20, 3, false},
 		/*18*/  {"s60", 28, 2, true},
 		/*19*/  {"t60", 30, 2, false},
-		/*20*/  {"u60", 56, 1, false},
-		/*21*/  {"v60", 60, 1, false},
+		/*20*/  {"u60", 56, 1, false},				// >2^32
+		/*21*/  {"v60", 60, 1, false},				// >2^32
 			/* Selector in the previous 64-bit integer (64-bit payload) */
 		/*22*/   {"a64", 1, 255, true},
 		/*23*/   {"b64", 1, 180, true},
@@ -64,8 +64,8 @@ namespace JASS
 		/*39*/   {"r64", 21, 3, false},
 		/*40*/   {"s64", 30, 2, true},
 		/*41*/   {"t64", 32, 2, false},
-		/*42*/   {"u64", 60, 1, true},
-		/*43*/   {"v64", 64, 1, false},
+		/*42*/   {"u64", 60, 1, true},				// >2^32
+		/*43*/   {"v64", 64, 1, false},				// >2^32
 			/* First integer has 3-bit base then 4-bit selector then 57 bit payload */
 		/*44*/   {"a57", 1, 57, false},
 		/*45*/   {"b57", 2, 28, false},
@@ -82,7 +82,7 @@ namespace JASS
 		/*56*/   {"m57", 14, 4, false},
 		/*57*/   {"n57", 19, 3, false},
 		/*58*/   {"o57", 28, 2, false},
-		/*59*/   {"p57", 57, 1, false},
+		/*59*/   {"p57", 57, 1, false},				// >2^32
 		};
 
 	static const size_t table_fifty_seven_start = 44;			///< the start of the table for 57-bit payloads
@@ -285,6 +285,10 @@ printf("Selector:%d (%d x %d-bits)\n", (int)(base + selector), (int)integers_to_
 			Where in the table do we start from?
 		*/
 		size_t offset = *source >> 61;
+
+#ifdef CARRY_DEBUG
+printf("Table offset:%d\n", (int)offset);
+#endif
 
 		/*
 			where does each table start?
@@ -614,6 +618,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
+// LCOV_EXCL_START		// Can't test integers 2^32
 				case 20:			//		{"u60", 56, 1, false}
 					*(destination + 0) = payload >> 0 & 0xFFFFFFFFFFFFFF;
 					destination += 1;
@@ -632,6 +637,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
+// LCOV_EXCL_STOP
 				/*
 					64-bit selector
 				*/
@@ -779,7 +785,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					*(destination + 8) = payload >> 40 & 0x1F;
 					*(destination + 9) = payload >> 45 & 0x1F;
 					*(destination + 10) = payload >> 50 & 0x1F;
-					*(destination + 10) = payload >> 55 & 0x1F;
+					*(destination + 11) = payload >> 55 & 0x1F;
 					destination += 12;
 
 					selector = *source >> 60;
@@ -946,6 +952,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
+// LCOV_EXCL_START		// Can't test integers 2^32
 				case 42:			//		{"u64", 60, 1, true}
 					*(destination + 0) = payload >> 0 & 0x0FFFFFFFFFFFFFFF;
 					destination += 1;
@@ -964,6 +971,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
+// LCOV_EXCL_STOP
 				/*
 					57-bit selector
 				*/
@@ -1269,6 +1277,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
+// LCOV_EXCL_START		// Can't test integers 2^32
 				case 59:			//	 {"p57", 57, 1, false}
 					*(destination + 0) = payload >> 0 & 0x1FFFFFFFFFFFFFF;
 					destination += 1;
@@ -1278,6 +1287,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
+// LCOV_EXCL_STOP
 				}
 			}
 		}
@@ -1291,53 +1301,77 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 		std::vector<integer> every_case;
 		size_t instance;
 
-		for (instance = 0; instance < 1; instance++)
+		/*
+			Start with an offset of 3.
+		*/
+		for (instance = 0; instance < 2; instance++)			// 2*28-bit (58)
 			every_case.push_back(0x0FFFFFFF);
-		for (instance = 0; instance < 1; instance++)
-			every_case.push_back(0xFFFF);
-		for (instance = 0; instance < 3; instance++)
-			every_case.push_back(0x3FF);
-		for (instance = 0; instance < 28; instance++)
-			every_case.push_back(0x01);
-		for (instance = 0; instance < 14; instance++)
+		for (instance = 0; instance < 30; instance++)		// 30*2-bit (3)
 			every_case.push_back(0x03);
-		for (instance = 0; instance < 9; instance++)
+		for (instance = 0; instance < 20; instance++)		// 20*3-bit (4)
 			every_case.push_back(0x07);
-		for (instance = 0; instance < 7; instance++)
+		for (instance = 0; instance < 15; instance++)		// 15*4-bit (5)
 			every_case.push_back(0x0F);
-		for (instance = 0; instance < 5; instance++)
+		for (instance = 0; instance < 12; instance++)		// 12*5-bit (6)
 			every_case.push_back(0x1F);
-		for (instance = 0; instance < 4; instance++)
-			every_case.push_back(0x7F);
-		for (instance = 0; instance < 3; instance++)
-			every_case.push_back(0x1FF);
-		for (instance = 0; instance < 2; instance++)
-			every_case.push_back(0x3FFF);
-		for (instance = 0; instance < 1; instance++)
-			every_case.push_back(0x0FFFFFFF);
-
-		for (instance = 0; instance < 128; instance++)
-			every_case.push_back(0xFF);
-		for (instance = 0; instance < 128; instance++)
-			every_case.push_back(0x07);
-		for (instance = 0; instance < 128; instance++)
-			every_case.push_back(0x03);
-		for (instance = 0; instance < 128; instance++)
-			every_case.push_back(0x0FFFFFFF);
-		for (instance = 0; instance < 128; instance++)
-			every_case.push_back(0x7FFF);
-		for (instance = 0; instance < 128; instance++)
-			every_case.push_back(0x3FFF);
-		for (instance = 0; instance < 128; instance++)
-			every_case.push_back(0x7F);
-		for (instance = 0; instance < 128; instance++)
+		for (instance = 0; instance < 10; instance++)		// 10*6-bit (7)
 			every_case.push_back(0x3F);
-		for (instance = 0; instance < 128; instance++)
+		for (instance = 0; instance < 6; instance++)			// 6*10-bit (11)
+			every_case.push_back(0x03FF);
+		for (instance = 0; instance < 5; instance++)			// 5*12-bit (13)
+			every_case.push_back(0x0FFF);
+		for (instance = 0; instance < 4; instance++)			// 4*15-bit (15)
+			every_case.push_back(0x7FFF);
+		for (instance = 0; instance < 3; instance++)			// 3*20-bit (17)
+			every_case.push_back(0xFFFFF);
+		for (instance = 0; instance < 8; instance++)			// 8*7-bit (8)
+			every_case.push_back(0x7F);
+		for (instance = 0; instance < 12; instance++)		// 12*5-bit (29)
 			every_case.push_back(0x1F);
-		for (instance = 0; instance < 128; instance++)
-			every_case.push_back(0x03);
-		for (instance = 0; instance < 128; instance++)
+		for (instance = 0; instance < 10; instance++)		// 12*5-bit (30)
+			every_case.push_back(0x3F);
+		for (instance = 0; instance < 6; instance++)			// 6*10-bit (34)
+			every_case.push_back(0x03FF);
+		for (instance = 0; instance < 5; instance++)			// 5*12-bit (35)
+			every_case.push_back(0x0FFF);
+		for (instance = 0; instance < 4; instance++)			// 4*15-bit (36)
+			every_case.push_back(0x7FFF);
+		for (instance = 0; instance < 3; instance++)			// 3*20-bit (38)
+			every_case.push_back(0x0FFFFF);
+		for (instance = 0; instance < 64; instance++)		// 64*1-bit (25)
 			every_case.push_back(0x01);
+		for (instance = 0; instance < 7; instance++)			// 7*8-bit (9)
+			every_case.push_back(0xFF);
+		for (instance = 0; instance < 32; instance++)		// 32*2-bit (26)
+			every_case.push_back(0x03);
+		for (instance = 0; instance < 6; instance++)			// 6*9-bit (10)
+			every_case.push_back(0x01FF);
+		for (instance = 0; instance < 21; instance++)		// 21*3-bit (27)
+			every_case.push_back(0x07);
+		for (instance = 0; instance < 5; instance++)			// 5*11-bit (12)
+			every_case.push_back(0x07FF);
+		for (instance = 0; instance < 16; instance++)		// 16*4-bit (28)
+			every_case.push_back(0x0F);
+		for (instance = 0; instance < 4; instance++)			// 4*14-bit (14)
+			every_case.push_back(0x3FFF);
+		for (instance = 0; instance < 9; instance++)			// 9*7-bit (31)
+			every_case.push_back(0x7F);
+		for (instance = 0; instance < 3; instance++)			// 3*18-bit (16)
+			every_case.push_back(0x3FFFF);
+		for (instance = 0; instance < 8; instance++)			// 8*8-bit (32)
+			every_case.push_back(0xFF);
+		for (instance = 0; instance < 2; instance++)			// 2*28-bit (18)
+			every_case.push_back(0x0FFFFFFF);
+		for (instance = 0; instance < 7; instance++)			// 7*9-bit (33)
+			every_case.push_back(0x01FF);
+		for (instance = 0; instance < 8; instance++)			// 8*7-bit (8)
+			every_case.push_back(0x7F);
+		for (instance = 0; instance < 4; instance++)			// 4*16-bit (37)
+			every_case.push_back(0xFFFF);
+		for (instance = 0; instance < 8; instance++)			// 8*7-bit (8)
+			every_case.push_back(0x7F);
+		for (instance = 0; instance < 3; instance++)			// 3*21-bit (39)
+			every_case.push_back(0x1FFFFF);
 
 		compress_integer_carry_8b compressor;
 		std::vector<uint32_t>compressed(every_case.size() * 2);
@@ -1348,6 +1382,72 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 		decompressed.resize(every_case.size());
 		JASS_assert(decompressed == every_case);
 
+		/*
+			Offset of 0
+		*/
+		every_case.clear();
+		for (instance = 0; instance < 28; instance++)			// 28*2-bit (45)
+			every_case.push_back(0x03);
+		for (instance = 0; instance < 60; instance++)			// 60*1-bit (2)
+			every_case.push_back(0x01);
+		for (instance = 0; instance < 30; instance++)			// 30*2-bit (3)
+			every_case.push_back(0x03);
+		for (instance = 0; instance < 128; instance++)			// 128*1-bit (1)
+			every_case.push_back(0x01);
+		for (instance = 0; instance < 12; instance++)			// 12*5-bit (29)
+			every_case.push_back(0x1F);
+		for (instance = 0; instance < 255; instance++)			// 255*1-bit (22)
+			every_case.push_back(0x01);
+		for (instance = 0; instance < 180; instance++)			// 180*1-bit (23)
+			every_case.push_back(0x01);
+		for (instance = 0; instance < 12; instance++)			// 12*5-bit (29)
+			every_case.push_back(0x1F);
+		for (instance = 0; instance < 120; instance++)			// 120*1-bit (24)
+			every_case.push_back(0x01);
+		for (instance = 0; instance < 32; instance++)			// 32*2-bit (26)
+			every_case.push_back(0x03);
+		for (instance = 0; instance < 10; instance++)			// 10*6-bit (7)
+			every_case.push_back(0x3F);
+		for (instance = 0; instance < 255; instance++)			// 255*1-bit (0)
+			every_case.push_back(0x01);
+		for (instance = 0; instance < 12; instance++)			// 12*5-bit (29)
+			every_case.push_back(0x1F);
+		for (instance = 0; instance < 64; instance++)			// 64*1-bit (25)
+			every_case.push_back(0x01);
+		for (instance = 0; instance < 12; instance++)			// 12*5-bit (29)
+			every_case.push_back(0x1F);
+
+		decompressed.resize(every_case.size() + 256);
+		size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &every_case[0], every_case.size());
+		compressor.decode(&decompressed[0], every_case.size(), &compressed[0], size_once_compressed);
+		decompressed.resize(every_case.size());
+		JASS_assert(decompressed == every_case);
+
+
+#ifdef NEVER
+		/*
+			FIX THIS:  when using 57 bits the carried over selector is in the wrong place.
+		*/
+		/*
+			Offset as high as possible with 32-bit integers
+		*/
+		every_case.clear();
+		for (instance = 0; instance < 4; instance++)			// 4*12-bit (55)
+			every_case.push_back(0x0FFF);
+		for (instance = 0; instance < 2; instance++)			// 2*30-bit (40)
+			every_case.push_back(0x3FFFFFFF);
+		for (instance = 0; instance < 2; instance++)			// 2*32-bit (41)
+			every_case.push_back(0xFFFFFFFF);
+		for (instance = 0; instance < 2; instance++)			// 2*30-bit (19)
+			every_case.push_back(0x3FFFFFFF);
+
+		decompressed.resize(every_case.size() + 256);
+		size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &every_case[0], every_case.size());
+		compressor.decode(&decompressed[0], every_case.size(), &compressed[0], size_once_compressed);
+		decompressed.resize(every_case.size());
+		JASS_assert(decompressed == every_case);
+
+#endif
 		/*
 			Try the error cases
 			(1) 1 integer (encoded with Simple-9)
