@@ -1,6 +1,6 @@
 /*
-	COMPRESS_INTEGER_CARRYOVER_12.H
-	-------------------------------
+	COMPRESS_INTEGER_CARRYOVER_12.CPP
+	---------------------------------
 	Copyright (c) 2017 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
@@ -644,6 +644,27 @@ printf("at %d, Transiton:%d NextSelector:%d\n", (int)selector, (int)((payload >>
 		for (instance = 0; instance < 128; instance++)
 			every_case.push_back(0x01);
 
+		for (instance = 0; instance < 10; instance++)					// 28-bits
+			every_case.push_back(0x0FFFFFFF);
+		for (instance = 0; instance < 5; instance++)					// 5*6-bit
+			every_case.push_back(0x3F);
+		for (instance = 0; instance < 6; instance++)					// 6*5-bit
+			every_case.push_back(0x1F);
+		for (instance = 0; instance < 8; instance++)					// 8*4-bit
+			every_case.push_back(0x0F);
+		for (instance = 0; instance < 6; instance++)					// 6*5-bit
+			every_case.push_back(0x1F);
+		for (instance = 0; instance < 5; instance++)					// 5*6-bit
+			every_case.push_back(0x3F);
+		for (instance = 0; instance < 6; instance++)					// 6*5-bit
+			every_case.push_back(0x1F);
+		for (instance = 0; instance < 7; instance++)					// 7*4-bit
+			every_case.push_back(0xF);
+		for (instance = 0; instance < 10; instance++)				// 10*3-bit
+			every_case.push_back(0x07);
+		for (instance = 0; instance < 16; instance++)				// 16*2-bit
+			every_case.push_back(0x03);
+
 		compress_integer_carryover_12 compressor;
 		std::vector<uint32_t>compressed(every_case.size() * 2);
 		std::vector<uint32_t>decompressed(every_case.size() + 256);
@@ -652,7 +673,7 @@ printf("at %d, Transiton:%d NextSelector:%d\n", (int)selector, (int)((payload >>
 		compressor.decode(&decompressed[0], every_case.size(), &compressed[0], size_once_compressed);
 		decompressed.resize(every_case.size());
 		JASS_assert(decompressed == every_case);
-		
+
 		/*
 			Try the error cases
 			(1) 1 integer (encoded with Simple-9)
