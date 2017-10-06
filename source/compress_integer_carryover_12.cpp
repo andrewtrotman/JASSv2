@@ -410,8 +410,8 @@ printf("at %d, Transiton:%d NextSelector:%d\n", (int)selector, (int)((payload >>
 					32-bit payload
 				*/
 				case 12:			// Can't happen!
-					JASS_assert(false);
-					break;
+					JASS_assert(false);					//LCOV_EXCL_LINE			// can't happen as there is no way to get to state 12.
+					break;									//LCOV_EXCL_LINE			// can't happen as there is no way to get to state 12.
 				case 13:
 					*(destination + 0) = payload >> 0 & 0x03;
 					*(destination + 1) = payload >> 2 & 0x03;
@@ -620,6 +620,29 @@ printf("at %d, Transiton:%d NextSelector:%d\n", (int)selector, (int)((payload >>
 			every_case.push_back(0x3FFF);
 		for (instance = 0; instance < 1; instance++)
 			every_case.push_back(0x0FFFFFFF);
+
+		for (instance = 0; instance < 128; instance++)
+			every_case.push_back(0xFF);
+		for (instance = 0; instance < 128; instance++)
+			every_case.push_back(0x07);
+		for (instance = 0; instance < 128; instance++)
+			every_case.push_back(0x03);
+		for (instance = 0; instance < 128; instance++)
+			every_case.push_back(0x0FFFFFFF);
+		for (instance = 0; instance < 128; instance++)
+			every_case.push_back(0x7FFF);
+		for (instance = 0; instance < 128; instance++)
+			every_case.push_back(0x3FFF);
+		for (instance = 0; instance < 128; instance++)
+			every_case.push_back(0x7F);
+		for (instance = 0; instance < 128; instance++)
+			every_case.push_back(0x3F);
+		for (instance = 0; instance < 128; instance++)
+			every_case.push_back(0x1F);
+		for (instance = 0; instance < 128; instance++)
+			every_case.push_back(0x03);
+		for (instance = 0; instance < 128; instance++)
+			every_case.push_back(0x01);
 
 		compress_integer_carryover_12 compressor;
 		std::vector<uint32_t>compressed(every_case.size() * 2);

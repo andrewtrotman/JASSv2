@@ -1316,6 +1316,29 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 		for (instance = 0; instance < 1; instance++)
 			every_case.push_back(0x0FFFFFFF);
 
+		for (instance = 0; instance < 128; instance++)
+			every_case.push_back(0xFF);
+		for (instance = 0; instance < 128; instance++)
+			every_case.push_back(0x07);
+		for (instance = 0; instance < 128; instance++)
+			every_case.push_back(0x03);
+		for (instance = 0; instance < 128; instance++)
+			every_case.push_back(0x0FFFFFFF);
+		for (instance = 0; instance < 128; instance++)
+			every_case.push_back(0x7FFF);
+		for (instance = 0; instance < 128; instance++)
+			every_case.push_back(0x3FFF);
+		for (instance = 0; instance < 128; instance++)
+			every_case.push_back(0x7F);
+		for (instance = 0; instance < 128; instance++)
+			every_case.push_back(0x3F);
+		for (instance = 0; instance < 128; instance++)
+			every_case.push_back(0x1F);
+		for (instance = 0; instance < 128; instance++)
+			every_case.push_back(0x03);
+		for (instance = 0; instance < 128; instance++)
+			every_case.push_back(0x01);
+
 		compress_integer_carry_8b compressor;
 		std::vector<uint32_t>compressed(every_case.size() * 2);
 		std::vector<uint32_t>decompressed(every_case.size() + 256);
