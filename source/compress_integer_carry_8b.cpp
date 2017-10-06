@@ -300,7 +300,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 
 					selector = *source >> 60;
 					source++;
-					payload = *source >> 4;
+					payload = *source;
 					base = sixty_four_start;
 					break;
 				case 1:			// {"b60", 1, 128, true}
@@ -309,7 +309,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 
 					selector = *source >> 60;
 					source++;
-					payload = *source >> 4;
+					payload = *source;
 					base = sixty_four_start;
 					break;
 				case 2:			// {"c60", 1, 60, false}
@@ -464,7 +464,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 
 					selector = *source >> 60;
 					source++;
-					payload = *source >> 4;
+					payload = *source;
 					base = sixty_four_start;
 					break;
 				case 9:			//	{"j60", 8,  7, true}
@@ -479,7 +479,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 
 					selector = *source >> 60;
 					source++;
-					payload = *source >> 4;
+					payload = *source;
 					base = sixty_four_start;
 					break;
  				case 10:			//	{"k60", 9, 6, true}
@@ -493,7 +493,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 
 					selector = *source >> 60;
 					source++;
-					payload = *source >> 4;
+					payload = *source;
 					base = sixty_four_start;
 					break;
 				case 11:			// {"l60", 10, 6, false}
@@ -520,7 +520,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 
 					selector = *source >> 60;
 					source++;
-					payload = *source >> 4;
+					payload = *source;
 					base = sixty_four_start;
 					break;
 				case 13:			//		{"n60", 12, 5, false}
@@ -545,7 +545,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 
 					selector = *source >> 60;
 					source++;
-					payload = *source >> 4;
+					payload = *source;
 					base = sixty_four_start;
 					break;
 				case 15:			//		{"p60", 15, 4, false}
@@ -568,7 +568,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 
 					selector = *source >> 60;
 					source++;
-					payload = *source >> 4;
+					payload = *source;
 					base = sixty_four_start;
 					break;
 				case 17:			//		{"r60", 20, 3, false}
@@ -589,7 +589,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 
 					selector = *source >> 60;
 					source++;
-					payload = *source >> 4;
+					payload = *source;
 					base = sixty_four_start;
 					break;
 				case 19:			//		{"t60", 30, 2, false}
@@ -629,7 +629,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 
 					selector = *source >> 60;
 					source++;
-					payload = *source >> 4;
+					payload = *source;
 					base = sixty_four_start;
 					break;
 				case 23:			//		{"a64", 1, 180, true}
@@ -638,7 +638,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 
 					selector = *source >> 60;
 					source++;
-					payload = *source >> 4;
+					payload = *source;
 					base = sixty_four_start;
 					break;
 				case 24:			//		{"a64", 1, 128, true}
@@ -647,7 +647,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 
 					selector = *source >> 60;
 					source++;
-					payload = *source >> 4;
+					payload = *source;
 					base = sixty_four_start;
 					break;
 				case 25:			//		{"d64", 1, 64, false}
@@ -772,7 +772,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 
 					selector = *source >> 60;
 					source++;
-					payload = *source >> 4;
+					payload = *source;
 					base = sixty_four_start;
 					break;
 				case 30:			//		{"i64", 6, 10, true}
@@ -790,7 +790,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 
 					selector = *source >> 60;
 					source++;
-					payload = *source >> 4;
+					payload = *source;
 					base = sixty_four_start;
 					break;
 				case 31:			//		{"j64", 7, 9, false}
@@ -852,7 +852,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 
 					selector = *source >> 60;
 					source++;
-					payload = *source >> 4;
+					payload = *source;
 					base = sixty_four_start;
 					break;
 				case 35:			// {"n64", 12, 5, true}
@@ -865,7 +865,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 
 					selector = *source >> 60;
 					source++;
-					payload = *source >> 4;
+					payload = *source;
 					base = sixty_four_start;
 					break;
 				case 36:			//		{"o64", 15, 4, true}
@@ -877,7 +877,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 
 					selector = *source >> 60;
 					source++;
-					payload = *source >> 4;
+					payload = *source;
 					base = sixty_four_start;
 					break;
 				case 37:			//		{"p64", 16, 4, false}
@@ -900,7 +900,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 
 					selector = *source >> 60;
 					source++;
-					payload = *source >> 4;
+					payload = *source;
 					base = sixty_four_start;
 					break;
 				case 39:			//		{"r64", 21, 3, false}
@@ -921,7 +921,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 
 					selector = *source >> 60;
 					source++;
-					payload = *source >> 4;
+					payload = *source;
 					base = sixty_four_start;
 					break;
 				case 41:			//		{"t64", 32, 2, false}
@@ -940,7 +940,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 
 					selector = *source >> 60;
 					source++;
-					payload = *source >> 4;
+					payload = *source;
 					base = sixty_four_start;
 					break;
 				case 43:			//		{"v64", 64, 1, false},
@@ -1196,7 +1196,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 
 					selector = *source >> 60;
 					source++;
-					payload = *source >> 4;
+					payload = *source;
 					base = sixty_four_start;
 					break;
 				case 54:			//	{"k57", 11, 5, false}
@@ -1221,7 +1221,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 
 					selector = *source >> 60;
 					source++;
-					payload = *source >> 4;
+					payload = *source;
 					base = sixty_four_start;
 					break;
 				case 56:			//	{"m57", 14, 4, false}
@@ -1338,7 +1338,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 		every_case.push_back(0x0FFFFFFF);
 		every_case.push_back(0xFFFFFFFF);
 		size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &every_case[0], every_case.size());
-		JASS_assert(size_once_compressed == 0);
+		JASS_assert(size_once_compressed == 16);			// this doesn't fail because we're encoding in 64-bit integere
 
 		every_case.clear();
 		for (size_t instance = 0; instance < 28; instance++)
