@@ -14,7 +14,7 @@
 /*
 	By defining CARRY_DEBUG this code will dump out encoding and decoding details.
 */
-#define CARRY_DEBUG
+//#define CARRY_DEBUG
 
 namespace JASS
 	{
@@ -85,9 +85,9 @@ namespace JASS
 		/*59*/   {"p57", 57, 1, false},
 		};
 
-	static const size_t fifty_seven_start = 44;			///< the start of the table for 57-bit payloads
-	static const size_t sixty_start = 0;					///< the start of the table for 60-bit payloads
-	static const size_t sixty_four_start = 22;			///< the start of the table for 64-bit payloads
+	static const size_t table_fifty_seven_start = 44;			///< the start of the table for 57-bit payloads
+	static const size_t table_sixty_start = 0;					///< the start of the table for 60-bit payloads
+	static const size_t table_sixty_four_start = 22;			///< the start of the table for 64-bit payloads
 
 
 	/*
@@ -222,7 +222,7 @@ printf("Selector:%d (%d x %d-bits)\n", (int)(base + selector), (int)integers_to_
 			few chances to use the Carryover technique.  I'll do the same here.  Anh also works out how to adjust the table to pack into the 57
 			bits.  I don't do that here, I just compute the 57-bit table and use that.
 		*/
-		took = pack_one_word(fifty_seven_start, 16, destination, from, source_integers, next_selector_in_previous_word);
+		took = pack_one_word(table_fifty_seven_start, 16, destination, from, source_integers, next_selector_in_previous_word);
 		if (took == 0)
 			return 0;
 		used += took;
@@ -248,9 +248,9 @@ printf("Selector:%d (%d x %d-bits)\n", (int)(base + selector), (int)integers_to_
 				work out which table to use
 			*/
 			if (next_selector_in_previous_word)
-				took = pack_one_word(sixty_four_start + base, 16, destination, from + used, source_integers - used, next_selector_in_previous_word);
+				took = pack_one_word(table_sixty_four_start + base, 16, destination, from + used, source_integers - used, next_selector_in_previous_word);
 			else
-				took = pack_one_word(sixty_start + base, 16, destination, from + used, source_integers - used, next_selector_in_previous_word);
+				took = pack_one_word(table_sixty_start + base, 16, destination, from + used, source_integers - used, next_selector_in_previous_word);
 
 			/*
 				failed (integer too large)
@@ -274,22 +274,34 @@ printf("Selector:%d (%d x %d-bits)\n", (int)(base + selector), (int)integers_to_
 		const integer *end = destination + integers_to_decode;
 		const uint64_t *source = static_cast<const uint64_t *>(compressed);
 
-		size_t base = fifty_seven_start;
+		/*
+			Get the first selector and payload
+		*/
+		size_t base = table_fifty_seven_start;
 		size_t selector = *source & 0x0F;
 		uint64_t payload = (*source & 0x1FFFFFFFFFFFFFF0) >> 4;
-		size_t offset_to_use = *source >> 61;
-		size_t offset = 0;
+
+		/*
+			Where in the table do we start from?
+		*/
+		size_t offset = *source >> 61;
+
+		/*
+			where does each table start?
+		*/
+		size_t sixty_start = table_sixty_start + offset;
+		size_t sixty_four_start = table_sixty_four_start + offset;
+
+
 #ifdef CARRY_DEBUG
 integer *destination_at_start = destination;
 #endif
 		while (destination < end)
 			{
-			if (source != compressed)
-				offset = offset_to_use;
 #ifdef CARRY_DEBUG
-printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(selector + base + offset));
+printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(selector + base));
 #endif
-			switch (selector + base + offset)
+			switch (selector + base)
 				{
 				/*
 					60-bit selector
