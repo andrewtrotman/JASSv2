@@ -4,7 +4,6 @@
 	Copyright (c) 2017 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
-
 #include <vector>
 
 #include "maths.h"
@@ -21,74 +20,73 @@ namespace JASS
 	const compress_integer_carry_8b::selector compress_integer_carry_8b::selector_table[] =
 		{
 			/* Selector in the 64-bit integer (60-bit payload) */
-		/*0*/   {"a60", 1, 255, true},
-		/*1*/  {"b60", 1, 128, true},
-		/*2*/   {"c60", 1, 60, false},
-		/*3*/   {"d60", 2, 30, false},
-		/*4*/   {"e60", 3, 20, false},
-		/*5*/   {"f60", 4, 15, false},
-		/*6*/   {"g60", 5, 12, false},
-		/*7*/   {"h60", 6, 10, false},
-		/*8*/   {"i60", 7,  8, true},
-		/*9*/   {"j60", 8,  7, true},
-		/*10*/  {"k60", 9, 6, true},
-		/*11*/  {"l60", 10, 6, false},
-		/*12*/  {"m60", 11, 5, true},
-		/*13*/  {"n60", 12, 5, false},
-		/*14*/  {"o60", 14, 4, true},
-		/*15*/  {"p60", 15, 4, false},
-		/*16*/  {"q60", 18, 3, true},
-		/*17*/  {"r60", 20, 3, false},
-		/*18*/  {"s60", 28, 2, true},
-		/*19*/  {"t60", 30, 2, false},
-		/*20*/  {"u60", 56, 1, false},				// >2^32
-		/*21*/  {"v60", 60, 1, false},				// >2^32
+		/*0*/   {"a60", 1, 255, 60},
+		/*1*/  {"b60", 1, 128, 60},
+		/*2*/   {"c60", 1, 60, 0},
+		/*3*/   {"d60", 2, 30, 0},
+		/*4*/   {"e60", 3, 20, 0},
+		/*5*/   {"f60", 4, 15, 0},
+		/*6*/   {"g60", 5, 12, 0},
+		/*7*/   {"h60", 6, 10, 0},
+		/*8*/   {"i60", 7,  8, 60},
+		/*9*/   {"j60", 8,  7, 60},
+		/*10*/  {"k60", 9, 6, 60},
+		/*11*/  {"l60", 10, 6, 0},
+		/*12*/  {"m60", 11, 5, 60},
+		/*13*/  {"n60", 12, 5, 0},
+		/*14*/  {"o60", 14, 4, 60},
+		/*15*/  {"p60", 15, 4, 0},
+		/*16*/  {"q60", 18, 3, 60},
+		/*17*/  {"r60", 20, 3, 0},
+		/*18*/  {"s60", 28, 2, 60},
+		/*19*/  {"t60", 30, 2, 0},
+		/*20*/  {"u60", 56, 1, 0},				// >2^32
+		/*21*/  {"v60", 60, 1, 0},				// >2^32
 			/* Selector in the previous 64-bit integer (64-bit payload) */
-		/*22*/   {"a64", 1, 255, true},
-		/*23*/   {"b64", 1, 180, true},
-		/*24*/   {"c64", 1, 120, true},
-		/*25*/   {"d64", 1, 64, false},
-		/*26*/   {"e64", 2, 32, false},
-		/*27*/   {"f64", 3, 21, false},
-		/*28*/   {"g64", 4, 16, false},
-		/*29*/   {"h64", 5, 12, true},
-		/*30*/   {"i64", 6, 10, true},
-		/*31*/   {"j64", 7, 9, false},
-		/*32*/   {"k64", 8, 8, false},
-		/*33*/   {"l64", 9, 7, false},
-		/*34*/   {"m64", 10, 6, true},
-		/*35*/   {"n64", 12, 5, true},
-		/*36*/   {"o64", 15, 4, true},
-		/*37*/   {"p64", 16, 4, false},
-		/*38*/   {"q64", 20, 3, true},
-		/*39*/   {"r64", 21, 3, false},
-		/*40*/   {"s64", 30, 2, true},
-		/*41*/   {"t64", 32, 2, false},
-		/*42*/   {"u64", 60, 1, true},				// >2^32
-		/*43*/   {"v64", 64, 1, false},				// >2^32
+		/*22*/   {"a64", 1, 255, 60},
+		/*23*/   {"b64", 1, 180, 60},
+		/*24*/   {"c64", 1, 120, 60},
+		/*25*/   {"d64", 1, 64, 0},
+		/*26*/   {"e64", 2, 32, 0},
+		/*27*/   {"f64", 3, 21, 0},
+		/*28*/   {"g64", 4, 16, 0},
+		/*29*/   {"h64", 5, 12, 60},
+		/*30*/   {"i64", 6, 10, 60},
+		/*31*/   {"j64", 7, 9, 0},
+		/*32*/   {"k64", 8, 8, 0},
+		/*33*/   {"l64", 9, 7, 0},
+		/*34*/   {"m64", 10, 6, 60},
+		/*35*/   {"n64", 12, 5, 60},
+		/*36*/   {"o64", 15, 4, 60},
+		/*37*/   {"p64", 16, 4, 0},
+		/*38*/   {"q64", 20, 3, 60},
+		/*39*/   {"r64", 21, 3, 0},
+		/*40*/   {"s64", 30, 2, 60},
+		/*41*/   {"t64", 32, 2, 0},
+		/*42*/   {"u64", 60, 1, 60},				// >2^32
+		/*43*/   {"v64", 64, 1, 0},				// >2^32
 			/* First integer has 3-bit base then 4-bit selector then 57 bit payload */
-		/*44*/   {"a57", 1, 57, false},
-		/*45*/   {"b57", 2, 28, false},
-		/*46*/   {"c57", 3, 19, false},
-		/*47*/   {"d57", 4, 14, false},
-		/*48*/   {"e57", 5, 11, false},
-		/*49*/   {"f57", 6, 9, false},
-		/*50*/   {"g57", 7, 8, false},
-		/*51*/   {"h57", 8, 7, false},
-		/*52*/   {"i57", 9, 6, false},
-		/*53*/   {"j57", 10, 5, true},
-		/*54*/   {"k57", 11, 5, false},
-		/*55*/   {"l57", 12, 4, true},
-		/*56*/   {"m57", 14, 4, false},
-		/*57*/   {"n57", 19, 3, false},
-		/*58*/   {"o57", 28, 2, false},
-		/*59*/   {"p57", 57, 1, false},				// >2^32
+		/*44*/   {"a57", 1, 57, 0},
+		/*45*/   {"b57", 2, 28, 0},
+		/*46*/   {"c57", 3, 19, 0},
+		/*47*/   {"d57", 4, 14, 0},
+		/*48*/   {"e57", 5, 11, 0},
+		/*49*/   {"f57", 6, 9, 0},
+		/*50*/   {"g57", 7, 8, 0},
+		/*51*/   {"h57", 8, 7, 0},
+		/*52*/   {"i57", 9, 6, 0},
+		/*53*/   {"j57", 10, 5, 57},				// because bits 61-63 are the offset
+		/*54*/   {"k57", 11, 5, 0},
+		/*55*/   {"l57", 12, 4, 57},				// because bits 61-63 are the offset
+		/*56*/   {"m57", 14, 4, 0},
+		/*57*/   {"n57", 19, 3, 0},
+		/*58*/   {"o57", 28, 2, 0},
+		/*59*/   {"p57", 57, 1, 0},				// >2^32
 		};
 
 	static const size_t table_fifty_seven_start = 44;			///< the start of the table for 57-bit payloads
 	static const size_t table_sixty_start = 0;					///< the start of the table for 60-bit payloads
 	static const size_t table_sixty_four_start = 22;			///< the start of the table for 64-bit payloads
-
 
 	/*
 		given the number of bits in the largest integer, what should the starting point in selector_table be?
@@ -111,7 +109,7 @@ namespace JASS
 	COMPRESS_INTEGER_CARRY_8B::PACK_ONE_WORD()
 	------------------------------------------
 */
-size_t compress_integer_carry_8b::pack_one_word(size_t base, size_t highest, uint64_t *destination, const integer *source, size_t source_integers, bool &next_selector_in_previous_word)
+size_t compress_integer_carry_8b::pack_one_word(size_t base, size_t highest, uint64_t *destination, const integer *source, size_t source_integers, size_t &next_selector_in_previous_word)
 	{
 	uint64_t selector = 0;
 
@@ -160,7 +158,7 @@ printf("Selector:%d (%d x %d-bits)\n", (int)(base + selector), (int)integers_to_
 		Pack the selector into the codeword.  If we're bungingin into the previous selector then we first turn off the top 4 bits as they might be crud from low selectors that over-pack value 1's into a word.
 	*/
 	if (next_selector_in_previous_word)
-		*(destination - 1) = (*(destination - 1) & (uint64_t)0x0FFFFFFFFFFFFFFF) | (selector << ((uint64_t)60));
+		*(destination - 1) = (*(destination - 1) & ~((uint64_t)0x0F << next_selector_in_previous_word)) | (selector << next_selector_in_previous_word);
 	else
 		word = word << 4 | selector;
 
@@ -189,7 +187,7 @@ printf("Selector:%d (%d x %d-bits)\n", (int)(base + selector), (int)integers_to_
 		size_t took;
 		size_t used = 0;
 
-		bool next_selector_in_previous_word = false;
+		size_t next_selector_in_previous_word = 0;
 		/*
 			Check for 0 input or 0 sized output buffer
 		*/
@@ -310,7 +308,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 				/*
 					60-bit selector
 				*/
-				case 0:			// {"a60", 1, 255, true}
+				case 0:			// {"a60", 1, 255, 60}
 					std::fill(destination, (destination + selector_table[0].integers), 1);
 					destination += selector_table[0].integers;
 
@@ -319,7 +317,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source;
 					base = sixty_four_start;
 					break;
-				case 1:			// {"b60", 1, 128, true}
+				case 1:			// {"b60", 1, 128, 60}
 					std::fill(destination, (destination + selector_table[1].integers), 1);
 					destination += selector_table[1].integers;
 
@@ -328,7 +326,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source;
 					base = sixty_four_start;
 					break;
-				case 2:			// {"c60", 1, 60, false}
+				case 2:			// {"c60", 1, 60, 0}
 					/*
 						Since we're not permitted to encode a '0', a 1-bit integer must be a 1
 					*/
@@ -340,7 +338,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
-				case 3:		// 	{"d60", 2, 30, false}
+				case 3:		// 	{"d60", 2, 30, 0}
 					*(destination + 0) = payload >> 0 & 0x03;
 					*(destination + 1) = payload >> 2 & 0x03;
 					*(destination + 2) = payload >> 4 & 0x03;
@@ -378,7 +376,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
-				case 4:			// {"e60", 3, 20, false}
+				case 4:			// {"e60", 3, 20, 0}
 					*(destination + 0) = payload >> 0 & 0x07;
 					*(destination + 1) = payload >> 3 & 0x07;
 					*(destination + 2) = payload >> 6 & 0x07;
@@ -406,7 +404,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
-				case 5:			// {"f60", 4, 15, false}
+				case 5:			// {"f60", 4, 15, 0}
 					*(destination + 0) = payload >> 0 & 0x0F;
 					*(destination + 1) = payload >> 4 & 0x0F;
 					*(destination + 2) = payload >> 8 & 0x0F;
@@ -429,7 +427,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
-				case 6:			// {"g60", 5, 12, false}
+				case 6:			// {"g60", 5, 12, 0}
 					*(destination + 0) = payload >> 0 & 0x1F;
 					*(destination + 1) = payload >> 5 & 0x1F;
 					*(destination + 2) = payload >> 10 & 0x1F;
@@ -449,7 +447,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
-				case 7:			//		{"h60", 6, 10, false}
+				case 7:			//		{"h60", 6, 10, 0}
 					*(destination + 0) = payload >> 0 & 0x3F;
 					*(destination + 1) = payload >> 6 & 0x3F;
 					*(destination + 2) = payload >> 12 & 0x3F;
@@ -467,7 +465,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
-				case 8:			//	{"i60", 7,  8, true}
+				case 8:			//	{"i60", 7,  8, 60}
 					*(destination + 0) = payload >> 0 & 0x7F;
 					*(destination + 1) = payload >> 7 & 0x7F;
 					*(destination + 2) = payload >> 14 & 0x7F;
@@ -483,7 +481,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source;
 					base = sixty_four_start;
 					break;
-				case 9:			//	{"j60", 8,  7, true}
+				case 9:			//	{"j60", 8,  7, 60}
 					*(destination + 0) = payload >> 0 & 0xFF;
 					*(destination + 1) = payload >> 8 & 0xFF;
 					*(destination + 2) = payload >> 16 & 0xFF;
@@ -498,7 +496,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source;
 					base = sixty_four_start;
 					break;
- 				case 10:			//	{"k60", 9, 6, true}
+ 				case 10:			//	{"k60", 9, 6, 60}
 					*(destination + 0) = payload >> 0 & 0x1FF;
 					*(destination + 1) = payload >> 9 & 0x1FF;
 					*(destination + 2) = payload >> 18 & 0x1FF;
@@ -512,7 +510,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source;
 					base = sixty_four_start;
 					break;
-				case 11:			// {"l60", 10, 6, false}
+				case 11:			// {"l60", 10, 6, 0}
 					*(destination + 0) = payload >> 0 & 0x3FF;
 					*(destination + 1) = payload >> 10 & 0x3FF;
 					*(destination + 2) = payload >> 20 & 0x3FF;
@@ -526,7 +524,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
-				case 12:			// {"m60", 11, 5, true}
+				case 12:			// {"m60", 11, 5, 60}
 					*(destination + 0) = payload >> 0 & 0x7FF;
 					*(destination + 1) = payload >> 11 & 0x7FF;
 					*(destination + 2) = payload >> 22 & 0x7FF;
@@ -539,7 +537,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source;
 					base = sixty_four_start;
 					break;
-				case 13:			//		{"n60", 12, 5, false}
+				case 13:			//		{"n60", 12, 5, 0}
 					*(destination + 0) = payload >> 0 & 0xFFF;
 					*(destination + 1) = payload >> 12 & 0xFFF;
 					*(destination + 2) = payload >> 24 & 0xFFF;
@@ -552,7 +550,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
-				case 14:			//		{"o60", 14, 4, true}
+				case 14:			//		{"o60", 14, 4, 60}
 					*(destination + 0) = payload >> 0 & 0x3FFF;
 					*(destination + 1) = payload >> 14 & 0x3FFF;
 					*(destination + 2) = payload >> 28 & 0x3FFF;
@@ -564,7 +562,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source;
 					base = sixty_four_start;
 					break;
-				case 15:			//		{"p60", 15, 4, false}
+				case 15:			//		{"p60", 15, 4, 0}
 					*(destination + 0) = payload >> 0 & 0x7FFF;
 					*(destination + 1) = payload >> 15 & 0x7FFF;
 					*(destination + 2) = payload >> 30 & 0x7FFF;
@@ -576,7 +574,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
-				case 16:			//		{"q60", 18, 3, true}
+				case 16:			//		{"q60", 18, 3, 60}
 					*(destination + 0) = payload >> 0 & 0x3FFFF;
 					*(destination + 1) = payload >> 18 & 0x3FFFF;
 					*(destination + 2) = payload >> 36 & 0x3FFFF;
@@ -587,7 +585,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source;
 					base = sixty_four_start;
 					break;
-				case 17:			//		{"r60", 20, 3, false}
+				case 17:			//		{"r60", 20, 3, 0}
 					*(destination + 0) = payload >> 0 & 0xFFFFF;
 					*(destination + 1) = payload >> 20 & 0xFFFFF;
 					*(destination + 2) = payload >> 40 & 0xFFFFF;
@@ -598,7 +596,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
-				case 18:			// {"s60", 28, 2, true}
+				case 18:			// {"s60", 28, 2, 60}
 					*(destination + 0) = payload >> 0 & 0xFFFFFFF;
 					*(destination + 1) = payload >> 28 & 0xFFFFFFF;
 					destination += 2;
@@ -608,7 +606,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source;
 					base = sixty_four_start;
 					break;
-				case 19:			//		{"t60", 30, 2, false}
+				case 19:			//		{"t60", 30, 2, 0}
 					*(destination + 0) = payload >> 0 & 0x3FFFFFFF;
 					*(destination + 1) = payload >> 30 & 0x3FFFFFFF;
 					destination += 2;
@@ -619,7 +617,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					base = sixty_start;
 					break;
 // LCOV_EXCL_START		// Can't test integers 2^32
-				case 20:			//		{"u60", 56, 1, false}
+				case 20:			//		{"u60", 56, 1, 0}
 					*(destination + 0) = payload >> 0 & 0xFFFFFFFFFFFFFF;
 					destination += 1;
 
@@ -628,7 +626,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
-				case 21:			//		{"v60", 60, 1, false}
+				case 21:			//		{"v60", 60, 1, 0}
 					*(destination + 0) = payload >> 0 & 0x0FFFFFFFFFFFFFFF;
 					destination += 1;
 
@@ -641,7 +639,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 				/*
 					64-bit selector
 				*/
-				case 22:			//		{"a64", 1, 255, true}
+				case 22:			//		{"a64", 1, 255, 60}
 					std::fill(destination, (destination + selector_table[22].integers), 1);
 					destination += selector_table[22].integers;
 
@@ -650,7 +648,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source;
 					base = sixty_four_start;
 					break;
-				case 23:			//		{"a64", 1, 180, true}
+				case 23:			//		{"a64", 1, 180, 60}
 					std::fill(destination, (destination + selector_table[23].integers), 1);
 					destination += selector_table[23].integers;
 
@@ -659,7 +657,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source;
 					base = sixty_four_start;
 					break;
-				case 24:			//		{"a64", 1, 128, true}
+				case 24:			//		{"a64", 1, 128, 60}
 					std::fill(destination, (destination + selector_table[24].integers), 1);
 					destination += selector_table[24].integers;
 
@@ -668,7 +666,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source;
 					base = sixty_four_start;
 					break;
-				case 25:			//		{"d64", 1, 64, false}
+				case 25:			//		{"d64", 1, 64, 0}
 					/*
 						Since we're not permitted to encode a '0', a 1-bit integer must be a 1
 					*/
@@ -680,7 +678,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
-				case 26:			//		{"e64", 2, 32, false}
+				case 26:			//		{"e64", 2, 32, 0}
 					*(destination + 0) = payload >> 0 & 0x03;
 					*(destination + 1) = payload >> 2 & 0x03;
 					*(destination + 2) = payload >> 4 & 0x03;
@@ -720,7 +718,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
-				case 27:			//		{"f64", 3, 21, false}
+				case 27:			//		{"f64", 3, 21, 0}
 					*(destination + 0) = payload >> 0 & 0x07;
 					*(destination + 1) = payload >> 3 & 0x07;
 					*(destination + 2) = payload >> 6 & 0x07;
@@ -749,7 +747,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
-				case 28:			//	{"g64", 4, 16, false}
+				case 28:			//	{"g64", 4, 16, 0}
 					*(destination + 0) = payload >> 0 & 0x0F;
 					*(destination + 1) = payload >> 4 & 0x0F;
 					*(destination + 2) = payload >> 8 & 0x0F;
@@ -773,7 +771,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
-				case 29:			//	{"h64", 5, 12, true}
+				case 29:			//	{"h64", 5, 12, 60}
 					*(destination + 0) = payload >> 0 & 0x1F;
 					*(destination + 1) = payload >> 5 & 0x1F;
 					*(destination + 2) = payload >> 10 & 0x1F;
@@ -793,7 +791,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source;
 					base = sixty_four_start;
 					break;
-				case 30:			//		{"i64", 6, 10, true}
+				case 30:			//		{"i64", 6, 10, 60}
 					*(destination + 0) = payload >> 0 & 0x3F;
 					*(destination + 1) = payload >> 6 & 0x3F;
 					*(destination + 2) = payload >> 12 & 0x3F;
@@ -811,7 +809,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source;
 					base = sixty_four_start;
 					break;
-				case 31:			//		{"j64", 7, 9, false}
+				case 31:			//		{"j64", 7, 9, 0}
 					*(destination + 0) = payload >> 0 & 0x7F;
 					*(destination + 1) = payload >> 7 & 0x7F;
 					*(destination + 2) = payload >> 14 & 0x7F;
@@ -828,7 +826,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
-				case 32:			//	{"k64", 8, 8, false}
+				case 32:			//	{"k64", 8, 8, 0}
 					*(destination + 0) = payload >> 0 & 0xFF;
 					*(destination + 1) = payload >> 8 & 0xFF;
 					*(destination + 2) = payload >> 16 & 0xFF;
@@ -844,7 +842,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
-				case 33:			//	{"l64", 9, 7, false}
+				case 33:			//	{"l64", 9, 7, 0}
 					*(destination + 0) = payload >> 0 & 0x1FF;
 					*(destination + 1) = payload >> 9 & 0x1FF;
 					*(destination + 2) = payload >> 18 & 0x1FF;
@@ -859,7 +857,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
-				case 34:			// {"m64", 10, 6, true}
+				case 34:			// {"m64", 10, 6, 60}
 					*(destination + 0) = payload >> 0 & 0x3FF;
 					*(destination + 1) = payload >> 10 & 0x3FF;
 					*(destination + 2) = payload >> 20 & 0x3FF;
@@ -873,7 +871,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source;
 					base = sixty_four_start;
 					break;
-				case 35:			// {"n64", 12, 5, true}
+				case 35:			// {"n64", 12, 5, 60}
 					*(destination + 0) = payload >> 0 & 0xFFF;
 					*(destination + 1) = payload >> 12 & 0xFFF;
 					*(destination + 2) = payload >> 24 & 0xFFF;
@@ -886,7 +884,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source;
 					base = sixty_four_start;
 					break;
-				case 36:			//		{"o64", 15, 4, true}
+				case 36:			//		{"o64", 15, 4, 60}
 					*(destination + 0) = payload >> 0 & 0x7FFF;
 					*(destination + 1) = payload >> 15 & 0x7FFF;
 					*(destination + 2) = payload >> 30 & 0x7FFF;
@@ -898,7 +896,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source;
 					base = sixty_four_start;
 					break;
-				case 37:			//		{"p64", 16, 4, false}
+				case 37:			//		{"p64", 16, 4, 0}
 					*(destination + 0) = payload >> 0 & 0xFFFF;
 					*(destination + 1) = payload >> 16 & 0xFFFF;
 					*(destination + 2) = payload >> 32 & 0xFFFF;
@@ -910,7 +908,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
-				case 38:			//		{"q64", 20, 3, true}
+				case 38:			//		{"q64", 20, 3, 60}
 					*(destination + 0) = payload >> 0 & 0xFFFFF;
 					*(destination + 1) = payload >> 20 & 0xFFFFF;
 					*(destination + 2) = payload >> 40 & 0xFFFFF;
@@ -921,7 +919,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source;
 					base = sixty_four_start;
 					break;
-				case 39:			//		{"r64", 21, 3, false}
+				case 39:			//		{"r64", 21, 3, 0}
 					*(destination + 0) = payload >> 0 & 0x1FFFFF;
 					*(destination + 1) = payload >> 21 & 0x1FFFFF;
 					*(destination + 2) = payload >> 42 & 0x1FFFFF;
@@ -932,7 +930,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
-				case 40:			//		{"s64", 30, 2, true}
+				case 40:			//		{"s64", 30, 2, 60}
 					*(destination + 0) = payload >> 0 & 0x3FFFFFFF;
 					*(destination + 1) = payload >> 30 & 0x3FFFFFFF;
 					destination += 2;
@@ -942,7 +940,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source;
 					base = sixty_four_start;
 					break;
-				case 41:			//		{"t64", 32, 2, false}
+				case 41:			//		{"t64", 32, 2, 0}
 					*(destination + 0) = payload >> 0 & 0xFFFFFFFF;
 					*(destination + 1) = payload >> 32 & 0xFFFFFFFF;
 					destination += 2;
@@ -953,7 +951,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					base = sixty_start;
 					break;
 // LCOV_EXCL_START		// Can't test integers 2^32
-				case 42:			//		{"u64", 60, 1, true}
+				case 42:			//		{"u64", 60, 1, 60}
 					*(destination + 0) = payload >> 0 & 0x0FFFFFFFFFFFFFFF;
 					destination += 1;
 
@@ -962,7 +960,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source;
 					base = sixty_four_start;
 					break;
-				case 43:			//		{"v64", 64, 1, false},
+				case 43:			//		{"v64", 64, 1, 0},
 					*(destination + 0) = payload >> 0 & 0xFFFFFFFFFFFFFFFF;
 					destination += 1;
 
@@ -975,7 +973,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 				/*
 					57-bit selector
 				*/
-				case 44:			//   {"a57", 1, 57, false}
+				case 44:			//   {"a57", 1, 57, 0}
 					*(destination + 0) = payload >> 0 & 0x01;
 					*(destination + 1) = payload >> 1 & 0x01;
 					*(destination + 2) = payload >> 2 & 0x01;
@@ -1040,7 +1038,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
-				case 45:			//   {"b57", 2, 28, false}
+				case 45:			//   {"b57", 2, 28, 0}
 					*(destination + 0) = payload >> 0 & 0x03;
 					*(destination + 1) = payload >> 2 & 0x03;
 					*(destination + 2) = payload >> 4 & 0x03;
@@ -1076,7 +1074,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
-				case 46:			//   {"c57", 3, 19, false}
+				case 46:			//   {"c57", 3, 19, 0}
 					*(destination + 0) = payload >> 0 & 0x07;
 					*(destination + 1) = payload >> 3 & 0x07;
 					*(destination + 2) = payload >> 6 & 0x07;
@@ -1103,7 +1101,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
-				case 47:			//   {"d57", 4, 14, false}
+				case 47:			//   {"d57", 4, 14, 0}
 					*(destination + 0) = payload >> 0 & 0x0F;
 					*(destination + 1) = payload >> 4 & 0x0F;
 					*(destination + 2) = payload >> 8 & 0x0F;
@@ -1125,7 +1123,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
-				case 48:			//   {"e57", 5, 11, false}
+				case 48:			//   {"e57", 5, 11, 0}
 					*(destination + 0) = payload >> 0 & 0x1F;
 					*(destination + 1) = payload >> 5 & 0x1F;
 					*(destination + 2) = payload >> 10 & 0x1F;
@@ -1144,7 +1142,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
-				case 49:			//   {"f57", 6, 9, false}
+				case 49:			//   {"f57", 6, 9, 0}
 					*(destination + 0) = payload >> 0 & 0x3F;
 					*(destination + 1) = payload >> 6 & 0x3F;
 					*(destination + 2) = payload >> 12 & 0x3F;
@@ -1161,7 +1159,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
-				case 50:			//   {"g57", 7, 8, false}
+				case 50:			//   {"g57", 7, 8, 0}
 					*(destination + 0) = payload >> 0 & 0x7F;
 					*(destination + 1) = payload >> 7 & 0x7F;
 					*(destination + 2) = payload >> 14 & 0x7F;
@@ -1177,7 +1175,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
-				case 51:			//   {"h57", 8, 7, false}
+				case 51:			//   {"h57", 8, 7, 0}
 					*(destination + 0) = payload >> 0 & 0xFF;
 					*(destination + 1) = payload >> 8 & 0xFF;
 					*(destination + 2) = payload >> 16 & 0xFF;
@@ -1192,7 +1190,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
-				case 52:			//	{"i57", 9, 6, false}
+				case 52:			//	{"i57", 9, 6, 0}
 					*(destination + 0) = payload >> 0 & 0x1FF;
 					*(destination + 1) = payload >> 9 & 0x1FF;
 					*(destination + 2) = payload >> 18 & 0x1FF;
@@ -1206,7 +1204,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
-				case 53:			//	{"j57", 10, 5, true}
+				case 53:			//	{"j57", 10, 5, 57}
 					*(destination + 0) = payload >> 0 & 0x3FF;
 					*(destination + 1) = payload >> 10 & 0x3FF;
 					*(destination + 2) = payload >> 20 & 0x3FF;
@@ -1214,12 +1212,12 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					*(destination + 4) = payload >> 40 & 0x3FF;
 					destination += 5;
 
-					selector = *source >> 60;
+					selector = (*source >> 57) & 0x0F;
 					source++;
 					payload = *source;
 					base = sixty_four_start;
 					break;
-				case 54:			//	{"k57", 11, 5, false}
+				case 54:			//	{"k57", 11, 5, 0}
 					*(destination + 0) = payload >> 0 & 0x7FF;
 					*(destination + 1) = payload >> 11 & 0x7FF;
 					*(destination + 2) = payload >> 22 & 0x7FF;
@@ -1232,19 +1230,19 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
-				case 55:			//	{"l57", 12, 4, true}
+				case 55:			//	{"l57", 12, 4, 57}
 					*(destination + 0) = payload >> 0 & 0xFFF;
 					*(destination + 1) = payload >> 12 & 0xFFF;
 					*(destination + 2) = payload >> 24 & 0xFFF;
 					*(destination + 3) = payload >> 36 & 0xFFF;
 					destination += 4;
 
-					selector = *source >> 60;
+					selector = (*source >> 57) & 0x0F;
 					source++;
 					payload = *source;
 					base = sixty_four_start;
 					break;
-				case 56:			//	{"m57", 14, 4, false}
+				case 56:			//	{"m57", 14, 4, 0}
 					*(destination + 0) = payload >> 0 & 0x3FFF;
 					*(destination + 1) = payload >> 14 & 0x3FFF;
 					*(destination + 2) = payload >> 28 & 0x3FFF;
@@ -1256,7 +1254,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
-				case 57:			//	{"n57", 19, 3, false}
+				case 57:			//	{"n57", 19, 3, 0}
 					*(destination + 0) = payload >> 0 & 0x7FFFF;
 					*(destination + 1) = payload >> 19 & 0x7FFFF;
 					*(destination + 2) = payload >> 38 & 0x7FFFF;
@@ -1267,7 +1265,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					payload = *source >> 4;
 					base = sixty_start;
 					break;
-				case 58:			//	 {"o57", 28, 2, false}
+				case 58:			//	 {"o57", 28, 2, 0}
 					*(destination + 0) = payload >> 0 & 0xFFFFFFF;
 					*(destination + 1) = payload >> 28 & 0xFFFFFFF;
 					destination += 2;
@@ -1278,7 +1276,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					base = sixty_start;
 					break;
 // LCOV_EXCL_START		// Can't test integers 2^32
-				case 59:			//	 {"p57", 57, 1, false}
+				case 59:			//	 {"p57", 57, 1, 0}
 					*(destination + 0) = payload >> 0 & 0x1FFFFFFFFFFFFFF;
 					destination += 1;
 
@@ -1290,6 +1288,25 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 // LCOV_EXCL_STOP
 				}
 			}
+		}
+
+	/*
+		COMPRESS_INTEGER_CARRY_8B::UNITTEST_THIS()
+		------------------------------------------
+	*/
+	void compress_integer_carry_8b::unittest_this(std::vector<integer> every_case)
+		{
+		/*
+			Check that encoding then decoding the input results in the input again.
+		*/
+		compress_integer_carry_8b compressor;
+		std::vector<uint32_t>compressed(every_case.size() * 2);
+		std::vector<uint32_t>decompressed(every_case.size() + 256);
+
+		auto size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &every_case[0], every_case.size());
+		compressor.decode(&decompressed[0], every_case.size(), &compressed[0], size_once_compressed);
+		decompressed.resize(every_case.size());
+		JASS_assert(decompressed == every_case);
 		}
 
 	/*
@@ -1373,14 +1390,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 		for (instance = 0; instance < 3; instance++)			// 3*21-bit (39)
 			every_case.push_back(0x1FFFFF);
 
-		compress_integer_carry_8b compressor;
-		std::vector<uint32_t>compressed(every_case.size() * 2);
-		std::vector<uint32_t>decompressed(every_case.size() + 256);
-
-		auto size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &every_case[0], every_case.size());
-		compressor.decode(&decompressed[0], every_case.size(), &compressed[0], size_once_compressed);
-		decompressed.resize(every_case.size());
-		JASS_assert(decompressed == every_case);
+		unittest_this(every_case);
 
 		/*
 			Offset of 0
@@ -1417,17 +1427,8 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 		for (instance = 0; instance < 12; instance++)			// 12*5-bit (29)
 			every_case.push_back(0x1F);
 
-		decompressed.resize(every_case.size() + 256);
-		size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &every_case[0], every_case.size());
-		compressor.decode(&decompressed[0], every_case.size(), &compressed[0], size_once_compressed);
-		decompressed.resize(every_case.size());
-		JASS_assert(decompressed == every_case);
+		unittest_this(every_case);
 
-
-#ifdef NEVER
-		/*
-			FIX THIS:  when using 57 bits the carried over selector is in the wrong place.
-		*/
 		/*
 			Offset as high as possible with 32-bit integers
 		*/
@@ -1441,13 +1442,109 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 		for (instance = 0; instance < 2; instance++)			// 2*30-bit (19)
 			every_case.push_back(0x3FFFFFFF);
 
-		decompressed.resize(every_case.size() + 256);
-		size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &every_case[0], every_case.size());
-		compressor.decode(&decompressed[0], every_case.size(), &compressed[0], size_once_compressed);
-		decompressed.resize(every_case.size());
-		JASS_assert(decompressed == every_case);
+		unittest_this(every_case);
 
-#endif
+		/*
+			Now check all the starting cases.
+		*/
+		every_case.clear();
+		for (instance = 0; instance < 4; instance++)			// 4*12-bit (55)
+			every_case.push_back(0x0FFF);
+		for (instance = 0; instance < 2; instance++)			// 2*30-bit (40)
+			every_case.push_back(0x3FFFFFFF);
+		unittest_this(every_case);
+
+		every_case.clear();
+		for (instance = 0; instance < 57; instance++)		// 57*1-bit (44)
+			every_case.push_back(0x01);
+		for (instance = 0; instance < 2; instance++)			// 2*30-bit (40)
+			every_case.push_back(0x3FFFFFFF);
+		unittest_this(every_case);
+
+		every_case.clear();
+		for (instance = 0; instance < 19; instance++)		// 19*3-bit (46)
+			every_case.push_back(0x07);
+		for (instance = 0; instance < 2; instance++)			// 2*30-bit (40)
+			every_case.push_back(0x3FFFFFFF);
+		unittest_this(every_case);
+
+		every_case.clear();
+		for (instance = 0; instance < 14; instance++)		// 14*4-bit (47)
+			every_case.push_back(0x0F);
+		for (instance = 0; instance < 2; instance++)			// 2*30-bit (40)
+			every_case.push_back(0x3FFFFFFF);
+		unittest_this(every_case);
+
+		every_case.clear();
+		for (instance = 0; instance < 11; instance++)		// 11*5-bit (48)
+			every_case.push_back(0x1F);
+		for (instance = 0; instance < 2; instance++)			// 2*30-bit (40)
+			every_case.push_back(0x3FFFFFFF);
+		unittest_this(every_case);
+
+		every_case.clear();
+		for (instance = 0; instance < 9; instance++)			// 9*6-bit (49)
+			every_case.push_back(0x3F);
+		for (instance = 0; instance < 2; instance++)			// 2*30-bit (40)
+			every_case.push_back(0x3FFFFFFF);
+		unittest_this(every_case);
+
+		every_case.clear();
+		for (instance = 0; instance < 8; instance++)			// 8*7-bit (50)
+			every_case.push_back(0x7F);
+		for (instance = 0; instance < 2; instance++)			// 2*30-bit (40)
+			every_case.push_back(0x3FFFFFFF);
+		unittest_this(every_case);
+
+		every_case.clear();
+		for (instance = 0; instance < 7; instance++)			// 7*8-bit (51)
+			every_case.push_back(0xFF);
+		for (instance = 0; instance < 2; instance++)			// 2*30-bit (40)
+			every_case.push_back(0x3FFFFFFF);
+		unittest_this(every_case);
+
+		every_case.clear();
+		for (instance = 0; instance < 6; instance++)			// 6*9-bit (52)
+			every_case.push_back(0x1FF);
+		for (instance = 0; instance < 2; instance++)			// 2*30-bit (40)
+			every_case.push_back(0x3FFFFFFF);
+		unittest_this(every_case);
+
+		every_case.clear();
+		for (instance = 0; instance < 5; instance++)			// 5*10-bit (53)
+			every_case.push_back(0x3FF);
+		for (instance = 0; instance < 2; instance++)			// 2*30-bit (40)
+			every_case.push_back(0x3FFFFFFF);
+		unittest_this(every_case);
+
+		every_case.clear();
+		for (instance = 0; instance < 5; instance++)			// 5*11-bit (54)
+			every_case.push_back(0x7FF);
+		for (instance = 0; instance < 2; instance++)			// 2*30-bit (40)
+			every_case.push_back(0x3FFFFFFF);
+		unittest_this(every_case);
+
+		every_case.clear();
+		for (instance = 0; instance < 4; instance++)			// 4*14-bit (56)
+			every_case.push_back(0x3FFF);
+		for (instance = 0; instance < 2; instance++)			// 2*30-bit (40)
+			every_case.push_back(0x3FFFFFFF);
+		unittest_this(every_case);
+
+		every_case.clear();
+		for (instance = 0; instance < 3; instance++)			// 3*19-bit (57)
+			every_case.push_back(0x7FFFF);
+		for (instance = 0; instance < 2; instance++)			// 2*30-bit (40)
+			every_case.push_back(0x3FFFFFFF);
+		unittest_this(every_case);
+
+		every_case.clear();
+		for (instance = 0; instance < 1; instance++)			// 1*57-bit (59)
+			every_case.push_back(0xFFFFFFFF);
+		for (instance = 0; instance < 2; instance++)			// 2*30-bit (40)
+			every_case.push_back(0x3FFFFFFF);
+		unittest_this(every_case);
+
 		/*
 			Try the error cases
 			(1) 1 integer (encoded with Simple-9)
@@ -1457,11 +1554,12 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 			(5) buffer overflow on simple-9 encoder
 			(6) buffer overflow on Relatice-10 encoder
 		*/
-		compressor.decode(&decompressed[0], 1, &compressed[0], size_once_compressed);
-		JASS_assert(decompressed[0] == every_case[0]);
+		compress_integer_carry_8b compressor;
+		std::vector<uint32_t>compressed(every_case.size() * 2);
+		std::vector<uint32_t>decompressed(every_case.size() + 256);
 
 		integer one = 1;
-		size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &one, 0);
+		auto size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &one, 0);
 		JASS_assert(size_once_compressed == 0);
 
 		every_case.clear();

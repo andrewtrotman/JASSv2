@@ -74,6 +74,7 @@ int main(void)
 
 	try
 		{
+#ifdef NEVER
 		puts("compress_integer_all");
 		JASS::compress_integer_all::unittest();
 
@@ -216,6 +217,8 @@ int main(void)
 
 		puts("compress_integer_carryover_12");
 		JASS::compress_integer_carryover_12::unittest();
+
+#endif
 
 		puts("compress_integer_carry_8b");
 		JASS::compress_integer_carry_8b::unittest();
