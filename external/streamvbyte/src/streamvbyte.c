@@ -56,7 +56,7 @@ static uint8_t *svb_encode_scalar(const uint32_t *in,
                                   uint8_t *__restrict__ dataPtr,
                                   uint32_t count) {
   if (count == 0)
-    return dataPtr; // exit immediately if no data
+    return dataPtr; 		//LCOV_EXCL_LINE	// exit immediately if no data
 
   uint8_t shift = 0; // cycles 0, 2, 4, 6, 0, 2, 4, 6, ...
   uint8_t key = 0;
@@ -209,7 +209,7 @@ static const uint8_t *svb_decode_scalar(uint32_t *outPtr, const uint8_t *keyPtr,
                                         const uint8_t *dataPtr,
                                         uint32_t count) {
   if (count == 0)
-    return dataPtr; // no reads or writes if no data
+    return dataPtr; //LCOV_EXCL_LINE // no reads or writes if no data
 
   uint8_t shift = 0;
   uint32_t key = *keyPtr++;

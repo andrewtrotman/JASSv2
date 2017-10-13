@@ -79,6 +79,11 @@ namespace JASS
 
 		auto will_take = streamvbyte::streamvbyte_max_compressedbytes(128);
 		JASS_assert(will_take == 544);
+
+		sequence.clear();
+		size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &sequence[0], sequence.size());
+		JASS_assert(size_once_compressed == 0);
+
 		/*
 			The tests have passed
 		*/
