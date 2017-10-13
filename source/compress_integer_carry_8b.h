@@ -43,7 +43,7 @@ namespace JASS
 					const char *name;						///< The name of this selector (not used)
 					size_t bits;							///< The number of bits per integer
 					size_t integers;						///< The numner of integers of the given width
-					bool next_selector;					///< Is the next selector stored in this word?
+					size_t next_selector;				///< Is the next selector stored in this word - if so then at which bit position?
 				};
 
 		private:
@@ -64,7 +64,7 @@ namespace JASS
 				@param source_integers [in] the maximum number of integers to encode
 				@return the number of integers that were encoded (or 0 on failure to encode)
 			*/
-			size_t pack_one_word(size_t base, size_t highest, uint64_t *destination, const integer *source, size_t source_integers, bool &next_selector_in_previous_word);
+			size_t pack_one_word(size_t base, size_t highest, uint64_t *destination, const integer *source, size_t source_integers, size_t &next_selector_in_previous_word);
 
 		public:
 			/*
@@ -117,6 +117,16 @@ namespace JASS
 				@param source_length [in] The length (in bytes) of the source buffer.
 			*/
 			virtual void decode(integer *decoded, size_t integers_to_decode, const void *source, size_t source_length);
+
+			/*
+				COMPRESS_INTEGER_CARRY_8B::UNITTEST_THIS()
+				------------------------------------------
+			*/
+			/*!
+				@brief Unit test one sequence of integers - assert on failure.
+				@param every_case [in] the sequence to test
+			*/
+			static void unittest_this(std::vector<integer> every_case);
 
 			/*
 				COMPRESS_INTEGER_CARRY_8B::UNITTEST()
