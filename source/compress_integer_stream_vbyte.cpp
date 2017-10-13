@@ -1,4 +1,3 @@
-
 /*
 	COMPRESS_INTEGER_VARIABLE_BYTE.CPP
 	----------------------------------
@@ -15,6 +14,10 @@
 
 namespace streamvbyte
 	{
+	#ifdef _MSC_VER
+		#define __restrict__ __restrict
+	#endif
+
 	#include "../external/streamvbyte/src/streamvbyte_shuffle_tables.h"
 	#include "../external/streamvbyte/src/streamvbyte.c"
 	}
@@ -27,7 +30,7 @@ namespace JASS
 	*/
 	size_t compress_integer_stream_vbyte::encode(void *encoded_as_void, size_t encoded_buffer_length, const integer *source, size_t source_integers)
 		{
-		return streamvbyte::streamvbyte_encode(const_cast<integer *>(source), source_integers, static_cast<uint8_t *>(encoded_as_void));
+		return streamvbyte::streamvbyte_encode(const_cast<integer *>(source), static_cast<uint32_t>(source_integers), static_cast<uint8_t *>(encoded_as_void));
 		}
 
 	/*
@@ -36,7 +39,7 @@ namespace JASS
 	*/
 	void compress_integer_stream_vbyte::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
 		{
-		streamvbyte::streamvbyte_decode(reinterpret_cast<uint8_t *>(const_cast<void *>(source_as_void)), decoded, integers_to_decode);
+		streamvbyte::streamvbyte_decode(reinterpret_cast<uint8_t *>(const_cast<void *>(source_as_void)), decoded, static_cast<uint32_t>(integers_to_decode));
 		}
 
 	/*
