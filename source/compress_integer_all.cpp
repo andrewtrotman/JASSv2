@@ -17,6 +17,7 @@
 #include "compress_integer_variable_byte.h"
 #include "compress_integer_qmx_improved.h"
 #include "compress_integer_qmx_original.h"
+#include "compress_integer_stream_vbyte.h"
 #include "compress_integer_simple_9_packed.h"
 #include "compress_integer_simple_16_packed.h"
 #include "compress_integer_simple_8b_packed.h"
@@ -35,6 +36,7 @@ namespace JASS
 	static compress_integer_carryover_12 carryover_12;
 	static compress_integer_qmx_original qmx_original;
 	static compress_integer_qmx_improved qmx_improved;
+	static compress_integer_stream_vbyte stream_vbyte;
 	static compress_integer_variable_byte variable_byte;
 	static compress_integer_simple_9_packed simple_9_packed;
 	static compress_integer_simple_16_packed simple_16_packed;
@@ -48,6 +50,7 @@ namespace JASS
 			{
 			{"-cn", "--compress_none", "None", &none},
 			{"-cv", "--compress_vbyte", "Variable Byte", &variable_byte},
+			{"-cV", "--compress_stream_vbyte", "Stream VByte", &stream_vbyte},
 			{"-cr", "--compress_relative_10", "Relative-10", &relative_10},
 			{"-cc", "--compress_carryover_12", "Carryover-12", &carryover_12},
 			{"-cC", "--compress_carry_8b", "Carry-8b", &carry_8b},

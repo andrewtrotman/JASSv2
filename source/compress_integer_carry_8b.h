@@ -6,6 +6,12 @@
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 	The Anh and Moffat code proved too awkward to remove from their test harness so this is a re-implementation
 */
+/*!
+	@file
+	@brief Carry-8b Compression.
+	@author Andrew Trotman
+	@copyright 2016 Andrew Trotman
+*/
 #pragma once
 
 #include "compress_integer_simple_9.h"

@@ -14,6 +14,13 @@
 	but then adapted for Simple-8b and back ported by Blake Burgess.  This version has been
 	refactored for JASS by Andrew Trotman.
 */
+/*!
+	@file
+	@brief Simple-9 Compression.
+	@author Vikram Subramanya, Andrew Trotman, Blake Burgess
+	@copyright 2016 Andrew Trotman
+*/
+
 #pragma once
 
 #include "compress_integer.h"

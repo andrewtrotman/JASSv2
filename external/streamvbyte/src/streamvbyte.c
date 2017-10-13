@@ -1,4 +1,4 @@
-#include "streamvbyte.h"
+#include "../include/streamvbyte.h"
 #if defined(_MSC_VER)
 /* Microsoft C/C++-compatible compiler */
 #include <intrin.h>

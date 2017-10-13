@@ -4,6 +4,13 @@
 	Copyright (c) 2007-2017 Vikram Subramanya, Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
+/*!
+	@file
+	@brief Relative-10 Compression.
+	@author Vikram Subramanya, Andrew Trotman
+	@copyright 2016 Andrew Trotman
+*/
+
 #pragma once
 
 #include "compress_integer_simple_9.h"

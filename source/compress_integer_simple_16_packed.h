@@ -6,6 +6,13 @@
 	
 	This code is from ATIRE, where it was written by Blake Burgess.
 */
+/*!
+	@file
+	@brief Optimally packed Simple-16 Compression.
+	@author Blake Burgess, Andrew Trotman
+	@copyright 2016 Andrew Trotman
+*/
+
 #pragma once
 
 #include "compress_integer.h"

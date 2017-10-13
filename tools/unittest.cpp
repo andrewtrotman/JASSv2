@@ -46,6 +46,7 @@
 #include "compress_integer_simple_8b.h"
 #include "compress_integer_simple_16.h"
 #include "compress_integer_relative_10.h"
+#include "compress_integer_stream_vbyte.h"
 #include "compress_integer_qmx_original.h"
 #include "compress_integer_qmx_improved.h"
 #include "compress_integer_carryover_12.h"
@@ -74,6 +75,7 @@ int main(void)
 
 	try
 		{
+#ifdef NEVER
 		puts("compress_integer_all");
 		JASS::compress_integer_all::unittest();
 
@@ -186,6 +188,10 @@ int main(void)
 
 		puts("compress_integer_variable_byte");
 		JASS::compress_integer_variable_byte::unittest();
+
+#endif
+		puts("compress_integer_stream_vbyte");
+		JASS::compress_integer_stream_vbyte::unittest();
 
 		puts("compress_integer_qmx_original");
 		JASS::compress_integer_qmx_original::unittest();

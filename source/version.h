@@ -79,7 +79,30 @@ namespace JASS
 					build() + "\n"
 					"DESIGN & IMPLEMENTATION\n"
 					"-----------------------\n"
-					"Andrew Trotman\n";
+					"Andrew Trotman\n"
+					"\n"
+
+					"SEARCH ENGINE\n"
+					"-------------\n"
+					"Andrew Trotman\n"
+					"\n"
+
+					"COMPRESSION CODE\n"
+					"----------------\n"
+					"Variable Byte    - Andrew Trotman\n"
+					"Stream VByte     - Daniel Lemire and Kendall Willets (Apache License Version 2.0, January 2004) https://github.com/lemire/streamvbyte"
+					"Simple-9         - Vikram Subramanya, Andrew Trotman, Blake Burgess\n"
+					"Simple-9 packed  - Vikram Subramanya, Andrew Trotman, Michael Albert, Blake Burgess\n"
+					"Simple-8b        - Blake Burgess, Andrew Trotman\n"
+					"Simple-8b packed - Blake Burgess, Andrew Trotman, Michael Albert\n"
+					"Simple-16        - Blake Burgess, Andrew Trotman\n"
+					"Simple-16 packed - Blake Burgess, Andrew Trotman, Michael Albert\n"
+					"Relative-10      - Vikram Subramanya, Andrew Trotman\n"
+					"Carryover-12     - Andrew Trotman\n"
+					"Carry-8b         - Andrew Trotman\n"
+					"QMX Original     - Andrew Trotman\n"
+					"QMX Improved     - Andrew Trotman\n"
+					"";
 				}
 		};
 	}

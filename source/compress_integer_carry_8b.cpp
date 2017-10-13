@@ -13,7 +13,7 @@
 /*
 	By defining CARRY_DEBUG this code will dump out encoding and decoding details.
 */
-#define CARRY_DEBUG
+//#define CARRY_DEBUG
 
 namespace JASS
 	{
