@@ -75,7 +75,6 @@ int main(void)
 
 	try
 		{
-#ifdef NEVER
 		puts("compress_integer_all");
 		JASS::compress_integer_all::unittest();
 
@@ -188,7 +187,7 @@ int main(void)
 
 		puts("compress_integer_variable_byte");
 		JASS::compress_integer_variable_byte::unittest();
-#endif
+
 		puts("compress_integer_stream_vbyte");
 		JASS::compress_integer_stream_vbyte::unittest();
 
