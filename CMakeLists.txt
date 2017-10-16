@@ -99,6 +99,11 @@ target_link_libraries(JASS_index JASSlib ${CMAKE_THREAD_LIBS_INIT})
 add_subdirectory(compiled_index)
 
 #
+# build the anytime search engine (JASS v1 re-implemented)
+#
+add_subdirectory(anytime)
+
+#
 # build the checksummer
 #
 add_executable(hash tools/hash.cpp)
