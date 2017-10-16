@@ -81,7 +81,8 @@ namespace JASS
 		JASS_assert(will_take == 544);
 
 		sequence.clear();
-		size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &sequence[0], sequence.size());
+		uint32_t empty = 0;
+		size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &empty, sequence.size());
 		JASS_assert(size_once_compressed == 0);
 
 		/*
