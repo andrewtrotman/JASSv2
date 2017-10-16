@@ -161,16 +161,6 @@ namespace JASS
 		type = table[size_in_bits].type;
 		count = (raw_count + table[size_in_bits].integers - 1) / table[size_in_bits].integers;
 
-		/*
-			0-pad if there aren't enough integers in the source buffer.
-		*/
-		if (table[size_in_bits].type != 0 && count * table[size_in_bits].integers != raw_count)
-			{	// must 0-pad to prevent read overflow in input buffer
-			std::copy(source, source + raw_count, full_length_buffer);
-			std::fill(full_length_buffer + raw_count, full_length_buffer + (count * table[size_in_bits].integers), 0);
-			source = full_length_buffer;
-			}
-
 		uint32_t *end = source + raw_count;
 
 		while (count > 0)
@@ -179,6 +169,18 @@ namespace JASS
 			*key_store++ = (type << 4) | (~(batch - 1) & 0x0F);
 
 			count -= batch;
+
+			/*
+				0-pad if there aren't enough integers in the source buffer.
+			*/
+			if (source + table[size_in_bits].integers * batch > end)
+				{       // must 0-pad to prevent read overflow in input buffer
+				auto new_end = full_length_buffer + (end - source);
+				std::fill(new_end, new_end + table[size_in_bits].integers, 0);
+				std::copy(source, end, full_length_buffer);
+				end = new_end;
+				source = full_length_buffer;
+				}
 
 			for (current = 0; current < batch; current++)
 				{
