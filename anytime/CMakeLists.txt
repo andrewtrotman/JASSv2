@@ -17,6 +17,8 @@ include_directories(../source)
 
 set(COMPILED_INDEX_FILES
 	JASS_anytime.cpp
+	JASS_anytime_index.h
+	JASS_anytime_index.cpp
 	)
 
 add_executable(JASS_anytime ${COMPILED_INDEX_FILES})
