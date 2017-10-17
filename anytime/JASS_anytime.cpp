@@ -7,6 +7,10 @@
 #include <stdlib.h>
 
 #include "file.h"
+#include "query16_t.h"
+#include "channel_file.h"
+#include "JASS_anytime_index.h"
+#include "JASS_anytime_stats.h"
 
 #define MAX_QUANTUM 0x0FFF
 #define MAX_TERMS_PER_QUERY 1024
@@ -56,62 +60,74 @@ int quantum_compare(const void *a, const void *b)
 */
 int main(int argc, char *argv[])
 	{
-#ifdef NEVER
-	std::string query_file;
+	anytime_stats stats;
+	std::string query_filename;
 
+	/*
+		Check that we have a query file
+	*/
 	if (argc > 1)
-		query_file = argv[1];
+		query_filename = argv[1];
 	else
 		exit(printf("query file must be specified (as parameter 1)\n"));
 
-	std::string postings;
-	JASS::file::read_entire_file("CIpostings.bin", postings);
-	if (postings.size() == 0)
-		exit(printf("Cannot open CIpostings.bin\n"));
-	puts("done");
+	/*
+		Open the index
+	*/
+	anytime_index index(true);
+	index.read_index();
 
+	/*
+		Extract the compession scheme as a decoder
+	*/
+	JASS::compress_integer &decoder = index.codex();
+
+	/*
+		Create the run file
+	*/
 	FILE *out;
 	if ((out = fopen("ranking.txt", "w")) == NULL)
 		exit(printf("Can't open output file.\n"));
 
-	if (*postings = 's')
-		{
-		puts("Uncompressed Index");
-		process_postings_list = CIt_process_list_not_compressed;
-		}
-	else
-		exit(printf("This index appears to be invalid as it is not compressed using a known compressor!\n"));
-
-	read_doclist();
-	read_vocab();
-
 	/*
 		Allocate the quantum at a time table
 	*/
-	quantum_order = new uint64_t[MAX_TERMS_PER_QUERY * MAX_QUANTUM];
-	quantum_check_pointers = new uint16_t * [accumulators_needed];
+	auto quantum_order = new uint64_t[MAX_TERMS_PER_QUERY * MAX_QUANTUM];
 
 	/*
 		Now start searching
 	*/
-	JASS::channel_file input(query_file);							// read from here
+	JASS::channel_file input(query_filename);						// read from here
+	std::string query;													// the channel read goes into here
 
-	extern std::vector<std::string> primary_key;
-	JASS::query16_t jass_query(primary_key, 1024, 10);	// allocate a JASS query object
 	input.gets(query);
+	while (query.size() != 0)
+		{
+		stats.number_of_queries++;
+		
+		std::cout << "-" << query << "\n";
+		JASS::query16_t jass_query(index.primary_keys(), index.document_count(), 10);	// allocate a JASS query object
+		jass_query.parse(query);
+		auto &terms = jass_query.terms();
+		auto query_id = terms[0];
 
-while (fgets(buffer, sizeof(buffer), fp) != NULL)
-	{
-	if ((id = strtok(buffer, SEPERATORS)) == NULL)
-		continue;
+		size_t term_id = 0;
+		for (const auto &term : terms)
+			{
+			term_id++;
+			if (term_id == 1)
+				continue;
+			std::cout << "TERM:" << term << "\n";
+			auto postings = index.get_postings_details(term);
+			}
+		input.gets(query);
+		std::cout << "-\n";
+		}
 
-total_number_of_topics++;
+#ifdef NEVER
+
 CI_results_list_length = 0;
 
-query_id = atoll(id);
-
-// Initialize the accumulators
-memset(CI_accumulator_clean_flags, 0, CI_accumulators_height);
 
 max_remaining_impact = 0;
 current_quantum = quantum_order;

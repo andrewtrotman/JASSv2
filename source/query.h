@@ -90,7 +90,7 @@ namespace JASS
 				private:
 					heap_iterator at;											///< This iterator's current location
 					uint16_t *accumulator_base;							///< The accumulators array used to compute document ids through pointer subtraction
-					const std::vector<std::string> primary_keys;		///< The array of primary keys used to resolve document ids into external document identifiers.
+					const std::vector<std::string> &primary_keys;		///< The array of primary keys used to resolve document ids into external document identifiers.
 					
 				public:
 					/*

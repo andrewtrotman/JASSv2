@@ -2,9 +2,13 @@
 	JASS_ANYTIME_INDEX.H
 	--------------------
 */
+#include "string.h"
 
 #include <string>
 #include <vector>
+
+#include "compress_integer.h"
+#include "query_term.h"
 
 /*
 */
@@ -13,7 +17,7 @@ class anytime_index
 	private:
 		/*
 		*/
-		class anytime_term
+		class term_metadata
 			{
 			public:
 				const char *term;								///< Pointer to a '\0' terminated string that is this terms
@@ -37,12 +41,12 @@ class anytime_index
 
 		uint64_t documents;									///< The number of documents in the collection
 		std::string primary_key_memory;					///< Memory used to store the primary key strings
-		std::vector<char *> primary_key_list;			///< The array of primary keys
+		std::vector<std::string> primary_key_list;			///< The array of primary keys
 
 		uint64_t terms;										///< The numner of terms in the collection
 		std::string vocabulary_memory;					///< Memory used to store the vocabulary pointers
 		std::string vocabulary_terms_memory;			///< Memory used to store the vocabulary strings
-		std::vector<anytime_term> vocabulary_list;	///< The (sorted) array of vocbulary terms
+		std::vector<term_metadata> vocabulary_list;	///< The (sorted) array of vocbulary terms
 
 		std::string postings_memory;						///< Memory used to store the postings
 
@@ -109,5 +113,53 @@ class anytime_index
 			@return 0 on failure, non-zero on success
 		*/
 		size_t read_index(const std::string &primary_key_filename = "CIdoclist.bin", const std::string &vocab_filename = "CIvocab.bin", const std::string &terms_filename = "CIvocab_terms.bin", const std::string &postings_filename = "CIpostings.bin");
-	};
 
+		/*
+			ANYTIME_INDEX::CODEX()
+			----------------------
+		*/
+		/*!
+			@brief Return a reference to a decompressor that can be used with this index
+			@return A reference to a compress_integer that can decode the given codex
+		*/
+		JASS::compress_integer &codex(void);
+
+		/*
+			ANYTIME_INDEX::PRIMARY_KEYS()
+			-----------------------------
+		*/
+		/*!
+			@brief Return the list of primary keys as a std::vector<std::string>
+			@return A reference to a vector of primary keys
+		*/
+		const std::vector<std::string> &primary_keys(void)
+			{
+			return primary_key_list;
+			}
+
+		/*
+			ANYTIME_INDEX::DOCUMENT_COUNT()
+			-------------------------------
+		*/
+		/*!
+			@brief Return the number of documents in the collection
+			@return the number of documents in the collection
+		*/
+		size_t document_count(void)
+			{
+			return documents;
+			}
+
+		/*
+			ANYTIME_INDEX::POSTINGS_DETAILS()
+			---------------------------------
+		*/
+		/*!
+			@brief Return the meta-data about the postings list
+			@return true on success, false on fail (e.g. term not in dictionary)
+		*/
+		bool postings_details(term_metadata &metadata, const JASS::query_term &term)
+			{
+			std::binary_search(vocabulary_list, vocabulary_list + terms, term);
+			}
+	};

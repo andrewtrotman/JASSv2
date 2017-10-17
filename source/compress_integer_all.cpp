@@ -61,7 +61,7 @@ namespace JASS
 			{"-cT", "--compress_simple_8b", "Simple-8b", &simple_8b},
 			{"-cQ", "--compress_simple_8b_packed", "Optimal Packed Simple-8b", &simple_8b_packed},
 			{"-cX", "--compress_qmx_improved", "QMX Improved", &qmx_improved},
-			{"-cx", "--compress_qmx_original", "QMX Original with bug fixes (always large and slower than QMX improved)", &qmx_original},
+			{"-cx", "--compress_qmx_original", "QMX Original", &qmx_original},
 			}
 		};
 

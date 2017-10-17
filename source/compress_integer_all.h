@@ -137,7 +137,25 @@ namespace JASS
 					
 				return compressors[default_compressor].description;
 				}
-			
+
+			/*
+				COMPRESS_INTEGER_ALL::GET_BY_NAME()
+				-----------------------------------
+			*/
+			/*!
+				@brief Given the name of a compressor, return a reference to an object that is that kind of compressor.
+				@param name [in] The name of the compressor.
+				@return A reference to a compressor that can encode and decode data using the codex of the given name (or a "null" compressor on error)
+			*/
+			static compress_integer &get_by_name(const std::string &name)
+				{
+				for (size_t which = 0; which < compressors_size; which++)
+					if (compressors[which].description == name)
+						return *compressors[which].codex;
+
+				return *compressors[0].codex;
+				}
+
 			/*
 				COMPRESS_INTEGER_ALL::UNITTEST()
 				--------------------------------

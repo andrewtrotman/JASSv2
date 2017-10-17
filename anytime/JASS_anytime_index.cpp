@@ -4,6 +4,7 @@
 #include <algorithm>
 
 #include "file.h"
+#include "compress_integer_all.h"
 #include "JASS_anytime_index.h"
 
 /*
@@ -170,3 +171,23 @@ size_t anytime_index::read_index(const std::string &primary_key_filename, const 
 	return 0;
 	}
 
+/*
+	ANYTIME_INDEX::CODEX()
+	----------------------
+*/
+/*!
+	@brief Return a reference to a decompressor that can be used with this index
+*/
+JASS::compress_integer &anytime_index::codex(void)
+	{
+	if (postings_memory.size() == 0)
+		return JASS::compress_integer_all::get_by_name("None");
+	else
+		switch (postings_memory[0])
+			{
+			case 's':
+				return JASS::compress_integer_all::get_by_name("None");
+			default:
+				return JASS::compress_integer_all::get_by_name("None");
+			}
+	}
