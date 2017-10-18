@@ -10,7 +10,6 @@
 	@author Vikram Subramanya, Andrew Trotman
 	@copyright 2016 Andrew Trotman
 */
-
 #pragma once
 
 #include "compress_integer_simple_9.h"

@@ -7,32 +7,44 @@
 #include <string>
 #include <vector>
 
-#include "compress_integer.h"
+#include "slice.h"
 #include "query_term.h"
+#include "compress_integer.h"
 
 /*
 */
 class anytime_index
 	{
-	private:
+	public:
 		/*
 		*/
-		class term_metadata
+		class metadata
 			{
 			public:
-				const char *term;								///< Pointer to a '\0' terminated string that is this terms
-				const char *offset;							///< Offset to the postings for this term
-				uint64_t impacts;								///< The numner of impact segments this term has
+				JASS::slice term;						///< Pointer to a '\0' terminated string that is this terms
+				uint8_t *offset;						///< Offset to the postings for this term
+				uint64_t impacts;						///< The numner of impact segments this term has
 
 			public:
-				static int compare(const void *a, const void *b)
+				metadata() :
+					term(),
+					offset(nullptr),
+					impacts(0)
 					{
-					return strcmp(((anytime_term *)a)->term, ((anytime_term *)b)->term);
+					/* Nothing */
 					}
 
-				static int compare_string(const void *a, const void *b)
+				metadata(const JASS::slice &term, const char *offset, uint64_t impacts) :
+					term(term),
+					offset(const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(offset))),
+					impacts(impacts)
 					{
-					return strcmp((char *)a, ((anytime_term *)b)->term);
+					/* Nothing */
+					}
+
+				bool operator<(const JASS::slice &with) const
+					{
+					return JASS::slice::strict_weak_order_less_than(term, with);
 					}
 			};
 
@@ -46,7 +58,7 @@ class anytime_index
 		uint64_t terms;										///< The numner of terms in the collection
 		std::string vocabulary_memory;					///< Memory used to store the vocabulary pointers
 		std::string vocabulary_terms_memory;			///< Memory used to store the vocabulary strings
-		std::vector<term_metadata> vocabulary_list;	///< The (sorted) array of vocbulary terms
+		std::vector<metadata> vocabulary_list;			///< The (sorted in alphabetical order) array of vocbulary terms
 
 		std::string postings_memory;						///< Memory used to store the postings
 
@@ -138,6 +150,19 @@ class anytime_index
 			}
 
 		/*
+			ANYTIME_INDEX::POSTINGS()
+			-------------------------
+		*/
+		/*!
+			@brief Return a pointer to the start of the postings "file"
+			@return A pointer to the start of the postings "file"
+		*/
+		const uint8_t *postings(void)
+			{
+			return reinterpret_cast<const uint8_t *>(&postings_memory[0]);
+			}
+
+		/*
 			ANYTIME_INDEX::DOCUMENT_COUNT()
 			-------------------------------
 		*/
@@ -156,10 +181,19 @@ class anytime_index
 		*/
 		/*!
 			@brief Return the meta-data about the postings list
+			@param metadata [out] If the term is found then this is is changed to contain the metadata about the term
+			@param term [in] Find the metadata for this term
 			@return true on success, false on fail (e.g. term not in dictionary)
 		*/
-		bool postings_details(term_metadata &metadata, const JASS::query_term &term)
+	 	bool postings_details(metadata &metadata, const JASS::query_term &term)
 			{
-			std::binary_search(vocabulary_list, vocabulary_list + terms, term);
+			auto found = std::lower_bound(vocabulary_list.begin(), vocabulary_list.end(), term.token());
+			if (term.token() == found->term)
+				{
+				metadata = *found;
+				return true;
+				}
+
+			return false;
 			}
 	};

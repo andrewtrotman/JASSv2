@@ -174,6 +174,24 @@ namespace JASS
 				length = 0;
 				pointer = nullptr;
 				}
+
+			/*
+				SLICE::OPERATOR=()
+				-------------------
+			*/
+			/*!
+				@brief Operator = (asignment operator)
+				@param with [in] The slice to copy to.
+				@return A reference to this slice
+			*/
+			slice &operator=(const slice &with)
+				{
+				pointer = with.pointer;
+				length = with.length;
+
+				return *this;
+				}
+
 			
 			/*
 				SLICE::SIZE()
@@ -379,7 +397,6 @@ namespace JASS
 
 				puts("slice::PASSED");
 				}
-			
 		};
 
 	/*

@@ -11,6 +11,7 @@
 	@copyright 2016 Andrew Trotman
 */
 #pragma once
+
 #include "compress_integer.h"
 
 namespace JASS

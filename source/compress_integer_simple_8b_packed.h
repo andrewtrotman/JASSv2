@@ -12,7 +12,6 @@
 	@author Blake Burgess, Andrew Trotman, Michael Albert
 	@copyright 2016 Andrew Trotman
 */
-
 #pragma once
 
 #include "compress_integer.h"

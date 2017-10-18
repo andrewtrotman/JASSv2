@@ -4,6 +4,7 @@
 #include <algorithm>
 
 #include "file.h"
+#include "slice.h"
 #include "compress_integer_all.h"
 #include "JASS_anytime_index.h"
 
@@ -44,7 +45,7 @@ size_t anytime_index::read_primary_keys(const std::string &filename)
 		Now work through each primary key adding it to the list of primary keys
 	*/
 	for (size_t id = 0; id < documents; id++)
-		primary_key_list.push_back(&primary_key_memory[0]  + offset_base[id]);
+		primary_key_list.push_back(&primary_key_memory[0] + offset_base[id]);
 
 	/*
 		This can take some time so make some noise when we're finished
@@ -101,9 +102,7 @@ size_t anytime_index::read_vocabulary(const std::string &vocab_filename, const s
 		{
 		uint64_t *base = reinterpret_cast<uint64_t *>(vocab + (3 * sizeof(uint64_t)) * term);
 
-		vocabulary_list[term].term = vocab_terms + base[0];
-		vocabulary_list[term].offset = postings_base + base[1];
-		vocabulary_list[term].impacts = base[2];
+		vocabulary_list.push_back(anytime_index::metadata(JASS::slice(vocab_terms + base[0]), postings_base + base[1], base[2]));
 		}
 
 	/*
@@ -164,8 +163,8 @@ size_t anytime_index::read_postings(const std::string &filename)
 size_t anytime_index::read_index(const std::string &primary_key_filename, const std::string &vocab_filename, const std::string &terms_filename, const std::string &postings_filename)
 	{
 	if (read_primary_keys(primary_key_filename) != 0)
-		if (read_vocabulary(vocab_filename, terms_filename) != 0)
-			if (read_postings(postings_filename) != 0)
+		if (read_postings(postings_filename) != 0)
+			if (read_vocabulary(vocab_filename, terms_filename) != 0)
 				return 1;
 
 	return 0;

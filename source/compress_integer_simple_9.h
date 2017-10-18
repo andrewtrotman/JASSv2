@@ -20,7 +20,6 @@
 	@author Vikram Subramanya, Andrew Trotman, Blake Burgess
 	@copyright 2016 Andrew Trotman
 */
-
 #pragma once
 
 #include "compress_integer.h"
