@@ -33,6 +33,11 @@ void trec_dump_results(uint32_t topic_id, FILE *out, uint32_t output_length)
 #endif
 	}
 
+/*
+	CLASS SEGMENT_HEADER
+	--------------------
+*/
+#pragma pack(push, 1)
 class segment_header
 	{
 	public:
@@ -40,7 +45,8 @@ class segment_header
 		uint64_t offset;					///< Offset (within the postings file) of the start of the compressed postings list
 		uint64_t end;						///< Offset (within the postings file) of the end of the compressed postings list
 		uint32_t segment_frequency;	///< The number of document ids in the segment (not end - offset because the postings are compressed)
-	} __attribute__((packed));
+	};
+#pragma pack(pop)
 
 /*
 	MAIN()
