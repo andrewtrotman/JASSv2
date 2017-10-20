@@ -8,29 +8,28 @@
 #include <stdlib.h>
 
 #include <limits>
+#include <fstream>
 #include <algorithm>
 
 #include "file.h"
 #include "query16_t.h"
 #include "channel_file.h"
+#include "compress_integer.h"
 #include "JASS_anytime_index.h"
 #include "JASS_anytime_stats.h"
 
 #define MAX_QUANTUM 0x0FFF
 #define MAX_TERMS_PER_QUERY 1024
 
-size_t CI_results_list_length = 0;
-
-
-void trec_dump_results(uint32_t topic_id, FILE *out, uint32_t output_length)
+template <typename QUERY_ID, typename QUERY>
+void export_TREC(std::ostream &stream, const QUERY_ID &topic_id, QUERY &result)
 	{
-#ifdef NEVER
-	for (size_t current = 0; current < (output_length < CI_results_list_length ? output_length : CI_results_list_length); current++)
+	size_t current = 0;
+	for (const auto &document : result)
 		{
-		size_t id = CI_accumulator_pointers[current] - CI_accumulators;
-		fprintf(out, "%d Q0 %s %d %d COMPILED (ID:%u)\n", topic_id, CI_documentlist[id], current + 1, CI_accumulators[id], id);
+		current++;
+		stream << topic_id << " Q0 "<< document.primary_key << " " << current << " " << document.rsv << " COMPILED (ID:" << document.document_id << ")\n";
 		}
-#endif
 	}
 
 /*
@@ -47,6 +46,104 @@ class segment_header
 		uint32_t segment_frequency;	///< The number of document ids in the segment (not end - offset because the postings are compressed)
 	};
 #pragma pack(pop)
+
+
+
+class decoder_d1
+	{
+	private:
+		size_t integers;
+		std::vector<uint32_t> decompress_buffer;
+
+	private:
+		class iterator
+			{
+			private:
+				uint32_t cumulative;
+				const uint32_t *current;
+
+			public:
+				iterator(const uint32_t *start) :
+					cumulative(0),
+					current(start)
+					{
+					/* Nothing */
+					}
+
+				uint32_t operator*(void)
+					{
+					cumulative += *current;
+					return cumulative;
+					}
+
+				bool operator!=(iterator &another)
+					{
+					return current != another.current;
+					}
+
+				iterator &operator++(void)
+					{
+					current++;
+					return *this;
+					}
+			};
+
+	public:
+		decoder_d1(size_t max_integers) :
+			integers(0),
+			decompress_buffer(max_integers, 0)
+			{
+			/* Nothing */
+			}
+
+		void decode(JASS::compress_integer &decoder, size_t integers, const void *compressed, size_t compressed_size)
+			{
+			decoder.decode(decompress_buffer.data(), integers, compressed, compressed_size);
+			this->integers = integers;
+			}
+
+		iterator begin() const
+			{
+			return iterator(decompress_buffer.data());
+			}
+
+		iterator end() const
+			{
+			return iterator(decompress_buffer.data() + integers);
+			}
+	};
+
+
+class decoder_d0
+	{
+	private:
+		size_t integers;
+		std::vector<uint32_t> decompress_buffer;
+
+	public:
+		decoder_d0(size_t max_integers) :
+			integers(0),
+			decompress_buffer(max_integers, 0)
+			{
+			/* Nothing */
+			}
+
+		void decode(JASS::compress_integer &decoder, size_t integers, const void *compressed, size_t compressed_size)
+			{
+			decoder.decode(decompress_buffer.data(), integers, compressed, compressed_size);
+			this->integers = integers;
+			}
+
+		auto begin() const
+			{
+			return decompress_buffer.data();
+			}
+
+		auto end() const
+			{
+			return decompress_buffer.data() + integers;
+			}
+	};
 
 /*
 	MAIN()
@@ -74,7 +171,8 @@ int main(int argc, char *argv[])
 	/*
 		Extract the compession scheme as a decoder
 	*/
-	JASS::compress_integer &decoder = index.codex();
+	JASS::compress_integer &decompressor = index.codex();
+	decoder_d0 decoder(index.document_count() + 1024);			// Some decoders write past the end of the output buffer (e.g. GroupVarInt) so we allocate enough space for the overflow
 
 	/*
 		Set the Anytime stopping criteria
@@ -84,9 +182,8 @@ int main(int argc, char *argv[])
 	/*
 		Create the run file
 	*/
-	FILE *out;
-	if ((out = fopen("ranking.txt", "w")) == NULL)
-		exit(printf("Can't open output file.\n"));
+	std::ofstream output;
+	output.open("ranking.txt");
 
 	/*
 		Allocate the Score-at-a-Time table
@@ -97,8 +194,8 @@ int main(int argc, char *argv[])
 	/*
 		Now start searching
 	*/
-	JASS::channel_file input(query_filename);						// read from here
-	std::string query;													// the channel read goes into here
+	JASS::channel_file input(query_filename);		// read from here
+	std::string query;									// the channel read goes into here
 
 	input.gets(query);
 	while (query.size() != 0)
@@ -189,51 +286,20 @@ std::cout << "Process Segment->(" << ((segment_header *)(index.postings() + *cur
 			/*
 				Process the postings
 			*/
+			uint16_t impact = header.impact;
+			decoder.decode(decompressor, header.segment_frequency, index.postings() + header.offset, header.end - header.offset);
+			for (const auto posting : decoder)
+				jass_query.add_rsv(posting, impact);
 			}
 
+		export_TREC(output, (char *)query_id.token().address(), jass_query);
+
 		input.gets(query);
+
 		std::cout << "-\n";
 		}
 
-#ifdef NEVER
-
-// Sort the accumulator pointers to put the highest RSV document at the top of the list.
-top_k_qsort(CI_accumulator_pointers, CI_results_list_length, CI_top_k - 1);
-
-/*
-At this point we know the number of hits (CI_results_list_length) and they can be decode out of the CI_accumulator_pointers array
-where CI_accumulator_pointers[0] points into CI_accumulators[] and therefore CI_accumulator_pointers[0] - CI_accumulators is the docid
-and *CI_accumulator_pointers[0] is the rsv.
-*/
-end_timer = chrono::steady_clock::now();
-stats_tmp = chrono::duration_cast<chrono::nanoseconds>(end_timer - full_query_without_io_timer);
-stats_total_time_to_search_without_io += stats_tmp;
-
-
-// Dump TREC output
-trec_dump_results(query_id, out, CI_top_k - 1);	// Subtract 1 from top_k because we added 1 for the early termination checks.
-}
-}
-
-fclose(out);
-fclose(fp);
-
-end_timer = chrono::steady_clock::now();
-stats_total_time_to_search += chrono::duration_cast<chrono::nanoseconds>(end_timer - full_query_timer);
-print_os_time();
-
-printf("\nAverages over %llu queries\n", total_number_of_topics);
-printf("--------------------------------------------------------\n");
-printf("Total time excluding I/O   (per query) : %12llu ns\n", stats_total_time_to_search_without_io.count() / total_number_of_topics);
-printf("--------------------------------------------------------\n");
-printf("Total running time                     : %12llu ns\n", stats_total_time_to_search.count());
-printf("--------------------------------------------------------\n");
-printf("Total number of early terminate checks : %12llu\n", stats_quantum_check_count);
-printf("Total number of early terminations     : %12llu\n", stats_early_terminations);
-printf("Total number of segments processed     : %12llu\n", stats_quantum_count);
-printf("--------------------------------------------------------\n");
-#endif
-
+output.close();
 
 return 0;
 }

@@ -39,10 +39,9 @@ namespace JASS
 			allocator_pool memory;									///< All memory allocation happens in this "arena"
 			parser_query parser;										///< Parser responsible for converting text into a parsed query
 			query_term_list parsed_query;							///< The parsed query
-			accumulator_2d<ACCUMULATOR_TYPE> accumulators;				///< The array of accumulators
-			top_k_heap<pointer_box<ACCUMULATOR_TYPE>> heap;			///< The top-k heap containing the best results so far
+			accumulator_2d<ACCUMULATOR_TYPE> accumulators;	///< The array of accumulators
+			top_k_heap<pointer_box<ACCUMULATOR_TYPE>> heap;	///< The top-k heap containing the best results so far
 			const std::vector<std::string> &primary_keys;	///< A vector of strings, each the primary key for the document with an id equal to the vector index
-		
 
 		public:
 			/*
@@ -221,12 +220,13 @@ namespace JASS
 					accumulators[document_id] += weight;
 					heap.push_back(&accumulators[document_id]);
 					}
-				else if (accumulators[document_id] < *heap.front())
+				else if (pointer_box<ACCUMULATOR_TYPE>::less_than(&accumulators[document_id], heap.front()))
 					{
 					/*
 						we weren't in the heap, but we might become so
 					*/
-					if ((accumulators[document_id] += weight) > *heap.front())
+					accumulators[document_id] += weight;
+					if (pointer_box<ACCUMULATOR_TYPE>::greater_than(&accumulators[document_id], heap.front()))
 						heap.push_back(&accumulators[document_id]);
 					}
 				else

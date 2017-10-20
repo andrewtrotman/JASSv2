@@ -65,7 +65,7 @@ namespace JASS
 				@param to [in] The object we are Compareing to.
 				@return -ve for less, 0 for equal, +ve for greater.
 			*/
-			int compare(const pointer_box<POINTER> &to) const
+			int compare(const pointer_box<POINTER> to) const
 				{
 				if (*element < *to.element)
 					return -1;
@@ -83,17 +83,45 @@ namespace JASS
 				}
 
 			/*
+				POINTER_BOX::LESS_THAN()
+				------------------------
+			*/
+			/*!
+				@brief Compare for less than (*a < *b) || (*a == *b && a < b).
+				@param to [in] The object we are comparing to.
+				@return true or false.
+			*/
+			static bool less_than(POINTER *first, POINTER *to)
+				{
+				return *first < *to || (*first == *to && first < to);
+				}
+
+			/*
+				POINTER_BOX::LESS_THAN()
+				------------------------
+			*/
+			/*!
+				@brief Compare for less than (*a < *b) || (*a == *b && a < b).
+				@param to [in] The object we are comparing to.
+				@return true or false.
+			*/
+			static bool less_than(POINTER *first, const pointer_box<POINTER> to)
+				{
+				return less_than(first, to.element);
+				}
+
+			/*
 				POINTER_BOX::OPERATOR<()
 				------------------------
 			*/
 			/*!
-				@brief Compare for less than.
-				@param to [in] The object we are Compareing to.
+				@brief Compare for less than (*a < *b) || (*a == *b && a < b).
+				@param to [in] The object we are comparing to.
 				@return true or false.
 			*/
-			bool operator<(const pointer_box<POINTER> &to) const
+			bool operator<(const pointer_box<POINTER> to) const
 				{
-				return *element < *to.element || (*element == *to.element && element < to.element);
+				return less_than(element, to.element);
 				}
 
 			/*
@@ -105,9 +133,37 @@ namespace JASS
 				@param to [in] The object we are Compareing to.
 				@return true or false.
 			*/
-			bool operator<=(const pointer_box<POINTER> &to) const
+			bool operator<=(const pointer_box<POINTER> to) const
 				{
 				return *element <= *to.element || (*element == *to.element && element <= to.element);
+				}
+
+			/*
+				POINTER_BOX::GREATER_THAN()
+				---------------------------
+			*/
+			/*!
+				@brief Compare for more than (*a > *b) || (*a == *b && a > b).
+				@param to [in] The object we are comparing to.
+				@return true or false.
+			*/
+			static bool greater_than(POINTER *first, POINTER *to)
+				{
+				return *first > *to || (*first == *to && first > to);
+				}
+
+			/*
+				POINTER_BOX::GREATER_THAN()
+				---------------------------
+			*/
+			/*!
+				@brief Compare for more than (*a > *b) || (*a == *b && a > b).
+				@param to [in] The object we are comparing to.
+				@return true or false.
+			*/
+			static bool greater_than(POINTER *first, pointer_box<POINTER> to)
+				{
+				return greater_than(first, to.element);
 				}
 
 			/*
@@ -119,9 +175,9 @@ namespace JASS
 				@param to [in] The object we are Compareing to.
 				@return true or false.
 			*/
-			bool operator>(const pointer_box<POINTER> &to) const
+			bool operator>(const pointer_box<POINTER> to) const
 				{
-				return *element > *to.element || (*element == *to.element && element > to.element);
+				return greater_than(element, to.element);
 				}
 
 			/*
@@ -133,7 +189,7 @@ namespace JASS
 				@param to [in] The object we are Compareing to.
 				@return true or false.
 			*/
-			bool operator>=(const pointer_box<POINTER> &to) const
+			bool operator>=(const pointer_box<POINTER> to) const
 				{
 				return *element >= *to.element || (*element == *to.element && element >= to.element);
 				}
@@ -147,7 +203,7 @@ namespace JASS
 				@param to [in] The object we are Compareing to.
 				@return true or false.
 			*/
-			bool operator==(const pointer_box<POINTER> &to) const
+			bool operator==(const pointer_box<POINTER> to) const
 				{
 				return element == to.element && *element == *to.element;
 				}
@@ -161,7 +217,7 @@ namespace JASS
 				@param to [in] The object we are Compareing to.
 				@return true or false.
 			*/
-			bool operator!=(const pointer_box<POINTER> &to) const
+			bool operator!=(const pointer_box<POINTER> to) const
 				{
 				return element != to.element || *element != *to.element;
 				}
