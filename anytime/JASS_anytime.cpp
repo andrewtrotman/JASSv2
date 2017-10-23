@@ -21,6 +21,10 @@
 #define MAX_QUANTUM 0x0FFF
 #define MAX_TERMS_PER_QUERY 1024
 
+/*
+	EXPORT_TREC()
+	-------------
+*/
 template <typename QUERY_ID, typename QUERY>
 void export_TREC(std::ostream &stream, const QUERY_ID &topic_id, QUERY &result)
 	{
@@ -96,7 +100,7 @@ class decoder_d1
 			/* Nothing */
 			}
 
-		void decode(JASS::compress_integer &decoder, size_t integers, const void *compressed, size_t compressed_size)
+		virtual void decode(JASS::compress_integer &decoder, size_t integers, const void *compressed, size_t compressed_size)
 			{
 			decoder.decode(decompress_buffer.data(), integers, compressed, compressed_size);
 			this->integers = integers;
@@ -110,6 +114,12 @@ class decoder_d1
 		iterator end() const
 			{
 			return iterator(decompress_buffer.data() + integers);
+			}
+
+		virtual void process(uint16_t impact, JASS::query16_t &accumulators)
+			{
+			for (auto document : *this)
+				accumulators.add_rsv(document, impact);
 			}
 	};
 
@@ -128,7 +138,7 @@ class decoder_d0
 			/* Nothing */
 			}
 
-		void decode(JASS::compress_integer &decoder, size_t integers, const void *compressed, size_t compressed_size)
+		virtual void decode(JASS::compress_integer &decoder, size_t integers, const void *compressed, size_t compressed_size)
 			{
 			decoder.decode(decompress_buffer.data(), integers, compressed, compressed_size);
 			this->integers = integers;
@@ -142,6 +152,15 @@ class decoder_d0
 		auto end() const
 			{
 			return decompress_buffer.data() + integers;
+			}
+
+		/*
+			We put the processing code here so that a decoder can work in parallel - if needed.
+		*/
+		virtual void process(uint16_t impact, JASS::query16_t &accumulators)
+			{
+			for (auto document : *this)
+				accumulators.add_rsv(document, impact);
 			}
 	};
 
@@ -288,8 +307,7 @@ std::cout << "Process Segment->(" << ((segment_header *)(index.postings() + *cur
 			*/
 			uint16_t impact = header.impact;
 			decoder.decode(decompressor, header.segment_frequency, index.postings() + header.offset, header.end - header.offset);
-			for (const auto posting : decoder)
-				jass_query.add_rsv(posting, impact);
+			decoder.process(impact, jass_query);
 			}
 
 		export_TREC(output, (char *)query_id.token().address(), jass_query);
