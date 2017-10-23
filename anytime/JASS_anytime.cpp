@@ -67,9 +67,9 @@ class decoder_d1
 				const uint32_t *current;
 
 			public:
-				iterator(const uint32_t *start) :
+				iterator(const std::vector<uint32_t> &array, size_t offset) :
 					cumulative(0),
-					current(start)
+					current(array.data() + offset)
 					{
 					/* Nothing */
 					}
@@ -93,6 +93,7 @@ class decoder_d1
 			};
 
 	public:
+		decoder_d1() = delete;
 		decoder_d1(size_t max_integers) :
 			integers(0),
 			decompress_buffer(max_integers, 0)
@@ -108,12 +109,12 @@ class decoder_d1
 
 		iterator begin() const
 			{
-			return iterator(decompress_buffer.data());
+			return iterator(decompress_buffer, 0);
 			}
 
 		iterator end() const
 			{
-			return iterator(decompress_buffer.data() + integers);
+			return iterator(decompress_buffer, integers);
 			}
 
 		virtual void process(uint16_t impact, JASS::query16_t &accumulators)
@@ -131,6 +132,7 @@ class decoder_d0
 		std::vector<uint32_t> decompress_buffer;
 
 	public:
+		decoder_d0() = delete;
 		decoder_d0(size_t max_integers) :
 			integers(0),
 			decompress_buffer(max_integers, 0)
