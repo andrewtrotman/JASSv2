@@ -12,6 +12,8 @@
 */
 #pragma once
 
+#include "decode_d1.h"
+
 namespace JASS
 	{
 	/*
@@ -41,10 +43,10 @@ namespace JASS
 				@param result [in] The result set to export
 				@tparam NAME [in] the name of the run, normally a std::string or a char *
 				@param run_name [in] The name of the run
-				@param include_internal_ids [in] if true then this method will include the internal document ids as part of the run name
+				@param include_internal_ids [in] if true then this method will include the internal document ids as part of the run name (default = false)
 			*/
 			template <typename QUERY_ID, typename QUERY, typename NAME>
-			run_export_trec(std::ostream &stream, const QUERY_ID &topic_id, QUERY &result, const NAME &run_name, bool include_internal_ids)
+			run_export_trec(std::ostream &stream, const QUERY_ID &topic_id, QUERY &result, const NAME &run_name, bool include_internal_ids = false)
 				{
 				size_t current = 0;
 				for (const auto &document : result)
@@ -60,6 +62,38 @@ namespace JASS
 
 					stream << '\n';
 					}
+				}
+
+			/*
+				RUN_EXPORT_TREC::UNITTEST()
+				---------------------------
+			*/
+			/*!
+				@brief Unit test this class
+			*/
+			static void unittest(void)
+				{
+				std::vector<uint32_t>integer_sequence = {1, 1, 1, 1, 1, 1};
+				std::vector<std::string>primary_keys = {"zero", "one", "two", "three", "four", "five", "six"};
+				compress_integer_none identity;
+				query16_t query(primary_keys, 10, 5);
+				std::ostringstream result;
+
+				decoder_d1 decoder(20);
+				decoder.decode(identity, integer_sequence.size(), integer_sequence.data(), sizeof(integer_sequence[0]) * integer_sequence.size());
+				decoder.process(1, query);
+
+				run_export_trec(result, "qid", query, "unittest", true);
+
+				std::string correct_answer =
+					"qid Q0 six 1 1 unittest (ID:6)\n"
+					"qid Q0 five 2 1 unittest (ID:5)\n"
+					"qid Q0 four 3 1 unittest (ID:4)\n"
+					"qid Q0 three 4 1 unittest (ID:3)\n"
+					"qid Q0 two 5 1 unittest (ID:2)\n";
+
+				JASS_assert(result.str() == correct_answer);
+				puts("run_export_trec::PASSED");
 				}
 		};
 	}

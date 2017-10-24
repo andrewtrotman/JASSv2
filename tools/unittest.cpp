@@ -240,17 +240,17 @@ int main(void)
 		puts("query");
 		JASS::query<uint16_t>::unittest();
 
-		puts("decode_d0")
+		puts("decode_d0");
 		JASS::decoder_d0::unittest();
 
-		puts("decode_d1")
+		puts("decode_d1");
 		JASS::decoder_d1::unittest();
 
-		puts("run_export")
-		JASS::run_export::unittest();
-
-		puts("run_export_trec")
+		puts("run_export_trec");
 		JASS::run_export_trec::unittest();
+
+		puts("run_export");
+		JASS::run_export::unittest();
 
 		puts("ALL UNIT TESTS HAVE PASSED");
 		failed = false;

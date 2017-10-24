@@ -174,7 +174,7 @@ namespace JASS
 				}
 
 			/*
-				DECODER_D0::PROCESS()
+				DECODER_D1::PROCESS()
 				-----------------
 				We put the processing code here so that a decoder can work in parallel - if needed.
 			*/
@@ -183,10 +183,35 @@ namespace JASS
 				@param impact [in] The impact score to add for each document id in the list.
 				@param accumulators [in] The accumulators to add to
 			*/
-			void process(uint16_t impact, JASS::query16_t &accumulators)
+			void process(uint16_t impact, JASS::query16_t &accumulators) const
 				{
 				for (auto document : *this)
 					accumulators.add_rsv(document, impact);
+				}
+
+			/*
+				DECODER_D1::UNITTEST()
+				----------------------
+			*/
+			/*!
+				@brief Unit test this class
+			*/
+			static void unittest(void)
+				{
+				std::vector<uint32_t>integer_sequence = {2, 1, 2, 2, 4, 2, 4, 2};
+				std::vector<std::string>primary_keys;
+				compress_integer_none identity;
+				query16_t query(primary_keys, 10, 5);
+				std::ostringstream result;
+
+				decoder_d1 decoder(20);
+				decoder.decode(identity, integer_sequence.size(), integer_sequence.data(), sizeof(integer_sequence[0]) * integer_sequence.size());
+				decoder.process(1, query);
+				for (const auto &answer : query)
+					result << answer.document_id << " ";
+
+				JASS_assert(result.str() == "19 17 13 11 7 ");
+				puts("decoder_d1::PASSED");
 				}
 		};
 	}
