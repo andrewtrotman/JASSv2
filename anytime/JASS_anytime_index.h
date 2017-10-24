@@ -107,9 +107,9 @@ class anytime_index
 			@param verbose [in] Should the index reading methods produce messages on stdout?
 		*/
 		anytime_index(bool verbose) :
+			verbose(verbose),
 			documents(0),
-			terms(0),
-			verbose(verbose)
+			terms(0)
 			{
 			/* Nothing */
 			}

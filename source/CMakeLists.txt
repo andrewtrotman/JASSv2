@@ -95,7 +95,7 @@ set(JASSlib_FILES
 	query_term_list.h
 	reverse.h
 	run_export.h
-	run_export_TREC.h
+	run_export_trec.h
 	serialise_ci.cpp
 	serialise_ci.h
 	serialise_jass_v1.cpp

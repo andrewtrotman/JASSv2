@@ -24,7 +24,6 @@ namespace JASS
 		The format is a series of rows (one per result in the results list) of <topic-id query-iteration primary-key, rank, retrieval-status-value, run-name>
 		for example:
 		703 Q0 WSJ870918-0107 1 130 RUNNAME
-
 	*/
 	class run_export_trec
 		{
@@ -36,19 +35,22 @@ namespace JASS
 			/*!
 				@brief Export a run in TREC run format for evaluation using trec_eval
 				@param stream [in] The stream to write the run to
+				@tparam QUERY_ID [in] the ID of the query, an alphanumeric sequence, normally a positive integer
 				@param topic_id [in] The ID of this topic (can be alphanumeric, but no whitespace)
+				@tparam QUERY [in] The type of the query, normally JASS::query16_t
 				@param result [in] The result set to export
+				@tparam NAME [in] the name of the run, normally a std::string or a char *
 				@param run_name [in] The name of the run
 				@param include_internal_ids [in] if true then this method will include the internal document ids as part of the run name
 			*/
 			template <typename QUERY_ID, typename QUERY, typename NAME>
-			operator()(std::ostream &stream, const QUERY_ID &topic_id, QUERY &result, const NAME &run_name, bool include_internal_ids)
+			run_export_trec(std::ostream &stream, const QUERY_ID &topic_id, QUERY &result, const NAME &run_name, bool include_internal_ids)
 				{
 				size_t current = 0;
 				for (const auto &document : result)
 					{
 					current++;
-					stream << topic_id << " Q0 "<< document.primary_key << " " << current << " " << document.rsv << run_name;
+					stream << topic_id << " Q0 "<< document.primary_key << ' ' << current << ' ' << document.rsv << ' ' << run_name;
 
 					/*
 						Optionally include the internal document id for debugging purposes.
