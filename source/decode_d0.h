@@ -133,7 +133,7 @@ namespace JASS
 				std::vector<uint32_t>integer_sequence = {2, 3, 5, 7, 11, 13, 17, 19};
 				std::vector<std::string>primary_keys;
 				compress_integer_none identity;
-				query16_t query(primary_keys, 10, 5);
+				query16_t query(primary_keys, 20, 5);
 				std::ostringstream result;
 
 				decoder_d0 decoder(20);
