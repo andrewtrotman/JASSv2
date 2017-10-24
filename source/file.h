@@ -41,21 +41,16 @@ namespace JASS
 		protected:
 			FILE *fp; 		///< The underlying representation is a FILE *  from C (as they appear to be fast).
 			
-		private:
+		public:
+
 			/*
 				FILE::FILE()
 				------------
 			*/
 			/*!
-				@brief Private constructor to prevent creation of empty objects
+				@brief Constructor
 			*/
-			file() :
-				fp(nullptr)
-				{
-				/* Nothing */
-				}
-
-		public:
+			file() = delete;
 
 			/*
 				FILE::FILE()

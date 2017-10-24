@@ -60,8 +60,12 @@ set(JASSlib_FILES
 	compress_integer_stream_vbyte.cpp
 	compress_integer_variable_byte.h
 	compress_integer_variable_byte.cpp
+	decode_d0.h
+	decode_d1.h
 	document.h
 	dynamic_array.h
+	export.h
+	export_TREC.h
 	file.h
 	file.cpp
 	global_new_delete.h

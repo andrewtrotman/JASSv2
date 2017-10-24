@@ -35,21 +35,16 @@ namespace JASS
 			static const uint8_t ceiling_log2_answer[];		///< Lookup table for ceiling(log2(x));
 			static const uint8_t floor_log2_answer[];		///< Lookup table for floor(log2(x));
 
-		private:
+		public:
 			/*
 				MATHS()
 				-------
 			*/
 			/*!
-				@brief Private constructor.
-				@details A private constructor makes it impossable to instantiate this class - done because all methods are static.
+				@brief Constructor.
 			*/
-			maths()
-				{
-				/* Nothing */
-				}
-			
-		public:
+			maths() = delete;
+
 			/*
 				MATHS::MAXIMUM()
 				----------------

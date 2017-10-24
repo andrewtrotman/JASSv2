@@ -169,21 +169,6 @@ namespace JASS
 						}
 				};
 			
-		private:
-			/*
-				DYNAMIC_ARRAY::DYNAMIC_ARRAY()
-				------------------------------
-			*/
-			/*!
-				@brief Private constructor cannot be called
-			*/
-			dynamic_array()
-				{
-				/*
-					Nothing
-				*/
-				}
-
 		public:
 			allocator &pool;							///< The pool allocator used for all allocation by this object.
 			node *head;									///< Pointer to the head of the linked list of blocks of data.
@@ -191,6 +176,15 @@ namespace JASS
 			double growth_factor;					///< The next chunk in the linked list is this much larger than the previous.
 			
 		public:
+			/*
+				DYNAMIC_ARRAY::DYNAMIC_ARRAY()
+				------------------------------
+			*/
+			/*!
+				@brief Constructor
+			*/
+			dynamic_array() = delete
+
 			/*
 				DYNAMIC_ARRAY::DYNAMIC_ARRAY()
 				------------------------------
