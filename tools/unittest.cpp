@@ -20,6 +20,7 @@
 #include "bitstring.h"
 #include "hash_table.h"
 #include "top_k_heap.h"
+#include "run_export.h"
 #include "binary_tree.h"
 #include "commandline.h"
 #include "pointer_box.h"
@@ -35,6 +36,7 @@
 #include "index_postings.h"
 #include "accumulator_2d.h"
 #include "instream_memory.h"
+#include "run_export_trec.h"
 #include "allocator_memory.h"
 #include "serialise_jass_v1.h"
 #include "instream_file_star.h"
@@ -243,6 +245,12 @@ int main(void)
 
 		puts("decode_d1")
 		JASS::decoder_d1::unittest();
+
+		puts("run_export")
+		JASS::run_export::unittest();
+
+		puts("run_export_trec")
+		JASS::run_export_trec::unittest();
 
 		puts("ALL UNIT TESTS HAVE PASSED");
 		failed = false;

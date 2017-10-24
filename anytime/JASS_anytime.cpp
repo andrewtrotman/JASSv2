@@ -14,6 +14,7 @@
 #include "file.h"
 #include "query16_t.h"
 #include "decode_d0.h"
+#include "run_export.h"
 #include "channel_file.h"
 #include "compress_integer.h"
 #include "JASS_anytime_index.h"
@@ -21,21 +22,6 @@
 
 #define MAX_QUANTUM 0x0FFF
 #define MAX_TERMS_PER_QUERY 1024
-
-/*
-	EXPORT_TREC()
-	-------------
-*/
-template <typename QUERY_ID, typename QUERY>
-void export_TREC(std::ostream &stream, const QUERY_ID &topic_id, QUERY &result)
-	{
-	size_t current = 0;
-	for (const auto &document : result)
-		{
-		current++;
-		stream << topic_id << " Q0 "<< document.primary_key << " " << current << " " << document.rsv << " COMPILED (ID:" << document.document_id << ")\n";
-		}
-	}
 
 /*
 	CLASS SEGMENT_HEADER
@@ -200,10 +186,8 @@ int main(int argc, char *argv[])
 				decoder.process(impact, jass_query);
 				}
 
-			export_TREC(output, (char *)query_id.token().address(), jass_query);
-
+			JASS::run_export(JASS::run_export::TREC, output, (char *)query_id.token().address(), jass_query, "COMPILED", true);
 			input.gets(query);
-
 			std::cout << "-\n";
 			}
 

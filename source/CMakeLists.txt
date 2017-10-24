@@ -64,8 +64,6 @@ set(JASSlib_FILES
 	decode_d1.h
 	document.h
 	dynamic_array.h
-	export.h
-	export_TREC.h
 	file.h
 	file.cpp
 	global_new_delete.h
@@ -96,6 +94,8 @@ set(JASSlib_FILES
 	query_term.h
 	query_term_list.h
 	reverse.h
+	run_export.h
+	run_export_TREC.h
 	serialise_ci.cpp
 	serialise_ci.h
 	serialise_jass_v1.cpp

@@ -183,7 +183,7 @@ namespace JASS
 			/*!
 				@brief Constructor
 			*/
-			dynamic_array() = delete
+			dynamic_array() = delete;
 
 			/*
 				DYNAMIC_ARRAY::DYNAMIC_ARRAY()
