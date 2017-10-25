@@ -62,6 +62,8 @@ set(JASSlib_FILES
 	compress_integer_variable_byte.cpp
 	decode_d0.h
 	decode_d1.h
+	deserialised_jass_v1.h
+	deserialised_jass_v1.cpp
 	document.h
 	dynamic_array.h
 	file.h

@@ -9,8 +9,6 @@ class anytime_stats
 		anytime_stats() :
 			number_of_queries(0)
 			{
-			/*
-				Nothing
-			*/
+			/* Nothing */
 			}
 	};

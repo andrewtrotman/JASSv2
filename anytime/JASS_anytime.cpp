@@ -17,26 +17,11 @@
 #include "run_export.h"
 #include "channel_file.h"
 #include "compress_integer.h"
-#include "JASS_anytime_index.h"
+#include "deserialised_jass_v1.h"
 #include "JASS_anytime_stats.h"
 
 #define MAX_QUANTUM 0x0FFF
 #define MAX_TERMS_PER_QUERY 1024
-
-/*
-	CLASS SEGMENT_HEADER
-	--------------------
-*/
-#pragma pack(push, 1)
-class segment_header
-	{
-	public:
-		uint16_t impact;					///< The impact score
-		uint64_t offset;					///< Offset (within the postings file) of the start of the compressed postings list
-		uint64_t end;						///< Offset (within the postings file) of the end of the compressed postings list
-		uint32_t segment_frequency;	///< The number of document ids in the segment (not end - offset because the postings are compressed)
-	};
-#pragma pack(pop)
 
 /*
 	MAIN()
@@ -60,7 +45,7 @@ int main(int argc, char *argv[])
 		/*
 			Open the index
 		*/
-		anytime_index index(true);
+		JASS::deserialised_jass_v1 index(true);
 		index.read_index();
 
 		/*
@@ -122,7 +107,7 @@ int main(int argc, char *argv[])
 				/*
 					Get the metadata for this term (and if this term isn't in the vocab them move on to the next term)
 				*/
-				anytime_index::metadata metadata;
+				JASS::deserialised_jass_v1::metadata metadata;
 				if (!index.postings_details(metadata, term))
 					continue;
 
@@ -143,8 +128,8 @@ int main(int argc, char *argv[])
 				current_segment,
 				[postings = index.postings()](uint64_t first, uint64_t second)
 					{
-					segment_header *lhs = (segment_header *)(postings + first);
-					segment_header *rhs = (segment_header *)(postings + second);
+					JASS::deserialised_jass_v1::segment_header *lhs = (JASS::deserialised_jass_v1::segment_header *)(postings + first);
+					JASS::deserialised_jass_v1::segment_header *rhs = (JASS::deserialised_jass_v1::segment_header *)(postings + second);
 
 					/*
 						sort from highest to lowest impact, but break ties by placing the lowest quantum-frequency first and the highest quantum-drequency last
@@ -169,8 +154,8 @@ int main(int argc, char *argv[])
 			size_t postings_processed = 0;
 			for (uint64_t *current = segment_order; current < current_segment; current++)
 				{
-	std::cout << "Process Segment->(" << ((segment_header *)(index.postings() + *current))->impact << ":" << ((segment_header *)(index.postings() + *current))->segment_frequency << ")\n";
-				const segment_header &header = *reinterpret_cast<const segment_header *>(index.postings() + *current);
+	std::cout << "Process Segment->(" << ((JASS::deserialised_jass_v1::segment_header *)(index.postings() + *current))->impact << ":" << ((JASS::deserialised_jass_v1::segment_header *)(index.postings() + *current))->segment_frequency << ")\n";
+				const JASS::deserialised_jass_v1::segment_header &header = *reinterpret_cast<const JASS::deserialised_jass_v1::segment_header *>(index.postings() + *current);
 				/*
 					The anytime algorithms basically boils down to this... have we processed enough postings yet?  If so then stop
 				*/
