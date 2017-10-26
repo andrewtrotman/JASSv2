@@ -22,7 +22,9 @@
 class anytime_stats
 	{
 	public:
+		size_t threads;								///< The number of threads (mean queries per thread = number_of_queries/threads)
 		size_t number_of_queries;					///< The number of queries that have been processed
+		size_t total_search_time_in_ns;			///< Total time to search (in nanoseconds)
 
 	public:
 		/*
@@ -33,8 +35,30 @@ class anytime_stats
 			@brief Constructor
 		*/
 		anytime_stats() :
-			number_of_queries(0)
+			threads(0),
+			number_of_queries(0),
+			total_search_time_in_ns(0)
 			{
 			/* Nothing */
 			}
 	};
+
+/*
+	OPERATOR<<()
+	------------
+*/
+/*!
+	@brief Dump a human readable version of the data down an output stream.
+	@param stream [in] The stream to write to.
+	@param data [in] The data to write.
+	@return The stream once the data has been written.
+*/
+std::ostream &operator<<(std::ostream &output, anytime_stats &data)
+	{
+	output << "-------------------\n";
+	output << "Threads          : " << data.threads << '\n';
+	output << "Queries          : " << data.number_of_queries << '\n';
+	output << "Total search time: " << data.total_search_time_in_ns << "ns\n";
+	output << "-------------------\n";
+	return output;
+	}
