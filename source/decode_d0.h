@@ -131,7 +131,7 @@ namespace JASS
 			static void unittest(void)
 				{
 				std::vector<uint32_t>integer_sequence = {2, 3, 5, 7, 11, 13, 17, 19};
-				std::vector<std::string>primary_keys;
+				std::vector<std::string>primary_keys = {"zero" "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty"};
 				compress_integer_none identity;
 				query16_t query(primary_keys, 20, 5);
 				std::ostringstream result;
