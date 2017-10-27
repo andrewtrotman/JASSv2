@@ -6,7 +6,7 @@
 */
 /*!
 	@file
-	@brief Looad and deserialise a JASS v1 index
+	@brief Load and deserialise a JASS v1 index
 	@author Andrew Trotman
 	@copyright 2017 Andrew Trotman
 */
@@ -56,9 +56,10 @@ class anytime_stats
 std::ostream &operator<<(std::ostream &output, anytime_stats &data)
 	{
 	output << "-------------------\n";
-	output << "Threads          : " << data.threads << '\n';
-	output << "Queries          : " << data.number_of_queries << '\n';
-	output << "Total search time: " << data.total_search_time_in_ns << "ns\n";
+	output << "Threads                               : " << data.threads << '\n';
+	output << "Queries                               : " << data.number_of_queries << '\n';
+	output << "Total search time                     : " << data.total_search_time_in_ns << " ns\n";
+	output << "otal time excluding I/O   (per query) : " << (data.total_search_time_in_ns / data.number_of_queries) << " ns\n";
 	output << "-------------------\n";
 	return output;
 	}

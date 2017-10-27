@@ -124,7 +124,7 @@ void anytime(std::ostream &output, const JASS::deserialised_jass_v1 &index, std:
 					return false;
 				else if (lhs->impact > rhs->impact)
 					return true;
-				else			// impact scores are the same, so break on the length of the segment
+				else			// impact scores are the same, so tie break on the length of the segment
 					return lhs->segment_frequency < rhs->segment_frequency;
 				}
 			);
@@ -158,7 +158,7 @@ void anytime(std::ostream &output, const JASS::deserialised_jass_v1 &index, std:
 			decoder.process(impact, jass_query);
 			}
 
-	JASS::run_export(JASS::run_export::TREC, output, (char *)query_id.token().address(), jass_query, "COMPILED", true);
+//	JASS::run_export(JASS::run_export::TREC, output, (char *)query_id.token().address(), jass_query, "COMPILED", true);
 	query = JASS_anytime_query::get_next_query(query_list, next_query);
 	}
 }
@@ -221,19 +221,31 @@ int main(int argc, const char *argv[])
 	std::vector<std::ostringstream> output;
 	output.resize(parameter_threads);
 
+	/*
+		Start the work
+	*/
 	auto total_search_time = JASS::timer::start();
-	/*
-		Start each thread
-	*/
-	for (size_t which = 0; which < parameter_threads ; which++)
-		thread_pool.push_back(std::thread(anytime, std::ref(output[which]), std::ref(index), std::ref(query_list), postings_to_process));
+	if (parameter_threads == 1)
+		{
+		/*
+			We have only 1 thread so don't bother to start a thread to do the work
+		*/
+		anytime(output[0], index, query_list, postings_to_process);
+		}
+	else
+		{
+		/*
+			Multiple threads, so start each worker
+		*/
+		for (size_t which = 0; which < parameter_threads ; which++)
+			thread_pool.push_back(std::thread(anytime, std::ref(output[which]), std::ref(index), std::ref(query_list), postings_to_process));
 
-	/*
-		Wait until they're all done (blocking on the completion of each one in turn)
-	*/
-	for (auto &thread : thread_pool)
-		thread.join();
-
+		/*
+			Wait until they're all done (blocking on the completion of each thread in turn)
+		*/
+		for (auto &thread : thread_pool)
+			thread.join();
+		}
 	stats.total_search_time_in_ns = JASS::timer::stop(total_search_time).nanoseconds();
 
 	/*

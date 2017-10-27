@@ -6,7 +6,7 @@
 */
 /*!
 	@file
-	@brief Manage an accumulator array as a 2D array with dirty bits.
+	@brief Manage an accumulator array as a 2D array with clean bits.
 	@author Andrew Trotman
 	@copyright 2017 Andrew Trotman
 */
@@ -31,10 +31,10 @@ namespace JASS
 	/*!
 		@brief Store the accumulators in a 2D array as originally used in ATIRE.
 		@details Manage the accumulagtor array as a two dimensional array.  This approach avoids initialising the accumulators on each search by
-		breakig it into a series of pages and keeping dirty flag for each page.  A page of accmumulators is only initialised if one of the elements
-		in that page is touched.  This detail is kepts in a set of flags (one per page) known as the dirty flags.  The details are described in
+		breakig it into a series of pages and keeping clean flag for each page.  A page of accmumulators is only initialised if one of the elements
+		in that page is touched.  This detail is kepts in a set of flags (one per page) known as the clean flags.  The details are described in
 		X.-F. Jia, A. Trotman, R. O'Keefe (2010), Efficient Accumulator Initialisation, Proceedings of the 15th Australasian Document Computing Symposium (ADCS 2010).
-		This implementation differs from that implenentation is so far as the size of the page is alwaya a whole power of 2 and thus the dirty flag can
+		This implementation differs from that implenentation is so far as the size of the page is alwaya a whole power of 2 and thus the clean flag can
 		be found wiht a bit shit rather than a mod.
 		@tparam ELEMENT The type of accumulator being used (default is uint16_t)
 	*/
@@ -51,10 +51,10 @@ namespace JASS
 			allocator_cpp<ELEMENT> allocator_element;		///< Used to allocate elements ensuring construction and destruction
 			allocator_cpp<uint8_t> allocator_uint8_t;		///< Used to allocate elements ensuring construction and destruction
 			ELEMENT *accumulator;							///< The accumulators are kept in an array
-			uint8_t *dirty_flag;								///< The dirty flags are kept as bytes for faster lookup
-			size_t width;										///< Each dirty flag represents this number of accumulators in a "row"
-			size_t number_of_dirty_flags;					///< The numnber of "rows" (i.e. dirty flags).
-			size_t shift;										///< How far we need to shift right the index to get the index of the dirty flag
+			uint8_t *clean_flag;								///< The clean flags are kept as bytes for faster lookup
+			size_t width;										///< Each clean flag represents this number of accumulators in a "row"
+			size_t number_of_clean_flags;					///< The numnber of "rows" (i.e. clean flags).
+			size_t shift;										///< How far we need to shift right the index to get the index of the clean flag
 			size_t number_of_accumulators;				///< The number of accumulators as asked for by the user (more may be allocated)
 			size_t number_of_accumulators_allocated;		///< The numner of accumulators that were actually allocated (recall that this is a 2D array)
 
@@ -74,9 +74,9 @@ namespace JASS
 				number_of_accumulators(elements)
 				{
 				/*
-					If the width of the accumulator array is a whole power of 2 the its quick to find the dirty flag.  If the width is the square root of the
-					number of accumulators then it ballances the number of accumulator with the number of dirty flags.  Both techniques are used.
-					Simply taking log2(sqrt(element)) can result in massive disparity in width vs height (63->4x16) so we try to ballane this
+					If the width of the accumulator array is a whole power of 2 the its quick to find the clean flag.  If the width is the square root of the
+					number of accumulators then it ballances the number of accumulator with the number of clean flags.  Both techniques are used.
+					Simply taking log2(sqrt(element)) can result in massive disparity in width vs height (63->4x16) so we try to ballance this
 					by checking if they are closer together if we take the ceiling of the log rather than the floor.
 				*/
 				size_t square_root = (size_t)sqrt(elements);
@@ -86,24 +86,24 @@ namespace JASS
 					width = (size_t)1 << ++shift;
 
 				/*
-					Round up the number of dirty flags so that if the number of accumulators isn't a square that we don't miss the last row
+					Round up the number of clean flags so that if the number of accumulators isn't a square that we don't miss the last row
 				*/
-				number_of_dirty_flags = (elements + width - 1) / width;
+				number_of_clean_flags = (elements + width - 1) / width;
 				
 				/*
 					Round up the number of accumulators to make a rectangle (we're a 2D array)
 				*/
-				number_of_accumulators_allocated = width * number_of_dirty_flags;
+				number_of_accumulators_allocated = width * number_of_clean_flags;
 
 				/*
-					Allocate the dirty flags and the accumulators making sure to allocate a true square number of accumulators so that the last row is full.
+					Allocate the clean flags and the accumulators making sure to allocate a true square number of accumulators so that the last row is full.
 					Note that we do not need to construct these because they must be arithmatic (see the template definition)
 				*/
-				dirty_flag = allocator_uint8_t.allocate(number_of_dirty_flags);
+				clean_flag = allocator_uint8_t.allocate(number_of_clean_flags);
 				accumulator = allocator_element.allocate(number_of_accumulators_allocated);
 
 				/*
-					Clear the dirty flags ready for use.
+					Clear the clean flags ready for use.
 				*/
 				rewind();
 				}
@@ -120,7 +120,7 @@ namespace JASS
 				/*
 					Its unnecessary to call destroy() on arithmatic types, so just free up the memory.
 				*/
-				allocator_uint8_t.deallocate(dirty_flag, number_of_dirty_flags);
+				allocator_uint8_t.deallocate(clean_flag, number_of_clean_flags);
 				allocator_element.deallocate(accumulator, number_of_accumulators_allocated);
 				}
 
@@ -137,10 +137,10 @@ namespace JASS
 			ELEMENT &operator[](size_t which)
 				{
 				auto flag = which >> shift;
-				if (!dirty_flag[flag])
+				if (!clean_flag[flag])
 					{
 					std::fill(&accumulator[flag * width], &accumulator[flag * width + width], 0);
-					dirty_flag[flag] = true;
+					clean_flag[flag] = true;
 					}
 
 				return accumulator[which];
@@ -166,13 +166,12 @@ namespace JASS
 			*/
 			/*!
 				@brief Clear the accumulators ready for use
-				@details This clears the dirty flags so that the next time an accumulator is requested it ix initialised to zero before being returned.
+				@details This clears the clean flags so that the next time an accumulator is requested it ix initialised to zero before being returned.
 			*/
 			void rewind(void)
 				{
-				std::fill(dirty_flag, dirty_flag + number_of_dirty_flags, false);
+				std::fill(clean_flag, clean_flag + number_of_clean_flags, false);
 				}
-
 
 			/*
 				ACCUMULATOR_2D::UNITTEST_EXAMPLE()
@@ -227,7 +226,7 @@ namespace JASS
 				accumulator_2d<size_t> array(64, memory);
 				JASS_assert(array.width == 8);
 				JASS_assert(array.shift == 3);
-				JASS_assert(array.number_of_dirty_flags == 8);
+				JASS_assert(array.number_of_clean_flags == 8);
 
 				unittest_example(array);
 
@@ -237,7 +236,7 @@ namespace JASS
 				accumulator_2d<size_t> array_hangover(65, memory);
 				JASS_assert(array_hangover.width == 8);
 				JASS_assert(array_hangover.shift == 3);
-				JASS_assert(array_hangover.number_of_dirty_flags == 9);
+				JASS_assert(array_hangover.number_of_clean_flags == 9);
 
 				unittest_example(array_hangover);
 
@@ -247,7 +246,7 @@ namespace JASS
 				accumulator_2d<size_t> array_hangunder(63, memory);
 				JASS_assert(array_hangunder.width == 8);
 				JASS_assert(array_hangunder.shift == 3);
-				JASS_assert(array_hangunder.number_of_dirty_flags == 8);
+				JASS_assert(array_hangunder.number_of_clean_flags == 8);
 
 				unittest_example(array_hangunder);
 
@@ -257,7 +256,7 @@ namespace JASS
 				accumulator_2d<size_t> array_one(1, memory);
 				JASS_assert(array_one.width == 1);
 				JASS_assert(array_one.shift == 0);
-				JASS_assert(array_one.number_of_dirty_flags == 1);
+				JASS_assert(array_one.number_of_clean_flags == 1);
 
 				unittest_example(array_one);
 
