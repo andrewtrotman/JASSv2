@@ -72,6 +72,7 @@ set(JASSlib_FILES
 	hash_table.h
 	hash_pearson.h
 	hash_pearson.cpp
+	heap.h
 	index_manager.h
 	index_manager_sequential.h
 	index_postings.h
@@ -91,6 +92,7 @@ set(JASSlib_FILES
 	parser_query.h
 	parser_query.cpp
 	pointer_box.h
+	query_atire.h
 	query.h
 	query16_t.h
 	query_term.h

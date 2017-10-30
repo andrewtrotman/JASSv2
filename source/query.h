@@ -42,6 +42,7 @@ namespace JASS
 			accumulator_2d<ACCUMULATOR_TYPE> accumulators;	///< The array of accumulators
 			top_k_heap<pointer_box<ACCUMULATOR_TYPE>> heap;	///< The top-k heap containing the best results so far
 			const std::vector<std::string> &primary_keys;	///< A vector of strings, each the primary key for the document with an id equal to the vector index
+			size_t top_k;												///< The number of results to track.
 
 		public:
 			/*
@@ -168,7 +169,8 @@ namespace JASS
 				parsed_query(memory),
 				accumulators(documents, memory),
 				heap(top_k, memory),
-				primary_keys(primary_keys)
+				primary_keys(primary_keys),
+				top_k(top_k)
 				{
 				/* Nothing */
 				}
@@ -210,7 +212,7 @@ namespace JASS
 				@param document_id [in] which document to increment
 				@param weight [in] the amount of weight to add
 			*/
-			void add_rsv(size_t document_id, uint16_t weight)
+			void add_rsv(size_t document_id, ACCUMULATOR_TYPE weight)
 				{
 				if (accumulators[document_id] == 0)
 					{
