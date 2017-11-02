@@ -38,7 +38,7 @@ namespace JASS
 				@typedef stop_watch
 				@brief An instance of a timer
 			*/
-			typedef std::chrono::time_point<std::chrono::steady_clock> stop_watch;
+			typedef std::chrono::time_point<std::chrono::steady_clock, std::chrono::nanoseconds> stop_watch;
 
 			/*
 				CLASS TIMER::DURATION
