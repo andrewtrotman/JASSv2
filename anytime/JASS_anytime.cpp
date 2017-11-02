@@ -48,6 +48,11 @@ auto parameters = std::make_tuple					///< The  command line parameter block
 */
 void anytime(std::ostream &output, const JASS::deserialised_jass_v1 &index, std::vector<JASS_anytime_query> &query_list, size_t postings_to_process)
 	{
+	size_t segments = 0;
+	size_t sum_time = 0;
+	size_t zero_time = 0;
+	size_t decomp_time = 0;
+	size_t process_time = 0;
 	/*
 		Extract the compression scheme as a decoder
 	*/
@@ -66,8 +71,12 @@ void anytime(std::ostream &output, const JASS::deserialised_jass_v1 &index, std:
 	size_t next_query = 0;
 	std::string query = JASS_anytime_query::get_next_query(query_list, next_query);
 
+	auto thread_search_time = JASS::timer::start();
+
 	while (query.size() != 0)
 		{
+		auto preamble_timer = JASS::timer::start();
+
 		/*
 			Allocate a JASS query object
 		*/
@@ -141,11 +150,16 @@ void anytime(std::ostream &output, const JASS::deserialised_jass_v1 &index, std:
 		/*
 			Process the segments
 		*/
+		auto zero_took = JASS::timer::stop(preamble_timer).nanoseconds();
+		zero_time += zero_took;
+
+	auto timer = JASS::timer::start();
 jass_query.rewind();
 
 		size_t postings_processed = 0;
 		for (uint64_t *current = segment_order; current < current_segment; current++)
 			{
+			segments++;
 //	std::cout << "Process Segment->(" << ((JASS::deserialised_jass_v1::segment_header *)(index.postings() + *current))->impact << ":" << ((JASS::deserialised_jass_v1::segment_header *)(index.postings() + *current))->segment_frequency << ")\n";
 			const JASS::deserialised_jass_v1::segment_header &header = *reinterpret_cast<const JASS::deserialised_jass_v1::segment_header *>(index.postings() + *current);
 
@@ -160,16 +174,39 @@ jass_query.rewind();
 				Process the postings
 			*/
 			uint16_t impact = header.impact;
+auto decompress_timer = JASS::timer::start();
 			decoder.decode(decompressor, header.segment_frequency, index.postings() + header.offset, header.end - header.offset);
+auto decompress_took = JASS::timer::stop(decompress_timer).nanoseconds();
+decomp_time += decompress_took;
+
+
+auto process_timer = JASS::timer::start();
 			decoder.process(impact, jass_query);
+auto process_took = JASS::timer::stop(process_timer).nanoseconds();
+process_time += process_took;
 			}
 
 jass_query.sort();
+
+		auto took = JASS::timer::stop(timer).nanoseconds();
+		sum_time += took;
 
 	//	JASS::run_export(JASS::run_export::TREC, output, (char *)query_id.token().address(), jass_query, "COMPILED", true);
 		query = JASS_anytime_query::get_next_query(query_list, next_query);
 		}
 
+	auto took = JASS::timer::stop(thread_search_time).nanoseconds();
+	std::cout << "time      :" << took << " ns\n";
+	std::cout << "Q time    :" << took / 150 << " ns\n";
+	std::cout << "sum time  :" << sum_time << " ns\n";
+	std::cout << "Qsum time :" << sum_time / 150 << " ns\n";
+	std::cout << "zero time :" << zero_time << " ns\n";
+	std::cout << "Qzero time:" << zero_time / 150 << " ns\n";
+	std::cout << "decode time :" << decomp_time << " ns\n";
+	std::cout << "Qdecode time:" << decomp_time / 150 << " ns\n";
+	std::cout << "process time :" << process_time << " ns\n";
+	std::cout << "Qprocess time:" << process_time / 150 << " ns\n";
+	std::cout << "segments processed:" << segments << "\n";
 	delete [] segment_order;
 	}
 

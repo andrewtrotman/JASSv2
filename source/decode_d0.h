@@ -15,6 +15,9 @@
 #include <vector>
 
 #include "query16_t.h"
+#include "query_atire_global.h"
+#include "query16_t.h"
+
 #include "compress_integer_none.h"
 
 namespace JASS
@@ -115,11 +118,13 @@ namespace JASS
 				@param impact [in] The impact score to add for each document id in the list.
 				@param accumulators [in] The accumulators to add to
 			*/
-			template <typename QUERY16_T>
-			void process(uint16_t impact, QUERY16_T &accumulators) const
+			template <typename QUERY_T>
+			void process(uint16_t impact, QUERY_T &accumulators) const
 				{
+//				for (auto document : *this)
+//					accumulators.add_rsv(document, impact);
 				for (auto document : *this)
-					accumulators.add_rsv(document, impact);
+					add_rsv(document, impact);
 				}
 				
 			/*

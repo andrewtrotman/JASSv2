@@ -1,4 +1,8 @@
 
+#pragma once
+
+#include <stdint.h>
+
 #include "heap.h"
 #include "top_k_qsort.h"
 
@@ -9,18 +13,18 @@ namespace JASS
 	{
 	struct add_rsv_compare
 		{
-		int operator() (uint16_t *a, uint16_t *b) const { return *a > *b ? 1 : *a < *b ? -1 : (a > b ? 1 : a < b ? -1 : 0); }
+		__attribute__((always_inline)) int operator() (uint16_t *a, uint16_t *b) const { return *a > *b ? 1 : *a < *b ? -1 : (a > b ? 1 : a < b ? -1 : 0); }
 		};
 
 	allocator_pool memory;									///< All memory allocation happens in this "arena"
 
-	uint16_t **accumulator_pointers;
-	size_t accumulators_shift;
-	size_t accumulators_width;
-	size_t accumulators_height;
-	uint16_t *accumulators;
 	uint8_t *clean_flags;
-	size_t results_list_length;
+	uint16_t *accumulators;
+	uint16_t **accumulator_pointers;
+	uint32_t accumulators_shift;
+	uint32_t accumulators_width;
+	uint32_t accumulators_height;
+	uint32_t results_list_length;
 
 	ANT_heap<uint16_t *, add_rsv_compare> *heap;
 
@@ -55,11 +59,11 @@ namespace JASS
 					};
 
 				public:
-					const query_atire<ACCUMULATOR_TYPE> *parent;
+					const query_atire_global<ACCUMULATOR_TYPE> *parent;
 					size_t where;
 
 				public:
-					iterator(const query_atire<ACCUMULATOR_TYPE> *parent, size_t where) :
+					iterator(const query_atire_global<ACCUMULATOR_TYPE> *parent, size_t where) :
 						parent(parent),
 						where(where)
 						{
@@ -93,7 +97,7 @@ namespace JASS
 				accumulators_shift = log2(sqrt((double)documents));
   				accumulators_width = 1 << accumulators_shift;
 				accumulators_height = (documents + accumulators_width) / accumulators_width;
-				accumulators = new ACCUMULATOR_TYPE[accumulators_width * accumulators_height];
+				accumulators = new uint16_t[accumulators_width * accumulators_height];
 				clean_flags = new uint8_t[accumulators_height];
 				heap = new ANT_heap<uint16_t *, add_rsv_compare>(*accumulator_pointers, top_k);
 				parser = new parser_query(memory);
@@ -160,12 +164,12 @@ namespace JASS
 		      memset(clean_flags, 0, accumulators_height);
 				}
 
+};
 
-
-			static void add_rsv(size_t docid, ACCUMULATOR_TYPE score)
+			__attribute__((always_inline)) void add_rsv(uint32_t docid, uint16_t score)
 				{
-				ACCUMULATOR_TYPE old_value;
-				ACCUMULATOR_TYPE *which = accumulators + docid;
+				uint16_t old_value;
+				uint16_t *which = accumulators + docid;
 				add_rsv_compare cmp;
 
 				/*
@@ -174,7 +178,7 @@ namespace JASS
 				if (clean_flags[docid >> accumulators_shift] == 0)
 					{
 					clean_flags[docid >> accumulators_shift] = 1;
-					memset(accumulators + (accumulators_width * (docid >> accumulators_shift)), 0, accumulators_width * sizeof(ACCUMULATOR_TYPE));
+					memset(accumulators + (accumulators_width * (docid >> accumulators_shift)), 0, accumulators_width * sizeof(uint16_t));
 					}
 
 				/*
@@ -212,6 +216,4 @@ namespace JASS
 						heap->min_insert(which);
 					}
 				}
-
-		};
 	}
