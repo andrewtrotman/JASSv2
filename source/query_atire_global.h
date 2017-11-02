@@ -166,7 +166,7 @@ namespace JASS
 
 };
 
-			__attribute__((always_inline)) void add_rsv(uint32_t docid, uint16_t score)
+			__attribute__((always_inline)) inline void add_rsv(uint32_t docid, uint16_t score)
 				{
 				uint16_t old_value;
 				uint16_t *which = accumulators + docid;
