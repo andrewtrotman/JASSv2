@@ -241,7 +241,7 @@ namespace JASS
 			*/
 			static void unittest_build_index(index_manager_sequential &index)
 				{
-				parser parser;								// We need a parser
+				class parser parser;								// We need a parser
 				document document;						// That creates documents
 				std::shared_ptr<instream> file(new instream_memory(unittest_data::ten_documents.c_str(), unittest_data::ten_documents.size()));			// From this stream (the standard 10 document stream).
 				instream_document_trec source(file);	// Set up the instream
