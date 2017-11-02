@@ -17,10 +17,12 @@
 #include "decode_d0.h"
 #include "run_export.h"
 #include "commandline.h"
+#include "query_atire.h"
 #include "channel_file.h"
 #include "compress_integer.h"
 #include "JASS_anytime_stats.h"
 #include "JASS_anytime_query.h"
+#include "query_atire_global.h"
 #include "deserialised_jass_v1.h"
 
 #define MAX_QUANTUM 0x0FFF
@@ -56,7 +58,7 @@ void anytime(std::ostream &output, const JASS::deserialised_jass_v1 &index, std:
 		Allocate the Score-at-a-Time table
 	*/
 	uint64_t *segment_order = new uint64_t [MAX_TERMS_PER_QUERY * MAX_QUANTUM];
-	uint64_t *current_segment = segment_order;
+	uint64_t *current_segment;
 
 	/*
 		Now start searching
@@ -69,7 +71,9 @@ void anytime(std::ostream &output, const JASS::deserialised_jass_v1 &index, std:
 		/*
 			Allocate a JASS query object
 		*/
-		JASS::query16_t jass_query(index.primary_keys(), index.document_count(), 10);	// allocate a JASS query object
+//		JASS::query16_t jass_query(index.primary_keys(), index.document_count(), 10);	// allocate a JASS query object
+//		JASS::query_atire<uint16_t> jass_query(index.primary_keys(), index.document_count(), 10);
+		JASS::query_atire_global<uint16_t> jass_query(index.primary_keys(), index.document_count(), 10);
 
 		jass_query.parse(query);
 		auto &terms = jass_query.terms();
@@ -137,6 +141,8 @@ void anytime(std::ostream &output, const JASS::deserialised_jass_v1 &index, std:
 		/*
 			Process the segments
 		*/
+jass_query.rewind();
+
 		size_t postings_processed = 0;
 		for (uint64_t *current = segment_order; current < current_segment; current++)
 			{
@@ -158,10 +164,14 @@ void anytime(std::ostream &output, const JASS::deserialised_jass_v1 &index, std:
 			decoder.process(impact, jass_query);
 			}
 
-//	JASS::run_export(JASS::run_export::TREC, output, (char *)query_id.token().address(), jass_query, "COMPILED", true);
-	query = JASS_anytime_query::get_next_query(query_list, next_query);
+jass_query.sort();
+
+	//	JASS::run_export(JASS::run_export::TREC, output, (char *)query_id.token().address(), jass_query, "COMPILED", true);
+		query = JASS_anytime_query::get_next_query(query_list, next_query);
+		}
+
+	delete [] segment_order;
 	}
-}
 
 /*
 	MAIN()
@@ -251,8 +261,13 @@ int main(int argc, const char *argv[])
 	/*
 		Dump the answer
 	*/
-//	for (auto &result : output)
-//		std::cout << result.str();
+	std::ostringstream TREC_file;
+	for (auto &result : output)
+		if (result.tellp() != 0)
+			TREC_file << result.str();
+
+	if (TREC_file.tellp() != 0)
+		JASS::file::write_entire_file("ranking.txt", TREC_file.str());
 
 	std::cout << stats;
 

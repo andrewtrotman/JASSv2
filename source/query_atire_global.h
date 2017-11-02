@@ -2,17 +2,38 @@
 #include "heap.h"
 #include "top_k_qsort.h"
 
+
+
+
 namespace JASS
 	{
-	template <typename ACCUMULATOR_TYPE>
-	class query_atire
+	struct add_rsv_compare
 		{
-		public:
-			struct add_rsv_compare
-				{
-				int operator() (ACCUMULATOR_TYPE *a, ACCUMULATOR_TYPE *b) const { return *a > *b ? 1 : *a < *b ? -1 : (a > b ? 1 : a < b ? -1 : 0); }
-				};
+		int operator() (uint16_t *a, uint16_t *b) const { return *a > *b ? 1 : *a < *b ? -1 : (a > b ? 1 : a < b ? -1 : 0); }
+		};
 
+	allocator_pool memory;									///< All memory allocation happens in this "arena"
+
+	uint16_t **accumulator_pointers;
+	size_t accumulators_shift;
+	size_t accumulators_width;
+	size_t accumulators_height;
+	uint16_t *accumulators;
+	uint8_t *clean_flags;
+	size_t results_list_length;
+
+	ANT_heap<uint16_t *, add_rsv_compare> *heap;
+
+	parser_query *parser;										///< Parser responsible for converting text into a parsed query
+	query_term_list *parsed_query;							///< The parsed query
+	const std::vector<std::string> *primary_keys;	///< A vector of strings, each the primary key for the document with an id equal to the vector index
+	size_t top_k;												///< The number of results to track.
+	size_t documents;
+
+
+	template <typename ACCUMULATOR_TYPE>
+	class query_atire_global
+		{
 		public:
 			class iterator
 				{
@@ -63,43 +84,26 @@ namespace JASS
 
 
 		private:
-			allocator_pool memory;									///< All memory allocation happens in this "arena"
-
-			ACCUMULATOR_TYPE **accumulator_pointers;
-			size_t accumulators_shift;
-			size_t accumulators_width;
-			size_t accumulators_height;
-			ACCUMULATOR_TYPE *accumulators;
-			uint8_t *clean_flags;
-			size_t results_list_length;
-
-			ANT_heap<ACCUMULATOR_TYPE *, add_rsv_compare> heap;
-
-			parser_query parser;										///< Parser responsible for converting text into a parsed query
-			query_term_list parsed_query;							///< The parsed query
-			const std::vector<std::string> &primary_keys;	///< A vector of strings, each the primary key for the document with an id equal to the vector index
-			size_t top_k;												///< The number of results to track.
-			size_t documents;
 
 
 		public:
-			query_atire(const std::vector<std::string> &primary_keys, size_t documents = 1024, size_t top_k = 10) :
-				accumulator_pointers(new ACCUMULATOR_TYPE*[top_k]),
-				accumulators_shift(log2(sqrt((double)documents))),
-  				accumulators_width(1 << accumulators_shift),
-				accumulators_height((documents + accumulators_width) / accumulators_width),
-				accumulators(new ACCUMULATOR_TYPE[accumulators_width * accumulators_height]),
-				clean_flags(new uint8_t[accumulators_height]),
-				heap(*accumulator_pointers, top_k),
-				parser(memory),
-				parsed_query(memory),
-				primary_keys(primary_keys),
-				top_k(top_k),
-				documents(documents)
+			query_atire_global(const std::vector<std::string> &primary_keys, size_t documents = 1024, size_t top_k = 10)
 				{
+				accumulator_pointers = new ACCUMULATOR_TYPE*[top_k];
+				accumulators_shift = log2(sqrt((double)documents));
+  				accumulators_width = 1 << accumulators_shift;
+				accumulators_height = (documents + accumulators_width) / accumulators_width;
+				accumulators = new ACCUMULATOR_TYPE[accumulators_width * accumulators_height];
+				clean_flags = new uint8_t[accumulators_height];
+				heap = new ANT_heap<uint16_t *, add_rsv_compare>(*accumulator_pointers, top_k);
+				parser = new parser_query(memory);
+				parsed_query = new query_term_list(memory);
+				JASS::primary_keys =  &primary_keys;
+				JASS::top_k = top_k;
+				JASS::documents = documents;
+
 				memset(clean_flags, 0, accumulators_height);
 				}
-
 
 		void sort(void)
 			{
@@ -131,7 +135,7 @@ namespace JASS
 			template <typename STRING_TYPE>
 			void parse(const STRING_TYPE &query)
 				{
-				parser.parse(parsed_query, query);
+				parser->parse(*parsed_query, query);
 				}
 
 			/*
@@ -144,7 +148,7 @@ namespace JASS
 			*/
 			query_term_list &terms(void)
 				{
-				return parsed_query;
+				return *parsed_query;
 				}
 
 
@@ -158,7 +162,7 @@ namespace JASS
 
 
 
-			void add_rsv(size_t docid, ACCUMULATOR_TYPE score)
+			static void add_rsv(size_t docid, ACCUMULATOR_TYPE score)
 				{
 				ACCUMULATOR_TYPE old_value;
 				ACCUMULATOR_TYPE *which = accumulators + docid;
@@ -188,7 +192,7 @@ namespace JASS
 						accumulator_pointers[results_list_length++] = which;
 
 					if (results_list_length == top_k)
-						heap.build_min_heap();
+						heap->build_min_heap();
 					}
 				else if (cmp(which, accumulator_pointers[0]) >= 0)
 					{
@@ -196,7 +200,7 @@ namespace JASS
 						We were already in the heap, so update
 					*/
 					*which +=score;
-					heap.min_update(which);
+					heap->min_update(which);
 					}
 				else
 					{
@@ -205,7 +209,7 @@ namespace JASS
 					*/
 					*which += score;
 					if (cmp(which, accumulator_pointers[0]) > 0)
-						heap.min_insert(which);
+						heap->min_insert(which);
 					}
 				}
 

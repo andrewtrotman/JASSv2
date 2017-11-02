@@ -92,9 +92,10 @@ set(JASSlib_FILES
 	parser_query.h
 	parser_query.cpp
 	pointer_box.h
-	query_atire.h
 	query.h
 	query16_t.h
+	query_atire.h
+	query_atire_global.h
 	query_term.h
 	query_term_list.h
 	reverse.h
@@ -108,6 +109,8 @@ set(JASSlib_FILES
 	strings.h
 	timer.h
 	top_k_heap.h
+	top_k_qsort.h
+	top_k_qsort.cpp
 	unicode.h
 	unicode.cpp
 	unittest_data.h

@@ -115,7 +115,8 @@ namespace JASS
 				@param impact [in] The impact score to add for each document id in the list.
 				@param accumulators [in] The accumulators to add to
 			*/
-			void process(uint16_t impact, query16_t &accumulators) const
+			template <typename QUERY16_T>
+			void process(uint16_t impact, QUERY16_T &accumulators) const
 				{
 				for (auto document : *this)
 					accumulators.add_rsv(document, impact);
