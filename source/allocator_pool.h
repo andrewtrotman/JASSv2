@@ -6,7 +6,7 @@
 */
 /*!
 	@file
-	@brief Simple block-allocator that internally allocated a large chunk then allocates smaller blocks from this larger block.
+	@brief Simple block-allocator that internally allocates a large chunk then allocates smaller blocks from this larger block.
 	@author Andrew Trotman
 	@copyright 2016 Andrew Trotman
 */
@@ -19,6 +19,11 @@
 
 #include <vector>
 #include <mutex>
+
+#ifdef __APPLE__
+	#include <sys/mman.h>
+	#include <mach/vm_statistics.h>
+#endif
 
 #include "allocator.h"
 
@@ -136,7 +141,20 @@ namespace JASS
 			*/
 			void *alloc(size_t size) const
 				{
-				return ::malloc((size_t)size);
+//				#ifdef __APPLE__
+//					size_t block_size = 2 * 1024 * 1024;
+//					size = ((size + block_size - 1) / block_size) * block_size;
+//					auto got = ::mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, VM_FLAGS_SUPERPAGE_SIZE_2MB, 0);
+//					if (got == MAP_FAILED)
+//						{
+//						printf("mmap fail: %lld\n", (long long)errno);
+//						return nullptr;
+//						}
+//					else
+//						return got;
+//				#else
+					return ::malloc((size_t)size);
+//				#endif
 				}
 			
 			/*

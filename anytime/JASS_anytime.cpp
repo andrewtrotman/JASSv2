@@ -73,6 +73,8 @@ void anytime(std::ostream &output, const JASS::deserialised_jass_v1 &index, std:
 
 	auto thread_search_time = JASS::timer::start();
 
+	JASS::query_atire_global<uint16_t> jass_query(index.primary_keys(), index.document_count(), 10);
+
 	while (query.size() != 0)
 		{
 		auto preamble_timer = JASS::timer::start();
@@ -82,7 +84,7 @@ void anytime(std::ostream &output, const JASS::deserialised_jass_v1 &index, std:
 		*/
 //		JASS::query16_t jass_query(index.primary_keys(), index.document_count(), 10);	// allocate a JASS query object
 //		JASS::query_atire<uint16_t> jass_query(index.primary_keys(), index.document_count(), 10);
-		JASS::query_atire_global<uint16_t> jass_query(index.primary_keys(), index.document_count(), 10);
+//		JASS::query_atire_global<uint16_t> jass_query(index.primary_keys(), index.document_count(), 10);
 
 		jass_query.parse(query);
 		auto &terms = jass_query.terms();

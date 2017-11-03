@@ -6,7 +6,7 @@
 */
 /*!
 	@file
-	@brief Simple block-allocator that internally allocated a large chunk then allocates smaller blocks from this larger block.
+	@brief Simple block-allocator that internally uses a single non-growable fixed-sized buffer
 	@author Andrew Trotman
 	@copyright 2016 Andrew Trotman
 */

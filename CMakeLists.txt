@@ -23,13 +23,14 @@ project(JASS)
 cmake_minimum_required (VERSION 3.2)
 
 # set(CMAKE_VERBOSE_MAKEFILE on)
-set(CMAKE_BUILD_TYPE Debug)
-set(CMAKE_CONFIGURATION_TYPES Debug)
-# set(CMAKE_BUILD_TYPE Release)
-# set(CMAKE_CONFIGURATION_TYPES Release)
+# set(CMAKE_BUILD_TYPE Debug)
+# set(CMAKE_CONFIGURATION_TYPES Debug)
+set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_CONFIGURATION_TYPES Release)
 
 # add_definitions(-DUSE_CRT_MALLOC)
-add_definitions("-g")
+# add_definitions("-g -flto")
+# set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -g -flto")
 
 #
 #	Set the debug flags based on the compiler

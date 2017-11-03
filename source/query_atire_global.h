@@ -86,27 +86,23 @@ namespace JASS
 						}
 					};
 
-
-		private:
-
-
 		public:
 			query_atire_global(const std::vector<std::string> &primary_keys, size_t documents = 1024, size_t top_k = 10)
 				{
-				accumulator_pointers = new ACCUMULATOR_TYPE*[top_k];
 				accumulators_shift = log2(sqrt((double)documents));
   				accumulators_width = 1 << accumulators_shift;
 				accumulators_height = (documents + accumulators_width) / accumulators_width;
-				accumulators = new uint16_t[accumulators_width * accumulators_height];
-				clean_flags = new uint8_t[accumulators_height];
+				accumulators = reinterpret_cast<ACCUMULATOR_TYPE *>(memory.malloc(sizeof(ACCUMULATOR_TYPE) * accumulators_width * accumulators_height));
+				accumulator_pointers = reinterpret_cast<ACCUMULATOR_TYPE **>(memory.malloc(sizeof(ACCUMULATOR_TYPE *) * top_k));
+				clean_flags = reinterpret_cast<uint8_t *>(memory.malloc(accumulators_height));
 				heap = new ANT_heap<uint16_t *, add_rsv_compare>(*accumulator_pointers, top_k);
 				parser = new parser_query(memory);
-				parsed_query = new query_term_list(memory);
+				parsed_query = nullptr;
 				JASS::primary_keys =  &primary_keys;
 				JASS::top_k = top_k;
 				JASS::documents = documents;
 
-				memset(clean_flags, 0, accumulators_height);
+				rewind();
 				}
 
 		void sort(void)
@@ -162,31 +158,12 @@ namespace JASS
 				{
 				results_list_length = 0;
 		      memset(clean_flags, 0, accumulators_height);
+		      delete parsed_query;
+				parsed_query = new query_term_list(memory);
 				}
 };
-
-uint64_t add_rsv_calls = 0;
-uint64_t add_rsv_memset_calls = 0;
-uint64_t add_rsv_insert_branch = 0;
-uint64_t add_rsv_update_branch = 0;
-uint64_t add_rsv_less_topk_branch = 0;
-
-class ob
-{
-public:
-	~ob()
-		{
-		std::cout << "add_rsv_calls :" << add_rsv_calls << "\n";
-		std::cout << "add_rsv_memset_calls :" << add_rsv_memset_calls << "\n";
-		std::cout << "add_rsv_insert_branch :" << add_rsv_insert_branch << "\n";
-		std::cout << "add_rsv_update_branch :" << add_rsv_update_branch << "\n";
-		std::cout << "add_rsv_less_topk_branch :" << add_rsv_less_topk_branch << "\n";
-		}
-} dump_stats;
-
 			__attribute__((always_inline)) inline void add_rsv(uint32_t docid, uint16_t score)
 				{
-add_rsv_calls++;
 				uint16_t old_value;
 				uint16_t *which = accumulators + docid;
 				static add_rsv_compare cmp;
@@ -198,7 +175,6 @@ add_rsv_calls++;
 					{
 					clean_flags[docid >> accumulators_shift] = 1;
 					memset(accumulators + (accumulators_width * (docid >> accumulators_shift)), 0, accumulators_width * sizeof(uint16_t));
-add_rsv_memset_calls++;
 					}
 
 				/*
@@ -206,7 +182,6 @@ add_rsv_memset_calls++;
 				*/
 				if (results_list_length < top_k)
 					{
-add_rsv_less_topk_branch++;
 					/*
 						We haven't got enough to worry about the heap yet, so just plonk it in
 					*/
@@ -221,7 +196,6 @@ add_rsv_less_topk_branch++;
 					}
 				else if (cmp(which, accumulator_pointers[0]) >= 0)
 					{
-add_rsv_update_branch++;
 					/*
 						We were already in the heap, so update
 					*/
@@ -230,7 +204,6 @@ add_rsv_update_branch++;
 					}
 				else
 					{
-add_rsv_insert_branch++;
 					/*
 						We weren't in the heap, but we could get put there
 					*/
