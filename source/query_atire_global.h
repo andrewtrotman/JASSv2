@@ -13,7 +13,7 @@ namespace JASS
 	{
 	struct add_rsv_compare
 		{
-		__attribute__((always_inline)) int operator() (uint16_t *a, uint16_t *b) const { return *a > *b ? 1 : *a < *b ? -1 : (a > b ? 1 : a < b ? -1 : 0); }
+		__attribute__((always_inline)) inline int operator() (uint16_t *a, uint16_t *b) const { return *a > *b ? 1 : *a < *b ? -1 : (a > b ? 1 : a < b ? -1 : 0); }
 		};
 
 	allocator_pool memory;									///< All memory allocation happens in this "arena"
@@ -31,7 +31,7 @@ namespace JASS
 	parser_query *parser;										///< Parser responsible for converting text into a parsed query
 	query_term_list *parsed_query;							///< The parsed query
 	const std::vector<std::string> *primary_keys;	///< A vector of strings, each the primary key for the document with an id equal to the vector index
-	size_t top_k;												///< The number of results to track.
+	uint32_t top_k;												///< The number of results to track.
 	size_t documents;
 
 
@@ -163,14 +163,33 @@ namespace JASS
 				results_list_length = 0;
 		      memset(clean_flags, 0, accumulators_height);
 				}
-
 };
+
+uint64_t add_rsv_calls = 0;
+uint64_t add_rsv_memset_calls = 0;
+uint64_t add_rsv_insert_branch = 0;
+uint64_t add_rsv_update_branch = 0;
+uint64_t add_rsv_less_topk_branch = 0;
+
+class ob
+{
+public:
+	~ob()
+		{
+		std::cout << "add_rsv_calls :" << add_rsv_calls << "\n";
+		std::cout << "add_rsv_memset_calls :" << add_rsv_memset_calls << "\n";
+		std::cout << "add_rsv_insert_branch :" << add_rsv_insert_branch << "\n";
+		std::cout << "add_rsv_update_branch :" << add_rsv_update_branch << "\n";
+		std::cout << "add_rsv_less_topk_branch :" << add_rsv_less_topk_branch << "\n";
+		}
+} dump_stats;
 
 			__attribute__((always_inline)) inline void add_rsv(uint32_t docid, uint16_t score)
 				{
+add_rsv_calls++;
 				uint16_t old_value;
 				uint16_t *which = accumulators + docid;
-				add_rsv_compare cmp;
+				static add_rsv_compare cmp;
 
 				/*
 					Make sure the accumulator exists
@@ -179,6 +198,7 @@ namespace JASS
 					{
 					clean_flags[docid >> accumulators_shift] = 1;
 					memset(accumulators + (accumulators_width * (docid >> accumulators_shift)), 0, accumulators_width * sizeof(uint16_t));
+add_rsv_memset_calls++;
 					}
 
 				/*
@@ -186,6 +206,7 @@ namespace JASS
 				*/
 				if (results_list_length < top_k)
 					{
+add_rsv_less_topk_branch++;
 					/*
 						We haven't got enough to worry about the heap yet, so just plonk it in
 					*/
@@ -200,6 +221,7 @@ namespace JASS
 					}
 				else if (cmp(which, accumulator_pointers[0]) >= 0)
 					{
+add_rsv_update_branch++;
 					/*
 						We were already in the heap, so update
 					*/
@@ -208,6 +230,7 @@ namespace JASS
 					}
 				else
 					{
+add_rsv_insert_branch++;
 					/*
 						We weren't in the heap, but we could get put there
 					*/

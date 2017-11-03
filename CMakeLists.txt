@@ -29,6 +29,7 @@ set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_CONFIGURATION_TYPES Release)
 
 # add_definitions(-DUSE_CRT_MALLOC)
+add_definitions("-g")
 
 #
 #	Set the debug flags based on the compiler
