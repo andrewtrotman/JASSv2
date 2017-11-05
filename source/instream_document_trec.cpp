@@ -160,7 +160,7 @@ namespace JASS
 		/*
 			Copy the id into the document object and get the document
 		*/
-		object.contents = slice(object.contenst_allocator, document_start, document_end);
+		object.contents = slice(object.contents_allocator, document_start, document_end);
 		if (document_id_end == document_end)
 			object.primary_key = slice(object.primary_key_allocator, "Unknown");
 		else

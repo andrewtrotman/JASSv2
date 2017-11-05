@@ -87,7 +87,7 @@ namespace JASS
 				*/
 				instream_file_star reader(fp);
 				document document;
-				document.contents = slice(document.contenst_allocator, 30);
+				document.contents = slice(document.contents_allocator, 30);
 			
 				/*
 					read from it making sure we got what we should have.

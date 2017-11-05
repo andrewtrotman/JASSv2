@@ -112,7 +112,25 @@ namespace JASS
 				memcpy(pointer, start, length);
 				((char *)pointer)[length] = '\0';
 				}
-			
+
+			/*
+				SLICE::SLICE()
+				--------------
+			*/
+			/*!
+				@brief Construct a slice by copying and '\0' termainating a string, using the allocator's pool of memory.  This does NOT ever delete the memory, that is the allocator's task.
+				@param pool [in] An allocator to allocate the memory from.
+				@param start [in] The start address of the C string.
+				@param end [in] The end address of the C string.
+			*/
+			slice(allocator &pool, const unsigned char *start, const unsigned char *end)
+				{
+				length = end - start;
+				pointer = (void *)pool.malloc(length + 1);
+				memcpy(pointer, start, length);
+				((char *)pointer)[length] = '\0';
+				}
+
 			/*
 				SLICE::SLICE()
 				--------------
@@ -125,6 +143,23 @@ namespace JASS
 			slice(allocator &pool, const char *start)
 				{
 				length = strlen(start);
+				pointer = (void *)pool.malloc(length + 1);
+				memcpy(pointer, start, length);
+				((char *)pointer)[length] = '\0';
+				}
+
+			/*
+				SLICE::SLICE()
+				--------------
+			*/
+			/*!
+				@brief Construct a slice by copying and '\0' termainating a string, using the allocator's pool of memory.  This does NOT ever delete the memory, that is the allocator's task.
+				@param pool [in] An allocator to allocate the memory from.
+				@param start [in] The start address of the C string.
+			*/
+			slice(allocator &pool, const unsigned char *start)
+				{
+				length = strlen(reinterpret_cast<const char *>(start));
 				pointer = (void *)pool.malloc(length + 1);
 				memcpy(pointer, start, length);
 				((char *)pointer)[length] = '\0';

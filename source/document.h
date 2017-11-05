@@ -38,7 +38,7 @@ namespace JASS
 
 		public:
 			allocator &primary_key_allocator;		///< If memory is needed for the primary key then allocate from here.
-			allocator &contenst_allocator;			///< If memory is needed for the document contents then allocate from here.
+			allocator &contents_allocator;			///< If memory is needed for the document contents then allocate from here.
 			slice primary_key;							///< The external primary key (e.g. TREC DOCID, or filename) of the document (or empty if that is meaningless).
 			slice contents;								///< The contents of the document (or likewise).
 			
@@ -53,7 +53,7 @@ namespace JASS
 			document() :
 				default_allocator(default_allocation_size),
 				primary_key_allocator(default_allocator),
-				contenst_allocator(default_allocator)
+				contents_allocator(default_allocator)
 				{
 				/*
 					Nothing
@@ -69,7 +69,7 @@ namespace JASS
 			*/
 			document(class allocator &memory_source) :
 				primary_key_allocator(default_allocator),
-				contenst_allocator(memory_source)
+				contents_allocator(memory_source)
 				{
 				/*
 					Nothing
@@ -100,7 +100,7 @@ namespace JASS
 				{
 				primary_key = slice();
 				contents = slice();
-				contenst_allocator.rewind();
+				contents_allocator.rewind();
 				primary_key_allocator.rewind();
 				}
 

@@ -171,6 +171,7 @@ namespace JASS
 			*/
 			/*!
 				@brief Start parsing from the start of this document.
+				@details  The document must be a '\0' terminated string.
 				@param document [in] The document to parse.
 			*/
 			virtual void set_document(const class document &document)

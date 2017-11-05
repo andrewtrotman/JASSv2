@@ -55,7 +55,7 @@ namespace JASS
 		instream_memory reader(example_file, strlen(example_file));
 
 		document document;
-		document.contents = slice(document.contenst_allocator, 16);
+		document.contents = slice(document.contents_allocator, 16);
 		
 		/*
 			read twice from it making sure we got what we should have
