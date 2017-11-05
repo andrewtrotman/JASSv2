@@ -27,7 +27,7 @@ namespace JASS
 		/*
 			while we have alphabetics, case fold into the token buffer.
 		*/
-		do
+		while (unicode::isalpha(codepoint))
 			{
 			/*
 				Case fold.
@@ -42,7 +42,6 @@ namespace JASS
 				break;
 			codepoint = unicode::utf8_to_codepoint(current, end_of_document, bytes);
 			}
-		while (unicode::isalpha(codepoint));
 		}
 		
 	/*
@@ -54,7 +53,7 @@ namespace JASS
 		/*
 			while we have numerics, case fold into the token buffer.
 		*/
-		do
+		while (unicode::isdigit(codepoint))
 			{
 			/*
 				Case fold.  Yes, its necessary to casefold numerics.  Some Unicode codepoints turn into more than
@@ -70,7 +69,6 @@ namespace JASS
 				break;
 			codepoint = unicode::utf8_to_codepoint(current, end_of_document, bytes);
 			}
-		while (unicode::isdigit(codepoint));
 		}
 
 	
@@ -461,10 +459,8 @@ namespace JASS
 			Test a set of Unicode and ASCII tokens all intermixed to make sure we get the right answer
 		*/
 		std::string text = "abc123 αβγ①②③ aβc1②3 αbγ①2③ ab℃½3         αβγ½③";
-		
-		/*
-			The correct answer
-		*/
+
+
 		std::string text_answer[] =
 			{
 			"abc",
@@ -475,7 +471,8 @@ namespace JASS
 			"123",
 			"αbγ",
 			"123",
-			"abc",
+			"ab",
+			"c",
 			"123",
 			"αβγ",
 			"123"
@@ -512,7 +509,7 @@ namespace JASS
 		/*
 			make sure we got the right number of tokens
 		*/
-		JASS_assert(count == 13);
+		JASS_assert(count == 14);
 		
 
 		/*
