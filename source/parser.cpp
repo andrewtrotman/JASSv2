@@ -243,8 +243,7 @@ namespace JASS
 							do
 								current++;
 							while (current < end_of_document && *current != '\'');
-						else
-							current++;
+						current++;
 						}
 						
 					/*
