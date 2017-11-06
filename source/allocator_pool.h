@@ -61,7 +61,7 @@ namespace JASS
 	class allocator_pool : public allocator
 		{
 		protected:
-			static const size_t default_allocation_size = 1024 * 1024 * 1024;			///< Allocations from the C++ free-store are this size
+			static const size_t default_allocation_size = 1024 * 1024 * 128;			///< Allocations from the C++ free-store are this size
 			
 		protected:
 			size_t block_size;					///< The size (in bytes) of the large-allocations this object will make.
@@ -142,17 +142,21 @@ namespace JASS
 			void *alloc(size_t size) const
 				{
 //				#ifdef __APPLE__
+//					/*
+//						If we're on OSX then use large pages (2MB) if we can. If mmap() fails then fall-back to malloc().
+//						mmap() failure can be either out of memory, or not enough pages of that size exist (i.e. fragmenation).
+//					*/
 //					size_t block_size = 2 * 1024 * 1024;
 //					size = ((size + block_size - 1) / block_size) * block_size;
 //					auto got = ::mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, VM_FLAGS_SUPERPAGE_SIZE_2MB, 0);
 //					if (got == MAP_FAILED)
-//						{
-//						printf("mmap fail: %lld\n", (long long)errno);
-//						return nullptr;
-//						}
+//						return ::malloc((size_t)size);
 //					else
 //						return got;
 //				#else
+					/*
+						On other operating systems we use malloc()
+					*/
 					return ::malloc((size_t)size);
 //				#endif
 				}

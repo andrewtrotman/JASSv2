@@ -121,10 +121,8 @@ namespace JASS
 			template <typename QUERY_T>
 			void process(uint16_t impact, QUERY_T &accumulators) const
 				{
-//				for (auto document : *this)
-//					accumulators.add_rsv(document, impact);
 				for (auto document : *this)
-					add_rsv(document, impact);
+					accumulators.add_rsv(document, impact);
 				}
 				
 			/*

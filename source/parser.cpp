@@ -238,11 +238,12 @@ namespace JASS
 						if (*current == '"')
 							do
 								current++;
-							while (current < end_of_document && *current != '"');
+							while (current < end_of_document && *current != '"');		// the skip over the '"' happens when this loop exits.
 						else if (*current == '\'')
 							do
 								current++;
-							while (current < end_of_document && *current != '\'');
+							while (current < end_of_document && *current != '\'');		// the skip over the '"' happens when this loop exits.
+							
 						current++;
 						}
 						

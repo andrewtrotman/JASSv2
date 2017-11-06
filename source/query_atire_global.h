@@ -152,8 +152,6 @@ namespace JASS
 				}
 
 
-
-
 			void rewind(void)
 				{
 				results_list_length = 0;
@@ -161,8 +159,8 @@ namespace JASS
 		      delete parsed_query;
 				parsed_query = new query_term_list(memory);
 				}
-};
-			__attribute__((always_inline)) inline void add_rsv(uint32_t docid, uint16_t score)
+
+			__attribute__((always_inline)) inline static void add_rsv(uint32_t docid, uint16_t score)
 				{
 				uint16_t old_value;
 				uint16_t *which = accumulators + docid;
@@ -212,4 +210,5 @@ namespace JASS
 						heap->min_insert(which);
 					}
 				}
+		};
 	}
