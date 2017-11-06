@@ -179,7 +179,10 @@ namespace JASS
 					case 3:
 						return ((*bytes & 0x0F) << 12) | ((*(bytes + 1) & 0x3F) << 6) | (*(bytes + 2) & 0x3F);
 					case 4:
-						return ((*bytes & 0x07) << 18) | ((*(bytes + 1) & 0x3F) << 12) | ((*(bytes + 2) & 0x3F) << 6) | (*(bytes + 3) & 0x3F);
+						{
+						uint32_t got = ((*bytes & 0x07) << 18) | ((*(bytes + 1) & 0x3F) << 12) | ((*(bytes + 2) & 0x3F) << 6) | (*(bytes + 3) & 0x3F);
+						return got <= 0x10FFFF ? got : replacement_character;
+						}
 					default:
 						return replacement_character;		// LCOV_EXCL_LINE	// Cannot happen, but Xcode gives a warning if this line is missing.
 					}
