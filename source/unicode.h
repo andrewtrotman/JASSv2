@@ -57,8 +57,9 @@ namespace JASS
 		{
 		public:
 			static constexpr uint32_t replacement_character = 0xFFFD;		///< bad UTF-8 characters become codepoint U+FFFD (the Unicode replacement character designed for that purpose).
-			static constexpr size_t max_casefold_expansion_factor = 18;			///< The maximum number of codepoints a case-folded codepoint can take.
+			static constexpr size_t max_casefold_expansion_factor = 18;		///< The maximum number of codepoints a case-folded codepoint can take.
 			static constexpr size_t max_utf8_bytes = 4;							///< The maximum number of bytes that a UTF8 codepoint can take.
+			static constexpr size_t max_codepoint = 0x10FFFF;					///< The highest valid Unicode codepoint
 			
 		public:
 			/*
@@ -181,7 +182,7 @@ namespace JASS
 					case 4:
 						{
 						uint32_t got = ((*bytes & 0x07) << 18) | ((*(bytes + 1) & 0x3F) << 12) | ((*(bytes + 2) & 0x3F) << 6) | (*(bytes + 3) & 0x3F);
-						return got <= 0x10FFFF ? got : replacement_character;
+						return got <= max_codepoint ? got : replacement_character;
 						}
 					default:
 						return replacement_character;		// LCOV_EXCL_LINE	// Cannot happen, but Xcode gives a warning if this line is missing.
