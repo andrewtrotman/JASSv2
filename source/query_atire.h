@@ -73,7 +73,7 @@ namespace JASS
 			uint8_t *clean_flags;
 			size_t results_list_length;
 
-			heap<ACCUMULATOR_TYPE *, add_rsv_compare> heap;
+			heap<ACCUMULATOR_TYPE *, add_rsv_compare> top_results;
 
 			parser_query parser;										///< Parser responsible for converting text into a parsed query
 			query_term_list *parsed_query;							///< The parsed query
@@ -91,7 +91,7 @@ namespace JASS
 				accumulators_height((documents + accumulators_width) / accumulators_width),
 				accumulators(new ACCUMULATOR_TYPE[accumulators_width * accumulators_height]),
 				clean_flags(new uint8_t[accumulators_height]),
-				heap(*accumulator_pointers, top_k),
+				top_results(*accumulator_pointers, top_k),
 				parser(memory),
 				parsed_query(new query_term_list(memory)),
 				primary_keys(primary_keys),
@@ -184,7 +184,7 @@ namespace JASS
 						accumulator_pointers[results_list_length++] = which;
 
 					if (results_list_length == top_k)
-						heap.make_heap();
+						top_results.make_heap();
 					}
 				else if (cmp(which, accumulator_pointers[0]) >= 0)
 					{
@@ -192,7 +192,7 @@ namespace JASS
 						We were already in the heap, so update
 					*/
 					*which +=score;
-					heap.promote(which);
+					top_results.promote(which);
 					}
 				else
 					{
@@ -201,7 +201,7 @@ namespace JASS
 					*/
 					*which += score;
 					if (cmp(which, accumulator_pointers[0]) > 0)
-						heap.push_back(which);
+						top_results.push_back(which);
 					}
 				}
 
