@@ -21,6 +21,7 @@
 #include <stdio.h>
 
 #include "maths.h"
+#include "forceinline.h"
 
 namespace JASS
 	{
@@ -134,7 +135,7 @@ namespace JASS
 				time it is returned to the caller.
 				@param which [in] The accumulator to return.
 			*/
-			ELEMENT &operator[](size_t which)
+			forceinline ELEMENT &operator[](size_t which)
 				{
 				auto flag = which >> shift;
 				if (!clean_flag[flag])

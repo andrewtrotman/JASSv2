@@ -20,6 +20,7 @@
 #include <functional>
 
 #include "asserts.h"
+#include "forceinline.h"
 #include "pointer_box.h"
 #include "allocator_cpp.h"
 #include "allocator_pool.h"
@@ -174,7 +175,7 @@ namespace JASS
 				@brief Return a reference to the first (i.e. smallest by operator>()) element in the heap.
 				@return Reference to the first element.
 			*/
-			auto front()
+			forceinline auto front()
 				{
 				/*
 					If we're sorted then turn it back into a heap

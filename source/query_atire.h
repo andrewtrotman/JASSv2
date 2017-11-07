@@ -10,7 +10,7 @@ namespace JASS
 		public:
 			struct add_rsv_compare
 				{
-				int operator() (ACCUMULATOR_TYPE *a, ACCUMULATOR_TYPE *b) const { return *a > *b ? 1 : *a < *b ? -1 : (a > b ? 1 : a < b ? -1 : 0); }
+				forceinline int operator() (ACCUMULATOR_TYPE *a, ACCUMULATOR_TYPE *b) const { return *a > *b ? 1 : *a < *b ? -1 : a - b; }
 				};
 
 		public:
@@ -19,9 +19,9 @@ namespace JASS
 				class docid_rsv_pair
 					{
 					public:
-						size_t document_id;					///< The document identifier
+						size_t document_id;							///< The document identifier
 						const std::string &primary_key;			///< The external identifier of the document (the primary key)
-						ACCUMULATOR_TYPE rsv;							///< The rsv (Retrieval Status Value) relevance score
+						ACCUMULATOR_TYPE rsv;						///< The rsv (Retrieval Status Value) relevance score
 
 					public:
 						docid_rsv_pair(size_t document_id, const std::string &key, ACCUMULATOR_TYPE rsv) :
@@ -73,13 +73,14 @@ namespace JASS
 			uint8_t *clean_flags;
 			size_t results_list_length;
 
-			ANT_heap<ACCUMULATOR_TYPE *, add_rsv_compare> heap;
+			heap<ACCUMULATOR_TYPE *, add_rsv_compare> heap;
 
 			parser_query parser;										///< Parser responsible for converting text into a parsed query
-			query_term_list parsed_query;							///< The parsed query
+			query_term_list *parsed_query;							///< The parsed query
 			const std::vector<std::string> &primary_keys;	///< A vector of strings, each the primary key for the document with an id equal to the vector index
 			size_t top_k;												///< The number of results to track.
-			size_t documents;
+
+			add_rsv_compare cmp;
 
 
 		public:
@@ -92,31 +93,30 @@ namespace JASS
 				clean_flags(new uint8_t[accumulators_height]),
 				heap(*accumulator_pointers, top_k),
 				parser(memory),
-				parsed_query(memory),
+				parsed_query(new query_term_list(memory)),
 				primary_keys(primary_keys),
-				top_k(top_k),
-				documents(documents)
+				top_k(top_k)
 				{
 				memset(clean_flags, 0, accumulators_height);
 				}
 
 
-		void sort(void)
-			{
-			top_k_qsort(accumulator_pointers, results_list_length, top_k);
-			}
+			void sort(void)
+				{
+				top_k_qsort(accumulator_pointers, results_list_length, top_k);
+				}
 
 
-		auto begin(void) const
-			{
-	      sort();
-			return iterator(this, 0);
-			}
+			auto begin(void)
+				{
+				sort();
+				return iterator(this, 0);
+				}
 
-		auto end(void) const
-			{
-			return iterator(this, results_list_length);
-			}
+			auto end(void)
+				{
+				return iterator(this, results_list_length);
+				}
 
 
 			/*
@@ -131,7 +131,7 @@ namespace JASS
 			template <typename STRING_TYPE>
 			void parse(const STRING_TYPE &query)
 				{
-				parser.parse(parsed_query, query);
+				parser.parse(*parsed_query, query);
 				}
 
 			/*
@@ -144,25 +144,21 @@ namespace JASS
 			*/
 			query_term_list &terms(void)
 				{
-				return parsed_query;
+				return *parsed_query;
 				}
-
-
-
 
 			void rewind(void)
 				{
 				results_list_length = 0;
 		      memset(clean_flags, 0, accumulators_height);
+		      delete parsed_query;
+				parsed_query = new query_term_list(memory);
 				}
 
-
-
-			void add_rsv(size_t docid, ACCUMULATOR_TYPE score)
+			forceinline void add_rsv(size_t docid, ACCUMULATOR_TYPE score)
 				{
 				ACCUMULATOR_TYPE old_value;
 				ACCUMULATOR_TYPE *which = accumulators + docid;
-				add_rsv_compare cmp;
 
 				/*
 					Make sure the accumulator exists
@@ -188,7 +184,7 @@ namespace JASS
 						accumulator_pointers[results_list_length++] = which;
 
 					if (results_list_length == top_k)
-						heap.build_min_heap();
+						heap.make_heap();
 					}
 				else if (cmp(which, accumulator_pointers[0]) >= 0)
 					{
@@ -196,7 +192,7 @@ namespace JASS
 						We were already in the heap, so update
 					*/
 					*which +=score;
-					heap.min_update(which);
+					heap.promote(which);
 					}
 				else
 					{
@@ -205,7 +201,7 @@ namespace JASS
 					*/
 					*which += score;
 					if (cmp(which, accumulator_pointers[0]) > 0)
-						heap.min_insert(which);
+						heap.push_back(which);
 					}
 				}
 

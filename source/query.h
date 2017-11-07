@@ -15,6 +15,7 @@
 #include <iostream>
 
 #include "top_k_heap.h"
+#include "forceinline.h"
 #include "pointer_box.h"
 #include "parser_query.h"
 #include "accumulator_2d.h"
@@ -38,7 +39,7 @@ namespace JASS
 		private:
 			allocator_pool memory;									///< All memory allocation happens in this "arena"
 			parser_query parser;										///< Parser responsible for converting text into a parsed query
-			query_term_list parsed_query;							///< The parsed query
+			query_term_list *parsed_query;							///< The parsed query
 			accumulator_2d<ACCUMULATOR_TYPE> accumulators;	///< The array of accumulators
 			top_k_heap<pointer_box<ACCUMULATOR_TYPE>> heap;	///< The top-k heap containing the best results so far
 			const std::vector<std::string> &primary_keys;	///< A vector of strings, each the primary key for the document with an id equal to the vector index
@@ -166,7 +167,7 @@ namespace JASS
 			*/
 			query(const std::vector<std::string> &primary_keys, size_t documents = 1024, size_t top_k = 10) :
 				parser(memory),
-				parsed_query(memory),
+				parsed_query(new query_term_list(memory)),
 				accumulators(documents, memory),
 				heap(top_k, memory),
 				primary_keys(primary_keys),
@@ -187,7 +188,7 @@ namespace JASS
 			template <typename STRING_TYPE>
 			void parse(const STRING_TYPE &query)
 				{
-				parser.parse(parsed_query, query);
+				parser.parse(*parsed_query, query);
 				}
 			
 			/*
@@ -200,9 +201,20 @@ namespace JASS
 			*/
 			query_term_list &terms(void)
 				{
-				return parsed_query;
+				return *parsed_query;
 				}
-			
+
+			void sort(void)
+				{
+				}
+
+			void rewind(void)
+				{
+				accumulators.rewind();
+				delete parsed_query;
+				parsed_query = new query_term_list(memory);
+				}
+
 			/*
 				QUERY::ADD_RSV()
 				----------------
@@ -212,32 +224,34 @@ namespace JASS
 				@param document_id [in] which document to increment
 				@param weight [in] the amount of weight to add
 			*/
-			void add_rsv(size_t document_id, ACCUMULATOR_TYPE weight)
+			forceinline void add_rsv(size_t document_id, ACCUMULATOR_TYPE weight)
 				{
-				if (accumulators[document_id] == 0)
+				ACCUMULATOR_TYPE *cell = &accumulators[document_id];				// a reference to the accumulator cell (and make sure it exists)
+
+				if (*cell == 0)
 					{
 					/*
 						If we're not in the heap then put is there if need-be
 					*/
-					accumulators[document_id] += weight;
-					heap.push_back(&accumulators[document_id]);
+					*cell += weight;
+					heap.push_back(cell);
 					}
-				else if (pointer_box<ACCUMULATOR_TYPE>::less_than(&accumulators[document_id], heap.front()))
+				else if (pointer_box<ACCUMULATOR_TYPE>::less_than(cell, heap.front()))
 					{
 					/*
 						we weren't in the heap, but we might become so
 					*/
-					accumulators[document_id] += weight;
-					if (pointer_box<ACCUMULATOR_TYPE>::greater_than(&accumulators[document_id], heap.front()))
-						heap.push_back(&accumulators[document_id]);
+					*cell += weight;
+					if (pointer_box<ACCUMULATOR_TYPE>::greater_than(cell, heap.front()))
+						heap.push_back(cell);
 					}
 				else
 					{
 					/*
 						We're already in the heap but we might have moved spots
 					*/
-					accumulators[document_id] += weight;
-					heap.promote(&accumulators[document_id]);
+					*cell += weight;
+					heap.promote(cell);
 					}
 				}
 

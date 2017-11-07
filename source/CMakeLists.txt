@@ -68,6 +68,7 @@ set(JASSlib_FILES
 	dynamic_array.h
 	file.h
 	file.cpp
+	forceinline.h
 	global_new_delete.h
 	hash_table.h
 	hash_pearson.h

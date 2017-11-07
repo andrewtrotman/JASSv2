@@ -4,40 +4,21 @@
 #include <stdint.h>
 
 #include "heap.h"
+#include "forceinline.h"
 #include "top_k_qsort.h"
-
-
 
 
 namespace JASS
 	{
-	struct add_rsv_compare
-		{
-		__attribute__((always_inline)) inline int operator() (uint16_t *a, uint16_t *b) const { return *a > *b ? 1 : *a < *b ? -1 : (a > b ? 1 : a < b ? -1 : 0); }
-		};
-
-	allocator_pool memory;									///< All memory allocation happens in this "arena"
-
-	uint8_t *clean_flags;
-	uint16_t *accumulators;
-	uint16_t **accumulator_pointers;
-	uint32_t accumulators_shift;
-	uint32_t accumulators_width;
-	uint32_t accumulators_height;
-	uint32_t results_list_length;
-
-	ANT_heap<uint16_t *, add_rsv_compare> *heap;
-
-	parser_query *parser;										///< Parser responsible for converting text into a parsed query
-	query_term_list *parsed_query;							///< The parsed query
-	const std::vector<std::string> *primary_keys;	///< A vector of strings, each the primary key for the document with an id equal to the vector index
-	uint32_t top_k;												///< The number of results to track.
-	size_t documents;
-
-
 	template <typename ACCUMULATOR_TYPE>
 	class query_atire_global
 		{
+		public:
+			struct add_rsv_compare
+				{
+				forceinline int operator() (ACCUMULATOR_TYPE *a, ACCUMULATOR_TYPE *b) const { return *a > *b ? 1 : *a < *b ? -1 : a - b; }
+				};
+
 		public:
 			class iterator
 				{
@@ -82,9 +63,27 @@ namespace JASS
 					docid_rsv_pair operator*()
 						{
 						size_t id = parent->accumulator_pointers[where] - parent->accumulators;
-						return docid_rsv_pair(id, parent->primary_keys[id], parent->accumulators[id]);
+						return docid_rsv_pair(id, (*parent->primary_keys)[id], parent->accumulators[id]);
 						}
 					};
+
+		private:
+			allocator_pool memory;												///< All memory allocation happens in this "arena"
+
+			static uint8_t *clean_flags;										///<
+			static ACCUMULATOR_TYPE *accumulators;									///<
+			static ACCUMULATOR_TYPE **accumulator_pointers;						///<
+			static uint32_t accumulators_shift;								///<
+			static uint32_t accumulators_width;								///<
+			static uint32_t results_list_length;							///<
+			static uint32_t top_k;												///< The number of results to track.
+
+			static class heap<ACCUMULATOR_TYPE *, add_rsv_compare> *heap;		///< The top-k heap
+
+			uint32_t accumulators_height;										///<
+			parser_query *parser;												///< Parser responsible for converting text into a parsed query
+			query_term_list *parsed_query;									///< The parsed query
+			const std::vector<std::string> *primary_keys;				///< A vector of strings, each the primary key for the document with an id equal to the vector index
 
 		public:
 			query_atire_global(const std::vector<std::string> &primary_keys, size_t documents = 1024, size_t top_k = 10)
@@ -95,14 +94,20 @@ namespace JASS
 				accumulators = reinterpret_cast<ACCUMULATOR_TYPE *>(memory.malloc(sizeof(ACCUMULATOR_TYPE) * accumulators_width * accumulators_height));
 				accumulator_pointers = reinterpret_cast<ACCUMULATOR_TYPE **>(memory.malloc(sizeof(ACCUMULATOR_TYPE *) * top_k));
 				clean_flags = reinterpret_cast<uint8_t *>(memory.malloc(accumulators_height));
-				heap = new ANT_heap<uint16_t *, add_rsv_compare>(*accumulator_pointers, top_k);
+				heap = new JASS::heap<ACCUMULATOR_TYPE *, add_rsv_compare>(*accumulator_pointers, top_k);
 				parser = new parser_query(memory);
 				parsed_query = nullptr;
-				JASS::primary_keys =  &primary_keys;
-				JASS::top_k = top_k;
-				JASS::documents = documents;
+				this->primary_keys =  &primary_keys;
+				this->top_k = top_k;
 
 				rewind();
+				}
+
+			~query_atire_global()
+				{
+				delete heap;
+				delete parser;
+				delete parsed_query;
 				}
 
 		void sort(void)
@@ -110,14 +115,13 @@ namespace JASS
 			top_k_qsort(accumulator_pointers, results_list_length, top_k);
 			}
 
-
-		auto begin(void) const
+		auto begin(void)
 			{
 	      sort();
 			return iterator(this, 0);
 			}
 
-		auto end(void) const
+		auto end(void)
 			{
 			return iterator(this, results_list_length);
 			}
@@ -160,10 +164,10 @@ namespace JASS
 				parsed_query = new query_term_list(memory);
 				}
 
-			__attribute__((always_inline)) inline static void add_rsv(uint32_t docid, uint16_t score)
+			forceinline static void add_rsv(uint32_t docid, ACCUMULATOR_TYPE score)
 				{
-				uint16_t old_value;
-				uint16_t *which = accumulators + docid;
+				ACCUMULATOR_TYPE old_value;
+				ACCUMULATOR_TYPE *which = accumulators + docid;
 				static add_rsv_compare cmp;
 
 				/*
@@ -172,7 +176,7 @@ namespace JASS
 				if (clean_flags[docid >> accumulators_shift] == 0)
 					{
 					clean_flags[docid >> accumulators_shift] = 1;
-					memset(accumulators + (accumulators_width * (docid >> accumulators_shift)), 0, accumulators_width * sizeof(uint16_t));
+					memset(accumulators + (accumulators_width * (docid >> accumulators_shift)), 0, accumulators_width * sizeof(ACCUMULATOR_TYPE));
 					}
 
 				/*
@@ -190,7 +194,7 @@ namespace JASS
 						accumulator_pointers[results_list_length++] = which;
 
 					if (results_list_length == top_k)
-						heap->build_min_heap();
+						heap->make_heap();
 					}
 				else if (cmp(which, accumulator_pointers[0]) >= 0)
 					{
@@ -198,7 +202,7 @@ namespace JASS
 						We were already in the heap, so update
 					*/
 					*which +=score;
-					heap->min_update(which);
+					heap->promote(which);
 					}
 				else
 					{
@@ -207,8 +211,32 @@ namespace JASS
 					*/
 					*which += score;
 					if (cmp(which, accumulator_pointers[0]) > 0)
-						heap->min_insert(which);
+						heap->push_back(which);
 					}
 				}
 		};
+
+	template <typename ACCUMULATOR_TYPE>
+	uint8_t *query_atire_global<ACCUMULATOR_TYPE>::clean_flags;										///<
+
+	template <typename ACCUMULATOR_TYPE>
+	ACCUMULATOR_TYPE *query_atire_global<ACCUMULATOR_TYPE>::accumulators;									///<
+
+	template <typename ACCUMULATOR_TYPE>
+	ACCUMULATOR_TYPE **query_atire_global<ACCUMULATOR_TYPE>::accumulator_pointers;						///<
+
+	template <typename ACCUMULATOR_TYPE>
+	uint32_t query_atire_global<ACCUMULATOR_TYPE>::accumulators_shift;							///<
+
+	template <typename ACCUMULATOR_TYPE>
+	uint32_t query_atire_global<ACCUMULATOR_TYPE>::accumulators_width;							///<
+
+	template <typename ACCUMULATOR_TYPE>
+	uint32_t query_atire_global<ACCUMULATOR_TYPE>::results_list_length;							///<
+
+	template <typename ACCUMULATOR_TYPE>
+	uint32_t query_atire_global<ACCUMULATOR_TYPE>::top_k;												///< The number of results to track.
+
+	template <typename ACCUMULATOR_TYPE>
+	heap<ACCUMULATOR_TYPE *, typename query_atire_global<ACCUMULATOR_TYPE>::add_rsv_compare> *query_atire_global<ACCUMULATOR_TYPE>::heap;		///< The top-k heap
 	}
