@@ -8,11 +8,13 @@
 #include <stdlib.h>
 
 #include <limits>
+#include <memory>
 #include <fstream>
 #include <algorithm>
 
 #include "file.h"
 #include "timer.h"
+#include "query_II.h"
 #include "query16_t.h"
 #include "decode_d0.h"
 #include "run_export.h"
@@ -27,6 +29,9 @@
 
 #define MAX_QUANTUM 0x0FFF
 #define MAX_TERMS_PER_QUERY 1024
+
+#define MAX_DOCUMENTS 50'000'000
+#define MAX_TOP_K 1'000
 
 /*
 	PARAMETERS
@@ -66,17 +71,18 @@ void anytime(std::ostream &output, const JASS::deserialised_jass_v1 &index, std:
 	size_t next_query = 0;
 	std::string query = JASS_anytime_query::get_next_query(query_list, next_query);
 
-		/*
-			Allocate a JASS query object
-		*/
-//		JASS::query16_t jass_query(index.primary_keys(), index.document_count(), 10);	// allocate a JASS query object
-		JASS::query_atire<uint16_t> jass_query(index.primary_keys(), index.document_count(), 10);
-//		JASS::query_atire_global<uint16_t> jass_query(index.primary_keys(), index.document_count(), 10);
+	/*
+		Allocate a JASS query object
+	*/
+//	JASS::query16_t jass_query(index.primary_keys(), index.document_count(), 10);	// allocate a JASS query object
+//	auto jass_query = std::unique_ptr<JASS::query_atire<uint16_t>>(new JASS::query_atire<uint16_t>(index.primary_keys(), index.document_count(), 10));
+	auto jass_query = std::unique_ptr<JASS::query_II<uint16_t, MAX_DOCUMENTS, MAX_TOP_K>>(new JASS::query_II<uint16_t, MAX_DOCUMENTS, MAX_TOP_K>(index.primary_keys(), index.document_count(), 10));
+//	auto jass_query = std::unique_ptr<JASS::query_atire_global<uint16_t>>(new JASS::query_atire_global<uint16_t>(index.primary_keys(), index.document_count(), 10));
 
 	while (query.size() != 0)
 		{
-		jass_query.parse(query);
-		auto &terms = jass_query.terms();
+		jass_query->parse(query);
+		auto &terms = jass_query->terms();
 		auto query_id = terms[0];
 
 		/*
@@ -141,7 +147,7 @@ void anytime(std::ostream &output, const JASS::deserialised_jass_v1 &index, std:
 		/*
 			Process the segments
 		*/
-		jass_query.rewind();
+		jass_query->rewind();
 
 		size_t postings_processed = 0;
 		for (uint64_t *current = segment_order; current < current_segment; current++)
@@ -161,12 +167,12 @@ void anytime(std::ostream &output, const JASS::deserialised_jass_v1 &index, std:
 			*/
 			uint16_t impact = header.impact;
 			decoder.decode(decompressor, header.segment_frequency, index.postings() + header.offset, header.end - header.offset);
-			decoder.process(impact, jass_query);
+			decoder.process(impact, *jass_query);
 			}
 
-		jass_query.sort();
+		jass_query->sort();
 
-		JASS::run_export(JASS::run_export::TREC, output, (char *)query_id.token().address(), jass_query, "COMPILED", true);
+		JASS::run_export(JASS::run_export::TREC, output, (char *)query_id.token().address(), *jass_query, "COMPILED", true);
 		query = JASS_anytime_query::get_next_query(query_list, next_query);
 		}
 

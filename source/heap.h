@@ -20,6 +20,8 @@
 
 #include <algorithm>
 
+#include "forceinline.h"
+
 namespace JASS
 	{
 	/*
