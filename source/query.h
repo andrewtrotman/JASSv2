@@ -54,7 +54,7 @@ namespace JASS
 						@param b [in] second pointer
 						@return 1 if greater, 0 if equal, -1 is less
 					*/
-					forceinline int operator() (ACCUMULATOR_TYPE *a, ACCUMULATOR_TYPE *b) const { return *a > *b ? 1 : *a < *b ? -1 : a - b; }
+					forceinline int operator() (ACCUMULATOR_TYPE *a, ACCUMULATOR_TYPE *b) const { return *a > *b ? 1 : *a < *b ? -1 : a < b ? -1 : a == b ? 0 : 1; }
 				};
 
 		public:
@@ -209,7 +209,7 @@ namespace JASS
 				primary_keys(primary_keys),
 				top_k(top_k)
 				{
-				memset(clean_flags, 0, accumulators_height);
+				rewind();
 				}
 
 			/*

@@ -33,6 +33,9 @@ constexpr size_t MAX_TERMS_PER_QUERY = 1024;
 constexpr size_t MAX_DOCUMENTS = 50'000'000;
 constexpr size_t MAX_TOP_K = 1'000;
 
+//constexpr size_t MAX_DOCUMENTS = 173'252;
+//constexpr size_t MAX_TOP_K = 10;
+
 /*
 	PARAMETERS
 	----------
@@ -70,7 +73,6 @@ void anytime(std::ostream &output, const JASS::deserialised_jass_v1 &index, std:
 	*/
 	size_t next_query = 0;
 	std::string query = JASS_anytime_query::get_next_query(query_list, next_query);
-
 	/*
 		Allocate a JASS query object
 	*/

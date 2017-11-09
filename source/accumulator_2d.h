@@ -49,12 +49,26 @@ namespace JASS
 		template<typename A, size_t B, typename C> friend class accumulator_2d;
 
 		private:
-			static constexpr size_t shift = maths::floor_log2(maths::sqrt_compiletime(NUMBER_OF_ACCUMULATORS));														///< How far we need to shift right the index to get the index of the clean flag
-			static constexpr size_t width = 1 << shift;														///< Each clean flag represents this number of accumulators in a "row"
-			static constexpr size_t number_of_clean_flags = (NUMBER_OF_ACCUMULATORS + width - 1) / width;									///< The number of "rows" (i.e. clean flags).
-			static constexpr size_t number_of_accumulators_allocated = width * number_of_clean_flags;					///< The numner of accumulators that were actually allocated (recall that this is a 2D array)
-			uint8_t clean_flag[number_of_clean_flags];	///< The clean flags are kept as bytes for faster lookup
-			ELEMENT accumulator[number_of_accumulators_allocated];				///< The accumulators are kept in an array
+			/*
+				This class is templated so as to put the array and the clean flags in-object rather than pointers.  So, its necessary
+				to work out the maxumum sizes of the two arrays at compile time and the check at construction that no overflow
+				is happening. This code works out the maximums and allocates the arrays.
+			*/
+			static constexpr size_t maximum_shift = maths::floor_log2(maths::sqrt_compiletime(NUMBER_OF_ACCUMULATORS));
+			static constexpr size_t maximum_width = 1 << maximum_shift;																					///< Each clean flag represents this number of accumulators in a "row"
+			static constexpr size_t maximum_number_of_clean_flags = (NUMBER_OF_ACCUMULATORS + maximum_width - 1) / maximum_width;	///< The number of "rows" (i.e. clean flags).
+			static constexpr size_t maximum_number_of_accumulators_allocated = maximum_width * maximum_number_of_clean_flags;			///< The numner of accumulators that were actually allocated (recall that this is a 2D array)
+			uint8_t clean_flag[maximum_number_of_clean_flags];																								///< The clean flags are kept as bytes for faster lookup
+			ELEMENT accumulator[maximum_number_of_accumulators_allocated];																				///< The accumulators are kept in an array
+
+			/*
+				At run-time we use these parameters
+			*/
+			size_t width;
+			size_t shift;
+			size_t number_of_clean_flags;
+			size_t number_of_accumulators_allocated;
+			size_t number_of_accumulators;
 
 		public:
 			/*
@@ -66,31 +80,38 @@ namespace JASS
 				@param elements [in] The numnber of elements in the array being managed.
 				@param memory [in] All memory allocated will be through this parameter.
 			*/
-			accumulator_2d()
+			accumulator_2d(size_t number_of_accumulators) :
+				number_of_accumulators(number_of_accumulators)
 				{
-#ifdef NEVER
 				/*
 					If the width of the accumulator array is a whole power of 2 the its quick to find the clean flag.  If the width is the square root of the
 					number of accumulators then it ballances the number of accumulator with the number of clean flags.  Both techniques are used.
 					Simply taking log2(sqrt(element)) can result in massive disparity in width vs height (63->4x16) so we try to ballance this
 					by checking if they are closer together if we take the ceiling of the log rather than the floor.
 				*/
-				size_t square_root = (size_t)sqrt(NUMBER_OF_ACCUMULATORS);
+				size_t square_root = (size_t)sqrt(number_of_accumulators);
 				shift = maths::floor_log2(square_root);
+//				if (((size_t)square_root & ((size_t)1 << (shift - 1))) != 0)
+//					shift++;
+
 				width = (size_t)1 << shift;
-				if (((size_t)square_root & ((size_t)1 << (shift - 1))) != 0)
-					width = (size_t)1 << ++shift;
 
 				/*
 					Round up the number of clean flags so that if the number of accumulators isn't a square that we don't miss the last row
 				*/
-				number_of_clean_flags = (NUMBER_OF_ACCUMULATORS + width - 1) / width;
+				number_of_clean_flags = (number_of_accumulators + width - 1) / width;
 				
 				/*
 					Round up the number of accumulators to make a rectangle (we're a 2D array)
 				*/
 				number_of_accumulators_allocated = width * number_of_clean_flags;
-#endif
+
+				/*
+					Check we've not gone past the end of the arrays
+				*/
+				if (number_of_clean_flags > maximum_number_of_clean_flags || number_of_accumulators_allocated > maximum_number_of_accumulators_allocated)
+					throw std::bad_array_new_length();
+
 				/*
 					Clear the clean flags ready for use.
 				*/
@@ -109,7 +130,7 @@ namespace JASS
 			*/
 			forceinline ELEMENT &operator[](size_t which)
 				{
-				auto flag = which >> shift;
+				size_t flag = which >> shift;
 				if (!clean_flag[flag])
 					{
 					std::fill(&accumulator[flag * width], &accumulator[flag * width + width], 0);
@@ -130,7 +151,7 @@ namespace JASS
 			*/
 			size_t size(void) const
 				{
-				return NUMBER_OF_ACCUMULATORS;
+				return number_of_accumulators;
 				}
 
 			/*
@@ -192,7 +213,7 @@ namespace JASS
 				/*
 					Allocate an array of 64 accumulators and make sure the width and height are correct
 				*/
-				accumulator_2d<size_t, 64> array;
+				accumulator_2d<size_t, 64> array(64);
 				JASS_assert(array.width == 8);
 				JASS_assert(array.shift == 3);
 				JASS_assert(array.number_of_clean_flags == 8);
@@ -202,7 +223,7 @@ namespace JASS
 				/*
 					Make sure it all works right when there is a single accumulator in the last row
 				*/
-				accumulator_2d<size_t, 65> array_hangover;
+				accumulator_2d<size_t, 65> array_hangover(65);
 				JASS_assert(array_hangover.width == 8);
 				JASS_assert(array_hangover.shift == 3);
 				JASS_assert(array_hangover.number_of_clean_flags == 9);
@@ -212,7 +233,7 @@ namespace JASS
 				/*
 					Make sure it all works right when there is a single accumulator missing from the last row
 				*/
-				accumulator_2d<size_t, 63> array_hangunder;
+				accumulator_2d<size_t, 63> array_hangunder(63);
 				JASS_assert(array_hangunder.width == 4);
 				JASS_assert(array_hangunder.shift == 2);
 				JASS_assert(array_hangunder.number_of_clean_flags == 16);
@@ -222,7 +243,7 @@ namespace JASS
 				/*
 					Make sure it all works right when there is a single accumulator
 				*/
-				accumulator_2d<size_t, 1> array_one;
+				accumulator_2d<size_t, 1> array_one(1);
 				JASS_assert(array_one.width == 1);
 				JASS_assert(array_one.shift == 0);
 				JASS_assert(array_one.number_of_clean_flags == 1);

@@ -15,6 +15,7 @@
 #include "heap.h"
 #include "top_k_qsort.h"
 #include "parser_query.h"
+#include "accumulator_2d.h"
 #include "query_term_list.h"
 #include "allocator_memory.h"
 
@@ -54,7 +55,7 @@ namespace JASS
 						@param b [in] second pointer
 						@return 1 if greater, 0 if equal, -1 is less
 					*/
-					forceinline int operator() (ACCUMULATOR_TYPE *a, ACCUMULATOR_TYPE *b) const { return *a > *b ? 1 : *a < *b ? -1 : a - b; }
+					forceinline int operator() (ACCUMULATOR_TYPE *a, ACCUMULATOR_TYPE *b) const { return *a > *b ? 1 : *a < *b ? -1 : a < b ? -1 : a == b ? 0 : 1; }
 				};
 
 		public:
@@ -102,7 +103,7 @@ namespace JASS
 					};
 
 				public:
-					const query_II<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent;			///< The query object that this is iterating over
+					query_II<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent;			///< The query object that this is iterating over
 					size_t where;																				///< Where in the results list we are
 
 				public:
@@ -116,7 +117,7 @@ namespace JASS
 						@param parent [in] The object we are iterating over
 						@param where [in] Where in the results list this iterator starts
 					*/
-					iterator(const query_II<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent, size_t where) :
+					iterator(query_II<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent, size_t where) :
 						parent(parent),
 						where(where)
 						{
@@ -162,7 +163,7 @@ namespace JASS
 					*/
 					docid_rsv_pair operator*()
 						{
-						size_t id = parent.accumulator_pointers[where] - parent.accumulators;
+						size_t id = parent.accumulator_pointers[where] - &parent.accumulators[0];
 						return docid_rsv_pair(id, parent.primary_keys[id], parent.accumulators[id]);
 						}
 					};
@@ -170,15 +171,9 @@ namespace JASS
 
 		private:
 			allocator_pool memory;									///< All memory allocation happens in this "arena"
-
 			ACCUMULATOR_TYPE *accumulator_pointers[MAX_TOP_K];
-			size_t accumulators_shift;
-			size_t accumulators_width;
-			size_t accumulators_height;
-			ACCUMULATOR_TYPE accumulators[MAX_DOCUMENTS];
-			uint8_t clean_flags[MAX_DOCUMENTS];
+			accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;
 			size_t results_list_length;
-
 			heap<ACCUMULATOR_TYPE *, add_rsv_compare> top_results;
 
 			parser_query parser;										///< Parser responsible for converting text into a parsed query
@@ -200,16 +195,14 @@ namespace JASS
 				@param top_k [in]	The top-k documents to return from the query once executed.
 			*/
 			query_II(const std::vector<std::string> &primary_keys, size_t documents = 1024, size_t top_k = 10) :
-				accumulators_shift(log2(sqrt((double)documents))),
-  				accumulators_width(1 << accumulators_shift),
-				accumulators_height((documents + accumulators_width) / accumulators_width),
+				accumulators(documents),
 				top_results(*accumulator_pointers, top_k),
 				parser(memory),
 				parsed_query(new query_term_list(memory)),
 				primary_keys(primary_keys),
 				top_k(top_k)
 				{
-				memset(clean_flags, 0, accumulators_height);
+				rewind();
 				}
 
 			/*
@@ -276,8 +269,8 @@ namespace JASS
 			*/
 			void rewind(void)
 				{
+				accumulators.rewind();
 				results_list_length = 0;
-		      memset(clean_flags, 0, accumulators_height);
 		      delete parsed_query;
 				parsed_query = new query_term_list(memory);
 				}
@@ -294,6 +287,26 @@ namespace JASS
 				top_k_qsort(accumulator_pointers, results_list_length, top_k);
 				}
 
+class xiox
+{
+public:
+	size_t one;
+	size_t two;
+	size_t three;
+public:
+	xiox() :
+		one(0),
+		two(0),
+		three(0)
+		{
+		/* Nothing */
+		}
+	~xiox()
+		{
+		std::cout << "\n===>" << one << " " << two << " " << three << "<===\n";
+		}
+ } XIOX;
+
 			/*
 				QUERY::ADD_RSV()
 				----------------
@@ -306,29 +319,21 @@ namespace JASS
 			forceinline void add_rsv(size_t docid, ACCUMULATOR_TYPE score)
 				{
 				ACCUMULATOR_TYPE old_value;
-				ACCUMULATOR_TYPE *which = accumulators + docid;
-
-				/*
-					Make sure the accumulator exists
-				*/
-				if (clean_flags[docid >> accumulators_shift] == 0)
-					{
-					clean_flags[docid >> accumulators_shift] = 1;
-					memset(accumulators + (accumulators_width * (docid >> accumulators_shift)), 0, accumulators_width * sizeof(ACCUMULATOR_TYPE));
-					}
+				ACCUMULATOR_TYPE *which = &accumulators[docid];			// This will create the accumulator if it doesn't already exist.
 
 				/*
 					Maintain a heap
 				*/
 				if (results_list_length < top_k)
 					{
+					XIOX.one++;
 					/*
 						We haven't got enough to worry about the heap yet, so just plonk it in
 					*/
 					old_value = *which;
 					*which += score;
 
-					if (old_value == 0)
+					if (old_value == 0)				// i.e if we're not already in the heap
 						accumulator_pointers[results_list_length++] = which;
 
 					if (results_list_length == top_k)
@@ -336,6 +341,7 @@ namespace JASS
 					}
 				else if (cmp(which, accumulator_pointers[0]) >= 0)
 					{
+					XIOX.two++;
 					/*
 						We were already in the heap, so update
 					*/
@@ -344,6 +350,7 @@ namespace JASS
 					}
 				else
 					{
+					XIOX.three++;
 					/*
 						We weren't in the heap, but we could get put there
 					*/
