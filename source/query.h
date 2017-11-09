@@ -12,13 +12,11 @@
 */
 #pragma once
 
-#include <iostream>
-
-#include "top_k_heap.h"
-#include "forceinline.h"
-#include "pointer_box.h"
+#include "heap.h"
+#include "top_k_qsort.h"
 #include "parser_query.h"
-#include "accumulator_2d.h"
+#include "query_term_list.h"
+#include "allocator_memory.h"
 
 namespace JASS
 	{
@@ -29,70 +27,84 @@ namespace JASS
 	/*!
 		@brief Everything necessary to process a query is encapsulated in an object of this type
 		@tparam ACCUMULATOR_TYPE The value-type for an accumulator (normally uint16_t or double).
+		@tparam MAX_DOCUMENTS The maximum number of documents that are ever going to exist in this collection
+		@tparam MAX_TOP_K The maximum top-k documents that are going to be asked for
 	*/
-	template <typename ACCUMULATOR_TYPE>
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
 	class query
 		{
-		private:
-			typedef typename top_k_heap<pointer_box<ACCUMULATOR_TYPE>>::iterator heap_iterator;			///< The heap object's begin() returns objects of this type
-
-		private:
-			allocator_pool memory;									///< All memory allocation happens in this "arena"
-			parser_query parser;										///< Parser responsible for converting text into a parsed query
-			query_term_list *parsed_query;							///< The parsed query
-			accumulator_2d<ACCUMULATOR_TYPE> accumulators;	///< The array of accumulators
-			top_k_heap<pointer_box<ACCUMULATOR_TYPE>> heap;	///< The top-k heap containing the best results so far
-			const std::vector<std::string> &primary_keys;	///< A vector of strings, each the primary key for the document with an id equal to the vector index
-			size_t top_k;												///< The number of results to track.
-
 		public:
 			/*
-				CLASS QUERY::DOCID_RSV_PAIR()
-				-----------------------------
+				CLASS QUERY::ADD_RSV_COMPARE
+				----------------------------
 			*/
 			/*!
-				@brief Literally a <document_id, rsv> ordered pair.
+				@brief Functor that does the comparison (looking for a > b, if a > b then pointer compare).
 			*/
-			class docid_rsv_pair
+			class add_rsv_compare
 				{
 				public:
-					size_t document_id;					///< The document identifier
-					const std::string &primary_key;			///< The external identifier of the document (the primary key)
-					uint16_t rsv;							///< The rsv (Retrieval Status Value) relevance score
-					
-				public:
 					/*
-						QUERY::DOCID_RSV_PAIR::DOCID_RSV_PAIR()
-						---------------------------------------
+						QUERY::ADD_RSV_COMPARE::OPERATOR()
+						----------------------------------
 					*/
 					/*!
-						@brief Constructor.
-						@param document_id [in] The document Identifier.
-						@param key [in] The external identifier of the document (the primary key).
-						@param rsv [in] The rsv (Retrieval Status Value) relevance score.
+						@brief Compare value then pointer for greater, equal, less then.
+						@param a [in] first pointer.
+						@param b [in] second pointer
+						@return 1 if greater, 0 if equal, -1 is less
 					*/
-					docid_rsv_pair(size_t document_id, const std::string &key, uint16_t rsv) :
-						document_id(document_id),
-						primary_key(key),
-						rsv(rsv)
-						{
-						/* Nothing */
-						}
+					forceinline int operator() (ACCUMULATOR_TYPE *a, ACCUMULATOR_TYPE *b) const { return *a > *b ? 1 : *a < *b ? -1 : a - b; }
 				};
+
+		public:
 			/*
 				CLASS QUERY::ITERATOR
 				----------------------
 			*/
 			/*!
-				@brief Iterate over the top-l
+				@brief Iterate over the top-k
 			*/
 			class iterator
 				{
-				private:
-					heap_iterator at;											///< This iterator's current location
-					uint16_t *accumulator_base;							///< The accumulators array used to compute document ids through pointer subtraction
-					const std::vector<std::string> &primary_keys;		///< The array of primary keys used to resolve document ids into external document identifiers.
-					
+				/*
+					CLASS QUERY::ITERATOR::DOCID_RSV_PAIR()
+					---------------------------------------
+				*/
+				/*!
+					@brief Literally a <document_id, rsv> ordered pair.
+				*/
+				class docid_rsv_pair
+					{
+					public:
+						size_t document_id;							///< The document identifier
+						const std::string &primary_key;			///< The external identifier of the document (the primary key)
+						ACCUMULATOR_TYPE rsv;						///< The rsv (Retrieval Status Value) relevance score
+
+					public:
+						/*
+							QUERY::ITERATOR::DOCID_RSV_PAIR::DOCID_RSV_PAIR()
+							-------------------------------------------------
+						*/
+						/*!
+							@brief Constructor.
+							@param document_id [in] The document Identifier.
+							@param key [in] The external identifier of the document (the primary key).
+							@param rsv [in] The rsv (Retrieval Status Value) relevance score.
+						*/
+						docid_rsv_pair(size_t document_id, const std::string &key, ACCUMULATOR_TYPE rsv) :
+							document_id(document_id),
+							primary_key(key),
+							rsv(rsv)
+							{
+							/* Nothing */
+							}
+					};
+
+				public:
+					const query<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent;			///< The query object that this is iterating over
+					size_t where;																				///< Where in the results list we are
+
 				public:
 					/*
 						QUERY::ITERATOR::ITERATOR()
@@ -101,13 +113,12 @@ namespace JASS
 					/*!
 						@brief Constructor
 						@param at [in] An iterator over the heap
-						@param accumulator_base [in] The base address of the accumulators used to compute document ids through pointer subtraction
-						@param primary_keys [in] The vector of primary keys
+						@param parent [in] The object we are iterating over
+						@param where [in] Where in the results list this iterator starts
 					*/
-					iterator(heap_iterator at, uint16_t *accumulator_base, const std::vector<std::string> &primary_keys) :
-						at(at),
-						accumulator_base(accumulator_base),
-						primary_keys(primary_keys)
+					iterator(const query<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent, size_t where) :
+						parent(parent),
+						where(where)
 						{
 						/* Nothing */
 						}
@@ -121,11 +132,24 @@ namespace JASS
 						@param other [in] The iterator object to compare to.
 						@return true if they differ, else false.
 					*/
-					bool operator!=(const iterator &other) const
+					bool operator!=(const iterator &with) const
 						{
-						return at != other.at;
+						return with.where != where;
 						}
- 
+
+					/*
+						QUERY::ITERATOR::OPERATOR++()
+						-----------------------------
+					*/
+					/*!
+						@brief Increment this iterator.
+					*/
+					iterator &operator++(void)
+						{
+						where++;
+						return *this;
+						}
+
 					/*
 						QUERY::ITERATOR::OPERATOR*()
 						----------------------------
@@ -136,24 +160,34 @@ namespace JASS
 						having done so it constructs an orderer pair <document_id,rsv> to return to the caller.
 						@return The current object.
 					*/
-					docid_rsv_pair operator*() const
+					docid_rsv_pair operator*()
 						{
-						return docid_rsv_pair(at->pointer() - accumulator_base, primary_keys[at->pointer() - accumulator_base], *at->pointer());
+						size_t id = parent.accumulator_pointers[where] - parent.accumulators;
+						return docid_rsv_pair(id, parent.primary_keys[id], parent.accumulators[id]);
 						}
- 
-					/*
-						QUERY::ITERATOR::OPERATOR++()
-						-----------------------------
-					*/
-					/*!
-						@brief Increment this iterator.
-					*/
-					const iterator &operator++()
-						{
-						++at;
-						return *this;
-						}
-				};
+					};
+
+
+		private:
+			allocator_pool memory;									///< All memory allocation happens in this "arena"
+
+			ACCUMULATOR_TYPE *accumulator_pointers[MAX_TOP_K];
+			size_t accumulators_shift;
+			size_t accumulators_width;
+			size_t accumulators_height;
+			ACCUMULATOR_TYPE accumulators[MAX_DOCUMENTS];
+			uint8_t clean_flags[MAX_DOCUMENTS];
+			size_t results_list_length;
+
+			heap<ACCUMULATOR_TYPE *, add_rsv_compare> top_results;
+
+			parser_query parser;										///< Parser responsible for converting text into a parsed query
+			query_term_list *parsed_query;							///< The parsed query
+			const std::vector<std::string> &primary_keys;	///< A vector of strings, each the primary key for the document with an id equal to the vector index
+			size_t top_k;												///< The number of results to track.
+
+			add_rsv_compare cmp;
+
 		public:
 			/*
 				QUERY::QUERY()
@@ -166,14 +200,43 @@ namespace JASS
 				@param top_k [in]	The top-k documents to return from the query once executed.
 			*/
 			query(const std::vector<std::string> &primary_keys, size_t documents = 1024, size_t top_k = 10) :
+				accumulators_shift(log2(sqrt((double)documents))),
+  				accumulators_width(1 << accumulators_shift),
+				accumulators_height((documents + accumulators_width) / accumulators_width),
+				top_results(*accumulator_pointers, top_k),
 				parser(memory),
 				parsed_query(new query_term_list(memory)),
-				accumulators(documents, memory),
-				heap(top_k, memory),
 				primary_keys(primary_keys),
 				top_k(top_k)
 				{
-				/* Nothing */
+				memset(clean_flags, 0, accumulators_height);
+				}
+
+			/*
+				QUERY::BEGIN()
+				--------------
+			*/
+			/*!
+				@brief Return an iterator pointing to start of the top-k
+				@return Iterator pointing to start of the top-k
+			*/
+			auto begin(void)
+				{
+				sort();
+				return iterator(*this, 0);
+				}
+
+			/*
+				QUERY::END()
+				------------
+			*/
+			/*!
+				@brief Return an iterator pointing to end of the top-k
+				@return Iterator pointing to the end of the top-k
+			*/
+			auto end(void)
+				{
+				return iterator(*this, results_list_length);
 				}
 
 			/*
@@ -190,7 +253,7 @@ namespace JASS
 				{
 				parser.parse(*parsed_query, query);
 				}
-			
+
 			/*
 				QUERY::TERMS()
 				--------------
@@ -204,15 +267,31 @@ namespace JASS
 				return *parsed_query;
 				}
 
-			void sort(void)
-				{
-				}
-
+			/*
+				QUERY::REWIND()
+				---------------
+			*/
+			/*!
+				@brief Clear this object after use and ready for re-use
+			*/
 			void rewind(void)
 				{
-				accumulators.rewind();
-				delete parsed_query;
+				results_list_length = 0;
+		      memset(clean_flags, 0, accumulators_height);
+		      delete parsed_query;
 				parsed_query = new query_term_list(memory);
+				}
+
+			/*
+				QUERY::SORT()
+				-------------
+			*/
+			/*!
+				@brief sort this resuls list before iteration over it.
+			*/
+			void sort(void)
+				{
+				top_k_qsort(accumulator_pointers, results_list_length, top_k);
 				}
 
 			/*
@@ -224,64 +303,54 @@ namespace JASS
 				@param document_id [in] which document to increment
 				@param weight [in] the amount of weight to add
 			*/
-			forceinline void add_rsv(size_t document_id, ACCUMULATOR_TYPE weight)
+			forceinline void add_rsv(size_t docid, ACCUMULATOR_TYPE score)
 				{
-				ACCUMULATOR_TYPE *cell = &accumulators[document_id];				// a reference to the accumulator cell (and make sure it exists)
+				ACCUMULATOR_TYPE old_value;
+				ACCUMULATOR_TYPE *which = accumulators + docid;
 
-				if (*cell == 0)
+				/*
+					Make sure the accumulator exists
+				*/
+				if (clean_flags[docid >> accumulators_shift] == 0)
 					{
-					/*
-						If we're not in the heap then put is there if need-be
-					*/
-					*cell += weight;
-					heap.push_back(cell);
+					clean_flags[docid >> accumulators_shift] = 1;
+					memset(accumulators + (accumulators_width * (docid >> accumulators_shift)), 0, accumulators_width * sizeof(ACCUMULATOR_TYPE));
 					}
-				else if (pointer_box<ACCUMULATOR_TYPE>::less_than(cell, heap.front()))
+
+				/*
+					Maintain a heap
+				*/
+				if (results_list_length < top_k)
 					{
 					/*
-						we weren't in the heap, but we might become so
+						We haven't got enough to worry about the heap yet, so just plonk it in
 					*/
-					*cell += weight;
-					if (pointer_box<ACCUMULATOR_TYPE>::greater_than(cell, heap.front()))
-						heap.push_back(cell);
+					old_value = *which;
+					*which += score;
+
+					if (old_value == 0)
+						accumulator_pointers[results_list_length++] = which;
+
+					if (results_list_length == top_k)
+						top_results.make_heap();
+					}
+				else if (cmp(which, accumulator_pointers[0]) >= 0)
+					{
+					/*
+						We were already in the heap, so update
+					*/
+					*which += score;
+					top_results.promote(which);
 					}
 				else
 					{
 					/*
-						We're already in the heap but we might have moved spots
+						We weren't in the heap, but we could get put there
 					*/
-					*cell += weight;
-					heap.promote(cell);
+					*which += score;
+					if (cmp(which, accumulator_pointers[0]) > 0)
+						top_results.push_back(which);
 					}
-				}
-
-			/*
-				QUERY::BEGIN()
-				--------------
-			*/
-			/*!
-				@brief Return an iterator pointing to start of the top-k
-				@return Iterator pointing to start of the top-k
-			*/
-			auto begin(void)
-				{
-				heap.sort();
-				heap_iterator it = heap.begin();
-				return iterator(it, &accumulators[0], primary_keys);
-				}
-				
-			/*
-				QUERY::END()
-				------------
-			*/
-			/*!
-				@brief Return an iterator pointing to end of the top-k
-				@return Iterator pointing to the end of the top-k
-			*/
-			auto end(void)
-				{
-				heap_iterator it = heap.end();
-				return iterator(it, &accumulators[0], primary_keys);
 				}
 
 			/*
@@ -294,7 +363,7 @@ namespace JASS
 			static void unittest(void)
 				{
 				std::vector<std::string> keys = {"one", "two", "three", "four"};
-				query<uint16_t> query_object(keys, 1024, 2);
+				query<uint16_t, 1024, 10> query_object(keys, 1024, 2);
 				std::ostringstream string;
 
 				/*

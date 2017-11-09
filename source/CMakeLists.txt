@@ -95,7 +95,7 @@ set(JASSlib_FILES
 	pointer_box.h
 	query.h
 	query_II.h
-	query16_t.h
+#	query16_t.h
 	query_atire.h
 	query_atire_global.h
 	query_term.h

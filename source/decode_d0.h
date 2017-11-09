@@ -14,10 +14,7 @@
 
 #include <vector>
 
-#include "query16_t.h"
 #include "query_atire_global.h"
-#include "query16_t.h"
-
 #include "compress_integer_none.h"
 
 namespace JASS
@@ -137,7 +134,7 @@ namespace JASS
 				std::vector<uint32_t>integer_sequence = {2, 3, 5, 7, 11, 13, 17, 19};
 				std::vector<std::string>primary_keys = {"zero" "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty"};
 				compress_integer_none identity;
-				query16_t query(primary_keys, 20, 5);
+				query<uint16_t, 100, 100> query(primary_keys, 20, 5);
 				std::ostringstream result;
 
 				decoder_d0 decoder(20);

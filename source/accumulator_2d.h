@@ -39,25 +39,22 @@ namespace JASS
 		be found wiht a bit shit rather than a mod.
 		@tparam ELEMENT The type of accumulator being used (default is uint16_t)
 	*/
-	template <typename ELEMENT = uint16_t, typename = typename std::enable_if<std::is_arithmetic<ELEMENT>::value, ELEMENT>::type>
+	template <typename ELEMENT, size_t NUMBER_OF_ACCUMULATORS, typename = typename std::enable_if<std::is_arithmetic<ELEMENT>::value, ELEMENT>::type>
 	class accumulator_2d
 		{
 		/*
 			This somewhat bizar line is so that unittest() can see the private members of another instance of the class.
 			Does anyone know what the actual syntax is to make it only unittest() that can see the private members?
 		*/
-		template<typename A, typename B> friend class accumulator_2d;
+		template<typename A, size_t B, typename C> friend class accumulator_2d;
 
 		private:
-			allocator_cpp<ELEMENT> allocator_element;		///< Used to allocate elements ensuring construction and destruction
-			allocator_cpp<uint8_t> allocator_uint8_t;		///< Used to allocate elements ensuring construction and destruction
-			ELEMENT *accumulator;							///< The accumulators are kept in an array
-			uint8_t *clean_flag;								///< The clean flags are kept as bytes for faster lookup
-			size_t width;										///< Each clean flag represents this number of accumulators in a "row"
-			size_t number_of_clean_flags;					///< The numnber of "rows" (i.e. clean flags).
-			size_t shift;										///< How far we need to shift right the index to get the index of the clean flag
-			size_t number_of_accumulators;				///< The number of accumulators as asked for by the user (more may be allocated)
-			size_t number_of_accumulators_allocated;		///< The numner of accumulators that were actually allocated (recall that this is a 2D array)
+			static constexpr size_t shift = maths::floor_log2(maths::sqrt_compiletime(NUMBER_OF_ACCUMULATORS));														///< How far we need to shift right the index to get the index of the clean flag
+			static constexpr size_t width = 1 << shift;														///< Each clean flag represents this number of accumulators in a "row"
+			static constexpr size_t number_of_clean_flags = (NUMBER_OF_ACCUMULATORS + width - 1) / width;									///< The number of "rows" (i.e. clean flags).
+			static constexpr size_t number_of_accumulators_allocated = width * number_of_clean_flags;					///< The numner of accumulators that were actually allocated (recall that this is a 2D array)
+			uint8_t clean_flag[number_of_clean_flags];	///< The clean flags are kept as bytes for faster lookup
+			ELEMENT accumulator[number_of_accumulators_allocated];				///< The accumulators are kept in an array
 
 		public:
 			/*
@@ -69,18 +66,16 @@ namespace JASS
 				@param elements [in] The numnber of elements in the array being managed.
 				@param memory [in] All memory allocated will be through this parameter.
 			*/
-			accumulator_2d(size_t elements, allocator &memory) :
-				allocator_element(memory),
-				allocator_uint8_t(memory),
-				number_of_accumulators(elements)
+			accumulator_2d()
 				{
+#ifdef NEVER
 				/*
 					If the width of the accumulator array is a whole power of 2 the its quick to find the clean flag.  If the width is the square root of the
 					number of accumulators then it ballances the number of accumulator with the number of clean flags.  Both techniques are used.
 					Simply taking log2(sqrt(element)) can result in massive disparity in width vs height (63->4x16) so we try to ballance this
 					by checking if they are closer together if we take the ceiling of the log rather than the floor.
 				*/
-				size_t square_root = (size_t)sqrt(elements);
+				size_t square_root = (size_t)sqrt(NUMBER_OF_ACCUMULATORS);
 				shift = maths::floor_log2(square_root);
 				width = (size_t)1 << shift;
 				if (((size_t)square_root & ((size_t)1 << (shift - 1))) != 0)
@@ -89,40 +84,17 @@ namespace JASS
 				/*
 					Round up the number of clean flags so that if the number of accumulators isn't a square that we don't miss the last row
 				*/
-				number_of_clean_flags = (elements + width - 1) / width;
+				number_of_clean_flags = (NUMBER_OF_ACCUMULATORS + width - 1) / width;
 				
 				/*
 					Round up the number of accumulators to make a rectangle (we're a 2D array)
 				*/
 				number_of_accumulators_allocated = width * number_of_clean_flags;
-
-				/*
-					Allocate the clean flags and the accumulators making sure to allocate a true square number of accumulators so that the last row is full.
-					Note that we do not need to construct these because they must be arithmatic (see the template definition)
-				*/
-				clean_flag = allocator_uint8_t.allocate(number_of_clean_flags);
-				accumulator = allocator_element.allocate(number_of_accumulators_allocated);
-
+#endif
 				/*
 					Clear the clean flags ready for use.
 				*/
 				rewind();
-				}
-
-			/*
-				ACCUMULATOR_2D::~ACCUMULATOR_2D()
-				---------------------------------
-			*/
-			/*!
-				@brief Destructor.
-			*/
-			~accumulator_2d()
-				{
-				/*
-					Its unnecessary to call destroy() on arithmatic types, so just free up the memory.
-				*/
-				allocator_uint8_t.deallocate(clean_flag, number_of_clean_flags);
-				allocator_element.deallocate(accumulator, number_of_accumulators_allocated);
 				}
 
 			/*
@@ -158,7 +130,7 @@ namespace JASS
 			*/
 			size_t size(void) const
 				{
-				return number_of_accumulators;
+				return NUMBER_OF_ACCUMULATORS;
 				}
 
 			/*
@@ -181,7 +153,8 @@ namespace JASS
 			/*!
 				@brief Unit test a single 2D accumulator instance making sure its correct
 			*/
-			static void unittest_example(accumulator_2d<size_t> &instance)
+			template <typename ACCUMULATOR_2D>
+			static void unittest_example(ACCUMULATOR_2D &instance)
 				{
 				/*
 					Populate an array with the shuffled sequence 0..instance.size()
@@ -217,14 +190,9 @@ namespace JASS
 			static void unittest(void)
 				{
 				/*
-					Memory to use
-				*/
-				allocator_pool memory;
-				
-				/*
 					Allocate an array of 64 accumulators and make sure the width and height are correct
 				*/
-				accumulator_2d<size_t> array(64, memory);
+				accumulator_2d<size_t, 64> array;
 				JASS_assert(array.width == 8);
 				JASS_assert(array.shift == 3);
 				JASS_assert(array.number_of_clean_flags == 8);
@@ -234,7 +202,7 @@ namespace JASS
 				/*
 					Make sure it all works right when there is a single accumulator in the last row
 				*/
-				accumulator_2d<size_t> array_hangover(65, memory);
+				accumulator_2d<size_t, 65> array_hangover;
 				JASS_assert(array_hangover.width == 8);
 				JASS_assert(array_hangover.shift == 3);
 				JASS_assert(array_hangover.number_of_clean_flags == 9);
@@ -244,17 +212,17 @@ namespace JASS
 				/*
 					Make sure it all works right when there is a single accumulator missing from the last row
 				*/
-				accumulator_2d<size_t> array_hangunder(63, memory);
-				JASS_assert(array_hangunder.width == 8);
-				JASS_assert(array_hangunder.shift == 3);
-				JASS_assert(array_hangunder.number_of_clean_flags == 8);
+				accumulator_2d<size_t, 63> array_hangunder;
+				JASS_assert(array_hangunder.width == 4);
+				JASS_assert(array_hangunder.shift == 2);
+				JASS_assert(array_hangunder.number_of_clean_flags == 16);
 
 				unittest_example(array_hangunder);
 
 				/*
 					Make sure it all works right when there is a single accumulator
 				*/
-				accumulator_2d<size_t> array_one(1, memory);
+				accumulator_2d<size_t, 1> array_one;
 				JASS_assert(array_one.width == 1);
 				JASS_assert(array_one.shift == 0);
 				JASS_assert(array_one.number_of_clean_flags == 1);

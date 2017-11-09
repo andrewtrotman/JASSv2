@@ -16,6 +16,7 @@
 #include <atomic>
 #include <thread>
 
+#include "asserts.h"
 #include "allocator_pool.h"
 
 namespace JASS

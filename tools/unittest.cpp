@@ -229,7 +229,7 @@ int main(void)
 		JASS::compress_integer_carry_8b::unittest();
 
 		puts("accumulator_2d");
-		JASS::accumulator_2d<uint32_t>::unittest();
+		JASS::accumulator_2d<uint32_t, 1>::unittest();
 
 		puts("pointer_box");
 		JASS::pointer_box<int>::unittest();
@@ -238,7 +238,7 @@ int main(void)
 		JASS::top_k_heap<int>::unittest();
 
 		puts("query");
-		JASS::query<uint16_t>::unittest();
+		JASS::query<uint16_t, 1, 1>::unittest();
 
 		puts("decode_d0");
 		JASS::decoder_d0::unittest();

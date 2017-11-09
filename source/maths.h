@@ -31,10 +31,6 @@ namespace JASS
 	*/
 	class maths
 		{
-		private:
-			static const uint8_t ceiling_log2_answer[];		///< Lookup table for ceiling(log2(x));
-			static const uint8_t floor_log2_answer[];		///< Lookup table for floor(log2(x));
-
 		public:
 			/*
 				MATHS()
@@ -115,7 +111,6 @@ namespace JASS
 				return minimum(minimum(first, second), third);
 				}
 
-
 			/*
 				MATHS::FLOOR_LOG2()
 				-------------------
@@ -125,9 +120,30 @@ namespace JASS
 				@param x [in] the value to compute the log of.
 				@return floor(log2(x));
 			*/
-			static size_t floor_log2(size_t x)
+			static constexpr size_t floor_log2(size_t x)
 				{
-				size_t sum, mult = 0;
+				constexpr uint8_t floor_log2_answer[] =
+					{
+					0, 0, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3,
+					4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+					5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+					5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+					6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+					6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+					6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+					6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+					7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+					7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+					7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+					7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+					7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+					7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+					7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+					7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
+					};
+
+				size_t sum = 0;
+				size_t mult = 0;
 
 				do					// LCOV_EXCL_LINE			// gcov thinks this line isn't called (but it must be)
 					{
@@ -149,9 +165,30 @@ namespace JASS
 				@param x [in] the value to compute the log of.
 				@return ceiling(log2(x));
 			*/
-			static size_t ceiling_log2(size_t x)
+			static constexpr size_t ceiling_log2(size_t x)
 				{
-				size_t sum, mult = 0;
+				constexpr uint8_t ceiling_log2_answer[] =
+					{
+					0, 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4,
+					5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+					6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+					6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+					7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+					7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+					7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+					7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+					8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+					8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+					8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+					8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+					8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+					8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+					8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+					8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8
+					};
+
+				size_t sum = 0;
+				size_t mult = 0;
 
 				do					// LCOV_EXCL_LINE			// gcov thinks this line isn't called (but it must be)
 					{
@@ -165,8 +202,8 @@ namespace JASS
 				}
 
 			/*
-				FIND_FIRST_SET_BIT()
-				--------------------
+				MATHS::FIND_FIRST_SET_BIT()
+				---------------------------
 			*/
 			/*!
 				@brief Compute position of lowest set bit. 1 == LSB.
@@ -181,8 +218,8 @@ namespace JASS
 				}
 
 			/*
-				FIND_FIRST_SET_BIT()
-				--------------------
+				MATHS::FIND_FIRST_SET_BIT()
+				---------------------------
 			*/
 			/*!
 				@brief Compute position of lowest set bit. 1 == LSB.
@@ -194,6 +231,50 @@ namespace JASS
 				{
 				static const uint32_t table[] = {0, 1, 2, 53, 3, 7, 54, 27, 4, 38, 41, 8, 34, 55, 48, 28, 62, 5, 39, 46, 44, 42, 22, 9, 24, 35, 59, 56, 49, 18, 29, 11, 63, 52, 6, 26, 37, 40, 33, 47, 61, 45, 43, 21, 23, 58, 17, 10, 51, 25, 36, 32, 60, 20, 57, 16, 50, 31, 19, 15, 30, 14, 13, 12};
 				return table[((x & -(int32_t)x) * 0x022FDD63CC95386DULL) >> 58];
+				}
+
+			/*
+				MATHS::SQRT_COMPILETIME_HELPER()
+				--------------------------------
+			*/
+			/*!
+				@brief Method to compute the square root at compile time using binary search
+				@details from: https://stackoverflow.com/questions/8622256/in-c11-is-sqrt-defined-as-constexpr
+				@param x the value to compute the square root of
+				@param lo the low value in the search
+				@param hi the high value in the search
+				@return the square root of x
+			*/
+		private:
+			template <typename TYPE>
+			static constexpr TYPE sqrt_compiletime_helper(TYPE x, TYPE lo, TYPE hi)
+				{
+				if (lo == hi)
+					return lo;
+
+				const TYPE mid = (lo + hi + 1) / 2;
+
+				if (x / mid < mid)
+					return sqrt_compiletime_helper<TYPE>(x, lo, mid - 1);
+				else
+					return sqrt_compiletime_helper(x, mid, hi);
+				}
+		public:
+
+			/*
+				MATHS::SQRT_COMPILETIME()
+				-------------------------
+			*/
+			/*!
+				@brief Method to compute the square root at compile time using binary search
+				@details from: https://stackoverflow.com/questions/8622256/in-c11-is-sqrt-defined-as-constexpr
+				@param x the value to compute the square root of
+				@return the square root of x
+			*/
+			template <typename TYPE>
+			static constexpr TYPE sqrt_compiletime(TYPE x)
+				{
+				return sqrt_compiletime_helper<TYPE>(x, 0, x / 2 + 1);
 				}
 
 			/*

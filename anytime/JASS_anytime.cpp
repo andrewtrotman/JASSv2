@@ -15,7 +15,7 @@
 #include "file.h"
 #include "timer.h"
 #include "query_II.h"
-#include "query16_t.h"
+#include "query.h"
 #include "decode_d0.h"
 #include "run_export.h"
 #include "commandline.h"
@@ -27,11 +27,11 @@
 #include "query_atire_global.h"
 #include "deserialised_jass_v1.h"
 
-#define MAX_QUANTUM 0x0FFF
-#define MAX_TERMS_PER_QUERY 1024
+constexpr size_t MAX_QUANTUM = 0x0FFF;
+constexpr size_t MAX_TERMS_PER_QUERY = 1024;
 
-#define MAX_DOCUMENTS 50'000'000
-#define MAX_TOP_K 1'000
+constexpr size_t MAX_DOCUMENTS = 50'000'000;
+constexpr size_t MAX_TOP_K = 1'000;
 
 /*
 	PARAMETERS
@@ -74,8 +74,8 @@ void anytime(std::ostream &output, const JASS::deserialised_jass_v1 &index, std:
 	/*
 		Allocate a JASS query object
 	*/
-//	JASS::query16_t jass_query(index.primary_keys(), index.document_count(), 10);	// allocate a JASS query object
 //	auto jass_query = std::unique_ptr<JASS::query_atire<uint16_t>>(new JASS::query_atire<uint16_t>(index.primary_keys(), index.document_count(), 10));
+//	auto jass_query = std::unique_ptr<JASS::query<uint16_t, MAX_DOCUMENTS, MAX_TOP_K>>(new JASS::query<uint16_t, MAX_DOCUMENTS, MAX_TOP_K>(index.primary_keys(), index.document_count(), 10));
 	auto jass_query = std::unique_ptr<JASS::query_II<uint16_t, MAX_DOCUMENTS, MAX_TOP_K>>(new JASS::query_II<uint16_t, MAX_DOCUMENTS, MAX_TOP_K>(index.primary_keys(), index.document_count(), 10));
 //	auto jass_query = std::unique_ptr<JASS::query_atire_global<uint16_t>>(new JASS::query_atire_global<uint16_t>(index.primary_keys(), index.document_count(), 10));
 
@@ -171,7 +171,6 @@ void anytime(std::ostream &output, const JASS::deserialised_jass_v1 &index, std:
 			}
 
 		jass_query->sort();
-
 		JASS::run_export(JASS::run_export::TREC, output, (char *)query_id.token().address(), *jass_query, "COMPILED", true);
 		query = JASS_anytime_query::get_next_query(query_list, next_query);
 		}

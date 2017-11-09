@@ -90,7 +90,7 @@ namespace JASS
 					"COMPRESSION CODE\n"
 					"----------------\n"
 					"Variable Byte    - Andrew Trotman\n"
-					"Stream VByte     - Daniel Lemire and Kendall Willets (Apache License Version 2.0, January 2004) https://github.com/lemire/streamvbyte"
+					"Stream VByte     - Daniel Lemire and Kendall Willets (Apache License Version 2.0, January 2004) https://github.com/lemire/streamvbyte\n"
 					"Simple-9         - Vikram Subramanya, Andrew Trotman, Blake Burgess\n"
 					"Simple-9 packed  - Vikram Subramanya, Andrew Trotman, Michael Albert, Blake Burgess\n"
 					"Simple-8b        - Blake Burgess, Andrew Trotman\n"

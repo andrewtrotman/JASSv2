@@ -12,7 +12,6 @@
 */
 #pragma once
 
-#include "query16_t.h"
 #include "compress_integer.h"
 
 namespace JASS
@@ -183,7 +182,8 @@ namespace JASS
 				@param impact [in] The impact score to add for each document id in the list.
 				@param accumulators [in] The accumulators to add to
 			*/
-			void process(uint16_t impact, JASS::query16_t &accumulators) const
+			template <typename QUERY_T>
+			void process(uint16_t impact, QUERY_T &accumulators) const
 				{
 				for (auto document : *this)
 					accumulators.add_rsv(document, impact);
@@ -201,7 +201,7 @@ namespace JASS
 				std::vector<uint32_t>integer_sequence = {2, 1, 2, 2, 4, 2, 4, 2};
 				std::vector<std::string>primary_keys = { "zero" "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty" };
 				compress_integer_none identity;
-				query16_t query(primary_keys, 20, 5);
+				query<uint16_t, 100, 100> query(primary_keys, 20, 5);
 				std::ostringstream result;
 
 				decoder_d1 decoder(20);
