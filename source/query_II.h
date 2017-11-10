@@ -55,7 +55,13 @@ namespace JASS
 						@param b [in] second pointer
 						@return 1 if greater, 0 if equal, -1 is less
 					*/
-					forceinline int operator() (ACCUMULATOR_TYPE *a, ACCUMULATOR_TYPE *b) const { return *a > *b ? 1 : *a < *b ? -1 : a < b ? -1 : a == b ? 0 : 1; }
+					forceinline int operator() (ACCUMULATOR_TYPE *a, ACCUMULATOR_TYPE *b) const
+						{
+						/*
+							The most likely case is that the value at a is less than the value at b so do that check first.
+						*/
+						return *a < *b ? -1 : *a > *b ? 1 : a < b ? -1 : a == b ? 0 : 1;
+						}
 				};
 
 		public:
@@ -168,18 +174,18 @@ namespace JASS
 						}
 					};
 
-
 		private:
-			allocator_pool memory;									///< All memory allocation happens in this "arena"
-			ACCUMULATOR_TYPE *accumulator_pointers[MAX_TOP_K];
-			accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;
-			size_t results_list_length;
-			heap<ACCUMULATOR_TYPE *, add_rsv_compare> top_results;
+			ACCUMULATOR_TYPE zero;														///< Constant zero used for pointer dereferenced comparisons
+			allocator_pool memory;														///< All memory allocation happens in this "arena"
+			ACCUMULATOR_TYPE *accumulator_pointers[MAX_TOP_K];					///< Array of pointers to the top k accumulators
+			accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;	///< The accumulators, one per document in the collection
+			size_t needed_for_top_k;													///< The number of results we still need in order to fill the top-k
+			heap<ACCUMULATOR_TYPE *, add_rsv_compare> top_results;			///< Heap containing the top-k results
 
-			parser_query parser;										///< Parser responsible for converting text into a parsed query
-			query_term_list *parsed_query;							///< The parsed query
-			const std::vector<std::string> &primary_keys;	///< A vector of strings, each the primary key for the document with an id equal to the vector index
-			size_t top_k;												///< The number of results to track.
+			parser_query parser;															///< Parser responsible for converting text into a parsed query
+			query_term_list *parsed_query;											///< The parsed query
+			const std::vector<std::string> &primary_keys;						///< A vector of strings, each the primary key for the document with an id equal to the vector index
+			size_t top_k;																	///< The number of results to track.
 
 			add_rsv_compare cmp;
 
@@ -195,6 +201,7 @@ namespace JASS
 				@param top_k [in]	The top-k documents to return from the query once executed.
 			*/
 			query_II(const std::vector<std::string> &primary_keys, size_t documents = 1024, size_t top_k = 10) :
+				zero(0),
 				accumulators(documents),
 				top_results(*accumulator_pointers, top_k),
 				parser(memory),
@@ -216,7 +223,7 @@ namespace JASS
 			auto begin(void)
 				{
 				sort();
-				return iterator(*this, 0);
+				return iterator(*this, needed_for_top_k);
 				}
 
 			/*
@@ -229,7 +236,7 @@ namespace JASS
 			*/
 			auto end(void)
 				{
-				return iterator(*this, results_list_length);
+				return iterator(*this, top_k);
 				}
 
 			/*
@@ -269,8 +276,9 @@ namespace JASS
 			*/
 			void rewind(void)
 				{
+				accumulator_pointers[0] = &zero;
 				accumulators.rewind();
-				results_list_length = 0;
+				needed_for_top_k = top_k;
 		      delete parsed_query;
 				parsed_query = new query_term_list(memory);
 				}
@@ -284,28 +292,8 @@ namespace JASS
 			*/
 			void sort(void)
 				{
-				top_k_qsort(accumulator_pointers, results_list_length, top_k);
+				top_k_qsort(accumulator_pointers + needed_for_top_k, top_k - needed_for_top_k, top_k);
 				}
-
-class xiox
-{
-public:
-	size_t one;
-	size_t two;
-	size_t three;
-public:
-	xiox() :
-		one(0),
-		two(0),
-		three(0)
-		{
-		/* Nothing */
-		}
-	~xiox()
-		{
-		std::cout << "\n===>" << one << " " << two << " " << three << "<===\n";
-		}
- } XIOX;
 
 			/*
 				QUERY::ADD_RSV()
@@ -318,45 +306,40 @@ public:
 			*/
 			forceinline void add_rsv(size_t docid, ACCUMULATOR_TYPE score)
 				{
-				ACCUMULATOR_TYPE old_value;
 				ACCUMULATOR_TYPE *which = &accumulators[docid];			// This will create the accumulator if it doesn't already exist.
 
 				/*
-					Maintain a heap
+					By doing the add first its possible to reduce the "usual" path through the code to a single comparison.  The JASS v1 "usual" path took three comparisons.
 				*/
-				if (results_list_length < top_k)
+				*which += score;
+				if (cmp(which, accumulator_pointers[0]) >= 0)			// ==0 is the case where we're the current bottom of heap so might need to be promoted
 					{
-					XIOX.one++;
 					/*
-						We haven't got enough to worry about the heap yet, so just plonk it in
+						We end up in the top-k, now to work out why.  As this is a rare occurence, we've got a little bit of time on our hands
 					*/
-					old_value = *which;
-					*which += score;
+					if (needed_for_top_k > 0)
+						{
+						/*
+							the heap isn't full yet - so change only happens if we're a new addition (i.e. the old value was a 0)
+						*/
+						if (*which == score)
+							{
+							accumulator_pointers[--needed_for_top_k] = which;
+							if (needed_for_top_k == 0)
+								top_results.make_heap();
+							}
+						}
+					else
+						{
+						*which -= score;
+						int prior_compare = cmp(which, accumulator_pointers[0]);
+						*which += score;
 
-					if (old_value == 0)				// i.e if we're not already in the heap
-						accumulator_pointers[results_list_length++] = which;
-
-					if (results_list_length == top_k)
-						top_results.make_heap();
-					}
-				else if (cmp(which, accumulator_pointers[0]) >= 0)
-					{
-					XIOX.two++;
-					/*
-						We were already in the heap, so update
-					*/
-					*which += score;
-					top_results.promote(which);
-					}
-				else
-					{
-					XIOX.three++;
-					/*
-						We weren't in the heap, but we could get put there
-					*/
-					*which += score;
-					if (cmp(which, accumulator_pointers[0]) > 0)
-						top_results.push_back(which);
+						if (prior_compare < 0)
+							top_results.push_back(which);				// we're not in the heap so add this accumulator to the heap
+						else
+							top_results.promote(which);				// we're already in the heap so promote this document
+						}
 					}
 				}
 

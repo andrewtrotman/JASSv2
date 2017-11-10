@@ -76,10 +76,7 @@ void anytime(std::ostream &output, const JASS::deserialised_jass_v1 &index, std:
 	/*
 		Allocate a JASS query object
 	*/
-//	auto jass_query = std::unique_ptr<JASS::query_atire<uint16_t>>(new JASS::query_atire<uint16_t>(index.primary_keys(), index.document_count(), 10));
-//	auto jass_query = std::unique_ptr<JASS::query<uint16_t, MAX_DOCUMENTS, MAX_TOP_K>>(new JASS::query<uint16_t, MAX_DOCUMENTS, MAX_TOP_K>(index.primary_keys(), index.document_count(), 10));
-	auto jass_query = std::unique_ptr<JASS::query_II<uint16_t, MAX_DOCUMENTS, MAX_TOP_K>>(new JASS::query_II<uint16_t, MAX_DOCUMENTS, MAX_TOP_K>(index.primary_keys(), index.document_count(), 10));
-//	auto jass_query = std::unique_ptr<JASS::query_atire_global<uint16_t>>(new JASS::query_atire_global<uint16_t>(index.primary_keys(), index.document_count(), 10));
+	auto jass_query = new JASS::query_II<uint16_t, MAX_DOCUMENTS, MAX_TOP_K>(index.primary_keys(), index.document_count(), 10);
 
 	while (query.size() != 0)
 		{

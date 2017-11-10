@@ -15,14 +15,15 @@
 #include "heap.h"
 #include "top_k_qsort.h"
 #include "parser_query.h"
+#include "accumulator_2d.h"
 #include "query_term_list.h"
 #include "allocator_memory.h"
 
 namespace JASS
 	{
 	/*
-		CLASS QUERY
-		-----------
+		CLASS QUERY_II
+		--------------
 	*/
 	/*!
 		@brief Everything necessary to process a query is encapsulated in an object of this type
@@ -31,7 +32,7 @@ namespace JASS
 		@tparam MAX_TOP_K The maximum top-k documents that are going to be asked for
 	*/
 	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	class query
+	class query_II
 		{
 		public:
 			/*
@@ -54,7 +55,13 @@ namespace JASS
 						@param b [in] second pointer
 						@return 1 if greater, 0 if equal, -1 is less
 					*/
-					forceinline int operator() (ACCUMULATOR_TYPE *a, ACCUMULATOR_TYPE *b) const { return *a > *b ? 1 : *a < *b ? -1 : a < b ? -1 : a == b ? 0 : 1; }
+					forceinline int operator() (ACCUMULATOR_TYPE *a, ACCUMULATOR_TYPE *b) const
+						{
+						/*
+							The most likely case is that the value at a is less than the value at b so do that check first.
+						*/
+						return *a < *b ? -1 : *a > *b ? 1 : a < b ? -1 : a == b ? 0 : 1;
+						}
 				};
 
 		public:
@@ -102,7 +109,7 @@ namespace JASS
 					};
 
 				public:
-					const query<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent;			///< The query object that this is iterating over
+					query_II<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent;			///< The query object that this is iterating over
 					size_t where;																				///< Where in the results list we are
 
 				public:
@@ -116,7 +123,7 @@ namespace JASS
 						@param parent [in] The object we are iterating over
 						@param where [in] Where in the results list this iterator starts
 					*/
-					iterator(const query<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent, size_t where) :
+					iterator(query_II<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent, size_t where) :
 						parent(parent),
 						where(where)
 						{
@@ -162,29 +169,23 @@ namespace JASS
 					*/
 					docid_rsv_pair operator*()
 						{
-						size_t id = parent.accumulator_pointers[where] - parent.accumulators;
+						size_t id = parent.accumulator_pointers[where] - &parent.accumulators[0];
 						return docid_rsv_pair(id, parent.primary_keys[id], parent.accumulators[id]);
 						}
 					};
 
-
 		private:
-			allocator_pool memory;									///< All memory allocation happens in this "arena"
+			ACCUMULATOR_TYPE zero;														///< Constant zero used for pointer dereferenced comparisons
+			allocator_pool memory;														///< All memory allocation happens in this "arena"
+			ACCUMULATOR_TYPE *accumulator_pointers[MAX_TOP_K];					///< Array of pointers to the top k accumulators
+			accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;	///< The accumulators, one per document in the collection
+			size_t needed_for_top_k;													///< The number of results we still need in order to fill the top-k
+			heap<ACCUMULATOR_TYPE *, add_rsv_compare> top_results;			///< Heap containing the top-k results
 
-			ACCUMULATOR_TYPE *accumulator_pointers[MAX_TOP_K];
-			size_t accumulators_shift;
-			size_t accumulators_width;
-			size_t accumulators_height;
-			ACCUMULATOR_TYPE accumulators[MAX_DOCUMENTS];
-			uint8_t clean_flags[MAX_DOCUMENTS];
-			size_t results_list_length;
-
-			heap<ACCUMULATOR_TYPE *, add_rsv_compare> top_results;
-
-			parser_query parser;										///< Parser responsible for converting text into a parsed query
-			query_term_list *parsed_query;							///< The parsed query
-			const std::vector<std::string> &primary_keys;	///< A vector of strings, each the primary key for the document with an id equal to the vector index
-			size_t top_k;												///< The number of results to track.
+			parser_query parser;															///< Parser responsible for converting text into a parsed query
+			query_term_list *parsed_query;											///< The parsed query
+			const std::vector<std::string> &primary_keys;						///< A vector of strings, each the primary key for the document with an id equal to the vector index
+			size_t top_k;																	///< The number of results to track.
 
 			add_rsv_compare cmp;
 
@@ -199,10 +200,9 @@ namespace JASS
 				@param documents [in] The number of documents in the collection.
 				@param top_k [in]	The top-k documents to return from the query once executed.
 			*/
-			query(const std::vector<std::string> &primary_keys, size_t documents = 1024, size_t top_k = 10) :
-				accumulators_shift(log2(sqrt((double)documents))),
-  				accumulators_width(1 << accumulators_shift),
-				accumulators_height((documents + accumulators_width) / accumulators_width),
+			query_II(const std::vector<std::string> &primary_keys, size_t documents = 1024, size_t top_k = 10) :
+				zero(0),
+				accumulators(documents),
 				top_results(*accumulator_pointers, top_k),
 				parser(memory),
 				parsed_query(new query_term_list(memory)),
@@ -223,7 +223,7 @@ namespace JASS
 			auto begin(void)
 				{
 				sort();
-				return iterator(*this, 0);
+				return iterator(*this, needed_for_top_k);
 				}
 
 			/*
@@ -236,7 +236,7 @@ namespace JASS
 			*/
 			auto end(void)
 				{
-				return iterator(*this, results_list_length);
+				return iterator(*this, top_k);
 				}
 
 			/*
@@ -276,8 +276,9 @@ namespace JASS
 			*/
 			void rewind(void)
 				{
-				results_list_length = 0;
-		      memset(clean_flags, 0, accumulators_height);
+				accumulator_pointers[0] = &zero;
+				accumulators.rewind();
+				needed_for_top_k = top_k;
 		      delete parsed_query;
 				parsed_query = new query_term_list(memory);
 				}
@@ -291,7 +292,7 @@ namespace JASS
 			*/
 			void sort(void)
 				{
-				top_k_qsort(accumulator_pointers, results_list_length, top_k);
+				top_k_qsort(accumulator_pointers + needed_for_top_k, top_k - needed_for_top_k, top_k);
 				}
 
 			/*
@@ -305,51 +306,40 @@ namespace JASS
 			*/
 			forceinline void add_rsv(size_t docid, ACCUMULATOR_TYPE score)
 				{
-				ACCUMULATOR_TYPE old_value;
-				ACCUMULATOR_TYPE *which = accumulators + docid;
+				ACCUMULATOR_TYPE *which = &accumulators[docid];			// This will create the accumulator if it doesn't already exist.
 
 				/*
-					Make sure the accumulator exists
+					By doing the add first its possible to reduce the "usual" path through the code to a single comparison.  The JASS v1 "usual" path took three comparisons.
 				*/
-				if (clean_flags[docid >> accumulators_shift] == 0)
-					{
-					clean_flags[docid >> accumulators_shift] = 1;
-					memset(accumulators + (accumulators_width * (docid >> accumulators_shift)), 0, accumulators_width * sizeof(ACCUMULATOR_TYPE));
-					}
-
-				/*
-					Maintain a heap
-				*/
-				if (results_list_length < top_k)
+				*which += score;
+				if (cmp(which, accumulator_pointers[0]) >= 0)			// ==0 is the case where we're the current bottom of heap so might need to be promoted
 					{
 					/*
-						We haven't got enough to worry about the heap yet, so just plonk it in
+						We end up in the top-k, now to work out why.  As this is a rare occurence, we've got a little bit of time on our hands
 					*/
-					old_value = *which;
-					*which += score;
+					if (needed_for_top_k > 0)
+						{
+						/*
+							the heap isn't full yet - so change only happens if we're a new addition (i.e. the old value was a 0)
+						*/
+						if (*which == score)
+							{
+							accumulator_pointers[--needed_for_top_k] = which;
+							if (needed_for_top_k == 0)
+								top_results.make_heap();
+							}
+						}
+					else
+						{
+						*which -= score;
+						int prior_compare = cmp(which, accumulator_pointers[0]);
+						*which += score;
 
-					if (old_value == 0)
-						accumulator_pointers[results_list_length++] = which;
-
-					if (results_list_length == top_k)
-						top_results.make_heap();
-					}
-				else if (cmp(which, accumulator_pointers[0]) >= 0)
-					{
-					/*
-						We were already in the heap, so update
-					*/
-					*which += score;
-					top_results.promote(which);
-					}
-				else
-					{
-					/*
-						We weren't in the heap, but we could get put there
-					*/
-					*which += score;
-					if (cmp(which, accumulator_pointers[0]) > 0)
-						top_results.push_back(which);
+						if (prior_compare < 0)
+							top_results.push_back(which);				// we're not in the heap so add this accumulator to the heap
+						else
+							top_results.promote(which);				// we're already in the heap so promote this document
+						}
 					}
 				}
 
@@ -363,7 +353,7 @@ namespace JASS
 			static void unittest(void)
 				{
 				std::vector<std::string> keys = {"one", "two", "three", "four"};
-				query<uint16_t, 1024, 10> query_object(keys, 1024, 2);
+				query_II<uint16_t, 1024, 10> query_object(keys, 1024, 2);
 				std::ostringstream string;
 
 				/*
