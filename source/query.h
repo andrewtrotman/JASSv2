@@ -22,8 +22,8 @@
 namespace JASS
 	{
 	/*
-		CLASS QUERY_II
-		--------------
+		CLASS QUERY
+		-----------
 	*/
 	/*!
 		@brief Everything necessary to process a query is encapsulated in an object of this type
@@ -32,7 +32,7 @@ namespace JASS
 		@tparam MAX_TOP_K The maximum top-k documents that are going to be asked for
 	*/
 	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	class query_II
+	class query
 		{
 		public:
 			/*
@@ -109,7 +109,7 @@ namespace JASS
 					};
 
 				public:
-					query_II<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent;			///< The query object that this is iterating over
+					query<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent;			///< The query object that this is iterating over
 					size_t where;																				///< Where in the results list we are
 
 				public:
@@ -123,7 +123,7 @@ namespace JASS
 						@param parent [in] The object we are iterating over
 						@param where [in] Where in the results list this iterator starts
 					*/
-					iterator(query_II<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent, size_t where) :
+					iterator(query<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent, size_t where) :
 						parent(parent),
 						where(where)
 						{
@@ -200,7 +200,7 @@ namespace JASS
 				@param documents [in] The number of documents in the collection.
 				@param top_k [in]	The top-k documents to return from the query once executed.
 			*/
-			query_II(const std::vector<std::string> &primary_keys, size_t documents = 1024, size_t top_k = 10) :
+			query(const std::vector<std::string> &primary_keys, size_t documents = 1024, size_t top_k = 10) :
 				zero(0),
 				accumulators(documents),
 				top_results(*accumulator_pointers, top_k),
@@ -353,7 +353,7 @@ namespace JASS
 			static void unittest(void)
 				{
 				std::vector<std::string> keys = {"one", "two", "three", "four"};
-				query_II<uint16_t, 1024, 10> query_object(keys, 1024, 2);
+				query<uint16_t, 1024, 10> query_object(keys, 1024, 2);
 				std::ostringstream string;
 
 				/*

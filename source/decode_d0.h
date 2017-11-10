@@ -14,7 +14,7 @@
 
 #include <vector>
 
-#include "query_atire_global.h"
+#include "query.h"
 #include "compress_integer_none.h"
 
 namespace JASS
@@ -134,13 +134,13 @@ namespace JASS
 				std::vector<uint32_t>integer_sequence = {2, 3, 5, 7, 11, 13, 17, 19};
 				std::vector<std::string>primary_keys = {"zero" "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty"};
 				compress_integer_none identity;
-				query<uint16_t, 100, 100> query(primary_keys, 20, 5);
+				query<uint16_t, 100, 100> jass_query(primary_keys, 20, 5);
 				std::ostringstream result;
 
 				decoder_d0 decoder(20);
 				decoder.decode(identity, integer_sequence.size(), integer_sequence.data(), sizeof(integer_sequence[0]) * integer_sequence.size());
-				decoder.process(1, query);
-				for (const auto &answer : query)
+				decoder.process(1, jass_query);
+				for (const auto &answer : jass_query)
 					result << answer.document_id << " ";
 
 				JASS_assert(result.str() == "19 17 13 11 7 ");

@@ -94,10 +94,6 @@ set(JASSlib_FILES
 	parser_query.cpp
 	pointer_box.h
 	query.h
-	query_II.h
-#	query16_t.h
-	query_atire.h
-	query_atire_global.h
 	query_term.h
 	query_term_list.h
 	reverse.h

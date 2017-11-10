@@ -14,17 +14,14 @@
 
 #include "file.h"
 #include "timer.h"
-#include "query_II.h"
 #include "query.h"
 #include "decode_d0.h"
 #include "run_export.h"
 #include "commandline.h"
-#include "query_atire.h"
 #include "channel_file.h"
 #include "compress_integer.h"
 #include "JASS_anytime_stats.h"
 #include "JASS_anytime_query.h"
-#include "query_atire_global.h"
 #include "deserialised_jass_v1.h"
 
 constexpr size_t MAX_QUANTUM = 0x0FFF;
@@ -33,28 +30,27 @@ constexpr size_t MAX_TERMS_PER_QUERY = 1024;
 constexpr size_t MAX_DOCUMENTS = 50'000'000;
 constexpr size_t MAX_TOP_K = 1'000;
 
-//constexpr size_t MAX_DOCUMENTS = 173'252;
-//constexpr size_t MAX_TOP_K = 10;
-
 /*
 	PARAMETERS
 	----------
 */
 std::string parameter_queryfilename;				///< Name of file containing the queries
 size_t parameter_threads = 1;							///< Number of concurrent queries
+size_t parameter_top_k = 10;							///< Number of results to return
 
 std::string parameters_errors;						///< Any errors as a result of command line parsing
 auto parameters = std::make_tuple					///< The  command line parameter block
 	(
 	JASS::commandline::parameter("-q", "--queryfile", "Name of file containing a list of queries (1 per line, each line prefixed with query-id)", parameter_queryfilename),
-	JASS::commandline::parameter("-t", "--threads", "Number of threads to use (one query per thread) [default = 1]", parameter_threads)
+	JASS::commandline::parameter("-t", "--threads",   "Number of threads to use (one query per thread) [default = 1]", parameter_threads),
+	JASS::commandline::parameter("-k", "--top-k",     "Number of results to return to the user (top-k value) [default = 10]", parameter_top_k)
 	);
 
 /*
 	ANYTIME()
 	---------
 */
-void anytime(std::ostream &output, const JASS::deserialised_jass_v1 &index, std::vector<JASS_anytime_query> &query_list, size_t postings_to_process)
+void anytime(std::ostream &output, const JASS::deserialised_jass_v1 &index, std::vector<JASS_anytime_query> &query_list, size_t postings_to_process, size_t top_k)
 	{
 	/*
 		Extract the compression scheme as a decoder
@@ -76,7 +72,7 @@ void anytime(std::ostream &output, const JASS::deserialised_jass_v1 &index, std:
 	/*
 		Allocate a JASS query object
 	*/
-	auto jass_query = new JASS::query_II<uint16_t, MAX_DOCUMENTS, MAX_TOP_K>(index.primary_keys(), index.document_count(), 10);
+	auto jass_query = new JASS::query<uint16_t, MAX_DOCUMENTS, MAX_TOP_K>(index.primary_keys(), index.document_count(), top_k);
 
 	while (query.size() != 0)
 		{
@@ -193,6 +189,12 @@ int main(int argc, const char *argv[])
 		exit(1);
 		}
 
+	if (parameter_top_k > MAX_TOP_K)
+		{
+		std::cout << "top-k specified (" << parameter_top_k << ") is larger than maximum TOP-K (" << MAX_TOP_K << "), change MAX_TOP_K in " << __FILE__  << " and recompile.\n";
+		exit(1);
+		}
+
 	/*
 		Run-time statistics
 	*/
@@ -204,6 +206,13 @@ int main(int argc, const char *argv[])
 	*/
 	JASS::deserialised_jass_v1 index(true);
 	index.read_index();
+
+	if (index.document_count() > MAX_DOCUMENTS)
+		{
+		std::cout << "There are " << index.document_count() << " documents in this index which is larger than MAX_DOCUMENTS (" << MAX_DOCUMENTS << "), change MAX_DOCUMENTS in " << __FILE__ << " and recompile.\n";
+		exit(1);
+		}
+
 
 	/*
 		Set the Anytime stopping criteria
@@ -244,7 +253,7 @@ int main(int argc, const char *argv[])
 		/*
 			We have only 1 thread so don't bother to start a thread to do the work
 		*/
-		anytime(output[0], index, query_list, postings_to_process);
+		anytime(output[0], index, query_list, postings_to_process, parameter_top_k);
 		}
 	else
 		{
@@ -252,7 +261,7 @@ int main(int argc, const char *argv[])
 			Multiple threads, so start each worker
 		*/
 		for (size_t which = 0; which < parameter_threads ; which++)
-			thread_pool.push_back(std::thread(anytime, std::ref(output[which]), std::ref(index), std::ref(query_list), postings_to_process));
+			thread_pool.push_back(std::thread(anytime, std::ref(output[which]), std::ref(index), std::ref(query_list), postings_to_process, parameter_top_k));
 
 		/*
 			Wait until they're all done (blocking on the completion of each thread in turn)
