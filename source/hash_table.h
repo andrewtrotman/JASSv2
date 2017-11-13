@@ -81,7 +81,7 @@ namespace JASS
 						/*
 							Find the first node in the hash table that has content
 						*/
-						while (location <= size(BITS) && iterand.table[location].load() == nullptr)
+						while (location < size(BITS) && iterand.table[location].load() == nullptr)
 							location++;
 						
 						/*
