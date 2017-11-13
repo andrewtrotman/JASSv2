@@ -17,7 +17,7 @@
 project(JASS)
 
 #
-#CMake verison 3.2 is required to set CMAKE_CXX_STANDARD to C++14.
+#CMake verison 3.2 is required to set CMAKE_CXX_STANDARD to C++17.
 #
 
 cmake_minimum_required (VERSION 3.2)
@@ -57,7 +57,7 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
 	add_definitions(-DDEBUG)
 endif()
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Threads)

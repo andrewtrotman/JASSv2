@@ -276,10 +276,10 @@ int main(int argc, const char *argv[])
 	*/
 	std::ostringstream TREC_file;
 	for (auto &result : output)
-		if (result.tellp() != 0)
+		if ((size_t)result.tellp() != 0)
 			TREC_file << result.str();
 
-	if (TREC_file.tellp() != 0)
+	if ((size_t)TREC_file.tellp() != 0)
 		JASS::file::write_entire_file("ranking.txt", TREC_file.str());
 
 	std::cout << stats;

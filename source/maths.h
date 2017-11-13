@@ -13,15 +13,55 @@
 */
 #pragma once
 
-#include <limits>
-
 #include <stdio.h>
 #include <stdint.h>
+
+#include <limits>
+#include <type_traits>
 
 #include "asserts.h"
 
 namespace JASS
 	{
+	static constexpr uint8_t ceiling_log2_answer[] =
+		{
+		0, 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4,
+		5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+		6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+		6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+		7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+		7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+		7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+		7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+		8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+		8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+		8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+		8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+		8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+		8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+		8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+		8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8
+		};
+
+	static constexpr uint8_t floor_log2_answer [0x100] =
+		{
+		0, 0, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3,
+		4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+		5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+		5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+		6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+		6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+		6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+		6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+		7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+		7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+		7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+		7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+		7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+		7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+		7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+		7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
+		};
 	/*
 		CLASS MATHS
 		-----------
@@ -120,40 +160,24 @@ namespace JASS
 				@param x [in] the value to compute the log of.
 				@return floor(log2(x));
 			*/
-			static constexpr size_t floor_log2(size_t x)
+			template <typename TYPE>
+			static constexpr TYPE floor_log2(TYPE x)
 				{
-				constexpr uint8_t floor_log2_answer[] =
-					{
-					0, 0, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3,
-					4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
-					5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
-					5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
-					6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
-					6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
-					6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
-					6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
-					7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-					7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-					7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-					7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-					7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-					7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-					7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-					7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
-					};
-
-				size_t sum = 0;
-				size_t mult = 0;
-
-				do					// LCOV_EXCL_LINE			// gcov thinks this line isn't called (but it must be)
-					{
-					sum = floor_log2_answer[x & 0xFF] + mult;
-					mult += 8;
-					x >>= 8;
-					}
-				while (x != 0);
-
-				return sum;
+				return (static_cast<size_t>(x) >> 8 == 0) ?
+				   floor_log2_answer[x] :
+				(static_cast<size_t>(x) >> 16 == 0) ?
+					floor_log2_answer[(static_cast<size_t>(x) >> 8) & 0xFF] + 8 :
+				(static_cast<size_t>(x) >> 24 == 0) ?
+					floor_log2_answer[(static_cast<size_t>(x) >> 16) & 0xFF] + 16 : 
+				(static_cast<size_t>(x) >> 32 == 0) ?
+					floor_log2_answer[(static_cast<size_t>(x) >> 24) & 0xFF] + 24 :
+				(static_cast<size_t>(x) >> 40 == 0) ?
+					floor_log2_answer[(static_cast<size_t>(x) >> 32) & 0xFF] + 32 :
+				(static_cast<size_t>(x) >> 48 == 0) ?
+					floor_log2_answer[(static_cast<size_t>(x) >> 40) & 0xFF] + 40 :
+				(static_cast<size_t>(x) >> 56 == 0) ?
+					floor_log2_answer[(static_cast<size_t>(x) >> 48) & 0xFF] + 48 :
+					floor_log2_answer[(static_cast<size_t>(x) >> 56) & 0xFF] + 56;
 				}
 
 			/*
@@ -165,40 +189,24 @@ namespace JASS
 				@param x [in] the value to compute the log of.
 				@return ceiling(log2(x));
 			*/
-			static constexpr size_t ceiling_log2(size_t x)
+			template <typename TYPE>
+			static constexpr TYPE ceiling_log2(TYPE x)
 				{
-				constexpr uint8_t ceiling_log2_answer[] =
-					{
-					0, 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4,
-					5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
-					6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
-					6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
-					7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-					7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-					7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-					7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-					8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-					8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-					8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-					8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-					8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-					8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-					8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-					8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8
-					};
-
-				size_t sum = 0;
-				size_t mult = 0;
-
-				do					// LCOV_EXCL_LINE			// gcov thinks this line isn't called (but it must be)
-					{
-					sum = ceiling_log2_answer[x & 0xFF] + mult;
-					mult += 8;
-					x >>= 8;
-					}
-				while (x != 0);
-
-				return sum;
+				return (static_cast<size_t>(x) >> 8 == 0) ?
+				   ceiling_log2_answer[x] :
+				(static_cast<size_t>(x) >> 16 == 0) ?
+					ceiling_log2_answer[(static_cast<size_t>(x) >> 8) & 0xFF] + 8 :
+				(static_cast<size_t>(x) >> 24 == 0) ?
+					ceiling_log2_answer[(static_cast<size_t>(x) >> 16) & 0xFF] + 16 : 
+				(static_cast<size_t>(x) >> 32 == 0) ?
+					ceiling_log2_answer[(static_cast<size_t>(x) >> 24) & 0xFF] + 24 :
+				(static_cast<size_t>(x) >> 40 == 0) ?
+					ceiling_log2_answer[(static_cast<size_t>(x) >> 32) & 0xFF] + 32 :
+				(static_cast<size_t>(x) >> 48 == 0) ?
+					ceiling_log2_answer[(static_cast<size_t>(x) >> 40) & 0xFF] + 40 :
+				(static_cast<size_t>(x) >> 56 == 0) ?
+					ceiling_log2_answer[(static_cast<size_t>(x) >> 48) & 0xFF] + 48 :
+					ceiling_log2_answer[(static_cast<size_t>(x) >> 56) & 0xFF] + 56;
 				}
 
 			/*
@@ -249,15 +257,22 @@ namespace JASS
 			template <typename TYPE>
 			static constexpr TYPE sqrt_compiletime_helper(TYPE x, TYPE lo, TYPE hi)
 				{
-				if (lo == hi)
-					return lo;
+				/*
+					This is done as a macro because Visual Studio (CL 19.00.23918) doesn't allow declarations in constexpr functions
+				*/
+				#ifdef sqrt_compiletime_helper_mid
+					#error "sqrt_compiletime_helper_mid already defined"
+				#endif
 
-				const TYPE mid = (lo + hi + 1) / 2;
+				#define sqrt_compiletime_helper_mid ((lo + hi + 1) / 2)
 
-				if (x / mid < mid)
-					return sqrt_compiletime_helper<TYPE>(x, lo, mid - 1);
-				else
-					return sqrt_compiletime_helper(x, mid, hi);
+				return (lo == hi) ?
+					lo : 
+				(x / sqrt_compiletime_helper_mid < sqrt_compiletime_helper_mid) ?
+					sqrt_compiletime_helper<TYPE>(x, lo, sqrt_compiletime_helper_mid - 1) : 
+					sqrt_compiletime_helper(x, sqrt_compiletime_helper_mid, hi);
+
+				#undef sqrt_compiletime_helper_mid
 				}
 		public:
 
