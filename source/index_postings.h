@@ -425,12 +425,25 @@ namespace JASS
 				{
 				std::array<uint32_t, 0x10000> frequencies = {};
 				size_t number_of_postings = 0;
+				size_t highest_impact = 0;
+				size_t lowest_impact = std::numeric_limits<size_t>::max();
 
 				/*
-					Count up the number of times each impact is seen
+					Count up the number of times each impact is seen and compute the highest and lowest impact scores
 				*/
 				for (const auto &posting : tf_iterate())
 					{
+					/*
+						Calculate the maximum and minimum impact scores seen
+					*/
+					if (posting.term_frequency > highest_impact)
+						highest_impact = posting.term_frequency;
+					if (posting.term_frequency < lowest_impact)
+						lowest_impact = posting.term_frequency;
+
+					/*
+						Count the number of times each frequency is seen
+					*/
 					frequencies[posting.term_frequency]++;
 					number_of_postings++;
 					}
@@ -439,16 +452,18 @@ namespace JASS
 					Count the number of unique impacts
 				*/
 				size_t number_of_impacts = 0;
+//				for (size_t which = lowest_impact; which <= highest_impact; which++)
+//					if (frequencies[which] != 0)
+//						number_of_impacts++;
 				for (auto times : frequencies)
 					if (times != 0)
 						number_of_impacts++;
-
 				/*
 					Allocate the postings list
 					This is a little awkward, but it works... The object itself if allocated using the allocator
 					passed by the caller, and as such it remains valid until that allocator's space is freed - which
 					is not done by this method or any it calls.  Thus its possible to return a reference to the object
-					and know its stull valid once this method terminates
+					and know its still valid once this method terminates
 				*/
 				index_postings_impact *postings_list_memory;
 				postings_list_memory = new (reinterpret_cast<index_postings_impact *>(memory.malloc(sizeof(*postings_list_memory)))) index_postings_impact(number_of_impacts, number_of_postings, memory);
@@ -460,6 +475,9 @@ namespace JASS
 				size_t cumulative = 0;
 				size_t current_impact = 0;
 				size_t impact_value = 0;
+//				for (size_t which = lowest_impact; which <= highest_impact; which++)
+//					{
+//					size_t times = frequencies[which];
 				for (auto &times : frequencies)
 					{
 					if (times != 0)

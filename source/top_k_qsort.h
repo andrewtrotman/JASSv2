@@ -46,11 +46,11 @@ namespace JASS
 				@return pointer to the median element
 			*/
 			template <typename TYPE, typename COMPARE>
-			static forceinline TYPE *med3(TYPE *a, TYPE *b, TYPE *c, COMPARE cmp)
+			static forceinline TYPE *med3(TYPE &a, TYPE &b, TYPE &c, COMPARE cmp)
 				{
 				return cmp(a, b) < 0 ?
-					(cmp(b, c) < 0 ? b : cmp(a, c) < 0 ? c : a) :
-					(cmp(b, c) > 0 ? b : cmp(a, c) > 0 ? c : a);
+					(cmp(b, c) < 0 ? &b : cmp(a, c) < 0 ? &c : &a) :
+					(cmp(b, c) > 0 ? &b : cmp(a, c) > 0 ? &c : &a);
 				}
 
 			/*
@@ -95,7 +95,7 @@ namespace JASS
 				if (n < 7)
 					{ /* Insertion sort on smallest arrays */
 					for (pm = a + 1; pm < a + n; pm++)
-						for (pl = pm; pl > a && cmp((pl - 1), pl) > 0; pl--)
+						for (pl = pm; pl > a && cmp(*(pl - 1), *pl) > 0; pl--)
 							std::swap(*pl, *(pl - 1));
 					return;
 					}
@@ -107,11 +107,11 @@ namespace JASS
 					if (n > 40)
 						{ /* Big arrays, pseudomedian of 9 */
 						s = (n / 8);
-						pl = med3(pl, pl + s, pl + 2 * s, cmp);
-						pm = med3(pm - s, pm, pm + s, cmp);
-						pn = med3(pn - 2 * s, pn - s, pn, cmp);
+						pl = med3(*pl, *(pl + s), *(pl + 2 * s), cmp);
+						pm = med3(*(pm - s), *pm, *(pm + s), cmp);
+						pn = med3(*(pn - 2 * s), *(pn - s), *pn, cmp);
 						}
-					pm = med3(pl, pm, pn, cmp); /* Mid-size, med of 3 */
+					pm = med3(*pl, *pm, *pn, cmp); /* Mid-size, med of 3 */
 					}
 
 				pv = *pm;		/* pv is the partition value */
@@ -120,7 +120,7 @@ namespace JASS
 				pc = pd = a + (n - 1);
 				for (;;)
 					{
-					while (pb <= pc && (r = cmp(pb, &pv)) <= 0)
+					while (pb <= pc && (r = cmp(*pb, pv)) <= 0)
 						{
 						if (r == 0)
 							{
@@ -129,7 +129,7 @@ namespace JASS
 							}
 						pb++;
 						}
-					while (pc >= pb && (r = cmp(pc, &pv)) >= 0)
+					while (pc >= pb && (r = cmp(*pc, pv)) >= 0)
 						{
 						if (r == 0)
 							{

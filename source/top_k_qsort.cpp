@@ -31,9 +31,9 @@ namespace JASS
 			@param b [in] pointer to second parameter
 			@return 1 if *a > *b, 0 if *a == *b, -1 if *a < *b
 		*/
-		int operator()(const size_t *a, const size_t *b)
+		int operator()(const size_t a, const size_t b)
 			{
-			return *a < *b ? -1 : *a == *b ? 0 : 1;
+			return a < b ? -1 : a == b ? 0 : 1;
 			}
 		} comparison;
 

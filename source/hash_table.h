@@ -142,7 +142,7 @@ namespace JASS
 							*/
 							do
 								location++;
-							while (location <= size(BITS) && iterand.table[location].load() == nullptr);
+							while (location < size(BITS) && iterand.table[location].load() == nullptr);
 								
 							/*
 								If we found a node the set up iterators at that node
