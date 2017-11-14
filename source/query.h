@@ -292,7 +292,7 @@ namespace JASS
 			*/
 			void sort(void)
 				{
-				top_k_qsort(accumulator_pointers + needed_for_top_k, top_k - needed_for_top_k, top_k);
+				top_k_qsort::sort(accumulator_pointers + needed_for_top_k, top_k - needed_for_top_k, top_k, cmp);
 				}
 
 			/*

@@ -19,8 +19,9 @@
 #include "decode_d1.h"
 #include "bitstring.h"
 #include "hash_table.h"
-#include "top_k_heap.h"
 #include "run_export.h"
+#include "top_k_heap.h"
+#include "top_k_qsort.h"
 #include "binary_tree.h"
 #include "commandline.h"
 #include "pointer_box.h"
@@ -79,6 +80,9 @@ int main(void)
 
 	try
 		{
+		puts("top_k_sort");
+		JASS::top_k_qsort::unittest();
+
 		puts("compress_integer_all");
 		JASS::compress_integer_all::unittest();
 
