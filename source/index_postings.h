@@ -452,12 +452,10 @@ namespace JASS
 					Count the number of unique impacts
 				*/
 				size_t number_of_impacts = 0;
-//				for (size_t which = lowest_impact; which <= highest_impact; which++)
-//					if (frequencies[which] != 0)
-//						number_of_impacts++;
-				for (auto times : frequencies)
-					if (times != 0)
+				for (size_t which = lowest_impact; which <= highest_impact; which++)
+					if (frequencies[which] != 0)
 						number_of_impacts++;
+
 				/*
 					Allocate the postings list
 					This is a little awkward, but it works... The object itself if allocated using the allocator
@@ -475,25 +473,23 @@ namespace JASS
 				size_t cumulative = 0;
 				size_t current_impact = 0;
 				size_t impact_value = 0;
-//				for (size_t which = lowest_impact; which <= highest_impact; which++)
-//					{
-//					size_t times = frequencies[which];
-				for (auto &times : frequencies)
+				for (size_t which = 0; which <= 0xFFFF; which++)
 					{
-					if (times != 0)
+					uint32_t *times = &frequencies[which];
+					if (*times != 0)
 						{
 						auto prior = cumulative;
 						/*
 							Put the header in place.
 						*/
-						postings_list.header(current_impact, impact_value, &postings_list[prior], &postings_list[prior + times]);
+						postings_list.header(current_impact, impact_value, &postings_list[prior], &postings_list[prior + *times]);
 
 						/*
 							Keep track of where in the list we are.
 						*/
 						current_impact++;
-						cumulative += times;
-						times = prior;
+						cumulative += *times;
+						*times = prior;
 						}
 					impact_value++;
 					}
