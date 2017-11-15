@@ -7,6 +7,7 @@
 #include <vector>
 #include <numeric>
 #include <iostream>
+#include <algorithm>
 
 #include "top_k_qsort.h"
 
