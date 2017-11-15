@@ -163,6 +163,7 @@ namespace JASS
 			template <typename TYPE>
 			static constexpr TYPE floor_log2(TYPE x)
 				{
+				/* coverity[BAD_SHIFT] */
 				return (static_cast<size_t>(x) >> 8 == 0) ?
 				   floor_log2_answer[x] :
 				(static_cast<size_t>(x) >> 16 == 0) ?
@@ -192,6 +193,8 @@ namespace JASS
 			template <typename TYPE>
 			static constexpr TYPE ceiling_log2(TYPE x)
 				{
+				/* coverity[BAD_SHIFT] */
+				/* coverity[CONSTANT_EXPRESSION_RESULT] */
 				return (static_cast<size_t>(x) >> 8 == 0) ?
 				   ceiling_log2_answer[x] :
 				(static_cast<size_t>(x) >> 16 == 0) ?

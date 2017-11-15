@@ -242,6 +242,18 @@ namespace JASS
 				}
 
 			/*
+				QUERY::~QUERY()
+				---------------
+			*/
+			/*!
+				@brief Destructor
+			*/
+			query()
+				{
+				delete parsed_query;
+				}
+
+			/*
 				QUERY::BEGIN()
 				--------------
 			*/
@@ -308,7 +320,7 @@ namespace JASS
 				accumulator_pointers[0] = &zero;
 				accumulators.rewind();
 				needed_for_top_k = top_k;
-		      delete parsed_query;
+				delete parsed_query;
 				parsed_query = new query_term_list(memory);
 				}
 

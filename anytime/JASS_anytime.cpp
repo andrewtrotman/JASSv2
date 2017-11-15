@@ -170,6 +170,7 @@ void anytime(std::ostream &output, const JASS::deserialised_jass_v1 &index, std:
 		query = JASS_anytime_query::get_next_query(query_list, next_query);
 		}
 
+	delete jass_query;
 	delete [] segment_order;
 	}
 

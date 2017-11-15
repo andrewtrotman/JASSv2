@@ -89,8 +89,7 @@ namespace JASS
 				{
 				TYPE *pa, *pb, *pc, *pd, *pl, *pm, *pn;
 				TYPE pv;
-				size_t s, s2;
-				int r;
+				size_t s;
 
 				if (n < 7)
 					{ /* Insertion sort on smallest arrays */
@@ -120,6 +119,7 @@ namespace JASS
 				pc = pd = a + (n - 1);
 				for (;;)
 					{
+					int r;
 					while (pb <= pc && (r = cmp(*pb, pv)) <= 0)
 						{
 						if (r == 0)
@@ -159,8 +159,11 @@ namespace JASS
 					sort(a, s, top_k, cmp);
 
 				if (s < top_k)
+					{
+					size_t s2;
 					if ((s2 = pd - pc) > 1)
 						sort(pn - s2, s2, top_k - s, cmp);
+					}
 				}
 
 			/*
