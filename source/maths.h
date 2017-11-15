@@ -23,7 +23,12 @@
 
 namespace JASS
 	{
-	static constexpr uint8_t ceiling_log2_answer[] =
+	/*
+		MATHS_CEILING_LOG2_ANSWER[]
+		---------------------------
+		Lookup table to compute ceil(log2(x))
+	*/
+	static constexpr uint8_t maths_ceiling_log2_answer[0x100] =
 		{
 		0, 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4,
 		5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
@@ -43,7 +48,12 @@ namespace JASS
 		8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8
 		};
 
-	static constexpr uint8_t floor_log2_answer [0x100] =
+	/*
+		MATHS_FLOOR_LOG2_ANSWER[]
+		-------------------------
+		Lookup table to compute flooe(log2(x))
+	*/
+	static constexpr uint8_t maths_floor_log2_answer [0x100] =
 		{
 		0, 0, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3,
 		4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
@@ -62,6 +72,7 @@ namespace JASS
 		7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
 		7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
 		};
+		
 	/*
 		CLASS MATHS
 		-----------
@@ -165,20 +176,20 @@ namespace JASS
 				{
 				/* coverity[BAD_SHIFT] */
 				return (static_cast<size_t>(x) >> 8 == 0) ?
-				   floor_log2_answer[x] :
+				   maths_floor_log2_answer[x] :
 				(static_cast<size_t>(x) >> 16 == 0) ?
-					floor_log2_answer[(static_cast<size_t>(x) >> 8) & 0xFF] + 8 :
+					maths_floor_log2_answer[(static_cast<size_t>(x) >> 8) & 0xFF] + 8 :
 				(static_cast<size_t>(x) >> 24 == 0) ?
-					floor_log2_answer[(static_cast<size_t>(x) >> 16) & 0xFF] + 16 : 
+					maths_floor_log2_answer[(static_cast<size_t>(x) >> 16) & 0xFF] + 16 :
 				(static_cast<size_t>(x) >> 32 == 0) ?
-					floor_log2_answer[(static_cast<size_t>(x) >> 24) & 0xFF] + 24 :
+					maths_floor_log2_answer[(static_cast<size_t>(x) >> 24) & 0xFF] + 24 :
 				(static_cast<size_t>(x) >> 40 == 0) ?
-					floor_log2_answer[(static_cast<size_t>(x) >> 32) & 0xFF] + 32 :
+					maths_floor_log2_answer[(static_cast<size_t>(x) >> 32) & 0xFF] + 32 :
 				(static_cast<size_t>(x) >> 48 == 0) ?
-					floor_log2_answer[(static_cast<size_t>(x) >> 40) & 0xFF] + 40 :
+					maths_floor_log2_answer[(static_cast<size_t>(x) >> 40) & 0xFF] + 40 :
 				(static_cast<size_t>(x) >> 56 == 0) ?
-					floor_log2_answer[(static_cast<size_t>(x) >> 48) & 0xFF] + 48 :
-					floor_log2_answer[(static_cast<size_t>(x) >> 56) & 0xFF] + 56;
+					maths_floor_log2_answer[(static_cast<size_t>(x) >> 48) & 0xFF] + 48 :
+					maths_floor_log2_answer[(static_cast<size_t>(x) >> 56) & 0xFF] + 56;
 				}
 
 			/*
@@ -196,20 +207,20 @@ namespace JASS
 				/* coverity[BAD_SHIFT] */
 				/* coverity[CONSTANT_EXPRESSION_RESULT] */
 				return (static_cast<size_t>(x) >> 8 == 0) ?
-				   ceiling_log2_answer[x] :
+				   maths_ceiling_log2_answer[x] :
 				(static_cast<size_t>(x) >> 16 == 0) ?
-					ceiling_log2_answer[(static_cast<size_t>(x) >> 8) & 0xFF] + 8 :
+					maths_ceiling_log2_answer[(static_cast<size_t>(x) >> 8) & 0xFF] + 8 :
 				(static_cast<size_t>(x) >> 24 == 0) ?
-					ceiling_log2_answer[(static_cast<size_t>(x) >> 16) & 0xFF] + 16 : 
+					maths_ceiling_log2_answer[(static_cast<size_t>(x) >> 16) & 0xFF] + 16 :
 				(static_cast<size_t>(x) >> 32 == 0) ?
-					ceiling_log2_answer[(static_cast<size_t>(x) >> 24) & 0xFF] + 24 :
+					maths_ceiling_log2_answer[(static_cast<size_t>(x) >> 24) & 0xFF] + 24 :
 				(static_cast<size_t>(x) >> 40 == 0) ?
-					ceiling_log2_answer[(static_cast<size_t>(x) >> 32) & 0xFF] + 32 :
+					maths_ceiling_log2_answer[(static_cast<size_t>(x) >> 32) & 0xFF] + 32 :
 				(static_cast<size_t>(x) >> 48 == 0) ?
-					ceiling_log2_answer[(static_cast<size_t>(x) >> 40) & 0xFF] + 40 :
+					maths_ceiling_log2_answer[(static_cast<size_t>(x) >> 40) & 0xFF] + 40 :
 				(static_cast<size_t>(x) >> 56 == 0) ?
-					ceiling_log2_answer[(static_cast<size_t>(x) >> 48) & 0xFF] + 48 :
-					ceiling_log2_answer[(static_cast<size_t>(x) >> 56) & 0xFF] + 56;
+					maths_ceiling_log2_answer[(static_cast<size_t>(x) >> 48) & 0xFF] + 48 :
+					maths_ceiling_log2_answer[(static_cast<size_t>(x) >> 56) & 0xFF] + 56;
 				}
 
 			/*

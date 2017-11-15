@@ -36,14 +36,32 @@ namespace JASS
 
 		JASS_assert(floor_log2(10) == 3);
 		JASS_assert(ceiling_log2(10) == 4);
+
+		JASS_assert(ceiling_log2(0x0FF) == 8);
+		JASS_assert(ceiling_log2(0x0FFFF) == 16);
+		JASS_assert(ceiling_log2(0x0FFFFFF) == 24);
+		JASS_assert(ceiling_log2(0x0FFFFFFFF) == 32);
+		JASS_assert(ceiling_log2(0x0FFFFFFFFFF) == 40);
+		JASS_assert(ceiling_log2(0x0FFFFFFFFFFFF) == 48);
+		JASS_assert(ceiling_log2(0x0FFFFFFFFFFFFFF) == 56);
+		JASS_assert(ceiling_log2(0x0FFFFFFFFFFFFFFFF) == 64);
+
+		JASS_assert(floor_log2(0x0FF) == 7);
+		JASS_assert(floor_log2(0x0FFFF) == 15);
+		JASS_assert(floor_log2(0x0FFFFFF) == 23);
+		JASS_assert(floor_log2(0x0FFFFFFFF) == 31);
+		JASS_assert(floor_log2(0x0FFFFFFFFFF) == 39);
+		JASS_assert(floor_log2(0x0FFFFFFFFFFFF) == 47);
+		JASS_assert(floor_log2(0x0FFFFFFFFFFFFFF) == 55);
+		JASS_assert(floor_log2(0x0FFFFFFFFFFFFFFFF) == 63);
 		
-		auto got = find_first_set_bit((uint32_t)0b0101000);
-		JASS_assert(got == 3);
+		JASS_assert(find_first_set_bit((uint32_t)0b0101000) == 3);
  		JASS_assert(find_first_set_bit((uint64_t)0b0101001) == 0);
 
 		JASS_assert(find_first_set_bit((uint32_t)0) == 0);
  		JASS_assert(find_first_set_bit((uint64_t)0) == 0);
 
+		JASS_assert(sqrt_compiletime(1000) == 31);
 		puts("maths::PASSED");
 		}
 	}

@@ -69,8 +69,8 @@ namespace JASS
 						run_export_trec(stream, topic_id, result, run_name, include_internal_ids);
 						break;
 					default:
-						JASS_assert(false);
-						break;
+						JASS_assert(false);		//LCOVE_EXCL_LINE		// should never happen
+						break;						//LCOVE_EXCL_LINE		// should never happen
 					}
 				}
 
