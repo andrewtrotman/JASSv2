@@ -345,7 +345,7 @@ namespace JASS
 				*/
 				std::ios state(NULL);
 				state.copyfmt(out);
-
+				std::ios::fmtflags fmt(std::cout.flags());
 				/*
 					Dump out the usage
 				*/
@@ -363,6 +363,7 @@ namespace JASS
 				/*
 					Return the state to how it was before we changed it
 				*/
+				std::cout.flags(fmt);
 				out.copyfmt(state);
 
 				for_each_usage_print<I + 1, Tp...>(out, width_of_shortname, width_of_longname, tuple);

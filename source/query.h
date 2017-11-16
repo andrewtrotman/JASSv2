@@ -234,7 +234,7 @@ namespace JASS
 				accumulators(documents),
 				top_results(*accumulator_pointers, top_k),
 				parser(memory),
-				parsed_query(new query_term_list(memory)),
+				parsed_query(nullptr),
 				primary_keys(primary_keys),
 				top_k(top_k)
 				{

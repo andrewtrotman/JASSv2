@@ -72,7 +72,15 @@ void anytime(std::ostream &output, const JASS::deserialised_jass_v1 &index, std:
 	/*
 		Allocate a JASS query object
 	*/
-	auto jass_query = new JASS::query<uint16_t, MAX_DOCUMENTS, MAX_TOP_K>(index.primary_keys(), index.document_count(), top_k);
+	JASS::query<uint16_t, MAX_DOCUMENTS, MAX_TOP_K> *jass_query;
+	try
+		{
+		jass_query = new JASS::query<uint16_t, MAX_DOCUMENTS, MAX_TOP_K>(index.primary_keys(), index.document_count(), top_k);
+		}
+	catch (std::bad_array_new_length &error)
+		{
+		exit(printf("Can't load index as the number of documents is too large - change MAX_DOCUMENTS in %s\n", __FILE__));
+		}
 
 	while (query.size() != 0)
 		{

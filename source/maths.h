@@ -175,6 +175,7 @@ namespace JASS
 			static constexpr TYPE floor_log2(TYPE x)
 				{
 				/* coverity[BAD_SHIFT] */
+				/* coverity[CONSTANT_EXPRESSION_RESULT] */
 				return (static_cast<size_t>(x) >> 8 == 0) ?
 				   maths_floor_log2_answer[x] :
 				(static_cast<size_t>(x) >> 16 == 0) ?
