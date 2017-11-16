@@ -44,6 +44,7 @@
 */
 /*!
 	@file
+	@brief Generate C sourcecode for is() methods for Unicode UTF-8
 	@author Andrew Trotman
 	@copyright 2016 Andrew Trotman
 */

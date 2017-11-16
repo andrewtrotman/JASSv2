@@ -21,7 +21,7 @@
 	------------------------
 */
 /*!
-	@bried A query within the anytime parallel search system.
+	@brief A query within the anytime parallel search system.
 */
 class JASS_anytime_query
 	{

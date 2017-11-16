@@ -9,6 +9,7 @@
 */
 /*!
 	@file
+	@brief Generate C sourcecode for is() methods for ASCII
 	@author Andrew Trotman
 	@copyright 2016 Andrew Trotman
 

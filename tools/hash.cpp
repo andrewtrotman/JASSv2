@@ -8,6 +8,7 @@
 */
 /*!
 	@file
+	@brief Compute hash values of files
 	@author Andrew Trotman
 	@copyright 2016 Andrew Trotman
 */
