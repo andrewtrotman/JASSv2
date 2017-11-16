@@ -43,6 +43,7 @@ namespace JASS
 				@param a [in] pointer to one of the values
 				@param b [in] pointer to one of the values
 				@param c [in] pointer to one of the values
+				@param cmp [in] the comparison functor
 				@return pointer to the median element
 			*/
 			template <typename TYPE, typename COMPARE>
@@ -61,6 +62,7 @@ namespace JASS
 				@brief swap n elements from a with n elements from b
 				@param a [in] pointer to the start of the range to swap
 				@param b [in] pointer to the start of the tange to swap with
+				@param n [in] the number of consecutive elements to swap
 			*/
 			template <typename TYPE>
 			static forceinline void swapfunc(TYPE *a, TYPE *b, size_t n)

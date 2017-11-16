@@ -67,15 +67,22 @@ namespace JASS
 	class serialise_jass_v1 : public index_manager::delegate
 		{
 		private:
+			/*
+				ENUM CLASS JASS_V1_CODEX
+				------------------------
+			*/
+			/*!
+				@brief The compression scheme that is active
+			*/
 			enum class jass_v1_codex
-			{
-			uncompressed = 's',				///< Postings are not compressed.
-			variable_byte = 'c',				///< Postings are compressed using ATIRE's variable byte encoding.
-			simple_8 = '8',					///< Postings are compressed using ATIRE's simple-8 encoding.
-			qmx = 'q',							///< Postings are compressed using QMX (with difference encoding).
-			qmx_d4 = 'Q',						///< Postings are compressed using QMX with Lemire's D4 delta encoding.
-			qmx_d0 = 'R'						///< Postings are compressed using QMX without delta encoding.
-			};
+				{
+				uncompressed = 's',				///< Postings are not compressed.
+				variable_byte = 'c',				///< Postings are compressed using ATIRE's variable byte encoding.
+				simple_8 = '8',					///< Postings are compressed using ATIRE's simple-8 encoding.
+				qmx = 'q',							///< Postings are compressed using QMX (with difference encoding).
+				qmx_d4 = 'Q',						///< Postings are compressed using QMX with Lemire's D4 delta encoding.
+				qmx_d0 = 'R'						///< Postings are compressed using QMX without delta encoding.
+				};
 
 			/*
 				CLASS SERIALISE_JASS_V1::VOCAB_TRIPPLE
@@ -144,7 +151,7 @@ namespace JASS
 				-----------------------------------
 			*/
 			/*!
-				@Brief Convert the postings list to the JASS v1 format and serialise it to disk.
+				@brief Convert the postings list to the JASS v1 format and serialise it to disk.
 				@param postings [in] The postings list to serialise.
 				@param number_of_impacts [out] The number of distinct impact scores seen in the postings list.
 				@return The location (in CIpostings.bin) of the start of the serialised postings list.

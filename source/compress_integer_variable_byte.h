@@ -32,7 +32,7 @@ namespace JASS
 		get the high bits added, 0 for all except the last byte, [0]0001110 [1]1110001, then write out
 		the byte sequence high byte first 0x0E 0xF1.
 		This implementation works with 32-bit and 64-bit integers.  To encode 64-bit integers ensure 
-		#define JASS_COMPRESS_INTEGER_BITS_PER_INTEGER 64
+		\#define JASS_COMPRESS_INTEGER_BITS_PER_INTEGER 64
 		is set at compile time.
 	*/
 	class compress_integer_variable_byte : public compress_integer

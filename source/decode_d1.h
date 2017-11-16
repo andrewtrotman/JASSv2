@@ -82,7 +82,7 @@ namespace JASS
 					*/
 					/*!
 						@brief Compare two iterator objects for non-equality.
-						@param other [in] The iterator object to compare to.
+						@param another [in] The iterator object to compare to.
 						@return true if they differ, else false.
 					*/
 					bool operator!=(iterator &another)

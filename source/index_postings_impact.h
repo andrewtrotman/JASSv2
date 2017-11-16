@@ -165,8 +165,8 @@ namespace JASS
 			*/
 			/*!
 				@brief Constructor
-				@details The postings lists are typvically stored <impact><d><d>...<d><0>,  The headers point to the list
-				of <d>s (not the <impact> or the <0>.
+				@details The postings lists are typvically stored \<impact\>\<d\>\<d\>...\<d\>\<0\>,  The headers point to the list
+				of \<d\>s (not the \<impact\> or the \<0\>.
 				@param unique_impacts [in] The number of unique impact vales seen n the postings list
 				@param total_postings [in] The number of integers in the potings list (including any imact scores and '0' terminators
 				@param memory [in] All memory allocation happens in this arena
@@ -188,7 +188,7 @@ namespace JASS
 			/*!
 				@brief return a reference to the size_t at position index in the postings array.
 				@details Node taht this is astrict index and not range checked.  Access out of range ill resilt in
-				undefined behaviour.  The access is to elements in the array so if the postings are stored <impact><d><d>...<d><0>
+				undefined behaviour.  The access is to elements in the array so if the postings are stored \<impact\>\<d\>\<d\>...\<d\>\<0\>
 				then posting[0] will be the impact score.
 				@return a reference to the size_t at postng[index].
 			*/

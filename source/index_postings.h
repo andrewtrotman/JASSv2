@@ -51,6 +51,16 @@ namespace JASS
 					uint32_t term_frequency;					///< Number of times the term occurs in this dociument
 					uint32_t position;							///< The word position of this term in this document
 				public:
+					/*
+						INDEX_POSTINGS::POSTING::POSTING()
+						----------------------------------
+					*/
+					/*!
+						@brief COnstructor.
+						@param document_id [in] the document ID to use
+						@param term_frequency [in] the term frequency to use
+						@param position [in] the word position to use
+					*/
 					posting(uint32_t document_id, uint32_t term_frequency, uint32_t position) :
 						document_id(document_id),
 						term_frequency(term_frequency),
@@ -416,7 +426,7 @@ namespace JASS
 				@brief Take a postings list and turn it into an impact ordered postings list with impact headers.
 				@details Take a postings list ordered \<d, tf\>... \<d, tf\> with d being in increasing order, and trurn into
 				an impact ordered postings list ordered \<i\>\<d\>...\<d\>\<0\>\<i\>\<d\>...\<d\>\<0\> with \<i\> being in decreasing order and \<d\>
-				begin in increasing order for each chunk.  It also generates a set of headers that poing to each <d>..<d> range,
+				begin in increasing order for each chunk.  It also generates a set of headers that poing to each \<d\>..\<d\> range,
 				excluding \<i\> and excluding \<0\>.
 				@param memory [in] All allocation to do with this process, including the result, is allocated in this arena.
 				@result A reference to the impact ordered posting list allocated in the arena passed as paramter memory.

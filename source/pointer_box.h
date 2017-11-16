@@ -88,6 +88,7 @@ namespace JASS
 			*/
 			/*!
 				@brief Compare for less than (*a < *b) || (*a == *b && a < b).
+				@param first [in] This object
 				@param to [in] The object we are comparing to.
 				@return true or false.
 			*/
@@ -102,6 +103,7 @@ namespace JASS
 			*/
 			/*!
 				@brief Compare for less than (*a < *b) || (*a == *b && a < b).
+				@param first [in] This object
 				@param to [in] The object we are comparing to.
 				@return true or false.
 			*/
@@ -144,6 +146,7 @@ namespace JASS
 			*/
 			/*!
 				@brief Compare for more than (*a > *b) || (*a == *b && a > b).
+				@param first [in] This object
 				@param to [in] The object we are comparing to.
 				@return true or false.
 			*/
@@ -158,6 +161,7 @@ namespace JASS
 			*/
 			/*!
 				@brief Compare for more than (*a > *b) || (*a == *b && a > b).
+				@param first [in] This object
 				@param to [in] The object we are comparing to.
 				@return true or false.
 			*/

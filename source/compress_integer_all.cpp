@@ -43,7 +43,7 @@ namespace JASS
 	static compress_integer_simple_8b_packed simple_8b_packed;	///< Packed Simple-8b compressor
 
 	/*!
-		@bried Table of known compressors and their command line parameter names and actual names
+		@brief Table of known compressors and their command line parameter names and actual names
 	*/
 	std::array<compress_integer_all::details, compress_integer_all::compressors_size> compress_integer_all::compressors
 		{

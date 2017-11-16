@@ -147,7 +147,6 @@ namespace JASS
 					*/
 					/*!
 						@brief Constructor
-						@param at [in] An iterator over the heap
 						@param parent [in] The object we are iterating over
 						@param where [in] Where in the results list this iterator starts
 					*/
@@ -164,7 +163,7 @@ namespace JASS
 					*/
 					/*!
 						@brief Compare two iterator objects for non-equality.
-						@param other [in] The iterator object to compare to.
+						@param with [in] The iterator object to compare to.
 						@return true if they differ, else false.
 					*/
 					bool operator!=(const iterator &with) const
@@ -343,11 +342,11 @@ namespace JASS
 			/*!
 				@brief Add weight to the rsv for document docuument_id
 				@param document_id [in] which document to increment
-				@param weight [in] the amount of weight to add
+				@param score [in] the amount of weight to add
 			*/
-			forceinline void add_rsv(size_t docid, ACCUMULATOR_TYPE score)
+			forceinline void add_rsv(size_t document_id, ACCUMULATOR_TYPE score)
 				{
-				ACCUMULATOR_TYPE *which = &accumulators[docid];			// This will create the accumulator if it doesn't already exist.
+				ACCUMULATOR_TYPE *which = &accumulators[document_id];			// This will create the accumulator if it doesn't already exist.
 
 				/*
 					By doing the add first its possible to reduce the "usual" path through the code to a single comparison.  The JASS v1 "usual" path took three comparisons.

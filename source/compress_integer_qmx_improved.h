@@ -58,7 +58,7 @@ namespace JASS
 				@param source [in] the integer sequence to encode
 				@param raw_count [in] the numnber of integers to encode
 				@param size_in_bits [in] the size, in bits, of the largest integer
-				@param buffer_length [in] the length of buffer, in bytes
+				@param length_buffer [in] the length of buffer, in bytes
 			*/
 			void write_out(uint8_t **buffer, uint32_t *source, uint32_t raw_count, uint32_t size_in_bits, uint8_t **length_buffer);
 

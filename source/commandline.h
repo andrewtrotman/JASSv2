@@ -42,7 +42,7 @@ namespace JASS
 				----------------------------
 			*/
 			/*!
-				@bried used to specify text strings to appear in the help.
+				@brief used to specify text strings to appear in the help.
 			*/
 			class text_note
 			 {
@@ -215,6 +215,7 @@ namespace JASS
 			*/
 			/*!
 				@brief Iterate over each parameter looking for one that matches
+				@param messages [out] Any errors are reported down this stream.
 				@param arg [in/out] The place in the command line parameter list that we're currenty looking at.
 				@param argv [in] The command line parameter list.
 			*/
@@ -279,6 +280,8 @@ namespace JASS
 				@param width_of_shortname [out] the longest shortname here or below.
 				@param width_of_longname [out] the longest longname here or below.
 				@param tuple [in] The remainder of the command line parameters as specified as the programmer.
+				@tparam I the iteration number.
+				@tparam TP the tupple being iterated over
 			*/
 			template<std::size_t I = 0, typename... Tp>
 			inline typename std::enable_if<I == sizeof...(Tp), void>::type
@@ -298,7 +301,7 @@ namespace JASS
 				@param width_of_longname [out] the longest longname here or below.
 				@param tuple [in] The remainder of the command line parameters as specified as the programmer.
 				@tparam I the iteration number.
-				@tpara TP the tupple being iterated over
+				@tparam TP the tupple being iterated over
 			*/
 			template<std::size_t I = 0, typename... Tp>
 			inline typename std::enable_if<I < sizeof...(Tp), void>::type
@@ -323,7 +326,6 @@ namespace JASS
 				@param out [in] The stream to write to.
 				@param width_of_shortname [in] Space to take to print the shortname.
 				@param width_of_longname [in] Space to take to print the shortname.
-				@param tuple [in] The remainder of the command line parameters as specified as the programmer.
 			*/
 			template<std::size_t I = 0, typename... Tp>
 			inline typename std::enable_if<I == sizeof...(Tp), void>::type

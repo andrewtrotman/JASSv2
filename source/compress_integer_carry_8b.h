@@ -68,6 +68,7 @@ namespace JASS
 				@param destination [in] where to put the encoded codeword
 				@param source [in] the integer sequence to encode
 				@param source_integers [in] the maximum number of integers to encode
+				@param next_selector_in_previous_word [in] Should the compressor pack the selector in the previous word?
 				@return the number of integers that were encoded (or 0 on failure to encode)
 			*/
 			size_t pack_one_word(size_t base, size_t highest, uint64_t *destination, const integer *source, size_t source_integers, size_t &next_selector_in_previous_word);
