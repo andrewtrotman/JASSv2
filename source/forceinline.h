@@ -12,6 +12,9 @@
 */
 #pragma once
 
+/*!
+	@brief tell the compuler that is should inline a function despite its better judgement.
+*/
 #ifdef __APPLE__
 	#define forceinline __attribute__((always_inline)) inline
 #elif defined(__GNUC__)

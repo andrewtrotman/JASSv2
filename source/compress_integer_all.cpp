@@ -27,23 +27,23 @@ namespace JASS
 	/*
 		List of known compressors
 	*/
-	static compress_integer_none none;
-	static compress_integer_carry_8b carry_8b;
-	static compress_integer_simple_9 simple_9;
-	static compress_integer_simple_8b simple_8b;
-	static compress_integer_simple_16 simple_16;
-	static compress_integer_relative_10 relative_10;
-	static compress_integer_carryover_12 carryover_12;
-	static compress_integer_qmx_original qmx_original;
-	static compress_integer_qmx_improved qmx_improved;
-	static compress_integer_stream_vbyte stream_vbyte;
-	static compress_integer_variable_byte variable_byte;
-	static compress_integer_simple_9_packed simple_9_packed;
-	static compress_integer_simple_16_packed simple_16_packed;
-	static compress_integer_simple_8b_packed simple_8b_packed;
+	static compress_integer_none none;									///< identity compressor
+	static compress_integer_carry_8b carry_8b;						///< Carry-8b compressor
+	static compress_integer_simple_9 simple_9;						///< Simple-9 compressor
+	static compress_integer_simple_8b simple_8b;						///< Simple-8b compressor
+	static compress_integer_simple_16 simple_16;						///< Simple-16 compressor
+	static compress_integer_relative_10 relative_10;				///< Relative-10 compressor
+	static compress_integer_carryover_12 carryover_12;				///< Carryover-12 compressor
+	static compress_integer_qmx_original qmx_original;				///< QMX compressor
+	static compress_integer_qmx_improved qmx_improved;				///< Improved QMX compressor
+	static compress_integer_stream_vbyte stream_vbyte;				///< Stream VByte compressor
+	static compress_integer_variable_byte variable_byte;			///< Variable Byte compressor
+	static compress_integer_simple_9_packed simple_9_packed;		///< Packed Simple-9 compressor
+	static compress_integer_simple_16_packed simple_16_packed;	///< Packed Simple-16 compressor
+	static compress_integer_simple_8b_packed simple_8b_packed;	///< Packed Simple-8b compressor
 
-	/*
-		Table of known copressors and their command line parameter names and actual names
+	/*!
+		@bried Table of known compressors and their command line parameter names and actual names
 	*/
 	std::array<compress_integer_all::details, compress_integer_all::compressors_size> compress_integer_all::compressors
 		{

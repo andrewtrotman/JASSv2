@@ -139,7 +139,7 @@ namespace JASS
 			*/
 			/*!
 				@brief Test one sequence to make sure it encodes and decodes to the same thing.  Assert if not.
-				@para sequence [in] the sequernce to encode.
+				@param sequence [in] the sequernce to encode.
 			*/
 			static void unittest_one(const std::vector<uint32_t> &sequence);
 

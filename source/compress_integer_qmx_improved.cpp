@@ -64,6 +64,11 @@ namespace JASS
 		-----------------
 		How many QMX bits are needed to store and integer of the given value
 	*/
+	/*!
+		@brief Return the number of bits needed in QMX in order to store the given integer
+		@param value [in] the value
+		@return The minimum number of bits used in a payload
+	*/
 	static uint8_t bits_needed_for(uint32_t value)
 		{
 		if (value == 0x01)
@@ -98,12 +103,26 @@ namespace JASS
 			return 32;
 		}
 
+	/*
+		STRUCT TYPE_AND_INTEGERS
+		------------------------
+	*/
+	/*!
+		@brief a tuple of the numner of integers and which selector represents that.
+	*/
 	struct type_and_integers
 		{
-		uint8_t type;
-		uint32_t integers;
+		uint8_t type;							///< The selector
+		uint32_t integers;					///< The number of integers in a word
 		};
 
+	/*
+		TABLE[]
+		-------
+	*/
+	/*!
+		@brief Each row stores the selector number and the number of integers where the index is the number of bits
+	*/
 	static const type_and_integers table[] =
 		{
 		{0, 256},	// size_in_bits == 0;
@@ -351,6 +370,9 @@ namespace JASS
 		MAXIMUM()
 		---------
 	*/
+	/*!
+		@brief Compute the minimum of two numbers
+	*/
 	template <class T>
 	T maximum(T a, T b)
 		{
@@ -360,6 +382,9 @@ namespace JASS
 	/*
 		MAXIMUM()
 		---------
+	*/
+	/*!
+		@brief Compute the maximum of two numbers
 	*/
 	template <class T>
 	T maximum(T a, T b, T c, T d)
@@ -1350,17 +1375,17 @@ namespace JASS
 	*/
 namespace JASS
 	{
-	alignas(16) static uint32_t static_mask_21[]  = {0x1fffff, 0x1fffff, 0x1fffff, 0x1fffff};
-	alignas(16) static uint32_t static_mask_12[]  = {0xfff, 0xfff, 0xfff, 0xfff};
-	alignas(16) static uint32_t static_mask_10[] = {0x3ff, 0x3ff, 0x3ff, 0x3ff};
-	alignas(16) static uint32_t static_mask_9[]  = {0x1ff, 0x1ff, 0x1ff, 0x1ff};
-	alignas(16) static uint32_t static_mask_7[]  = {0x7f, 0x7f, 0x7f, 0x7f};
-	alignas(16) static uint32_t static_mask_6[]  = {0x3f, 0x3f, 0x3f, 0x3f};
-	alignas(16) static uint32_t static_mask_5[]  = {0x1f, 0x1f, 0x1f, 0x1f};
-	alignas(16) static uint32_t static_mask_4[]  = {0x0f, 0x0f, 0x0f, 0x0f};
-	alignas(16) static uint32_t static_mask_3[]  = {0x07, 0x07, 0x07, 0x07};
-	alignas(16) static uint32_t static_mask_2[]  = {0x03, 0x03, 0x03, 0x03};
-	alignas(16) static uint32_t static_mask_1[]  = {0x01, 0x01, 0x01, 0x01};
+	alignas(16) static uint32_t static_mask_21[]  = {0x1fffff, 0x1fffff, 0x1fffff, 0x1fffff};			///< AND mask for 21-bit integers
+	alignas(16) static uint32_t static_mask_12[]  = {0xfff, 0xfff, 0xfff, 0xfff};							///< AND mask for 12-bit integers
+	alignas(16) static uint32_t static_mask_10[] = {0x3ff, 0x3ff, 0x3ff, 0x3ff};							///< AND mask for 10-bit integers
+	alignas(16) static uint32_t static_mask_9[]  = {0x1ff, 0x1ff, 0x1ff, 0x1ff};							///< AND mask for 9-bit integers
+	alignas(16) static uint32_t static_mask_7[]  = {0x7f, 0x7f, 0x7f, 0x7f};								///< AND mask for 7-bit integers
+	alignas(16) static uint32_t static_mask_6[]  = {0x3f, 0x3f, 0x3f, 0x3f};								///< AND mask for 6-bit integers
+	alignas(16) static uint32_t static_mask_5[]  = {0x1f, 0x1f, 0x1f, 0x1f};								///< AND mask for 5-bit integers
+	alignas(16) static uint32_t static_mask_4[]  = {0x0f, 0x0f, 0x0f, 0x0f};								///< AND mask for 4-bit integers
+	alignas(16) static uint32_t static_mask_3[]  = {0x07, 0x07, 0x07, 0x07};								///< AND mask for 3-bit integers
+	alignas(16) static uint32_t static_mask_2[]  = {0x03, 0x03, 0x03, 0x03};								///< AND mask for 2-bit integers
+	alignas(16) static uint32_t static_mask_1[]  = {0x01, 0x01, 0x01, 0x01};								///< AND mask for 1-bit integers
 
 	void compress_integer_qmx_improved::decode(integer *to, size_t destination_integers, const void *source, size_t len)
 		{

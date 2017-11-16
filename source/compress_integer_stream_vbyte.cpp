@@ -86,6 +86,11 @@ namespace JASS
 		JASS_assert(size_once_compressed == 0);
 
 		/*
+			Try decompressing 0 bytes - streamvbyte::streamvbyte_decode() should return 0 which is then ignored (but the coverage tool notices that we've done the check).
+		*/
+		compressor.decode(&decompressed[0], 0, &compressed[0], size_once_compressed);
+
+		/*
 			The tests have passed
 		*/
 		puts("compress_integer_stream_vbyte::PASSED");

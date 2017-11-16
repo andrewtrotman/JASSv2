@@ -5,7 +5,7 @@
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 /*!
-	@fileT Timer methods in nanoseconds and milliseconds.
+	@file Timer methods in nanoseconds and milliseconds.
 	@author Andrew Trotman
 	@copyright 2017 Andrew Trotman
 */

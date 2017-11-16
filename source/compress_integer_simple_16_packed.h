@@ -22,6 +22,9 @@ namespace JASS
 		CLASS COMPRESS_INTEGER_SIMPLE_16_PACKED
 		---------------------------------------
 	*/
+	/*!
+		@brief Optimally packed Simple-16 Compression
+	*/
 	class compress_integer_simple_16_packed : public compress_integer
 		{
 		protected:

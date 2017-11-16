@@ -54,7 +54,7 @@ namespace JASS
 				to work out the maxumum sizes of the two arrays at compile time and the check at construction that no overflow
 				is happening. This code works out the maximums and allocates the arrays.
 			*/
-			static constexpr size_t maximum_shift = maths::floor_log2(maths::sqrt_compiletime(NUMBER_OF_ACCUMULATORS));
+			static constexpr size_t maximum_shift = maths::floor_log2(maths::sqrt_compiletime(NUMBER_OF_ACCUMULATORS));					///< The amount to shift to get the right clean flag
 			static constexpr size_t maximum_width = 1 << maximum_shift;																					///< Each clean flag represents this number of accumulators in a "row"
 			static constexpr size_t maximum_number_of_clean_flags = (NUMBER_OF_ACCUMULATORS + maximum_width - 1) / maximum_width;	///< The number of "rows" (i.e. clean flags).
 			static constexpr size_t maximum_number_of_accumulators_allocated = maximum_width * maximum_number_of_clean_flags;			///< The numner of accumulators that were actually allocated (recall that this is a 2D array)
@@ -64,11 +64,11 @@ namespace JASS
 			/*
 				At run-time we use these parameters
 			*/
-			size_t width;
-			size_t shift;
-			size_t number_of_clean_flags;
-			size_t number_of_accumulators_allocated;
-			size_t number_of_accumulators;
+			size_t width;												///< Each clean flag represents this number of accumulators in a "row"
+			size_t shift;												///< The amount to shift to get the right clean flag
+			size_t number_of_clean_flags;							///< The number of "rows" (i.e. clean flags)
+			size_t number_of_accumulators_allocated;			///< The numner of accumulators that were actually allocated (recall that this is a 2D array)
+			size_t number_of_accumulators;						///< The number of accumulators that the user asked for
 
 		public:
 			/*
@@ -77,8 +77,7 @@ namespace JASS
 			*/
 			/*!
 				@brief Constructor.
-				@param elements [in] The numnber of elements in the array being managed.
-				@param memory [in] All memory allocated will be through this parameter.
+				@param number_of_accumulators [in] The numnber of elements in the array being managed.
 			*/
 			accumulator_2d(size_t number_of_accumulators) :
 				number_of_accumulators(number_of_accumulators)

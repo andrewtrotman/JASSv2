@@ -414,10 +414,10 @@ namespace JASS
 			*/
 			/*!
 				@brief Take a postings list and turn it into an impact ordered postings list with impact headers.
-				@detrails Take a postings list ordered <d, tf>... <d, tf> with d being in increasing order, and trurn into
-				an impact ordered postings list ordered <i><d>...<d><0><i><d>...<d><0> with <i> being in decreasing order and <d>
+				@details Take a postings list ordered \<d, tf\>... \<d, tf\> with d being in increasing order, and trurn into
+				an impact ordered postings list ordered \<i\>\<d\>...\<d\>\<0\>\<i\>\<d\>...\<d\>\<0\> with \<i\> being in decreasing order and \<d\>
 				begin in increasing order for each chunk.  It also generates a set of headers that poing to each <d>..<d> range,
-				excluding <i> and excluding <0>.
+				excluding \<i\> and excluding \<0\>.
 				@param memory [in] All allocation to do with this process, including the result, is allocated in this arena.
 				@result A reference to the impact ordered posting list allocated in the arena passed as paramter memory.
 			*/

@@ -26,7 +26,9 @@ namespace JASS
 	/*
 		MATHS_CEILING_LOG2_ANSWER[]
 		---------------------------
-		Lookup table to compute ceil(log2(x))
+	*/
+	/*!
+		@brief Lookup table to compute ceil(log2(x))
 	*/
 	static constexpr uint8_t maths_ceiling_log2_answer[0x100] =
 		{
@@ -51,7 +53,9 @@ namespace JASS
 	/*
 		MATHS_FLOOR_LOG2_ANSWER[]
 		-------------------------
-		Lookup table to compute flooe(log2(x))
+	*/
+	/*!
+		@brief Lookup table to compute flooe(log2(x))
 	*/
 	static constexpr uint8_t maths_floor_log2_answer [0x100] =
 		{
@@ -279,6 +283,9 @@ namespace JASS
 					#error "sqrt_compiletime_helper_mid already defined"
 				#endif
 
+				/*!
+					@brief Compute the middle of 2 integers.
+				*/
 				#define sqrt_compiletime_helper_mid ((lo + hi + 1) / 2)
 
 				return (lo == hi) ?

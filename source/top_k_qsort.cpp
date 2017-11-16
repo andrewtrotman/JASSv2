@@ -36,7 +36,7 @@ namespace JASS
 			{
 			return a < b ? -1 : a == b ? 0 : 1;
 			}
-		} comparison;
+		} comparison;			///< Object to perform an comparison
 
 	/*
 		TOP_K_SORT::UNITTEST()

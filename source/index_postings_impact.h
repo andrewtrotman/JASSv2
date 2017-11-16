@@ -103,7 +103,7 @@ namespace JASS
 					*/
 					/*!
 						@brief Constructor
-						@oaram address [in] Were this iterator points.
+						@param address [in] Were this iterator points.
 					*/
 					reverse_iterator(impact *address):
 						address(address)

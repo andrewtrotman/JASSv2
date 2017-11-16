@@ -95,6 +95,7 @@ namespace JASS
 			*/
 			/*!
 				@brief Dummy for use with text embedded in the parameter lists.
+				@param messages [out] Any errors are reported down this stream.
 				@param parameter [in] The unparsed paramter as given by the user.
 				@param element [out] where to put the value (unused).
 				@return true if it was possible to extract a value, false on error.
@@ -110,6 +111,7 @@ namespace JASS
 			*/
 			/*!
 				@brief Extract a boolean value of the parameter from the command line parameters.
+				@param messages [out] Any errors are reported down this stream.
 				@param parameter [in] The unparsed paramter as given by the user.
 				@param element [out] where to put the value.
 			*/
@@ -125,6 +127,7 @@ namespace JASS
 			/*!
 				@brief Extract an integer value of the parameter from the command line parameters
 				@details All signed integer types can be decode in this one method by assuming the largest type and then checking for out of range
+				@param messages [out] Any errors are reported down this stream.
 				@param parameter [in] The unparsed paramter as given by the user
 				@param element [out] where to put the value.
 			*/
@@ -152,6 +155,7 @@ namespace JASS
 			/*!
 				@brief Extract an unsigned integer value of the parameter from the command line parameters
 				@details All unsigned integer types can be decode in this one method by assuming the largest type and then checking for out of range
+				@param messages [out] Any errors are reported down this stream.
 				@param parameter [in] The unparsed paramter as given by the user
 				@param element [out] where to put the value.
 			*/
@@ -179,6 +183,7 @@ namespace JASS
 			*/
 			/*!
 				@brief Extract a string value of the parameter from the command line parameters
+				@param messages [out] Any errors are reported down this stream.
 				@param parameter [in] The unparsed parameter as given by the user
 				@param element [out] where to put the value.
 			*/
@@ -193,6 +198,7 @@ namespace JASS
 			*/
 			/*!
 				@brief Catch all for unknown types
+				@param messages [out] Any errors are reported down this stream.
 				@param parameter [in] The unparsed parameter as given by the user
 				@param element [out] where to put the value.
 			*/
@@ -291,6 +297,8 @@ namespace JASS
 				@param width_of_shortname [out] the longest shortname here or below.
 				@param width_of_longname [out] the longest longname here or below.
 				@param tuple [in] The remainder of the command line parameters as specified as the programmer.
+				@tparam I the iteration number.
+				@tpara TP the tupple being iterated over
 			*/
 			template<std::size_t I = 0, typename... Tp>
 			inline typename std::enable_if<I < sizeof...(Tp), void>::type
