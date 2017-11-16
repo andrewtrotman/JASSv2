@@ -190,7 +190,7 @@ namespace JASS
 			Build an index.
 		*/
 		index_manager_sequential index;
-		index_manager_sequential::unittest_build_index(index);
+		index_manager_sequential::unittest_build_index(index, unittest_data::ten_documents);
 		
 		/*
 			Serialise the index.

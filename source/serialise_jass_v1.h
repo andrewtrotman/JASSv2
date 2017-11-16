@@ -145,7 +145,6 @@ namespace JASS
 			allocator_pool memory;							///< Memory used to store the impact-ordered postings list.
 
 		private:
-			
 			/*
 				SERIALISE_JASS_V1::WRITE_POSTINGS()
 				-----------------------------------

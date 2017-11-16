@@ -40,6 +40,7 @@
 #include "run_export_trec.h"
 #include "allocator_memory.h"
 #include "serialise_jass_v1.h"
+#include "serialise_integers.h"
 #include "instream_file_star.h"
 #include "compress_integer_all.h"
 #include "compress_integer_none.h"
@@ -189,6 +190,9 @@ int main(void)
 
 		puts("serialise_ci");
 		JASS::serialise_ci::unittest();
+
+		puts("serialise_integers");
+		JASS::serialise_integers::unittest();
 
 		puts("compress_integer_none");
 		JASS::compress_integer_none::unittest();

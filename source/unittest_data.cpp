@@ -15,6 +15,12 @@ namespace JASS
 	std::string unittest_data::ten_documents = "<DOC><DOCNO> 1 </DOCNO>ten</DOC><DOC><DOCNO>2</DOCNO>ten nine</DOC><DOC><DOCNO>3</DOCNO>ten nine eight</DOC><DOC><DOCNO>4</DOCNO>ten nine eight seven</DOC><DOC><DOCNO>5</DOCNO>ten nine eight seven six</DOC><DOC><DOCNO>6</DOCNO>ten nine eight seven six five</DOC><DOC><DOCNO>7</DOCNO>ten nine eight seven six five four</DOC><DOC><DOCNO>8</DOCNO>ten nine eight seven six five four three</DOC><DOC><DOCNO>9</DOCNO>ten nine eight seven six five four three two</DOC><DOC><DOCNO>10</DOCNO>ten nine eight seven six five four three two one</DOC>";
 
 	/*
+		UNITTEST_DATA_THREE_DOCUMENTS_ASYMETRIC
+		---------------------------------------
+	*/
+	std::string unittest_data::three_documents_asymetric = "<DOC><DOCNO>1</DOCNO>one two</DOC><DOC><DOCNO>2</DOCNO>one two two</DOC><DOC><DOCNO>3</DOCNO>one two two</DOC>";
+
+	/*
 		UNITTEST_DATA_TEN_DOCUMENTS_X
 		-----------------------------
 	*/

@@ -66,6 +66,15 @@ add_executable(JASSv1_to_human
 	../source/file.cpp)
 
 #
+# bin_to_human
+#
+
+add_executable(bin_to_human
+	bin_to_human.cpp
+	../source/asserts.cpp
+	../source/file.cpp)
+
+#
 # test_integer_compress
 #
 

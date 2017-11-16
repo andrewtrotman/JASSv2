@@ -19,6 +19,7 @@
 #include "instream_file.h"
 #include "instream_memory.h"
 #include "serialise_jass_v1.h"
+#include "serialise_integers.h"
 #include "instream_document_trec.h"
 #include "index_manager_sequential.h"
 
@@ -27,6 +28,7 @@
 */
 bool parameter_jass_v1_index = false;
 bool parameter_compiled_index = false;
+bool parameter_uint32_index = false;
 std::string parameter_filename = "";
 bool parameter_quiet = false;
 bool parameter_help = false;
@@ -48,7 +50,8 @@ auto command_line_parameters = std::make_tuple
 
 	JASS::commandline::note("\nINDEX GENERATION\n----------------"),
 	JASS::commandline::parameter("-I1", "--index_jass_v1", "Generate a JASS version 1 index.", parameter_jass_v1_index),
-	JASS::commandline::parameter("-Ic", "--index_compiled", "Generate a JASS compiled index.", parameter_compiled_index)
+	JASS::commandline::parameter("-Ic", "--index_compiled", "Generate a JASS compiled index.", parameter_compiled_index),
+	JASS::commandline::parameter("-Ib", "--index_binary", "Generate a binary dump of just the postings segments.", parameter_uint32_index)
 	);
 
 /*
@@ -176,6 +179,14 @@ int main(int argc, const char *argv[])
 		index.iterate(serialiser);
 		}
 
+	/*
+		Do we need to generate a binary (uint32_t) dump of just the postings lists?
+	*/
+	if (parameter_uint32_index)
+		{
+		JASS::serialise_integers serialiser;
+		index.iterate(serialiser);
+		}
+
 	return 0;
 	}
-

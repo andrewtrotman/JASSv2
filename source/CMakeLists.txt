@@ -101,6 +101,8 @@ set(JASSlib_FILES
 	run_export_trec.h
 	serialise_ci.cpp
 	serialise_ci.h
+	serialise_integers.cpp
+	serialise_integers.h
 	serialise_jass_v1.cpp
 	serialise_jass_v1.h
 	slice.h

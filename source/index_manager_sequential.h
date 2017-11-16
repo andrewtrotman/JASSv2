@@ -239,11 +239,11 @@ namespace JASS
 				@brief Build and index for the 10 sample documents.  This is used by several unit tests that need a valid index.
 				@param index [out] The index once built.
 			*/
-			static void unittest_build_index(index_manager_sequential &index)
+			static void unittest_build_index(index_manager_sequential &index, const std::string &document_collection)
 				{
 				class parser parser;								// We need a parser
 				document document;						// That creates documents
-				std::shared_ptr<instream> file(new instream_memory(unittest_data::ten_documents.c_str(), unittest_data::ten_documents.size()));			// From this stream (the standard 10 document stream).
+				std::shared_ptr<instream> file(new instream_memory(document_collection.c_str(), document_collection.size()));			// From this stream (the standard 10 document stream).
 				instream_document_trec source(file);	// Set up the instream
 				
 				/*
@@ -359,7 +359,7 @@ namespace JASS
 				   Build the index for the standard 10 document collection
 				*/
 				index_manager_sequential index;
-				unittest_build_index(index);
+				unittest_build_index(index, unittest_data::ten_documents);
 
 				/*
 					Serialise it
