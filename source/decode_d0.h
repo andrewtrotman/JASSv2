@@ -37,6 +37,33 @@ namespace JASS
 			size_t integers;													///< The number of integers in the decompress buffer.
 			std::vector<uint32_t> decompress_buffer;					///< The delta-encoded decopressed integer sequence.
 
+		private:
+			/*
+				DECODER_D0::BEGIN()
+				-------------------
+			*/
+			/*!
+				@brief Return an iterator pointing to the start of the sequence (using this iterator will D0 decode each integer in sequence).
+				@return Iterator pointing to start of sequence.
+			*/
+			auto begin() const
+				{
+				return decompress_buffer.data();
+				}
+
+			/*
+				DECODER_D0::END()
+				-----------------
+			*/
+			/*!
+				@brief Return an iterator pointing to the end of the sequence (using this iterator will D0 decode each integer in sequence).
+				@return Iterator pointing to end of sequence.
+			*/
+			auto end() const
+				{
+				return decompress_buffer.data() + integers;
+				}
+
 		public:
 			/*
 				DECODER_D0::DECODER_D0()
@@ -77,32 +104,6 @@ namespace JASS
 				{
 				decoder.decode(decompress_buffer.data(), integers, compressed, compressed_size);
 				this->integers = integers;
-				}
-
-			/*
-				DECODER_D0::BEGIN()
-				-------------------
-			*/
-			/*!
-				@brief Return an iterator pointing to the start of the sequence (using this iterator will D0 decode each integer in sequence).
-				@return Iterator pointing to start of sequence.
-			*/
-			auto begin() const
-				{
-				return decompress_buffer.data();
-				}
-
-			/*
-				DECODER_D0::END()
-				-----------------
-			*/
-			/*!
-				@brief Return an iterator pointing to the end of the sequence (using this iterator will D0 decode each integer in sequence).
-				@return Iterator pointing to end of sequence.
-			*/
-			auto end() const
-				{
-				return decompress_buffer.data() + integers;
 				}
 
 			/*

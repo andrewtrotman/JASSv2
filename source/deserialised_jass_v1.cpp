@@ -179,16 +179,25 @@ namespace JASS
 		DESERIALISED_JASS_V1::CODEX()
 		-----------------------------
 	*/
-	compress_integer &deserialised_jass_v1::codex(void) const
+	compress_integer &deserialised_jass_v1::codex(std::string &name) const
 		{
 		if (postings_memory.size() == 0)
+			{
+			name = "None";
 			return compress_integer_all::get_by_name("None");
+			}
 		else
 			switch (postings_memory[0])
 				{
 				case 's':
+					name = "None";
 					return compress_integer_all::get_by_name("None");
+				case 'q':
+					name = "QMX JASS v1";
+					return compress_integer_all::get_by_name("QMX JASS v1");
 				default:
+					exit(printf("Unknown index format\n"));
+					name = "None";
 					return compress_integer_all::get_by_name("None");
 				}
 		}

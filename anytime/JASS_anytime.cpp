@@ -50,13 +50,15 @@ auto parameters = std::make_tuple					///< The  command line parameter block
 	ANYTIME()
 	---------
 */
+template <typename DECODER>
 void anytime(std::ostream &output, const JASS::deserialised_jass_v1 &index, std::vector<JASS_anytime_query> &query_list, size_t postings_to_process, size_t top_k)
 	{
 	/*
-		Extract the compression scheme as a decoder
+		Extract the compression scheme from the index
 	*/
-	JASS::compress_integer &decompressor = index.codex();
-	JASS::decoder_d0 decoder(index.document_count() + 1024);			// Some decoders write past the end of the output buffer (e.g. GroupVarInt) so we allocate enough space for the overflow
+	std::string codex_name;
+	JASS::compress_integer &decompressor = index.codex(codex_name);
+	auto decoder = new DECODER(index.document_count() + 4096);				// Some decoders write past the end of the output buffer (e.g. GroupVarInt) so we allocate enough space for the overflow
 
 	/*
 		Allocate the Score-at-a-Time table
@@ -169,8 +171,8 @@ void anytime(std::ostream &output, const JASS::deserialised_jass_v1 &index, std:
 				Process the postings
 			*/
 			uint16_t impact = header.impact;
-			decoder.decode(decompressor, header.segment_frequency, index.postings() + header.offset, header.end - header.offset);
-			decoder.process(impact, *jass_query);
+			decoder->decode(decompressor, header.segment_frequency, index.postings() + header.offset, header.end - header.offset);
+			decoder->process(impact, *jass_query);
 			}
 
 		jass_query->sort();
@@ -180,6 +182,7 @@ void anytime(std::ostream &output, const JASS::deserialised_jass_v1 &index, std:
 
 	delete jass_query;
 	delete [] segment_order;
+	delete decoder;
 	}
 
 /*
@@ -256,13 +259,28 @@ int main(int argc, const char *argv[])
 	/*
 		Start the work
 	*/
+	std::string codex_name;
+	index.codex(codex_name);
+	uint32_t d_ness = codex_name == "None" ? 0 : 1;
+
+	/*
+		Start the work
+	*/
 	auto total_search_time = JASS::timer::start();
 	if (parameter_threads == 1)
 		{
 		/*
 			We have only 1 thread so don't bother to start a thread to do the work
 		*/
-		anytime(output[0], index, query_list, postings_to_process, parameter_top_k);
+		switch (d_ness)
+			{
+			case 0:
+					anytime<JASS::decoder_d0>(output[0], index, query_list, postings_to_process, parameter_top_k);
+				break;
+			default:
+					anytime<JASS::decoder_d1>(output[0], index, query_list, postings_to_process, parameter_top_k);
+				break;
+			}
 		}
 	else
 		{
@@ -270,8 +288,15 @@ int main(int argc, const char *argv[])
 			Multiple threads, so start each worker
 		*/
 		for (size_t which = 0; which < parameter_threads ; which++)
-			thread_pool.push_back(std::thread(anytime, std::ref(output[which]), std::ref(index), std::ref(query_list), postings_to_process, parameter_top_k));
-
+			switch (d_ness)
+				{
+				case 0:
+						thread_pool.push_back(std::thread(anytime<JASS::decoder_d0>, std::ref(output[which]), std::ref(index), std::ref(query_list), postings_to_process, parameter_top_k));
+					break;
+				default:
+						thread_pool.push_back(std::thread(anytime<JASS::decoder_d1>, std::ref(output[which]), std::ref(index), std::ref(query_list), postings_to_process, parameter_top_k));
+					break;
+				}
 		/*
 			Wait until they're all done (blocking on the completion of each thread in turn)
 		*/

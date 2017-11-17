@@ -12,6 +12,7 @@
 #include "compress_integer_simple_9.h"
 #include "compress_integer_simple_8b.h"
 #include "compress_integer_simple_16.h"
+#include "compress_integer_qmx_jass_v1.h"
 #include "compress_integer_relative_10.h"
 #include "compress_integer_carryover_12.h"
 #include "compress_integer_variable_byte.h"
@@ -32,6 +33,7 @@ namespace JASS
 	static compress_integer_simple_9 simple_9;						///< Simple-9 compressor
 	static compress_integer_simple_8b simple_8b;						///< Simple-8b compressor
 	static compress_integer_simple_16 simple_16;						///< Simple-16 compressor
+	static compress_integer_qmx_jass_v1 qmx_jass_v1;				///< QMX compressor compatile with JASS v1 (do not use)
 	static compress_integer_relative_10 relative_10;				///< Relative-10 compressor
 	static compress_integer_carryover_12 carryover_12;				///< Carryover-12 compressor
 	static compress_integer_qmx_original qmx_original;				///< QMX compressor
@@ -62,6 +64,7 @@ namespace JASS
 			{"-cQ", "--compress_simple_8b_packed", "Optimal Packed Simple-8b", &simple_8b_packed},
 			{"-cX", "--compress_qmx_improved", "QMX Improved", &qmx_improved},
 			{"-cx", "--compress_qmx_original", "QMX Original", &qmx_original},
+			{"-cxX", "--compress_qmx_jass_v1", "QMX JASS v1", &qmx_jass_v1},
 			}
 		};
 

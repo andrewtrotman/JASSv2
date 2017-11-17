@@ -205,7 +205,7 @@ namespace JASS
 				@brief Return a reference to a decompressor that can be used with this index
 				@return A reference to a compress_integer that can decode the given codex
 			*/
-			compress_integer &codex(void) const;
+			compress_integer &codex(std::string &name) const;
 
 			/*
 				DESERIALISED_JASS_V1::PRIMARY_KEYS()

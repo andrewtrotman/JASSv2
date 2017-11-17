@@ -40,6 +40,8 @@ set(JASSlib_FILES
 	compress_integer_none.cpp
 	compress_integer_qmx_improved.h
 	compress_integer_qmx_improved.cpp
+	compress_integer_qmx_jass_v1.h
+	compress_integer_qmx_jass_v1.cpp
 	compress_integer_qmx_original.h
 	compress_integer_qmx_original.cpp
 	compress_integer_relative_10.h

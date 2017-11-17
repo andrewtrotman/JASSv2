@@ -12,7 +12,8 @@
 */
 #pragma once
 
-#include "compress_integer.h"
+#include "query.h"
+#include "compress_integer_none.h"
 
 namespace JASS
 	{
@@ -104,6 +105,33 @@ namespace JASS
 						}
 				};
 
+		private:
+			/*
+				DECODER_D1::BEGIN()
+				-------------------
+			*/
+			/*!
+				@brief Return an iterator pointing to the start of the sequence (using this iterator will D1 decode each integer in sequence).
+				@return Iterator pointing to start of sequence.
+			*/
+			iterator begin() const
+				{
+				return iterator(decompress_buffer, 0);
+				}
+
+			/*
+				DECODER_D1::END()
+				-----------------
+			*/
+			/*!
+				@brief Return an iterator pointing to the end of the sequence (using this iterator will D1 decode each integer in sequence).
+				@return Iterator pointing to end of sequence.
+			*/
+			iterator end() const
+				{
+				return iterator(decompress_buffer, integers);
+				}
+
 		public:
 			/*
 				DECODER_D1::DECODER_D1()
@@ -147,34 +175,8 @@ namespace JASS
 				}
 
 			/*
-				DECODER_D1::BEGIN()
-				-------------------
-			*/
-			/*!
-				@brief Return an iterator pointing to the start of the sequence (using this iterator will D1 decode each integer in sequence).
-				@return Iterator pointing to start of sequence.
-			*/
-			iterator begin() const
-				{
-				return iterator(decompress_buffer, 0);
-				}
-
-			/*
-				DECODER_D1::END()
-				-----------------
-			*/
-			/*!
-				@brief Return an iterator pointing to the end of the sequence (using this iterator will D1 decode each integer in sequence).
-				@return Iterator pointing to end of sequence.
-			*/
-			iterator end() const
-				{
-				return iterator(decompress_buffer, integers);
-				}
-
-			/*
 				DECODER_D1::PROCESS()
-				-----------------
+				---------------------
 				We put the processing code here so that a decoder can work in parallel - if needed.
 			*/
 			/*!
