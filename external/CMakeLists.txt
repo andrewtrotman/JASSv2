@@ -28,3 +28,11 @@ add_custom_command(
 	COMMAND curl http://www.unicode.org/Public/UCD/latest/ucd/PropList.txt > PropList.txt
 	WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/Unicode
 	)
+
+add_custom_command(
+	TARGET refresh_externals PRE_BUILD
+	COMMAND curl https://github.com/facebook/zstd/archive/dev.zip > dev.zip
+	COMMAND unzip dev.zip
+	WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/zstd
+	)
+
