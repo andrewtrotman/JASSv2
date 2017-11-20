@@ -11,6 +11,8 @@
 #    UnicodeData.txt from the Unicode Consortium (http://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt)
 #
 
+include(${CMAKE_ROOT}/Modules/ExternalProject.cmake)
+
 add_custom_target(refresh_externals)
 
 #
@@ -29,17 +31,32 @@ add_custom_command(
 	WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/Unicode
 	)
 
-add_custom_command(
-	TARGET refresh_externals PRE_BUILD
-	COMMAND curl -L -k https://github.com/facebook/zstd/archive/dev.zip > dev.zip
-	COMMAND unzip dev.zip
-	BYPRODUCTS zstd-dev/LICENSE
-	WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/zstd
-	)
+set(ZSTD_VERSION "1.2.0")
+set(ZSTD_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/zstd")
+set(ZSTD_INCLUDE_DIR "${ZSTD_BUILD_DIR}/lib")
+set(ZSTD_LOG_OPTIONS
+	LOG_CONFIGURE 1
+	LOG_BUILD 1
+	LOG_INSTALL 1
+	LOG_DOWNLOAD 1)
 
-add_custom_command(
-	OUTPUT libzstd.a
-	COMMAND cmake .
-	COMMAND make
-	WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/zstd/zstd-dev/build/cmake
-	)
+if (MSVC)
+	set(ZSTD_STATIC_LIB "${ZSTD_BUILD_DIR}/build/VS2010/bin/x64_${CMAKE_BUILD_TYPE}/libzstd_static.lib")
+else()
+	set(ZSTD_STATIC_LIB "${ZSTD_BUILD_DIR}/lib/libzstd.a")
+endif()
+
+ExternalProject_Add(zstd
+	URL "https://github.com/facebook/zstd/archive/v${ZSTD_VERSION}.tar.gz"
+	${ZSTD_LOG_OPTIONS}
+	UPDATE_COMMAND ""
+	INSTALL_COMMAND ""
+	SOURCE_SUBDIR build/cmake
+	CMAKE_ARGS -DZSTD_BUILD_STATIC=ON
+	BINARY_DIR ${ZSTD_BUILD_DIR}
+	BUILD_COMMAND $(MAKE) libzstd_static
+	BUILD_BYPRODUCTS ${ZSTD_STATIC_LIB}
+)
+
+include_directories(SYSTEM ${ZSTD_INCLUDE_DIR})
+
