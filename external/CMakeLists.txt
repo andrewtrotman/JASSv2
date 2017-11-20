@@ -31,8 +31,15 @@ add_custom_command(
 
 add_custom_command(
 	TARGET refresh_externals PRE_BUILD
-	COMMAND curl https://github.com/facebook/zstd/archive/dev.zip > dev.zip
+	COMMAND curl -L -k https://github.com/facebook/zstd/archive/dev.zip > dev.zip
 	COMMAND unzip dev.zip
+	BYPRODUCTS zstd-dev/LICENSE
 	WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/zstd
 	)
 
+add_custom_command(
+	OUTPUT libzstd.a
+	COMMAND cmake .
+	COMMAND make
+	WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/zstd/zstd-dev/build/cmake
+	)
