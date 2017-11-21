@@ -32,13 +32,9 @@ add_custom_command(
 	)
 
 set(ZSTD_VERSION "1.2.0")
-set(ZSTD_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/zstd")
+set(ZSTD_BUILD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/zstd")
 set(ZSTD_INCLUDE_DIR "${ZSTD_BUILD_DIR}/lib")
-set(ZSTD_LOG_OPTIONS
-	LOG_CONFIGURE 1
-	LOG_BUILD 1
-	LOG_INSTALL 1
-	LOG_DOWNLOAD 1)
+include_directories(SYSTEM ${ZSTD_INCLUDE_DIR})
 
 if (MSVC)
 	set(ZSTD_STATIC_LIB "${ZSTD_BUILD_DIR}/build/VS2010/bin/x64_${CMAKE_BUILD_TYPE}/libzstd_static.lib")
@@ -48,7 +44,11 @@ endif()
 
 ExternalProject_Add(zstd
 	URL "https://github.com/facebook/zstd/archive/v${ZSTD_VERSION}.tar.gz"
-	${ZSTD_LOG_OPTIONS}
+	DOWNLOAD_DIR ${ZSTD_BUILD_DIR}
+	LOG_CONFIGURE 1
+	LOG_BUILD 1
+	LOG_INSTALL 1
+	LOG_DOWNLOAD 1
 	UPDATE_COMMAND ""
 	INSTALL_COMMAND ""
 	SOURCE_SUBDIR build/cmake
@@ -56,7 +56,5 @@ ExternalProject_Add(zstd
 	BINARY_DIR ${ZSTD_BUILD_DIR}
 	BUILD_COMMAND $(MAKE) libzstd_static
 	BUILD_BYPRODUCTS ${ZSTD_STATIC_LIB}
+	CMAKE_GENERATOR  "Unix Makefiles"
 )
-
-include_directories(SYSTEM ${ZSTD_INCLUDE_DIR})
-
