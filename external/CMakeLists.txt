@@ -13,10 +13,37 @@
 
 include(${CMAKE_ROOT}/Modules/ExternalProject.cmake)
 
+set(ZSTD_VERSION "1.3.2")
+set(ZSTD_BUILD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/zstd")
+set(ZSTD_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/zstd/src/zstd/lib" PARENT_SCOPE)
+
+if (MSVC)
+	set(ZSTD_STATIC_LIB "${ZSTD_BUILD_DIR}/build/VS2010/bin/x64_${CMAKE_BUILD_TYPE}/libzstd_static.lib")
+else()
+	set(ZSTD_STATIC_LIB "${ZSTD_BUILD_DIR}/lib/libzstd.a")
+endif()
+
+ExternalProject_Add(zstd
+	URL "https://github.com/facebook/zstd/archive/v${ZSTD_VERSION}.tar.gz"
+	PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/zstd
+	LOG_CONFIGURE 1
+	LOG_BUILD 1
+	LOG_INSTALL 1
+	LOG_DOWNLOAD 1
+	UPDATE_COMMAND ""
+	INSTALL_COMMAND ""
+	SOURCE_SUBDIR build/cmake
+	CMAKE_ARGS -DZSTD_BUILD_STATIC=ON
+	BINARY_DIR ${ZSTD_BUILD_DIR}
+	BUILD_COMMAND $(MAKE) libzstd_static
+	BUILD_BYPRODUCTS ${ZSTD_STATIC_LIB}
+	CMAKE_GENERATOR  "Unix Makefiles"
+)
+
 add_custom_target(refresh_externals)
 
 #
-# get the latest version of the Unicode data file "UnicodeData.txt" from the Univode web site
+# get the latest version of the Unicode data file "UnicodeData.txt" from the Unicode web site
 #
 
 add_custom_command(
@@ -31,30 +58,3 @@ add_custom_command(
 	WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/Unicode
 	)
 
-set(ZSTD_VERSION "1.2.0")
-set(ZSTD_BUILD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/zstd")
-set(ZSTD_INCLUDE_DIR "${ZSTD_BUILD_DIR}/lib")
-include_directories(SYSTEM ${ZSTD_INCLUDE_DIR})
-
-if (MSVC)
-	set(ZSTD_STATIC_LIB "${ZSTD_BUILD_DIR}/build/VS2010/bin/x64_${CMAKE_BUILD_TYPE}/libzstd_static.lib")
-else()
-	set(ZSTD_STATIC_LIB "${ZSTD_BUILD_DIR}/lib/libzstd.a")
-endif()
-
-ExternalProject_Add(zstd
-	URL "https://github.com/facebook/zstd/archive/v${ZSTD_VERSION}.tar.gz"
-	DOWNLOAD_DIR ${ZSTD_BUILD_DIR}
-	LOG_CONFIGURE 1
-	LOG_BUILD 1
-	LOG_INSTALL 1
-	LOG_DOWNLOAD 1
-	UPDATE_COMMAND ""
-	INSTALL_COMMAND ""
-	SOURCE_SUBDIR build/cmake
-	CMAKE_ARGS -DZSTD_BUILD_STATIC=ON
-	BINARY_DIR ${ZSTD_BUILD_DIR}
-	BUILD_COMMAND $(MAKE) libzstd_static
-	BUILD_BYPRODUCTS ${ZSTD_STATIC_LIB}
-	CMAKE_GENERATOR  "Unix Makefiles"
-)
