@@ -11,7 +11,6 @@
 	@copyright 2017 Andrew Trotman
 */
 #pragma once
-
 #include <tuple>
 #include <limits>
 #include <string>

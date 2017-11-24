@@ -28,9 +28,9 @@ set(ZLIB_BUILD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/zlib")
 set(ZLIB_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/zlib/src/zlib" PARENT_SCOPE)
 
 if (MSVC)
-	set(ZLIB_STATIC_LIB "${ZLIB_BUILD_DIR}/build/VS2010/bin/x64_${CMAKE_BUILD_TYPE}/libzlib_static.lib")
+	set(ZLIB_STATIC_LIB "${ZLIB_BUILD_DIR}/build/VS2010/bin/x64_${CMAKE_BUILD_TYPE}/libzlib_static.lib" PARENT_SCOPE)
 else()
-	set(ZLIB_STATIC_LIB "${ZLIB_BUILD_DIR}/libz.a")
+	set(ZLIB_STATIC_LIB "${ZLIB_BUILD_DIR}/libz.a" PARENT_SCOPE)
 endif()
 
 ExternalProject_Add(zlib
@@ -58,9 +58,9 @@ set(ZSTD_BUILD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/zstd")
 set(ZSTD_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/zstd/src/zstd/lib" PARENT_SCOPE)
 
 if (MSVC)
-	set(ZSTD_STATIC_LIB "${ZSTD_BUILD_DIR}/build/VS2010/bin/x64_${CMAKE_BUILD_TYPE}/libzstd_static.lib")
+	set(ZSTD_STATIC_LIB "${ZSTD_BUILD_DIR}/build/VS2010/bin/x64_${CMAKE_BUILD_TYPE}/libzstd_static.lib" PARENT_SCOPE)
 else()
-	set(ZSTD_STATIC_LIB "${ZSTD_BUILD_DIR}/lib/libzstd.a")
+	set(ZSTD_STATIC_LIB "${ZSTD_BUILD_DIR}/lib/libzstd.a" PARENT_SCOPE)
 endif()
 
 ExternalProject_Add(zstd

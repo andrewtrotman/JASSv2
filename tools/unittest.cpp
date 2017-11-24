@@ -45,6 +45,7 @@
 #include "compress_integer_all.h"
 #include "compress_integer_none.h"
 #include "index_postings_impact.h"
+#include "compress_general_zlib.h"
 #include "instream_document_trec.h"
 #include "index_manager_sequential.h"
 #include "compress_integer_carry_8b.h"
@@ -81,6 +82,7 @@ int main(void)
 
 	try
 		{
+#ifdef NEVER
 		puts("top_k_sort");
 		JASS::top_k_qsort::unittest();
 
@@ -259,6 +261,9 @@ int main(void)
 
 		puts("run_export");
 		JASS::run_export::unittest();
+#endif
+		puts("compress_general_zlib");
+		JASS::compress_general_zlib::unittest();
 
 		puts("ALL UNIT TESTS HAVE PASSED");
 		failed = false;

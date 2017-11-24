@@ -29,6 +29,11 @@ set(JASSlib_FILES
 	checksum.h
 	checksum.cpp
 	commandline.h
+	compress_general.h
+	compress_general_zlib.h
+	compress_general_zlib.cpp
+	compress_general_zstd.h
+	compress_general_zstd.cpp
 	compress_integer.h
 	compress_integer_all.h
 	compress_integer_all.cpp

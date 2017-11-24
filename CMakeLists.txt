@@ -87,7 +87,7 @@ add_subdirectory(examples)
 #  build the unit tests
 #
 add_executable(unittest tools/unittest.cpp)
-target_link_libraries(unittest JASSlib ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(unittest JASSlib ${ZLIB_STATIC_LIB} ${CMAKE_THREAD_LIBS_INIT})
 
 #
 # build the indexer
