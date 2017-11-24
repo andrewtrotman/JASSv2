@@ -13,7 +13,47 @@
 
 include(${CMAKE_ROOT}/Modules/ExternalProject.cmake)
 
+#
+# Versions of externals to download
+#
+set(ZLIB_VERSION "1.2.11")
 set(ZSTD_VERSION "1.3.2")
+
+
+#
+# Get Zlib (zlib)
+#
+
+set(ZLIB_BUILD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/zlib")
+set(ZLIB_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/zlib/src/zlib" PARENT_SCOPE)
+
+if (MSVC)
+	set(ZLIB_STATIC_LIB "${ZLIB_BUILD_DIR}/build/VS2010/bin/x64_${CMAKE_BUILD_TYPE}/libzlib_static.lib")
+else()
+	set(ZLIB_STATIC_LIB "${ZLIB_BUILD_DIR}/libz.a")
+endif()
+
+ExternalProject_Add(zlib
+	LOG_DOWNLOAD 1
+	LOG_UPDATE 1
+	LOG_CONFIGURE 1
+	LOG_BUILD 1
+	LOG_TEST 1
+	LOG_INSTALL 1
+	URL "https://github.com/madler/zlib/archive/v${ZLIB_VERSION}.tar.gz"
+	PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/zlib
+	UPDATE_COMMAND ""
+	INSTALL_COMMAND ""
+	BINARY_DIR ${ZLIB_BUILD_DIR}
+	CONFIGURE_COMMAND ${ZLIB_BUILD_DIR}/src/zlib/configure --static
+	BUILD_COMMAND $(MAKE)
+	BUILD_BYPRODUCTS ${ZLIB_STATIC_LIB}
+)
+
+#
+# Get ZStandard (zstd)
+#
+
 set(ZSTD_BUILD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/zstd")
 set(ZSTD_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/zstd/src/zstd/lib" PARENT_SCOPE)
 
@@ -26,10 +66,6 @@ endif()
 ExternalProject_Add(zstd
 	URL "https://github.com/facebook/zstd/archive/v${ZSTD_VERSION}.tar.gz"
 	PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/zstd
-	LOG_CONFIGURE 1
-	LOG_BUILD 1
-	LOG_INSTALL 1
-	LOG_DOWNLOAD 1
 	UPDATE_COMMAND ""
 	INSTALL_COMMAND ""
 	SOURCE_SUBDIR build/cmake
