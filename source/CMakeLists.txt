@@ -126,6 +126,7 @@ set(JASSlib_FILES
 	)
 
 add_library(JASSlib ${JASSlib_FILES})
+add_dependencies(JASSlib zstd zlib)
 
 include_directories(.)
 
