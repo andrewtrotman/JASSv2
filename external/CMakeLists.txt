@@ -34,12 +34,6 @@ else()
 endif()
 
 ExternalProject_Add(zlib
-	LOG_DOWNLOAD 1
-	LOG_UPDATE 1
-	LOG_CONFIGURE 1
-	LOG_BUILD 1
-	LOG_TEST 1
-	LOG_INSTALL 1
 	URL "https://github.com/madler/zlib/archive/v${ZLIB_VERSION}.tar.gz"
 	PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/zlib
 	UPDATE_COMMAND ""
@@ -68,7 +62,7 @@ ExternalProject_Add(zstd
 	PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/zstd
 	UPDATE_COMMAND ""
 	INSTALL_COMMAND ""
-	SOURCE_SUBDIR build/cmake
+	CONFIGURE_COMMAND cmake ${ZSTD_BUILD_DIR}/src/zstd/build/cmake
 	CMAKE_ARGS -DZSTD_BUILD_STATIC=ON
 	BINARY_DIR ${ZSTD_BUILD_DIR}
 	BUILD_COMMAND $(MAKE) libzstd_static
