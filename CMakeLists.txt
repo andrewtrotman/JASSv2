@@ -22,7 +22,7 @@ project(JASS)
 
 cmake_minimum_required (VERSION 3.2)
 
-set(CMAKE_VERBOSE_MAKEFILE on)
+# set(CMAKE_VERBOSE_MAKEFILE on)
 set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_CONFIGURATION_TYPES Debug)
 # set(CMAKE_BUILD_TYPE Release)
@@ -66,7 +66,7 @@ find_package(Threads)
 # Download any external dependencies and get the include paths set up
 #
 add_subdirectory(external)
-include_directories(source ${ZSTD_INCLUDE_DIR})
+include_directories(source ${ZSTD_INCLUDE_DIR} ${ZLIB_INCLUDE_DIR} ${ZLIB_INCLUDE_DIR_2})
 
 #
 # Build the toolset
@@ -87,7 +87,7 @@ add_subdirectory(examples)
 #  build the unit tests
 #
 add_executable(unittest tools/unittest.cpp)
-target_link_libraries(unittest JASSlib ${ZLIB_STATIC_LIB} ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(unittest JASSlib ${ZLIB_STATIC_LIB} ${ZSTD_STATIC_LIB} ${CMAKE_THREAD_LIBS_INIT})
 
 #
 # build the indexer
