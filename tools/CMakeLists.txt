@@ -97,5 +97,6 @@ add_executable(test_zstd
 
 target_link_libraries(test_zstd
 	JASSlib
+ 	${ZSTD_STATIC_LIB}
 	)
 
