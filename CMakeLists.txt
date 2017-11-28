@@ -66,7 +66,7 @@ find_package(Threads)
 # Download any external dependencies and get the include paths set up
 #
 add_subdirectory(external)
-include_directories(source ${ZSTD_INCLUDE_DIR})
+include_directories(source ${ZSTD_INCLUDE_DIR} ${ZLIB_INCLUDE_DIR} ${ZLIB_INCLUDE_DIR_2})
 
 #
 # Build the toolset
