@@ -82,7 +82,6 @@ int main(void)
 
 	try
 		{
-#ifdef NEVER
 		puts("top_k_sort");
 		JASS::top_k_qsort::unittest();
 
@@ -261,7 +260,7 @@ int main(void)
 
 		puts("run_export");
 		JASS::run_export::unittest();
-#endif
+
 		puts("compress_general_zlib");
 		JASS::compress_general_zlib::unittest();
 
