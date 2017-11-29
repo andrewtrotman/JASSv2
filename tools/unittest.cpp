@@ -53,6 +53,7 @@
 #include "compress_integer_simple_8b.h"
 #include "compress_integer_simple_16.h"
 #include "compress_integer_relative_10.h"
+#include "compress_integer_qmx_jass_v1.h"
 #include "compress_integer_stream_vbyte.h"
 #include "compress_integer_qmx_original.h"
 #include "compress_integer_qmx_improved.h"
@@ -209,6 +210,9 @@ int main(void)
 
 		puts("compress_integer_qmx_improved");
 		JASS::compress_integer_qmx_improved::unittest();
+
+		puts("compress_integer_qmx_jass_v1");
+		JASS::compress_integer_qmx_jass_v1::unittest();
 
 		puts("compress_integer_simple_9");
 		JASS::compress_integer_simple_9::unittest();
