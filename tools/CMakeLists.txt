@@ -86,17 +86,3 @@ target_link_libraries(test_integer_compress
 	JASSlib
 	)
 
-
-#
-# test_zstd
-#
-
-add_executable(test_zstd
-	test_zstd.cpp
-	)
-
-target_link_libraries(test_zstd
-	JASSlib
- 	${ZSTD_STATIC_LIB}
-	)
-

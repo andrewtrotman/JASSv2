@@ -512,7 +512,7 @@ while (current_length < length_buffer + source_integers)
 		if (largest <= 8)
 			for (block = 0; block < 8; block++)
 				*(current_length + block) = 8;
-		else if (largest <= 8)
+		else if (largest <= 16)
 			for (block = 0; block < 8; block++)
 				*(current_length + block) = 16;
 		}

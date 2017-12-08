@@ -23,8 +23,10 @@ namespace JASS
 		stream.zfree = instream.zfree = Z_NULL;
 		stream.opaque = instream.opaque = Z_NULL;
 
-		deflateInit(&stream, Z_DEFAULT_COMPRESSION);
-		inflateInit(&instream);
+		if (deflateInit(&stream, Z_DEFAULT_COMPRESSION) != Z_OK)
+			throw std::runtime_error("Zlib deflateInit() failed in compress_general_zlib::compress_general_zlib()");
+		if (inflateInit(&instream) != Z_OK)
+			throw std::runtime_error("Zlib inflateInit() failed in compress_general_zlib::compress_general_zlib()");
 		}
 
 	/*

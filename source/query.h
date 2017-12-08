@@ -247,7 +247,7 @@ namespace JASS
 			/*!
 				@brief Destructor
 			*/
-			query()
+			~query()
 				{
 				delete parsed_query;
 				}

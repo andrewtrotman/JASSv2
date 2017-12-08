@@ -197,8 +197,11 @@ namespace JASS
 					return compress_integer_all::get_by_name("QMX JASS v1");
 				default:
 					exit(printf("Unknown index format\n"));
-					name = "None";
-					return compress_integer_all::get_by_name("None");
+					/*
+						// This can't happen because of the exit() above, and cppcheck warns avout it.
+						name = "None";
+						return compress_integer_all::get_by_name("None");
+					*/
 				}
 		}
 	}
