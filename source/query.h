@@ -344,7 +344,10 @@ namespace JASS
 				@param document_id [in] which document to increment
 				@param score [in] the amount of weight to add
 			*/
-			forceinline void add_rsv(size_t document_id, ACCUMULATOR_TYPE score)
+#ifdef DONT_INLINE_ADD_RS
+			forceinline
+#endif
+			void add_rsv(size_t document_id, ACCUMULATOR_TYPE score)
 				{
 				ACCUMULATOR_TYPE *which = &accumulators[document_id];			// This will create the accumulator if it doesn't already exist.
 
