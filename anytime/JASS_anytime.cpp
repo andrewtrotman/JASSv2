@@ -37,10 +37,12 @@ constexpr size_t MAX_TOP_K = 1'000;
 std::string parameter_queryfilename;				///< Name of file containing the queries
 size_t parameter_threads = 1;							///< Number of concurrent queries
 size_t parameter_top_k = 10;							///< Number of results to return
+size_t parameter_help;
 
 std::string parameters_errors;						///< Any errors as a result of command line parsing
 auto parameters = std::make_tuple					///< The  command line parameter block
 	(
+	JASS::commandline::parameter("-?", "--help", "Print this help.", parameter_help),
 	JASS::commandline::parameter("-q", "--queryfile", "Name of file containing a list of queries (1 per line, each line prefixed with query-id)", parameter_queryfilename),
 	JASS::commandline::parameter("-t", "--threads",   "Number of threads to use (one query per thread) [default = 1]", parameter_threads),
 	JASS::commandline::parameter("-k", "--top-k",     "Number of results to return to the user (top-k value) [default = 10]", parameter_top_k)
@@ -186,6 +188,16 @@ void anytime(std::ostream &output, const JASS::deserialised_jass_v1 &index, std:
 	}
 
 /*
+	USAGE()
+	-------
+*/
+uint8_t usage(const std::string &exename)
+	{
+	std::cout << JASS::commandline::usage(exename, parameters) << "\n";
+	return 1;
+	}
+
+/*
 	MAIN()
 	------
 */
@@ -200,6 +212,8 @@ int main(int argc, const char *argv[])
 		std::cout << parameters_errors;
 		exit(1);
 		}
+	if (parameter_help)
+		usage(argv[0]);
 
 	if (parameter_top_k > MAX_TOP_K)
 		{

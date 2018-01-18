@@ -12,6 +12,13 @@
 */
 #pragma once
 
+
+
+//#define DONT_INLINE_ADD_RSV
+//#define JASSv1_ADD_RSV
+
+
+
 #include "heap.h"
 #include "top_k_qsort.h"
 #include "parser_query.h"
@@ -335,6 +342,56 @@ namespace JASS
 				top_k_qsort::sort(accumulator_pointers + needed_for_top_k, top_k - needed_for_top_k, top_k, final_sort_cmp);
 				}
 
+#ifdef JASSv1_ADD_RSV
+			/*
+				ADD_RSV()
+				---------
+			*/
+#ifndef DONT_INLINE_ADD_RSV
+			forceinline
+#endif
+			void add_rsv(size_t document_id, ACCUMULATOR_TYPE score)
+				{
+				ACCUMULATOR_TYPE old_value;
+				ACCUMULATOR_TYPE *which = &accumulators[document_id];			// this will also make sure the accumulator exists
+				add_rsv_compare cmp;
+
+				/*
+					Maintain the heap
+				*/
+				if (needed_for_top_k > 0)
+					{
+					/*
+						We haven't got enough to worry about the heap yet, so just plonk it in
+					*/
+					old_value = *which;
+					*which += score;
+
+					if (old_value == 0)
+						accumulator_pointers[--needed_for_top_k] = which;
+
+					if (needed_for_top_k == 0)
+						top_results.make_heap();
+					}
+				else if (cmp(which, accumulator_pointers[0]) >= 0)
+					{
+					/*
+						We were already in the heap, so update
+					*/
+					*which +=score;
+					top_results.promote(which);
+					}
+				else
+					{
+					/*
+						We weren't in the heap, but we could get put there
+					*/
+					*which += score;
+					if (cmp(which, accumulator_pointers[0]) > 0)
+						top_results.push_back(which);
+					}
+				}
+#else
 			/*
 				QUERY::ADD_RSV()
 				----------------
@@ -344,7 +401,7 @@ namespace JASS
 				@param document_id [in] which document to increment
 				@param score [in] the amount of weight to add
 			*/
-#ifdef DONT_INLINE_ADD_RS
+#ifndef DONT_INLINE_ADD_RSV
 			forceinline
 #endif
 			void add_rsv(size_t document_id, ACCUMULATOR_TYPE score)
@@ -385,7 +442,7 @@ namespace JASS
 						}
 					}
 				}
-
+#endif
 			/*
 				QUERY::UNITTEST()
 				-----------------
