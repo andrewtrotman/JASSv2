@@ -1,6 +1,8 @@
 language: cpp
 sudo: required
 dist: trusty
+group: deprecated-2017Q4
+
 
 notifications:
   slack: jassv2:IX7Yf0N9YJ0rM4OFVvCTrgCY
