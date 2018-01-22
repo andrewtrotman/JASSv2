@@ -1,7 +1,7 @@
 language: cpp
 sudo: required
 dist: trusty
-
+group: deprecated-2017Q4
 
 before_install:
   - sh -c "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/master/install.sh)"
