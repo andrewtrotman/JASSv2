@@ -2,15 +2,12 @@ language: cpp
 sudo: required
 dist: trusty
 
-ilanguage: ruby
-rvm:
-  - 2.3
-
 notifications:
   slack: jassv2:IX7Yf0N9YJ0rM4OFVvCTrgCY
 
 # Early exit coverity if we're in the wrong build
 before_install:
+  - if [ "$TRAVIS_OS_NAME" == linux ]; then rvm 2.3.3 fi
   - if [ "$TRAVIS_OS_NAME" == linux ]; then yes '' | ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/master/install)"; fi
   - if [ "$TRAVIS_OS_NAME" == linux ]; then PATH="/home/linuxbrew/.linuxbrew/bin:$PATH"; fi
   - if [ "$TRAVIS_OS_NAME" == linux ]; then brew install gcc; fi
