@@ -23,6 +23,7 @@
 #include "JASS_anytime_stats.h"
 #include "JASS_anytime_query.h"
 #include "deserialised_jass_v1.h"
+#include "JASS_anytime_thread_result.h"
 
 constexpr size_t MAX_QUANTUM = 0x0FFF;
 constexpr size_t MAX_TERMS_PER_QUERY = 1024;
@@ -53,7 +54,7 @@ auto parameters = std::make_tuple					///< The  command line parameter block
 	---------
 */
 template <typename DECODER>
-void anytime(std::ostream &output, const JASS::deserialised_jass_v1 &index, std::vector<JASS_anytime_query> &query_list, size_t postings_to_process, size_t top_k)
+void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v1 &index, std::vector<JASS_anytime_query> &query_list, size_t postings_to_process, size_t top_k)
 	{
 	/*
 		Extract the compression scheme from the index
@@ -69,11 +70,6 @@ void anytime(std::ostream &output, const JASS::deserialised_jass_v1 &index, std:
 	uint64_t *current_segment;
 
 	/*
-		Now start searching
-	*/
-	size_t next_query = 0;
-	std::string query = JASS_anytime_query::get_next_query(query_list, next_query);
-	/*
 		Allocate a JASS query object
 	*/
 	JASS::query<uint16_t, MAX_DOCUMENTS, MAX_TOP_K> *jass_query;
@@ -86,8 +82,20 @@ void anytime(std::ostream &output, const JASS::deserialised_jass_v1 &index, std:
 		exit(printf("Can't load index as the number of documents is too large - change MAX_DOCUMENTS in %s\n", __FILE__));
 		}
 
+	/*
+		Start the timer
+	*/
+	auto total_search_time = JASS::timer::start();
+
+	/*
+		Now start searching
+	*/
+	size_t next_query = 0;
+	std::string query = JASS_anytime_query::get_next_query(query_list, next_query);
+
 	while (query.size() != 0)
 		{
+		output.queries_executed++;
 		jass_query->parse(query);
 		auto &terms = jass_query->terms();
 		auto query_id = terms[0];
@@ -178,10 +186,19 @@ void anytime(std::ostream &output, const JASS::deserialised_jass_v1 &index, std:
 			}
 
 		jass_query->sort();
-		JASS::run_export(JASS::run_export::TREC, output, (char *)query_id.token().address(), *jass_query, "COMPILED", true);
+		JASS::run_export(JASS::run_export::TREC, output.results_list, (char *)query_id.token().address(), *jass_query, "COMPILED", true);
 		query = JASS_anytime_query::get_next_query(query_list, next_query);
 		}
 
+
+	/*
+		stop the timer
+	*/
+	output.search_time_in_ns = JASS::timer::stop(total_search_time).nanoseconds();
+
+	/*
+		clean up
+	*/
 	delete jass_query;
 	delete [] segment_order;
 	delete decoder;
@@ -224,7 +241,7 @@ int main(int argc, const char *argv[])
 	/*
 		Run-time statistics
 	*/
-	anytime_stats stats;
+	JASS_anytime_stats stats;
 	stats.threads = parameter_threads;
 
 	/*
@@ -267,7 +284,7 @@ int main(int argc, const char *argv[])
 		Allocate a thread pool and the place to put the answers
 	*/
 	std::vector<std::thread> thread_pool;
-	std::vector<std::ostringstream> output;
+	std::vector<JASS_anytime_thread_result> output;
 	output.resize(parameter_threads);
 
 	/*
@@ -317,15 +334,23 @@ int main(int argc, const char *argv[])
 		for (auto &thread : thread_pool)
 			thread.join();
 		}
-	stats.total_search_time_in_ns = JASS::timer::stop(total_search_time).nanoseconds();
+
+	stats.wall_time_in_ns = JASS::timer::stop(total_search_time).nanoseconds();
+
+	/*
+		Compute the per-thread stats
+	*/
+	for (size_t which = 0; which < parameter_threads ; which++)
+		stats.sum_of_CPU_time_in_ns += output[which].search_time_in_ns;
+
 
 	/*
 		Dump the answer
 	*/
 	std::ostringstream TREC_file;
 	for (auto &result : output)
-		if ((size_t)result.tellp() != 0)
-			TREC_file << result.str();
+		if ((size_t)result.results_list.tellp() != 0)
+			TREC_file << result.results_list.str();
 
 	if ((size_t)TREC_file.tellp() != 0)
 		JASS::file::write_entire_file("ranking.txt", TREC_file.str());

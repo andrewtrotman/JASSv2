@@ -19,6 +19,7 @@ set(COMPILED_INDEX_FILES
 	JASS_anytime.cpp
 	JASS_anytime_query.h
 	JASS_anytime_stats.h
+	JASS_anytime_thread_result.h
 	)
 
 add_executable(JASS_anytime ${COMPILED_INDEX_FILES})

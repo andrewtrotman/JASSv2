@@ -13,39 +13,41 @@
 #pragma once
 
 /*
-	CLASS ANYTIME_STATS
-	-------------------
+	CLASS JASS_ANYTIME_STATS
+	------------------------
 */
 /*!
 	@brief Runtime statistics for the anytime search engine.
 */
-class anytime_stats
+class JASS_anytime_stats
 	{
 	public:
 		size_t threads;								///< The number of threads (mean queries per thread = number_of_queries/threads)
 		size_t number_of_queries;					///< The number of queries that have been processed
-		size_t total_search_time_in_ns;			///< Total time to search (in nanoseconds)
+		size_t wall_time_in_ns;						///< Total wall time to do all the search (in nanoseconds)
+		size_t sum_of_CPU_time_in_ns;				///< Sum of the indivivual thread total timers (multi-threaded can be larger than wall_time_in_ns)
 
 	public:
 		/*
-			ANYTIME_STATS::ANYTIME_STATS()
-			------------------------------
+			JASS_ANYTIME_STATS::JASS_ANYTIME_STATS()
+			----------------------------------------
 		*/
 		/*!
 			@brief Constructor
 		*/
-		anytime_stats() :
+		JASS_anytime_stats() :
 			threads(0),
 			number_of_queries(0),
-			total_search_time_in_ns(0)
+			wall_time_in_ns(0),
+			sum_of_CPU_time_in_ns(0)
 			{
 			/* Nothing */
 			}
 	};
 
 /*
-	OPERATOR<<()
-	------------
+	JASS_ANYTIME_STATS::OPERATOR<<()
+	--------------------------------
 */
 /*!
 	@brief Dump a human readable version of the data down an output stream.
@@ -53,13 +55,14 @@ class anytime_stats
 	@param data [in] The data to write.
 	@return The stream once the data has been written.
 */
-std::ostream &operator<<(std::ostream &output, anytime_stats &data)
+std::ostream &operator<<(std::ostream &output, JASS_anytime_stats &data)
 	{
 	output << "-------------------\n";
 	output << "Threads                                : " << data.threads << '\n';
 	output << "Queries                                : " << data.number_of_queries << '\n';
-	output << "Total search time                      : " << data.total_search_time_in_ns << " ns\n";
-	output << "Total time excluding I/O   (per query) : " << data.total_search_time_in_ns / ((data.number_of_queries == 0) ? 1 : data.number_of_queries) << " ns\n";
+	output << "Total wall time                        : " << data.wall_time_in_ns << " ns\n";
+	output << "Total CPU wall time                    : " << data.sum_of_CPU_time_in_ns << " ns\n";
+	output << "Total time excluding I/O   (per query) : " << data.sum_of_CPU_time_in_ns / ((data.number_of_queries == 0) ? 1 : data.number_of_queries) << " ns\n";
 	output << "-------------------\n";
 	return output;
 	}
