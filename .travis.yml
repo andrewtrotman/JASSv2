@@ -3,5 +3,61 @@ sudo: required
 dist: trusty
 group: deprecated-2017Q4
 
+
+notifications:
+  slack: jassv2:IX7Yf0N9YJ0rM4OFVvCTrgCY
+
+# Early exit coverity if we're in the wrong build
 before_install:
-  - sh -c "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/master/install.sh)"
+  - if [ "$TRAVIS_OS_NAME" == linux ]; then sh -c "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/master/install.sh)"; fi
+  - if [ "$TRAVIS_OS_NAME" == linux ]; then PATH="/home/linuxbrew/.linuxbrew/bin:$PATH"; fi
+  - if [ "$TRAVIS_OS_NAME" == linux ]; then brew install gcc; fi
+  - if [ "$VALGRIND_RUN" == 1 ]; then brew install valgrind; fi
+#  - if [ "$VALGRIND_RUN" == 1 ]; then apt-get install libc6-dbg; fi
+  - if [ "$TRAVIS_BRANCH" == "coverity_scan" -a -z "$COVERITY_SCAN_TOKEN" ]; then echo "Done. Early exit with 0." && sleep 1 && exit 0; fi
+install:
+#  - if [ "$TRAVIS_OS_NAME" == linux ]; then ./tools/travis_dependencies.sh; fi
+script:
+  - if [ "$COVERITY_SCAN_BRANCH" != 1 -a "$VALGRIND_RUN" != 1 ]; then cd build && cmake .. && make && ./unittest; fi
+  - if [ "$VALGRIND_RUN" == 1 ]; then cd build && cmake .. && make && valgrind -q --error-exitcode=42 ./unittest; fi
+after_success:
+  - if [ "$CODECOV_RUN" == 1 ]; then bash <(curl -s https://codecov.io/bash); fi
+matrix:
+  include:
+    - os: linux
+      compiler: gcc
+      env:
+        # COVERITY TOKEN
+        - secure: "Vj49la7ApuC2IVb+2cU563BPVHUbmXlcQ6W91wb8BAGQNOtsmm9KlXTS3mIQ4NxZJgfHxW5Pnx/H6VNBaG21QGK2J7/DB8NMmmmOQwF6vDSULFt8cOXmjLqvblPOnqfvTQbWxNmX3toOZJN1719k5csdNKHKsZTEj6nQT13fsGar+lcQhf+wsKmmEOMzN0Wo0jiqj4naLqaxs0NhUKldsfI8LrswxxW0CUBmvBeVB3ZnxPyKoPMkLASYosxNI0tsr0teuny5s53DwgUW5kBjMZPNLWitkiyJFeFKjQOEhyJ07zEbm4e0bhWd5QUKFIsRI8paY8vo3OQzP1s04A64zv1fP2PqbvDLmm/5z0jVUql4AzcSmXOCeK4mzaGMFC6a4FLPeSJDTj0HkkoJIo3dpOGJ4BQFueSKatsBB2bc9uEugFl2hV6/nrHHEmVkjFbZzFpWnZC7ovX8jGasqC2+iffWB8Lp3hAAqDMIeqUVLnHinJzv8VGJd9gJivqX1iIO6rY5Vys3pb0TJfjKc8xF5NvxPPko7HP9U1fvqcegnTbuhYqlVNxnRNLt2qGracNRXDu1SE3RFk8rFxJ+GP/rGX4b1WXjtr9f6ob7+jp7QAh0hijcjVSxu8FdB2P3r6AKEy83D5JyHqRglI5g3NWSHDvxJ/p3XlUV5mYLGoly5CE="
+
+    - os: osx
+      compiler: clang
+
+    - os: linux
+      compiler: gcc
+      env:
+          CODECOV_RUN=1
+          CFLAGS="-g -O0 -fprofile-arcs -ftest-coverage"
+          CXXFLAGS="-g -O0 -fprofile-arcs -ftest-coverage"
+
+    - os: linux
+      compiler: gcc
+      env:
+          VALGRIND_RUN=1
+
+branches:
+  only:
+    - master
+    - coverity_scan
+
+addons:
+  coverity_scan:
+    project:
+      name: andrewtrotman/JASSv2
+    notification_email: andrew@trotman.com
+    build_command_prepend: "cd build && cmake .."
+    build_command: "make"
+    branch_pattern: coverity_scan
+  apt:
+    packages:
+      libc6-dbg
