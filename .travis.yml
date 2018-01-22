@@ -1,4 +1,4 @@
-language: ruby
+language: cpp
 sudo: required
 dist: trusty
 
@@ -8,6 +8,8 @@ notifications:
 # Early exit coverity if we're in the wrong build
 before_install:
   - if [ "$TRAVIS_OS_NAME" == linux ]; then rvm reinstall ruby-head --binary; fi
+  - if [ "$TRAVIS_OS_NAME" == linux ]; then ruby --version; fi
+  - if [ "$TRAVIS_OS_NAME" == linux ]; then ls /usr/lib/ruby; fi
   - if [ "$TRAVIS_OS_NAME" == linux ]; then sh -c "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/master/install.sh)"; fi
   - if [ "$TRAVIS_OS_NAME" == linux ]; then PATH="/home/linuxbrew/.linuxbrew/bin:$PATH"; fi
   - if [ "$TRAVIS_OS_NAME" == linux ]; then brew install gcc; fi
