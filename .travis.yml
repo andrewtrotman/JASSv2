@@ -2,6 +2,10 @@ language: cpp
 sudo: required
 dist: trusty
 
+ilanguage: ruby
+rvm:
+  - 2.3
+
 notifications:
   slack: jassv2:IX7Yf0N9YJ0rM4OFVvCTrgCY
 
