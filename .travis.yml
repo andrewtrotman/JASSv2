@@ -8,6 +8,7 @@ notifications:
 # Early exit coverity if we're in the wrong build
 before_install:
   - if [ "$TRAVIS_OS_NAME" == linux ]; then rvm install "ruby-2.3.3"; fi
+  - if [ "$TRAVIS_OS_NAME" == linux ]; then rvm use "ruby-2.3.3"; fi
   - if [ "$TRAVIS_OS_NAME" == linux ]; then yes '' | ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/master/install)"; fi
   - if [ "$TRAVIS_OS_NAME" == linux ]; then PATH="/home/linuxbrew/.linuxbrew/bin:$PATH"; fi
   - if [ "$TRAVIS_OS_NAME" == linux ]; then brew install gcc; fi
