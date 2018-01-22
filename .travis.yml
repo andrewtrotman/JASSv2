@@ -10,7 +10,8 @@ before_install:
   - if [ "$TRAVIS_OS_NAME" == linux ]; then which ruby; fi
   - if [ "$TRAVIS_OS_NAME" == linux ]; then ruby --version; fi
   - if [ "$TRAVIS_OS_NAME" == linux ]; then ls /usr/lib/ruby; fi
-  - if [ "$TRAVIS_OS_NAME" == linux ]; then sudo rm -rf /usr/lib/ruby; fi
+  - if [ "$TRAVIS_OS_NAME" == linux ]; then sudo rm -rf /usr/lib/ruby/1.9.1; fi
+  - if [ "$TRAVIS_OS_NAME" == linux ]; then sudo rm -rf /usr/lib/ruby/2.0.0; fi
   - if [ "$TRAVIS_OS_NAME" == linux ]; then sh -c "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/master/install.sh)"; fi
   - if [ "$TRAVIS_OS_NAME" == linux ]; then PATH="/home/linuxbrew/.linuxbrew/bin:$PATH"; fi
   - if [ "$TRAVIS_OS_NAME" == linux ]; then brew install gcc; fi
