@@ -186,15 +186,27 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 			}
 
 		jass_query->sort();
+		
+		/*
+			stop the timer
+		*/
+		output.search_time_in_ns += JASS::timer::stop(total_search_time).nanoseconds();
+
+		/*
+			Serialise the results list (don't time this)
+		*/
 		JASS::run_export(JASS::run_export::TREC, output.results_list, (char *)query_id.token().address(), *jass_query, "COMPILED", true);
+
+		/*
+			Re-start the timer
+		*/
+		total_search_time = JASS::timer::start();
+
+		/*
+			get the next query
+		*/
 		query = JASS_anytime_query::get_next_query(query_list, next_query);
 		}
-
-
-	/*
-		stop the timer
-	*/
-	output.search_time_in_ns = JASS::timer::stop(total_search_time).nanoseconds();
 
 	/*
 		clean up
@@ -342,7 +354,6 @@ int main(int argc, const char *argv[])
 	*/
 	for (size_t which = 0; which < parameter_threads ; which++)
 		stats.sum_of_CPU_time_in_ns += output[which].search_time_in_ns;
-
 
 	/*
 		Dump the answer
