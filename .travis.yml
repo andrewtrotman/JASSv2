@@ -9,8 +9,8 @@ notifications:
 
 # Early exit coverity if we're in the wrong build
 before_install:
-  - if [ "$TRAVIS_OS_NAME" == linux ]; then sh -c "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/master/install.sh)"; fi
-  - if [ "$TRAVIS_OS_NAME" == linux ]; then PATH="/home/linuxbrew/.linuxbrew/bin:$PATH"; fi
+  - if [ "$TRAVIS_OS_NAME" == linux ]; then git clone https://github.com/Linuxbrew/brew.git ~/.linuxbrew; fi
+  - if [ "$TRAVIS_OS_NAME" == linux ]; then PATH="$HOME/.linuxbrew/bin:$PATH"; fi
   - if [ "$TRAVIS_OS_NAME" == linux ]; then brew install gcc; fi
   - if [ "$VALGRIND_RUN" == 1 ]; then brew install valgrind; fi
 #  - if [ "$VALGRIND_RUN" == 1 ]; then apt-get install libc6-dbg; fi
