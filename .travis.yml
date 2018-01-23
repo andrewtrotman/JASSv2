@@ -10,6 +10,7 @@ notifications:
 # Early exit coverity if we're in the wrong build
 before_install:
   - if [ "$TRAVIS_OS_NAME" == linux ]; then git clone https://github.com/Linuxbrew/brew.git ~/.linuxbrew; fi
+  - if [ "$TRAVIS_OS_NAME" == linux ]; then export HOMEBREW_FORCE_VENDOR_RUBY=1; fi
   - if [ "$TRAVIS_OS_NAME" == linux ]; then PATH="$HOME/.linuxbrew/bin:$PATH"; fi
   - if [ "$TRAVIS_OS_NAME" == linux ]; then brew install gcc; fi
   - if [ "$VALGRIND_RUN" == 1 ]; then brew install valgrind; fi
