@@ -38,15 +38,15 @@ constexpr size_t MAX_TOP_K = 1'000;
 std::string parameter_queryfilename;				///< Name of file containing the queries
 size_t parameter_threads = 1;							///< Number of concurrent queries
 size_t parameter_top_k = 10;							///< Number of results to return
-size_t parameter_help;
+bool parameter_help = false;
 
 std::string parameters_errors;						///< Any errors as a result of command line parsing
 auto parameters = std::make_tuple					///< The  command line parameter block
 	(
 	JASS::commandline::parameter("-?", "--help", "Print this help.", parameter_help),
-	JASS::commandline::parameter("-q", "--queryfile", "Name of file containing a list of queries (1 per line, each line prefixed with query-id)", parameter_queryfilename),
-	JASS::commandline::parameter("-t", "--threads",   "Number of threads to use (one query per thread) [default = 1]", parameter_threads),
-	JASS::commandline::parameter("-k", "--top-k",     "Number of results to return to the user (top-k value) [default = 10]", parameter_top_k)
+	JASS::commandline::parameter("-q", "--queryfile", "<filename>  Name of file containing a list of queries (1 per line, each line prefixed with query-id)", parameter_queryfilename),
+	JASS::commandline::parameter("-t", "--threads",   "<threadcount> Number of threads to use (one query per thread) [default = -t1]", parameter_threads),
+	JASS::commandline::parameter("-k", "--top-k",     "<top-k>      Number of results to return to the user (top-k value) [default = -k10]", parameter_top_k)
 	);
 
 /*
@@ -96,18 +96,19 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 
 	while (query.size() != 0)
 		{
+		static const std::string seperators_between_id_and_query = " \t:";
 		output.queries_executed++;
 
 		/*
 			Extract the query ID from the query
 		*/
-		auto end_of_id = query.find_first_of(" \t");
+		auto end_of_id = query.find_first_of(seperators_between_id_and_query);
 		if (end_of_id == std::string::npos)
 			query_id = "";
 		else
 			{
 			query_id = query.substr(0, end_of_id);
-			auto start_of_query = query.substr(end_of_id, std::string::npos).find_first_not_of(" \t");
+			auto start_of_query = query.substr(end_of_id, std::string::npos).find_first_not_of(seperators_between_id_and_query);
 			if (start_of_query == std::string::npos)
 				query = query.substr(end_of_id, std::string::npos);
 			else
@@ -254,7 +255,7 @@ int main(int argc, const char *argv[])
 		exit(1);
 		}
 	if (parameter_help)
-		usage(argv[0]);
+		exit(usage(argv[0]));
 
 	if (parameter_top_k > MAX_TOP_K)
 		{
