@@ -92,28 +92,40 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 	*/
 	size_t next_query = 0;
 	std::string query = JASS_anytime_query::get_next_query(query_list, next_query);
+	std::string query_id;
 
 	while (query.size() != 0)
 		{
 		output.queries_executed++;
+
+		/*
+			Extract the query ID from the query
+		*/
+		auto end_of_id = query.find_first_of(" \t");
+		if (end_of_id == std::string::npos)
+			query_id = "";
+		else
+			{
+			query_id = query.substr(0, end_of_id);
+			auto start_of_query = query.substr(end_of_id, std::string::npos).find_first_not_of(" \t");
+			if (start_of_query == std::string::npos)
+				query = query.substr(end_of_id, std::string::npos);
+			else
+				query = query.substr(end_of_id + start_of_query, std::string::npos);
+			}
+
+		/*
+			Process the query
+		*/
 		jass_query->parse(query);
 		auto &terms = jass_query->terms();
-		auto query_id = terms[0];
 
 		/*
 			Parse the query and extract the list of impact segments
 		*/
 		current_segment = segment_order;
-		size_t term_id = 0;
 		for (const auto &term : terms)
 			{
-			/*
-				Count which term we're on (and ignore the first as its the TREC topic ID)
-			*/
-			term_id++;
-			if (term_id == 1)
-				continue;
-
 //	std::cout << "TERM:" << term << "\n";
 
 			/*
@@ -195,7 +207,7 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 		/*
 			Serialise the results list (don't time this)
 		*/
-		JASS::run_export(JASS::run_export::TREC, output.results_list, (char *)query_id.token().address(), *jass_query, "COMPILED", true);
+		JASS::run_export(JASS::run_export::TREC, output.results_list, query_id.c_str(), *jass_query, "COMPILED", true);
 
 		/*
 			Re-start the timer
