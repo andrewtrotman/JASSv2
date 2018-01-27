@@ -9,18 +9,23 @@ notifications:
 
 # Early exit coverity if we're in the wrong build
 before_install:
-  - if [ "$TRAVIS_OS_NAME" == linux ]; then git clone https://github.com/Linuxbrew/brew.git ~/.linuxbrew; fi
-  - if [ "$TRAVIS_OS_NAME" == linux ]; then export HOMEBREW_FORCE_VENDOR_RUBY=1; fi
-  - if [ "$TRAVIS_OS_NAME" == linux ]; then PATH="$HOME/.linuxbrew/bin:$PATH"; fi
-  - if [ "$TRAVIS_OS_NAME" == linux ]; then brew install gcc; fi
-  - if [ "$VALGRIND_RUN" == 1 ]; then brew install valgrind; fi
-#  - if [ "$VALGRIND_RUN" == 1 ]; then apt-get install libc6-dbg; fi
-  - if [ "$TRAVIS_BRANCH" == "coverity_scan" -a -z "$COVERITY_SCAN_TOKEN" ]; then echo "Done. Early exit with 0." && sleep 1 && exit 0; fi
+  - if [ "$TRAVIS_OS_NAME" == linux ]; then 
+      git clone https://github.com/Linuxbrew/brew.git ~/.linuxbrew;
+      export HOMEBREW_FORCE_VENDOR_RUBY=1;
+      PATH="$HOME/.linuxbrew/bin:$PATH";
+      brew install gcc;
+    fi
+  - if [ "$VALGRIND_RUN" == 1 ]; then 
+      brew install valgrind;
+    fi
+  - if [ "$TRAVIS_BRANCH" == "coverity_scan" -a -z "$COVERITY_SCAN_TOKEN" ]; then 
+      echo "Done. Early exit with 0." && sleep 1 && exit 0;
+    fi
+
 install:
-#  - if [ "$TRAVIS_OS_NAME" == linux ]; then ./tools/travis_dependencies.sh; fi
 script:
-  - if [ "$COVERITY_SCAN_BRANCH" != 1 -a "$VALGRIND_RUN" != 1 ]; then cd build && cmake .. && make && ./unittest; fi
-  - if [ "$VALGRIND_RUN" == 1 ]; then cd build && cmake .. && make && valgrind -q --error-exitcode=42 ./unittest; fi
+  - if [ "$COVERITY_SCAN_BRANCH" != 1 -a "$VALGRIND_RUN" != 1 ]; then cd build && cmake -D FORCE_CMAKE_BUILD_TYPE=Debug .. && make && ./unittest; fi
+  - if [ "$VALGRIND_RUN" == 1 ]; then cd build && cmake -D FORCE_CMAKE_BUILD_TYPE=Debug .. && make && valgrind -q --error-exitcode=42 ./unittest; fi
 after_success:
   - if [ "$CODECOV_RUN" == 1 ]; then bash <(curl -s https://codecov.io/bash); fi
 matrix:
@@ -56,9 +61,10 @@ addons:
     project:
       name: andrewtrotman/JASSv2
     notification_email: andrew@trotman.com
-    build_command_prepend: "cd build && cmake .."
+    build_command_prepend: "cd build && cmake -D FORCE_CMAKE_BUILD_TYPE=Debug .."
     build_command: "make"
     branch_pattern: coverity_scan
+
   apt:
     packages:
       libc6-dbg

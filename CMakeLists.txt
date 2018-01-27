@@ -23,10 +23,24 @@ project(JASS)
 cmake_minimum_required (VERSION 3.2)
 
 # set(CMAKE_VERBOSE_MAKEFILE on)
-# set(CMAKE_BUILD_TYPE Debug)
-# set(CMAKE_CONFIGURATION_TYPES Debug)
-set(CMAKE_BUILD_TYPE Release)
-set(CMAKE_CONFIGURATION_TYPES Release)
+
+#
+# default is release build, unless specified on the command line using FORCE_CMAKE_BUILD_TYPE
+#
+
+if (NOT FORCE_CMAKE_BUILD_TYPE)
+	# set(CMAKE_BUILD_TYPE Debug)
+	# set(CMAKE_CONFIGURATION_TYPES Debug)
+	set(CMAKE_BUILD_TYPE Release)
+	set(CMAKE_CONFIGURATION_TYPES Release)
+else()
+	set(CMAKE_BUILD_TYPE ${FORCE_CMAKE_BUILD_TYPE})
+	set(CMAKE_CONFIGURATION_TYPES ${FORCE_CMAKE_BUILD_TYPE})
+endif()
+
+unset(FORCE_CMAKE_BUILD_TYPE CACHE)
+
+message("Build Type:" ${CMAKE_BUILD_TYPE})
 
 # add_definitions(-DUSE_CRT_MALLOC)
 # add_definitions("-g -flto")
