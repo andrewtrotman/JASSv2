@@ -5,6 +5,7 @@
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 #include <stdlib.h>
+#include <stdexcept>
 
 #include "asserts.h"
 #include "unittest_data.h"
