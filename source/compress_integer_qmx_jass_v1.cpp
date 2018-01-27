@@ -1465,49 +1465,90 @@ return destination - (uint8_t *)into;	// return length in bytes
 			{
 			every_case.clear();
 			for (instance = 0; instance < block_count * 256; instance++)
-				every_case.push_back(0);
+				every_case.push_back(0x00);
+			unittest_one(every_case);
+			every_case.clear();
+
 			for (instance = 0; instance < block_count * 256; instance++)
-				every_case.push_back(1);
-			for (instance = 0; instance < block_count * 128; instance++)
 				every_case.push_back(0x01);
+			unittest_one(every_case);
+			every_case.clear();
+
+			for (instance = 0; instance < block_count * 64; instance++)
+				{
+				every_case.push_back(0x01);
+				every_case.push_back(0x00);
+				}
+			unittest_one(every_case);
+			every_case.clear();
+
 			for (instance = 0; instance < block_count * 64; instance++)
 				every_case.push_back(0x03);
+			unittest_one(every_case);
+			every_case.clear();
+
 			for (instance = 0; instance < block_count * 40; instance++)
 				every_case.push_back(0x07);
+			unittest_one(every_case);
+			every_case.clear();
+
 			for (instance = 0; instance < block_count * 32; instance++)
 				every_case.push_back(0x0F);
+			unittest_one(every_case);
+			every_case.clear();
+
 			for (instance = 0; instance < block_count * 24; instance++)
 				every_case.push_back(0x1F);
+			unittest_one(every_case);
+			every_case.clear();
+
 			for (instance = 0; instance < block_count * 20; instance++)
 				every_case.push_back(0x3F);
+			unittest_one(every_case);
+			every_case.clear();
+
 			for (instance = 0; instance < block_count * 16; instance++)
 				every_case.push_back(0xFF);
+			unittest_one(every_case);
+			every_case.clear();
+
 			for (instance = 0; instance < block_count * 12; instance++)
 				every_case.push_back(0x3FF);
+			unittest_one(every_case);
+			every_case.clear();
+
 			for (instance = 0; instance < block_count * 8; instance++)
 				every_case.push_back(0xFFFF);
+			unittest_one(every_case);
+			every_case.clear();
+
 			for (instance = 0; instance < block_count * 4; instance++)
 				every_case.push_back(0xFFFFFFFF);
+			unittest_one(every_case);
+			every_case.clear();
 
 			/*
 				Test all valid instances that fit into two SIMD-words
 			*/
 			for (instance = 0; instance < block_count * 36; instance++)
 				every_case.push_back(0x7F);
+			unittest_one(every_case);
+			every_case.clear();
+
 			for (instance = 0; instance < block_count * 28; instance++)
 				every_case.push_back(0x1FF);
+			unittest_one(every_case);
+			every_case.clear();
+
 			for (instance = 0; instance < block_count * 20; instance++)
 				every_case.push_back(0xFFF);
+			unittest_one(every_case);
+			every_case.clear();
+
 			for (instance = 0; instance < block_count * 12; instance++)
 				every_case.push_back(0x1FFFFF);
-
-			std::vector<uint32_t> every_case_compressed(every_case.size());
-			size_once_compressed = compressor.encode(&every_case_compressed[0], every_case_compressed.size() * sizeof(every_case_compressed[0]), &every_case[0], every_case.size());
-
-			std::vector<uint32_t> every_case_decompressed(every_case.size());
-			compressor.decode(&every_case_decompressed[0], every_case.size(), &every_case_compressed[0], size_once_compressed);
-
-			JASS_assert(every_case_decompressed == every_case);
+			unittest_one(every_case);
+			every_case.clear();
 			}
 
 		/*

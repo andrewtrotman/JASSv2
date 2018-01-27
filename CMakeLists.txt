@@ -47,6 +47,12 @@ message("Build Type:" ${CMAKE_BUILD_TYPE})
 # set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -g -flto")
 
 #
+# Add these lines for clang coverage build
+#
+# add_definitions("-fprofile-instr-generate -fcoverage-mapping")
+# set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fprofile-instr-generate -fcoverage-mapping")
+
+#
 #	Set the debug flags based on the compiler
 #	_GLIBCXX_USE_CXX11_ABI=1 is necessary for g++ to allow C++ stateful custom allocators in std::string
 #
