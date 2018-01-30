@@ -12,12 +12,8 @@
 */
 #pragma once
 
-
-
 //#define DONT_INLINE_ADD_RSV
 //#define JASSv1_ADD_RSV
-
-
 
 #include "heap.h"
 #include "top_k_qsort.h"
