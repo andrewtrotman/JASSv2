@@ -12,7 +12,7 @@
 */
 #pragma once
 
-#define DYNAMIC_ALLOCATION
+//#define DYNAMIC_ALLOCATION
 
 #include <new>
 #include <vector>
