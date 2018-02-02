@@ -15,7 +15,17 @@
 
 #pragma once
 
-#include <pthread.h>
+#ifdef _MSC_VER
+	#include <process.h>
+#else
+	#include <pthread.h>
+#endif
+
+#include <stdio.h>
+
+#include <functional> 
+
+#include "asserts.h"
 
 namespace JASS
 	{
@@ -25,11 +35,19 @@ namespace JASS
 	class thread
 		{
 		private:
-			const size_t DEFAULT_STACK_SIZE = 8 * 1024 * 1024;			///< default tread stack size
+			#ifdef _MSC_VER
+				const unsigned int DEFAULT_STACK_SIZE = 8 * 1024 * 1024;			///< default tread stack size
+			#else
+				const size_t DEFAULT_STACK_SIZE = 8 * 1024 * 1024;			///< default tread stack size
+			#endif
 
 		private:
-			pthread_t thread_id;						///< The Posix threads thread id
-			pthread_attr_t attributes;				///< The Posix threads attributes
+			#ifdef _MSC_VER
+				uintptr_t thread_id;
+			#else
+				pthread_t thread_id;						///< The Posix threads thread id
+				pthread_attr_t attributes;				///< The Posix threads attributes
+			#endif
 
 		/*
 			THREAD::BOOTSTRAP()
@@ -40,17 +58,26 @@ namespace JASS
 			@param param[in] A C++ binding used to perform the call.
 			@return Always returns nullptr.
 		*/
-		template<typename FUNCTOR>
-		static void *bootstrap(void *param)
-			{
-			/*
-				extract the binding and call it.
-			*/
-			FUNCTOR functor = (FUNCTOR)param;
-			(*functor)();
+			template<typename FUNCTOR>
+			#ifdef _MSC_VER
+				static void bootstrap(void *param)
+			#else
+				static void *bootstrap(void *param)
+			#endif
+				{
+				/*
+					extract the binding and call it.
+				*/
+				FUNCTOR functor = (FUNCTOR)param;
+				(*functor)();
 
-			return nullptr;
-			}
+				puts("DONE");
+
+				#ifdef _MSC_VER
+				#else
+					return nullptr;
+				#endif
+				}
 
 		public:
 			/*
@@ -80,21 +107,41 @@ namespace JASS
 				*/
 				auto functor = new decltype(forwarding)(forwarding);
 
-				/*
-					set any thread attributes we need
-				*/
-				pthread_attr_init(&attributes);
+				#ifdef _MSC_VER
 
-				/*
-					give it a good-sized stack
-				*/
-				pthread_attr_setstacksize(&attributes, DEFAULT_STACK_SIZE);
+					thread_id = _beginthread(bootstrap<decltype(functor)>, DEFAULT_STACK_SIZE, functor);
+//					thread_id = _beginthreadex(NULL, DEFAULT_STACK_SIZE, bootstrap<decltype(functor)>, functor, 0, NULL);
+					if (thread_id == 0)
+						exit(printf("Can't start thread"));
+				#else
+					/*
+						set any thread attributes we need
+					*/
+					if (pthread_attr_init(&attributes) != 0)
+						exit(printf("Can't start thread"));
 
-				/*
-					start the thread
-				*/
-				pthread_create(&thread_id, &attributes, bootstrap<decltype(functor)>, functor);
+					/*
+						give it a good-sized stack
+					*/
+					if (pthread_attr_setstacksize(&attributes, DEFAULT_STACK_SIZE) != 0)
+						exit(printf("Can't start thread"));
+
+					/*
+						start the thread
+					*/
+					if (pthread_create(&thread_id, &attributes, bootstrap<decltype(functor)>, functor) != 0)
+						exit(printf("Can't start thread"));
+				#endif
 				}
+
+			/*
+				THREAD::~THREAD()
+				-----------------
+			*/
+			/*!
+				@brief Destructor.
+			*/
+			~thread();
 
 			/*
 				THREAD::JOIN()
@@ -103,11 +150,7 @@ namespace JASS
 			/*!
 				@brief block until this thead finishes
 			*/
-			void join(void)
-				{
-				void *return_value;
-				pthread_join(thread_id, &return_value);
-				}
+			void join(void);
 
 			/*
 				THREAD::UNITTEST_CALLBACK()
@@ -117,10 +160,7 @@ namespace JASS
 				@brief Callback function used by unittest().
 				@param x [in/out] a reference to an integer to thread-unsafe alter.
 			*/
-			static void unittest_callback(int &x)
-				{
-				x++;
-				}
+			static void unittest_callback(int &x);
 
 			/*
 				THREAD::UNITTEST()
@@ -129,18 +169,6 @@ namespace JASS
 			/*!
 				@brief Unit test this class.
 			*/
-			static void unittest(void)
-				{
-				int param = 1;
-				auto x = thread(unittest_callback, std::ref(param));
-				auto y = thread(unittest_callback, std::ref(param));
-
-				x.join();
-				y.join();
-
-				JASS_assert(param != 1);
-
-				puts("thread::PASSED");
-				}
+			static void unittest(void);
 		};
 	}

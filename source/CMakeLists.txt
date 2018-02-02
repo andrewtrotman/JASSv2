@@ -115,6 +115,7 @@ set(JASSlib_FILES
 	slice.h
 	strings.h
 	threads.h
+	threads.cpp
 	timer.h
 	top_k_heap.h
 	top_k_qsort.h
