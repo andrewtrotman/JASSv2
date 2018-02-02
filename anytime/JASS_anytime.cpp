@@ -323,6 +323,7 @@ int main(int argc, const char *argv[])
 		Start the work
 	*/
 	auto total_search_time = JASS::timer::start();
+#ifdef NEVER
 	if (parameter_threads == 1)
 		{
 		/*
@@ -339,6 +340,7 @@ int main(int argc, const char *argv[])
 			}
 		}
 	else
+#endif
 		{
 		/*
 			Multiple threads, so start each worker

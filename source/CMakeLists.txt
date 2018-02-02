@@ -114,6 +114,7 @@ set(JASSlib_FILES
 	serialise_jass_v1.h
 	slice.h
 	strings.h
+	threads.h
 	timer.h
 	top_k_heap.h
 	top_k_qsort.h

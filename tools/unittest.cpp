@@ -14,6 +14,7 @@
 #include "unicode.h"
 #include "version.h"
 #include "reverse.h"
+#include "threads.h"
 #include "checksum.h"
 #include "decode_d0.h"
 #include "decode_d1.h"
@@ -83,6 +84,9 @@ int main(void)
 
 	try
 		{
+		puts("threads");
+		JASS::thread::unittest();
+		
 		puts("top_k_sort");
 		JASS::top_k_qsort::unittest();
 
