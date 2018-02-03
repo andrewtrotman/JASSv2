@@ -60,7 +60,7 @@ namespace JASS
 		*/
 			template<typename FUNCTOR>
 			#ifdef _MSC_VER
-				static void bootstrap(void *param)
+				static unsigned bootstrap(void *param)
 			#else
 				static void *bootstrap(void *param)
 			#endif
@@ -71,9 +71,8 @@ namespace JASS
 				FUNCTOR functor = (FUNCTOR)param;
 				(*functor)();
 
-				puts("DONE");
-
 				#ifdef _MSC_VER
+					return 0;
 				#else
 					return nullptr;
 				#endif
@@ -90,7 +89,8 @@ namespace JASS
 				@param parameters [in] the parameters to that function.
 			*/
 			template<typename FUNCTION, typename... PARAMETERS>
-			thread(FUNCTION &&function, PARAMETERS &&... parameters)
+			thread(FUNCTION function, PARAMETERS ... parameters):
+				thread_id()
 				{
 				/*
 					first create a binding of the function and its parameters
@@ -108,9 +108,7 @@ namespace JASS
 				auto functor = new decltype(forwarding)(forwarding);
 
 				#ifdef _MSC_VER
-
-					thread_id = _beginthread(bootstrap<decltype(functor)>, DEFAULT_STACK_SIZE, functor);
-//					thread_id = _beginthreadex(NULL, DEFAULT_STACK_SIZE, bootstrap<decltype(functor)>, functor, 0, NULL);
+					thread_id = _beginthreadex(NULL, DEFAULT_STACK_SIZE, bootstrap<decltype(functor)>, functor, 0, NULL);
 					if (thread_id == 0)
 						exit(printf("Can't start thread"));
 				#else

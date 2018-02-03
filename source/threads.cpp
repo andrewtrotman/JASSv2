@@ -25,6 +25,9 @@ namespace JASS
 	thread::~thread()
 		{
 		#ifdef _MSC_VER
+			/*
+				The thread_id must be valid because otherwise we exit() from the constructor.
+			*/
 			CloseHandle((HANDLE)thread_id);
 		#endif
 		}
@@ -52,7 +55,7 @@ namespace JASS
 		{
 		x++;
 		}
-
+		
 	/*
 		THREAD::UNITTEST()
 		------------------
