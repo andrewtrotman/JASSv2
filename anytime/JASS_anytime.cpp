@@ -15,6 +15,7 @@
 #include "file.h"
 #include "timer.h"
 #include "query.h"
+#include "threads.h"
 #include "decode_d0.h"
 #include "run_export.h"
 #include "commandline.h"
@@ -308,7 +309,7 @@ int main(int argc, const char *argv[])
 	/*
 		Allocate a thread pool and the place to put the answers
 	*/
-	std::vector<std::thread> thread_pool;
+	std::vector<JASS::thread> thread_pool;
 	std::vector<JASS_anytime_thread_result> output;
 	output.resize(parameter_threads);
 
@@ -323,7 +324,6 @@ int main(int argc, const char *argv[])
 		Start the work
 	*/
 	auto total_search_time = JASS::timer::start();
-#ifdef NEVER
 	if (parameter_threads == 1)
 		{
 		/*
@@ -340,7 +340,6 @@ int main(int argc, const char *argv[])
 			}
 		}
 	else
-#endif
 		{
 		/*
 			Multiple threads, so start each worker
@@ -349,10 +348,10 @@ int main(int argc, const char *argv[])
 			switch (d_ness)
 				{
 				case 0:
-						thread_pool.push_back(std::thread(anytime<JASS::decoder_d0>, std::ref(output[which]), std::ref(index), std::ref(query_list), postings_to_process, parameter_top_k));
+						thread_pool.push_back(JASS::thread(anytime<JASS::decoder_d0>, std::ref(output[which]), std::ref(index), std::ref(query_list), postings_to_process, parameter_top_k));
 					break;
 				default:
-						thread_pool.push_back(std::thread(anytime<JASS::decoder_d1>, std::ref(output[which]), std::ref(index), std::ref(query_list), postings_to_process, parameter_top_k));
+						thread_pool.push_back(JASS::thread(anytime<JASS::decoder_d1>, std::ref(output[which]), std::ref(index), std::ref(query_list), postings_to_process, parameter_top_k));
 					break;
 				}
 		/*
