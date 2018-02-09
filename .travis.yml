@@ -13,7 +13,7 @@ before_install:
       git clone https://github.com/Linuxbrew/brew.git ~/.linuxbrew;
       export HOMEBREW_FORCE_VENDOR_RUBY=1;
       PATH="$HOME/.linuxbrew/bin:$PATH";
-      brew install gcc;
+      travis_wait 30 brew install gcc;
     fi
   - if [ "$VALGRIND_RUN" == 1 ]; then 
       brew install valgrind;
