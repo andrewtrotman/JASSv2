@@ -37,7 +37,31 @@ namespace JASS
 			size_t integers;													///< The number of integers in the decompress buffer.
 			std::vector<uint32_t> decompress_buffer;					///< The delta-encoded decopressed integer sequence.
 
-		private:
+		public:
+			/*
+				DECODER_D0::DECODER_D0()
+				------------------------
+			*/
+			/*!
+				@brief Constructor
+			*/
+			decoder_d0() = delete;
+
+			/*
+				DECODER_D0::DECODER_D0()
+				------------------------
+			*/
+			/*!
+				@brief Constructor
+				@param max_integers [in] The maximum number of integers that will ever need to be decoded using this object (i.e. the number of documents in the collection + overflow).
+			*/
+			explicit decoder_d0(size_t max_integers) :
+				integers(0),
+				decompress_buffer(max_integers, 0)
+				{
+				/* Nothing */
+				}
+
 			/*
 				DECODER_D0::BEGIN()
 				-------------------
@@ -62,31 +86,6 @@ namespace JASS
 			auto end() const
 				{
 				return decompress_buffer.data() + integers;
-				}
-
-		public:
-			/*
-				DECODER_D0::DECODER_D0()
-				------------------------
-			*/
-			/*!
-				@brief Constructor
-			*/
-			decoder_d0() = delete;
-
-			/*
-				DECODER_D0::DECODER_D0()
-				------------------------
-			*/
-			/*!
-				@brief Constructor
-				@param max_integers [in] The maximum number of integers that will ever need to be decoded using this object (i.e. the number of documents in the collection + overflow).
-			*/
-			explicit decoder_d0(size_t max_integers) :
-				integers(0),
-				decompress_buffer(max_integers, 0)
-				{
-				/* Nothing */
 				}
 
 			/*

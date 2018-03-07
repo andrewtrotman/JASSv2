@@ -138,7 +138,7 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 				continue;
 
 			/*
-				Add to the list of imact segments that need to be processed
+				Add to the list of impact segments that need to be processed
 			*/
 			std::copy((uint64_t *)(metadata.offset), (uint64_t *)(metadata.offset) + metadata.impacts, current_segment);
 			current_segment += metadata.impacts;

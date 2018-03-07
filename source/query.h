@@ -339,6 +339,22 @@ namespace JASS
 				}
 
 #ifdef JASSv1_ADD_RSV
+class annotate
+{
+public:
+	uint64_t one, two, three, four;
+
+public:
+	annotate() : one(0), two(0), three(0), four(0) {}
+	~annotate()
+		{
+		std::cout << "one:" << one << "\t";
+		std::cout << "two:" << two << "\t";
+		std::cout << "three:" << three << "\t";
+		std::cout << "four:" << four << "\t";
+		}
+} counting;
+
 			/*
 				ADD_RSV()
 				---------
@@ -357,6 +373,7 @@ namespace JASS
 				*/
 				if (needed_for_top_k > 0)
 					{
+					counting.one++;
 					/*
 						We haven't got enough to worry about the heap yet, so just plonk it in
 					*/
@@ -371,6 +388,7 @@ namespace JASS
 					}
 				else if (cmp(which, accumulator_pointers[0]) >= 0)
 					{
+					counting.two++;
 					/*
 						We were already in the heap, so update
 					*/
@@ -384,7 +402,12 @@ namespace JASS
 					*/
 					*which += score;
 					if (cmp(which, accumulator_pointers[0]) > 0)
+						{
+						counting.three++;
 						top_results.push_back(which);
+						}
+					else
+						counting.four++;
 					}
 				}
 #else
@@ -397,6 +420,22 @@ namespace JASS
 				@param document_id [in] which document to increment
 				@param score [in] the amount of weight to add
 			*/
+class annotate
+{
+public:
+	uint64_t one, two;
+
+public:
+	annotate() : one(0), two(0) {}
+	~annotate()
+		{
+		std::cout << "one:" << one << "\t";
+		std::cout << "two:" << two << "\t";
+		}
+} counting;
+
+
+
 #ifndef DONT_INLINE_ADD_RSV
 			forceinline
 #endif
@@ -410,6 +449,7 @@ namespace JASS
 				*which += score;
 				if (cmp(which, accumulator_pointers[0]) >= 0)			// ==0 is the case where we're the current bottom of heap so might need to be promoted
 					{
+					counting.one++;
 					/*
 						We end up in the top-k, now to work out why.  As this is a rare occurence, we've got a little bit of time on our hands
 					*/
@@ -437,6 +477,8 @@ namespace JASS
 							top_results.promote(which);				// we're already in the heap so promote this document
 						}
 					}
+				else
+					counting.two++;
 				}
 #endif
 			/*

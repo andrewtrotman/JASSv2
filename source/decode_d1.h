@@ -105,7 +105,31 @@ namespace JASS
 						}
 				};
 
-		private:
+		public:
+			/*
+				DECODER_D1::DECODER_D1()
+				------------------------
+			*/
+			/*!
+				@brief Constructor
+			*/
+			decoder_d1() = delete;
+
+			/*
+				DECODER_D1::DECODER_D1()
+				------------------------
+			*/
+			/*!
+				@brief Constructor
+				@param max_integers [in] The maximum number of integers that will ever need to be decoded using this object (i.e. the number of documents in the collection + overflow).
+			*/
+			explicit decoder_d1(size_t max_integers) :
+				integers(0),
+				decompress_buffer(max_integers, 0)
+				{
+				/* Nothing */
+				}
+
 			/*
 				DECODER_D1::BEGIN()
 				-------------------
@@ -130,31 +154,6 @@ namespace JASS
 			iterator end() const
 				{
 				return iterator(decompress_buffer, integers);
-				}
-
-		public:
-			/*
-				DECODER_D1::DECODER_D1()
-				------------------------
-			*/
-			/*!
-				@brief Constructor
-			*/
-			decoder_d1() = delete;
-
-			/*
-				DECODER_D1::DECODER_D1()
-				------------------------
-			*/
-			/*!
-				@brief Constructor
-				@param max_integers [in] The maximum number of integers that will ever need to be decoded using this object (i.e. the number of documents in the collection + overflow).
-			*/
-			explicit decoder_d1(size_t max_integers) :
-				integers(0),
-				decompress_buffer(max_integers, 0)
-				{
-				/* Nothing */
 				}
 
 			/*

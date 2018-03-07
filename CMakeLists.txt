@@ -126,6 +126,11 @@ add_subdirectory(compiled_index)
 add_subdirectory(anytime)
 
 #
+# build the experimental components
+#
+add_subdirectory(experimental)
+
+#
 # build the checksummer
 #
 add_executable(hash tools/hash.cpp)
