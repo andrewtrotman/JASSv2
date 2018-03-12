@@ -22,3 +22,15 @@ target_link_libraries(examine_index
 	JASSlib
 	)
 
+#
+# prm
+#
+
+add_executable(prm
+	prm.cpp
+	)
+
+target_link_libraries(prm
+	JASSlib
+	)
+
