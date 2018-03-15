@@ -67,7 +67,7 @@ endif()
 #
 if(WIN32)
 else()
-	add_definitions("-msse4.2")
+	add_definitions("-mavx2")
 endif()
 
 #
