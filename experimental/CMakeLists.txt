@@ -26,11 +26,18 @@ target_link_libraries(examine_index
 # prm
 #
 
-add_executable(prm
+set(PRN_FILES
 	prm.cpp
+	compress_integer_bitpack_256.h
+	compress_integer_bitpack_256.cpp
+	)
+
+add_executable(prm
+	${PRN_FILES}
 	)
 
 target_link_libraries(prm
 	JASSlib
 	)
 
+source_group ("Source Files" FILES ${PRN_FILES})
