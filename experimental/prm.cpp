@@ -150,7 +150,9 @@ void check_encoder(void)
 int decode(uint32_t value)
 	{
 	#ifdef _MSC_VER
-		return _BitScanForward(value);
+		unsigned long result;
+		_BitScanForward(&result, value);
+		return result;
 	#else
 		return ffs(value);
 	#endif
