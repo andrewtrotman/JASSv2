@@ -28,6 +28,14 @@ target_link_libraries(examine_index
 
 set(PRN_FILES
 	prm.cpp
+	compress_integer_bitpack.h
+	compress_integer_bitpack.cpp
+	compress_integer_bitpack_32_reduced.h
+	compress_integer_bitpack_32_reduced.cpp
+	compress_integer_bitpack_64.h
+	compress_integer_bitpack_64.cpp
+	compress_integer_bitpack_128.h
+	compress_integer_bitpack_128.cpp
 	compress_integer_bitpack_256.h
 	compress_integer_bitpack_256.cpp
 	)

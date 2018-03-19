@@ -11,6 +11,8 @@
 
 #include "maths.h"
 #include "compress_integer_bitpack_256.h"
+#include "compress_integer_bitpack_128.h"
+#include "compress_integer_bitpack_64.h"
 
 static const uint32_t WORDS = 2;
 static const uint32_t WORD_WIDTH = 8;
@@ -178,6 +180,14 @@ int main(void)
 	{
 	JASS::compress_integer_bitpack_256 scheme;
 	scheme.unittest();
+
+	JASS::compress_integer_bitpack_128 scheme_128;
+	scheme_128.unittest();
+
+	JASS::compress_integer_bitpack_64 scheme_64;
+	scheme_64.unittest();
+
+
 //	word_lengths(test_set, test_set_size);
 
 	uint8_t packed[1024*1024];
