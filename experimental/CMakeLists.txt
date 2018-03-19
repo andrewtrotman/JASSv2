@@ -30,6 +30,10 @@ set(PRN_FILES
 	prm.cpp
 	compress_integer_bitpack.h
 	compress_integer_bitpack.cpp
+	compress_integer_nybble_8.h
+	compress_integer_nybble_8.cpp
+	compress_integer_tayste_16.h
+	compress_integer_tayste_16.cpp
 	compress_integer_bitpack_32_reduced.h
 	compress_integer_bitpack_32_reduced.cpp
 	compress_integer_bitpack_64.h
