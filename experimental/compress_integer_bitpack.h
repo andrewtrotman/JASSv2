@@ -86,9 +86,16 @@ namespace JASS
 			size_t encode(void *encoded, size_t encoded_buffer_length, const integer *array, size_t source_integers, const uint32_t *bits_to_use = bits_to_use_complete, const uint32_t *selector_to_use = selector_to_use_complete)
 				{
 				uint8_t *destination = (uint8_t *)encoded;
+				uint8_t *end_of_destination_buffer = destination + encoded_buffer_length;
 
 				while (1)
 					{
+					/*
+						Check that the next word will fit (and fail if not)
+					*/
+					if (destination + (WIDTH_IN_BITS / 8) + 1 > end_of_destination_buffer)
+						return 0;
+
 					/*
 						Find the widest integer in the list
 					*/

@@ -24,7 +24,7 @@ namespace JASS
 	/*!
 		@brief Fixed-width pack integers into as few 32-bit words as possible.
 		@details
-		Pack into 64-bit word a bunch of same-width integers, so:
+		Pack into 32-bit word a bunch of same-width integers, so:
 				32 * 1-bit integers
 				16 * 2-bit integers
 				8 * 4-bit integers
