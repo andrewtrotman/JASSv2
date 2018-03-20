@@ -42,6 +42,8 @@ set(PRN_FILES
 	compress_integer_bitpack_128.cpp
 	compress_integer_bitpack_256.h
 	compress_integer_bitpack_256.cpp
+	compress_integer_prn_512.h
+	compress_integer_prn_512.cpp
 	)
 
 add_executable(prm
