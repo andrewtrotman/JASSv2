@@ -59,10 +59,10 @@ namespace JASS
 
 	public:
 			/*
-				BITS_NEEDED()
-				-------------
+				COMPRESS_INTEGER_BITPACK::BITS_NEEDED()
+				---------------------------------------
 			*/
-			inline uint32_t bits_needed(uint32_t integer)
+			static inline uint32_t bits_needed(uint32_t integer)
 				{
 				uint32_t current_width = maths::ceiling_log2(integer);
 				return maths::maximum(current_width, static_cast<decltype(current_width)>(1));

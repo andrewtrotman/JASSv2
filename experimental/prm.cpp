@@ -14,6 +14,7 @@
 #include "compress_integer_bitpack_128.h"
 #include "compress_integer_bitpack_64.h"
 #include "compress_integer_bitpack_32_reduced.h"
+#include "compress_integer_lyck_16.h"
 #include "compress_integer_nybble_8.h"
 
 static const uint32_t WORDS = 2;
@@ -191,6 +192,9 @@ int main(void)
 
 	JASS::compress_integer_bitpack_32_reduced scheme_32;
 	scheme_32.unittest();
+
+	JASS::compress_integer_lyck_16 scheme_16;
+	scheme_16.unittest();
 
 	JASS::compress_integer_nybble_8 scheme_8;
 	scheme_8.unittest();

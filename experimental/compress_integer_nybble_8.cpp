@@ -1,6 +1,6 @@
 /*
-		COMPRESS_INTEGER_NYBBLE_8.H
-	------------------------------
+	COMPRESS_INTEGER_NYBBLE_8.CPP
+	-----------------------------
 	Copyright (c) 2016 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
@@ -51,12 +51,6 @@ namespace JASS
 			else
 				{
 				/*
-					Check for integer too large
-				*/
-				if (*source > 255 || *(source + 1) > 255)
-					return 0;
-
-				/*
 					Pack 2 integers into the byte
 				*/
 				*destination++ = 0;
@@ -100,7 +94,7 @@ namespace JASS
 
 	/*
 		COMPRESS_INTEGER_NYBBLE_8::UNITTEST_ONE()
-		--------------------------------------------
+		-----------------------------------------
 	*/
 	void compress_integer_nybble_8::unittest_one(const std::vector<uint32_t> &sequence)
 		{
@@ -116,7 +110,7 @@ namespace JASS
 
 	/*
 		COMPRESS_INTEGER_NYBBLE_8::UNITTEST()
-		----------------------------------------
+		-------------------------------------
 	*/
 	void compress_integer_nybble_8::unittest(void)
 		{

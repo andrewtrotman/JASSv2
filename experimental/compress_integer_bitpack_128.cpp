@@ -1,6 +1,6 @@
 /*
-	COMPRESS_INTEGER_BITPACK_256.H
-	------------------------------
+	COMPRESS_INTEGER_BITPACK_128.CPP
+	--------------------------------
 	Copyright (c) 2016 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
