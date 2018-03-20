@@ -29,7 +29,7 @@ namespace JASS
 			/*
 				Check that we'll fit
 			*/
-			if ((destination + 2) > end_of_destination)
+			if (destination + 2 > end_of_destination)
 				return 0;
 
 			if (source_integers == 1 || *source >= 16 || *(source + 1) >= 16)
@@ -37,7 +37,7 @@ namespace JASS
 				/*
 					Check for integer too large
 				*/
-				if (*source >= 255)
+				if (*source > 255)
 					return 0;
 
 				/*
@@ -53,14 +53,14 @@ namespace JASS
 				/*
 					Check for integer too large
 				*/
-				if (*source >= 255 || *(source + 1) > 255)
+				if (*source > 255 || *(source + 1) > 255)
 					return 0;
 
 				/*
 					Pack 2 integers into the byte
 				*/
-				*destination++ = 1;
-				*destination++ = (*source << 4) | (*(source + 1) << 4);
+				*destination++ = 0;
+				*destination++ = (*source << 4) | *(source + 1);
 				source += 2;
 				source_integers -= 2;
 				}
@@ -75,15 +75,13 @@ namespace JASS
 	void compress_integer_nybble_8::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
 		{
 		uint32_t *into = (uint32_t *)decoded;
-		uint32_t data;
 		const uint8_t *source = (uint8_t *)source_as_void;
 		const uint8_t *end_of_source = source + source_length;
 
 		while (source < end_of_source)
 			{
-			uint32_t width = *source;
-			source++;
-			data = *((uint64_t *)source);
+			uint8_t width = *source++;
+			uint8_t data = *source++;
 			switch (width)
 				{
 				case 0:
@@ -96,9 +94,7 @@ namespace JASS
 					*into = data;
 					into++;
 					break;
-
 				}
-			source += sizeof(uint64_t);
 			}
 		}
 
@@ -109,7 +105,7 @@ namespace JASS
 	void compress_integer_nybble_8::unittest_one(const std::vector<uint32_t> &sequence)
 		{
 		compress_integer_nybble_8 compressor;
-		std::vector<uint32_t>compressed(sequence.size() * 2);
+		std::vector<uint32_t>compressed(sequence.size() * 5);
 		std::vector<uint32_t>decompressed(sequence.size() + 256);
 
 		auto size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &sequence[0], sequence.size());
@@ -175,11 +171,14 @@ namespace JASS
 			every_case.push_back(0xFF);
 		unittest_one(every_case);
 
+		/*
+			all the compressable integers (0..255)
+		*/
+		every_case.clear();
+		for (instance = 0; instance < 256; instance++)
+			every_case.push_back(instance);
+		unittest_one(every_case);
+
 		puts("compress_integer_nybble_8::PASSED");
 		}
 	}
-
-
-
-
-
