@@ -12,6 +12,7 @@
 #include <iostream>
 
 #include "maths.h"
+#include "compress_integer_prn_512.h"
 #include "compress_integer_bitpack_256.h"
 #include "compress_integer_bitpack_128.h"
 #include "compress_integer_bitpack_64.h"
@@ -194,6 +195,9 @@ uint32_t test_set_size = sizeof(test_set) / sizeof(*test_set);
 
 int main(void)
 	{
+	JASS::compress_integer_prn_512 scheme_512;
+	scheme_512.unittest();
+	
 	JASS::compress_integer_bitpack_256 scheme_256;
 	scheme_256.unittest();
 

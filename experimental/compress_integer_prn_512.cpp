@@ -21,7 +21,7 @@
 #include "compress_integer_nybble_8.h"
 
 #define WORD_WIDTH 32
-#define WORDS (256 / WORD_WIDTH)
+#define WORDS (512 / WORD_WIDTH)
 
 namespace JASS
 	{
@@ -112,11 +112,19 @@ namespace JASS
 		COMPRESS_INTEGER_PRN_512::ENCODE()
 		----------------------------------
 	*/
-	void compress_integer_prn_512::encode(uint32_t *array, size_t elements)
+	size_t compress_integer_prn_512::encode(void *encoded, size_t encoded_buffer_length, const integer *array, size_t elements)
 		{
 		uint8_t encodings[33];
-		uint32_t *current;
+		const uint32_t *current;
 		uint32_t integers_to_encode;
+		uint32_t *destination = (uint32_t *)encoded;
+		uint32_t *end_of_destination = (uint32_t *)((uint8_t *)encoded + encoded_buffer_length);
+
+		/*
+			Check for overflow
+		*/
+		if (destination + WORDS + 1 + 1 > end_of_destination)
+			return 0;
 
 		/*
 			Get the initial guess
@@ -131,29 +139,38 @@ namespace JASS
 			if (test_encoding(encodings, array, elements, integers_to_encode))
 				break;
 
+		std::cout << "actual:" << integers_to_encode << "\n";
+
+		/*
+			Get the selector
+		*/
+		*destination++ = compute_selector(encodings);
+
 		/*
 			Encode the answer
 		*/
-		for (size_t word = 0; word < WORDS; word++)
+		memset(destination, 0, WORDS * 4);
+		uint32_t position_in_word = 0;
+		uint32_t cumulative_shift = 0;
+		for (current = array; current < array + integers_to_encode * WORDS; current += WORDS)
 			{
-			for (current = array + word * integers_to_encode; current < array + (word + 1) * integers_to_encode; current++)
+			uint32_t width = encodings[position_in_word];
+			position_in_word++;
+			for (size_t word = 0; word < WORDS; word++)
 				{
-				if (current < array + elements)
-					printf("%08X ", *current);
-				else
-					printf("     (0) ");
+				uint32_t value = (current + word) < array + elements ? *(current + word) : 0;
+				printf("%08X ", value << cumulative_shift);
+				destination[word] |= value << cumulative_shift;
 				}
-
-			printf("\n");
+			cumulative_shift += width;
+			printf(" [%02d]\n", width);
 			}
+		destination += WORDS;
 
-		printf("=\n");
-
-		for (current = array; current < array + integers_to_encode; current++)
-			printf("%08u ", encodings[current - array]);
-		printf("\n");
-
-		compute_selector(encodings);
+		/*
+			return the number of bytes that were used to encode the integer sequence.
+		*/
+		return (uint8_t *)destination - (uint8_t *)encoded;
 		}
 
 	alignas(64) static uint32_t static_mask_32[] = {0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff};			///< AND mask for 32-bit integers
@@ -196,7 +213,7 @@ namespace JASS
 	void compress_integer_prn_512::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
 		{
 		__m256i mask;
-		const uint8_t *source;
+		const uint8_t *source = (const uint8_t *)source_as_void;
 		__m256i *into = (__m256i *)decoded;
 
 		uint32_t selector = *(uint32_t *)source;
@@ -212,9 +229,10 @@ namespace JASS
 			switch (shift)
 				{
 				case 0:
+					if (source > ((const uint8_t *)source_as_void) + source_length)
+						return;
+
 					selector = *(uint32_t *)source;
-					if (selector == 0)
-						return;							// at present we terminate on a 0 selector (fix this).
 					source += 4;
 					payload1 = _mm256_loadu_si256((__m256i *)source);
 					source += 32;
@@ -328,16 +346,21 @@ namespace JASS
 			selector >>= shift;
 			}
 		}
+
+	void compress_integer_prn_512::unittest(void)
+		{
+		compress_integer_prn_512 compressor;
+		uint8_t destination[1024 * 1024];
+		static const uint32_t test_set[] = {0xFFFF, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 0xFFFF, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF,};
+		size_t test_set_size = sizeof(test_set) / sizeof(*test_set);
+
+		std::vector<uint32_t> decoded;
+		decoded.resize(test_set_size);
+
+		size_t bytes = compressor.encode(destination, sizeof(destination), test_set, test_set_size);
+		compressor.decode(&decoded[0], test_set_size, destination, bytes);
+
+		for (size_t x = 0; x < test_set_size; x++)
+			std::cout << decoded[x] << " ";
+		}
 	}
-
-
-
-
-
-
-
-
-
-
-
-
