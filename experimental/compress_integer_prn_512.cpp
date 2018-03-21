@@ -132,15 +132,17 @@ namespace JASS
 				break;
 
 		/*
-			Dump the answer
+			Encode the answer
 		*/
 		for (size_t word = 0; word < WORDS; word++)
 			{
 			for (current = array + word * integers_to_encode; current < array + (word + 1) * integers_to_encode; current++)
+				{
 				if (current < array + elements)
 					printf("%08X ", *current);
 				else
 					printf("     (0) ");
+				}
 
 			printf("\n");
 			}
