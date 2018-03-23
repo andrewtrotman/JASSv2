@@ -148,9 +148,9 @@ printf("Selector:%d (%d x %d-bits)\n", (int)(base + selector), (int)integers_to_
 #endif
 
 	uint64_t word = 0;
-	for (int term = integers_to_encode - 1; term >= 0; term--)
+	for (size_t term = integers_to_encode; term > 0; term--)
 		{
-		size_t value = term >= source_integers ? 0 : source[term];		// Make sure we don't overflow the input buffer
+		size_t value = term > source_integers ? 0 : source[term - 1];		// Make sure we don't overflow the input buffer
 		word = word << bits_per_integer | value;
 		}
 
