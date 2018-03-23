@@ -6,6 +6,7 @@
 */
 #include <stdint.h>
 #include <strings.h>
+#include <string.h>
 #include <immintrin.h>
 
 #include <vector>

@@ -13,6 +13,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <string.h>
 #include "compress_integer.h"
 
 namespace JASS
