@@ -346,7 +346,7 @@ namespace JASS
 		*/
 		every_case.clear();
 		for (instance = 0; instance < 2 * 8; instance++)
-			every_case.push_back(0x3FF);
+			every_case.push_back(0xFFFF);
 		unittest_one(every_case);
 
 		/*
@@ -354,7 +354,7 @@ namespace JASS
 		*/
 		every_case.clear();
 		for (instance = 0; instance < 1 * 8; instance++)
-			every_case.push_back(0x3FF);
+			every_case.push_back(0xFFFFFFFF);
 		unittest_one(every_case);
 
 		puts("compress_integer_bitpack_64::PASSED");

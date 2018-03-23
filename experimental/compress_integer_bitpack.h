@@ -13,6 +13,8 @@
 #pragma once
 
 #include <stdint.h>
+#include <string.h>
+
 #include "maths.h"
 #include "compress_integer.h"
 
@@ -82,7 +84,7 @@ namespace JASS
 				@param source_integers [in] The length (in integers) of the source buffer.
 				@return The number of bytes used to encode the integer sequence, or 0 on error (i.e. overflow).
 			*/
-			template <size_t WIDTH_IN_BITS>
+			template <int32_t WIDTH_IN_BITS>
 			size_t encode(void *encoded, size_t encoded_buffer_length, const integer *array, size_t source_integers, const uint32_t *bits_to_use = bits_to_use_complete, const uint32_t *selector_to_use = selector_to_use_complete)
 				{
 				uint8_t *destination = (uint8_t *)encoded;
@@ -104,7 +106,7 @@ namespace JASS
 					for (const uint32_t *current = array; current < end; current++)
 						{
 						widest = maths::maximum(widest, bits_needed(*current));
-						if (widest * (current - array) > WIDTH_IN_BITS)
+						if (widest * (current - array) >= WIDTH_IN_BITS)
 							break;
 						}
 
@@ -118,7 +120,8 @@ namespace JASS
 						Now encode the integers
 					*/
 					uint32_t *buffer = (uint32_t *)(destination + 1);
-					uint32_t current_word = 0;
+					::memset(buffer, 0, WIDTH_IN_BITS / 8);							// zero the word before we write into it.
+					int32_t current_word = 0;
 					uint32_t placement = 0;
 					for (const uint32_t *current = array; current < end; current++)
 						{
@@ -136,7 +139,7 @@ namespace JASS
 					*/
 					*destination = selector_to_use[widest];
 					destination += (WIDTH_IN_BITS / 8) + 1;
-					if (end - array > source_integers)
+					if ((size_t)(end - array) >= source_integers)
 						break;
 					source_integers -= end - array;
 					array += end - array;

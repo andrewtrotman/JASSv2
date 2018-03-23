@@ -58,6 +58,7 @@ namespace JASS
 	*/
 	uint32_t compress_integer_prn_512::estimate(const uint32_t *array, size_t elements)
 		{
+#ifdef NEVER
 		const uint32_t *current;
 		uint32_t width = 0;
 
@@ -71,7 +72,10 @@ namespace JASS
 				break;
 			}
 		return current - array;
+#endif
+		return 8;
 		}
+
 
 	/*
 		COMPRESS_INTEGER_PRN_512::TEST_ENCODING()
@@ -79,33 +83,51 @@ namespace JASS
 	*/
 	bool compress_integer_prn_512::test_encoding(uint8_t *encodings, const uint32_t *array, size_t elements_in_array, size_t elements)
 		{
+		printf("TRIAL:%zu\n", elements);
 		uint32_t width = 0;
 		const uint32_t *current;
+		uint32_t total_width = 0;
 
-		for (current = array; current < array + elements; current++)
+		for (uint32_t slot = 0; slot < elements; slot++)
 			{
-			uint32_t max_width = 0;
+			if (slot * elements > elements_in_array)
+				{
+				/*
+					at end of input
+				*/
+				}
+			uint32_t slot_width = 0;
 			for (uint32_t word = 0; word < WORDS; word++)
 				{
-				uint32_t current_width;
-				if ((current + word * elements) >= array + elements_in_array)
-					current_width = 0;
+				uint32_t value;
+				if (word + slot * elements >= elements_in_array)
+					value = 0;
 				else
-					{
-					current_width = JASS::maths::ceiling_log2(*(current + word * elements));
-					current_width = JASS::maths::maximum(current_width, static_cast<decltype(current_width)>(1));
-					}
-				max_width = JASS::maths::maximum(max_width, current_width);
+					value = array[word + slot * elements];
+
+				uint32_t current_width = JASS::maths::ceiling_log2(value);
+				current_width = JASS::maths::maximum(current_width, static_cast<decltype(current_width)>(1));
+
+				slot_width = JASS::maths::maximum(slot_width, current_width);
 				}
-			width += max_width;
-			if (width > WORD_WIDTH)
-				{
-				encodings[current - array] = 0;
+			total_width += slot_width;
+			if (total_width > WORD_WIDTH)
 				return false;
-				}
-			encodings[current - array] = max_width;
+			encodings[slot] = slot_width;
 			}
-		encodings[current - array] = 0;
+		/*
+			Pad out the final slot
+		*/
+		encodings[elements - 1] += WORD_WIDTH - total_width;
+		encodings[elements] = 0;
+
+
+
+std::cout << "FITS:";
+for (size_t x = 0; encodings[x] != 0; x++)
+	std::cout << (int)encodings[x] << " ";
+std::cout << "\n";
+
 		return true;
 		}
 
@@ -124,7 +146,7 @@ namespace JASS
 		while (1)
 			{
 			/*
-				Check for overflow
+				Check for overflow of the output buffer
 			*/
 			if (destination + WORDS + 1 + 1 > end_of_destination)
 				return 0;
@@ -133,16 +155,18 @@ namespace JASS
 				Get the initial guess
 			*/
 			uint32_t initial_guess = estimate(array, elements);
-
+std::cout << "Initial:" << initial_guess << "\n";
 			/*
-				Linear search for the best answer
+				Linear search for the best packing
 			*/
-			for (integers_to_encode = initial_guess; integers_to_encode > 1; integers_to_encode--)
+			for (integers_to_encode = initial_guess; integers_to_encode >= 1; integers_to_encode--)
 				if (test_encoding(encodings, array, elements, integers_to_encode))
 					break;
 
+std::cout << "Actual:" << integers_to_encode << "\n";
+
 			/*
-				Get the selector
+				Compute the selector
 			*/
 			*destination++ = compute_selector(encodings);
 
@@ -237,7 +261,6 @@ namespace JASS
 			switch (shift)
 				{
 				case 0:
-					std::cout << "\n\n";
 					if (source >= ((const uint8_t *)source_as_void) + source_length)
 						return;
 
@@ -356,62 +379,121 @@ namespace JASS
 			}
 		}
 
-	void compress_integer_prn_512::unittest(void)
+	/*
+		COMPRESS_INTEGER_PRN_512::UNITTEST_ONE()
+		----------------------------------------
+	*/
+	void compress_integer_prn_512::unittest_one(const std::vector<uint32_t> &sequence)
 		{
 		compress_integer_prn_512 compressor;
-		uint8_t destination[1024 * 1024];
-		static const uint32_t test_set[] =
-			{
-			0xFFFF, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF,
-			0xF, 0xFF, 0xD, 0xC, 0xB, 0xA, 0x9, 0x8, 0x7, 0x6, 0x5, 0x4, 0x3, 0x2, 0x1, 0x0,
-			0x0, 0x1, 0xF, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF,
-			0xF, 0xE, 0xD, 0xC, 0xB, 0xA, 0x9, 0x8, 0x7, 0x6, 0x5, 0x4, 0x3, 0x2, 0x1, 0x0,
-			0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF,
+		std::vector<uint32_t>compressed(sequence.size() * 5 + 1024);
+		std::vector<uint32_t>decompressed(sequence.size() + 256);
 
-			0xFFFF, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF,
-			0xF, 0xE, 0xD, 0xC, 0xB, 0xA, 0x9, 0x8, 0x7, 0x6, 0x5, 0x4, 0x3, 0x2, 0x1, 0x0,
-			0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF,
-			0xF, 0xE, 0xD, 0xC, 0xB, 0xA, 0x9, 0x8, 0x7, 0x6, 0x5, 0x4, 0x3, 0x2, 0x1, 0x0,
+		auto size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &sequence[0], sequence.size());
+		compressor.decode(&decompressed[0], sequence.size(), &compressed[0], size_once_compressed);
+		decompressed.resize(sequence.size());
+		JASS_assert(decompressed == sequence);
+		}
+
+	/*
+		COMPRESS_INTEGER_PRN_512::UNITTEST()
+		------------------------------------
+	*/
+	void compress_integer_prn_512::unittest(void)
+		{
+		std::vector<uint32_t> every_case;
+		size_t instance;
+
+#ifndef NEVER
+		/*
+			1-bit integers
+		*/
+		every_case.clear();
+		for (instance = 0; instance < 32 * 8; instance++)
+			every_case.push_back(0x01);
+		unittest_one(every_case);
+
+		/*
+			2-bit integers
+		*/
+		every_case.clear();
+		for (instance = 0; instance < 16 * 8; instance++)
+			every_case.push_back(0x03);
+		unittest_one(every_case);
+
+		/*
+			3-bit integers
+		*/
+		every_case.clear();
+		for (instance = 0; instance < 10 * 8; instance++)
+			every_case.push_back(0x07);
+		unittest_one(every_case);
+
+		/*
+			4-bit integers
+		*/
+		every_case.clear();
+		for (instance = 0; instance < 8 * 8; instance++)
+			every_case.push_back(0x0F);
+		unittest_one(every_case);
+
+		/*
+			5-bit integers
+		*/
+		every_case.clear();
+		for (instance = 0; instance < 6 * 8; instance++)
+			every_case.push_back(0x1F);
+		unittest_one(every_case);
+
+		/*
+			6-bit integers
+		*/
+		every_case.clear();
+		for (instance = 0; instance < 5 * 8; instance++)
+			every_case.push_back(0x3F);
+		unittest_one(every_case);
+
+		/*
+			8-bit integers
+		*/
+		every_case.clear();
+		for (instance = 0; instance < 4 * 8; instance++)
+			every_case.push_back(0xFF);
+		unittest_one(every_case);
+
+		/*
+			10-bit integers
+		*/
+		every_case.clear();
+		for (instance = 0; instance < 3 * 8; instance++)
+			every_case.push_back(0x3FF);
+		unittest_one(every_case);
+
+		/*
+			16-bit integers
+		*/
+		every_case.clear();
+		for (instance = 0; instance < 2 * 8; instance++)
+			every_case.push_back(0xFFFF);
+		unittest_one(every_case);
 
 
-			0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1,
-			0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1,
-			0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1,
-			0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1,
-			0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1,
-			0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1,
-			};
-//		static const uint32_t test_set[] =
-//			{
-//			0xFFFF, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xFFFF,
-//			0xFFFF, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xFFFF,
-//			0xFFFF, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xFFFF,
-//			0xFFFF, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xFFFF,
-//
-//			0xFFFF, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xFFFF,
-//			0xFFFF, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xFFFF,
-//			0xFFFF, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xFFFF,
-//			0xFFFF, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xFFFF,
-//
-//			0xFFFF, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xFFFF,
-//			0xFFFF, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xFFFF,
-//			0xFFFF, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xFFFF,
-//			};
-		size_t test_set_size = sizeof(test_set) / sizeof(*test_set);
+#endif
+		/*
+			32-bit integers
+		*/
+//		every_case.clear();
+//		for (instance = 0; instance < 3 /* * 8*/; instance++)
+//			every_case.push_back(0x3FF);
+//		unittest_one(every_case);
 
-		std::vector<uint32_t> decoded;
-		decoded.resize(test_set_size + 1024);
+		every_case.clear();
+		every_case.push_back(0x3F1);
+		every_case.push_back(0x3F2);
+		every_case.push_back(0x3F3);
+		unittest_one(every_case);
 
-		size_t bytes = compressor.encode(destination, sizeof(destination), test_set, test_set_size);
-		compressor.decode(&decoded[0], test_set_size, destination, bytes);
 
-		for (size_t x = 0; x < test_set_size; x++)
-			{
-			std::cout << "[" << test_set[x] << "," << decoded[x] << (test_set[x] == decoded[x] ? "]" : "*]");
-			if (test_set[x] != decoded[x])
-				exit(1);
-			}
-
-		std::cout << "\n";
+		puts("compress_integer_prn_512::PASSED");
 		}
 	}
