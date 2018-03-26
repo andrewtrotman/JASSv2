@@ -37,12 +37,28 @@ set(JASSlib_FILES
 	compress_integer.h
 	compress_integer_all.h
 	compress_integer_all.cpp
+	compress_integer_bitpack.h
+	compress_integer_bitpack.cpp
+	compress_integer_bitpack_32_reduced.h
+	compress_integer_bitpack_32_reduced.cpp
+	compress_integer_bitpack_64.h
+	compress_integer_bitpack_64.cpp
+	compress_integer_bitpack_128.h
+	compress_integer_bitpack_128.cpp
+	compress_integer_bitpack_256.h
+	compress_integer_bitpack_256.cpp
 	compress_integer_carry_8b.h
 	compress_integer_carry_8b.cpp
 	compress_integer_carryover_12.h
 	compress_integer_carryover_12.cpp
+	compress_integer_lyck_16.h
+	compress_integer_lyck_16.cpp
 	compress_integer_none.h
 	compress_integer_none.cpp
+	compress_integer_nybble_8.h
+	compress_integer_nybble_8.cpp
+	compress_integer_prn_512.h
+	compress_integer_prn_512.cpp
 	compress_integer_qmx_improved.h
 	compress_integer_qmx_improved.cpp
 	compress_integer_qmx_jass_v1.h

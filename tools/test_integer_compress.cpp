@@ -237,7 +237,11 @@ int main(int argc, const char *argv[])
 			std::cout << "Fail on list " << term_count << "\n";
 			for (uint32_t pos = 0; pos < length; pos++)
 				if (postings_list[pos] != decompressed_postings_list[pos])
-					std::cout << "Fail at pos:" << pos << "\n";
+					std::cout << "Fail at pos:" << pos << "[" <<  decompressed_postings_list[pos] << "!=" << postings_list[pos] << "]\n";
+
+			for (size_t pos = 0; pos < 400; pos++)
+				std::cout << postings_list[pos] << ",";
+
 			exit(0);
 			}
 			

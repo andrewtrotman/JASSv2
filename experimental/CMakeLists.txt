@@ -28,22 +28,6 @@ target_link_libraries(examine_index
 
 set(PRN_FILES
 	prm.cpp
-	compress_integer_bitpack.h
-	compress_integer_bitpack.cpp
-	compress_integer_nybble_8.h
-	compress_integer_nybble_8.cpp
-	compress_integer_lyck_16.h
-	compress_integer_lyck_16.cpp
-	compress_integer_bitpack_32_reduced.h
-	compress_integer_bitpack_32_reduced.cpp
-	compress_integer_bitpack_64.h
-	compress_integer_bitpack_64.cpp
-	compress_integer_bitpack_128.h
-	compress_integer_bitpack_128.cpp
-	compress_integer_bitpack_256.h
-	compress_integer_bitpack_256.cpp
-	compress_integer_prn_512.h
-	compress_integer_prn_512.cpp
 	)
 
 add_executable(prm

@@ -58,6 +58,7 @@ namespace JASS
 	*/
 	size_t compress_integer_prn_512::encode(void *encoded, size_t encoded_buffer_length, const integer *array, size_t elements)
 		{
+uint32_t total_encoded = 0;
 		uint8_t encodings[33] = {0};
 		uint32_t *destination = (uint32_t *)encoded;
 		uint32_t *end_of_destination = (uint32_t *)((uint8_t *)encoded + encoded_buffer_length);
@@ -96,10 +97,19 @@ namespace JASS
 					max_width = maths::maximum(max_width, width);
 					}
 
-				if (max_width > remaining || overflow || (slice + 1) * WORDS >= elements)
+				if (max_width > remaining)
 					{
 					/*
 						We can't fit this column so pad the previous width to the full 32-bits then mark this as end of list
+					*/
+					encodings[slice - 1] += remaining;
+					encodings[slice] = 0;
+					break;
+					}
+				else if (max_width == remaining || overflow || (slice + 1) * WORDS >= elements)
+					{
+					/*
+						We're past the end of the input data to pad the current slice and mark this as the end of the list.
 					*/
 					encodings[slice] = remaining;
 					encodings[slice + 1] = 0;
@@ -121,7 +131,7 @@ namespace JASS
 			uint32_t position_in_word = 0;
 			uint32_t cumulative_shift = 0;
 			uint32_t integers_encoded = 0;
-			printf("\n");
+//			printf("\n");
 			for (uint32_t slice = 0; encodings[slice] != 0; slice++)
 				{
 				uint32_t width = encodings[position_in_word];
@@ -139,10 +149,10 @@ namespace JASS
 						value = 0;
 
 					destination[word] |= value << cumulative_shift;
-					printf("%08X ", value << cumulative_shift);
+//					printf("%08X ", value << cumulative_shift);
 					}
 				cumulative_shift += width;
-				printf(" [%02d]\n", width);
+//				printf(" [%02d]\n", width);
 
 				}
 			destination += WORDS;
@@ -150,6 +160,7 @@ namespace JASS
 			elements -= integers_encoded;
 			if (elements == 0)
 				break;
+total_encoded += integers_encoded;
 			}
 
 		/*
@@ -358,14 +369,13 @@ namespace JASS
 		std::vector<uint32_t> every_case;
 		size_t instance;
 
-#ifndef NEVER
 		/*
 			1-bit integers
 		*/
-//		every_case.clear();
-//		for (instance = 0; instance < 32 * 8; instance++)
-//			every_case.push_back(0x01);
-//		unittest_one(every_case);
+		every_case.clear();
+		for (instance = 0; instance < 32 * 8; instance++)
+			every_case.push_back(0x01);
+		unittest_one(every_case);
 
 		/*
 			2-bit integers
@@ -431,15 +441,13 @@ namespace JASS
 			every_case.push_back(0xFFFF);
 		unittest_one(every_case);
 
-
-#endif
 		/*
 			32-bit integers
 		*/
-//		every_case.clear();
-//		for (instance = 0; instance < 3 /* * 8*/; instance++)
-//			every_case.push_back(0x3FF);
-//		unittest_one(every_case);
+		every_case.clear();
+		for (instance = 0; instance < 3 /* * 8*/; instance++)
+			every_case.push_back(0x3FF);
+		unittest_one(every_case);
 
 		every_case.clear();
 		every_case.push_back(0x3F1);
@@ -447,6 +455,31 @@ namespace JASS
 		every_case.push_back(0x3F3);
 		unittest_one(every_case);
 
+		std::vector<uint32_t> broken_sequence = {
+			6,10,2,1,2,1,1,1,1,2,2,1,1,14,1,1,		// 4 bits
+			4,1,2,1,2,5,3,4,3,1,3,4,2,3,1,1,			// 3 bits
+			6,13,5,1,2,8,4,2,5,1,1,1,2,1,1,2,		// 4 bits
+			3,1,2,1,1,2,2,1,3,1,1,1,1,1,1,1,			// 2 bits
+			1,2,1,1,1,1,1,1,2,1,1,1,1,1,2,3,			// 2 bits
+			1,7,1,4,5,3,2,1,10,1,8,1,2,5,1,24,		// 5 bits
+			1,1,1,1,1,1,1,5,5,2,2,1,3,4,5,5,			// 3 bits
+			2,4,2,2,1,1,1,2,2,1,2,1,2,1,3,3,			// 3 bits
+			3,7,3,2,1,1,4,5,4,1,4,8,6,1,2,1,			// 4 bits
+			1,1,1,1,1,3,1,2,1,1,1,1,1,1,1,2,			// 2 bits
+
+			1,3,2,2,3,1,2,1,1,2,1,1,1,1,1,2,			// 2 bits
+			9,1,1,4,5,6,1,4,2,5,4,6,7,1,1,2,			// 4 bits
+			1,1,9,2,2,1,2,1,1,1,1,1,1,1,1,1,			// 4 bits
+			1,1,1,1,1,1,1,6,4,1,5,7,1,1,1,1,			// 3 bits
+			2,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,			// 2 bits
+			1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,1,			// 2 bits
+			2,1,1,1,2,2,1,4,1,1,4,1,1,1,1,1,			// 3 bits
+			1,1,1,1,1,2,5,3,1,3,1,1,4,1,2,1,			// 3 bits
+			3,1,3,1,1,1,1,1,1,1,1,1,1,1,1,1,			// 2 bits
+			1,1,1,1,1,2,2,1,1,1,8,3,1,2,56,2,		// 6 bits
+			12,1,6,70,68,25,13,44,36,22,4,95,19,5,39,8, // 7 bits
+			25,14,9,8,27,6,1,1,8,11,8,3,4,1,2,8,3,23,2,16,8,2,28,26,6,11,9,16,1,1,7,7,45,2,33,39,20,14,2,1,8,26,1,10,12,3,16,3,25,9,6,9,6,3,41,17,15,11,33,8,1,1,1,1};
+		unittest_one(broken_sequence);
 
 		puts("compress_integer_prn_512::PASSED");
 		}
