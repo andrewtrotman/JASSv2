@@ -58,7 +58,6 @@ namespace JASS
 	*/
 	size_t compress_integer_prn_512::encode(void *encoded, size_t encoded_buffer_length, const integer *array, size_t elements)
 		{
-uint32_t total_encoded = 0;
 		uint8_t encodings[33] = {0};
 		uint32_t *destination = (uint32_t *)encoded;
 		uint32_t *end_of_destination = (uint32_t *)((uint8_t *)encoded + encoded_buffer_length);
@@ -91,9 +90,6 @@ uint32_t total_encoded = 0;
 						overflow = true;
 						value = 1;
 						}
-
-//if (value == 89484)
-//	int x = 0;
 
 					uint32_t width = maths::ceiling_log2(value);
 					width = maths::maximum(width, static_cast<decltype(width)>(1));					// coz ffs(0) != 1.
@@ -163,7 +159,6 @@ uint32_t total_encoded = 0;
 			elements -= integers_encoded;
 			if (elements == 0)
 				break;
-total_encoded += integers_encoded;
 			}
 
 		/*

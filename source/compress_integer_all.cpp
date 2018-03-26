@@ -27,7 +27,6 @@
 #include "compress_integer_simple_16_packed.h"
 #include "compress_integer_simple_8b_packed.h"
 #include "compress_integer_bitpack_32_reduced.h"
-#include "compress_integer_bitpack_32_reduced.cpp"
 
 namespace JASS
 	{

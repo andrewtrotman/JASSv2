@@ -49,10 +49,14 @@
 #include "compress_general_zlib.h"
 #include "instream_document_trec.h"
 #include "index_manager_sequential.h"
+#include "compress_integer_prn_512.h"
 #include "compress_integer_carry_8b.h"
 #include "compress_integer_simple_9.h"
 #include "compress_integer_simple_8b.h"
 #include "compress_integer_simple_16.h"
+#include "compress_integer_bitpack_64.h"
+#include "compress_integer_bitpack_128.h"
+#include "compress_integer_bitpack_256.h"
 #include "compress_integer_relative_10.h"
 #include "compress_integer_qmx_jass_v1.h"
 #include "compress_integer_stream_vbyte.h"
@@ -63,6 +67,7 @@
 #include "compress_integer_simple_9_packed.h"
 #include "compress_integer_simple_8b_packed.h"
 #include "compress_integer_simple_16_packed.h"
+#include "compress_integer_bitpack_32_reduced.h"
 
 /*
 	MAIN()
@@ -244,6 +249,21 @@ int main(void)
 
 		puts("compress_integer_carry_8b");
 		JASS::compress_integer_carry_8b::unittest();
+
+		puts("compress_integer_bitpack_32_reduced");
+		JASS::compress_integer_bitpack_32_reduced::unittest();
+
+		puts("compress_integer_bitpack_64");
+		JASS::compress_integer_bitpack_64::unittest();
+
+		puts("compress_integer_bitpack_128");
+		JASS::compress_integer_bitpack_128::unittest();
+
+		puts("compress_integer_bitpack_256");
+		JASS::compress_integer_bitpack_256::unittest();
+
+		puts("compress_integer_prn_512");
+		JASS::compress_integer_prn_512::unittest();
 
 		puts("accumulator_2d");
 		JASS::accumulator_2d<uint32_t, 1>::unittest();
