@@ -4,9 +4,9 @@
 	Copyright (c) 2018 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
+#include <string.h>
 #include <stdint.h>
 #include <strings.h>
-#include <string.h>
 #include <immintrin.h>
 
 #include <vector>
@@ -14,12 +14,12 @@
 
 #include "maths.h"
 #include "compress_integer_prn_512.h"
-#include "compress_integer_bitpack_256.h"
-#include "compress_integer_bitpack_128.h"
-#include "compress_integer_bitpack_64.h"
-#include "compress_integer_bitpack_32_reduced.h"
 #include "compress_integer_lyck_16.h"
 #include "compress_integer_nybble_8.h"
+#include "compress_integer_bitpack_64.h"
+#include "compress_integer_bitpack_256.h"
+#include "compress_integer_bitpack_128.h"
+#include "compress_integer_bitpack_32_reduced.h"
 
 #define WORD_WIDTH 32
 #define WORDS (512 / WORD_WIDTH)
@@ -53,93 +53,12 @@ namespace JASS
 		}
 
 	/*
-		COMPRESS_INTEGER_PRN_512::ESTIMATE()
-		------------------------------------
-	*/
-	uint32_t compress_integer_prn_512::estimate(const uint32_t *array, size_t elements)
-		{
-#ifdef NEVER
-		const uint32_t *current;
-		uint32_t width = 0;
-
-		for (current = array; current < array + elements; current++)
-			{
-			uint32_t current_width = JASS::maths::ceiling_log2(*current);
-			current_width = JASS::maths::maximum(current_width, static_cast<decltype(current_width)>(1));
-
-			width += current_width;
-			if (width > WORD_WIDTH)
-				break;
-			}
-		return current - array;
-#endif
-		return 8;
-		}
-
-
-	/*
-		COMPRESS_INTEGER_PRN_512::TEST_ENCODING()
-		-----------------------------------------
-	*/
-	bool compress_integer_prn_512::test_encoding(uint8_t *encodings, const uint32_t *array, size_t elements_in_array, size_t elements)
-		{
-		printf("TRIAL:%zu\n", elements);
-		uint32_t width = 0;
-		const uint32_t *current;
-		uint32_t total_width = 0;
-
-		for (uint32_t slot = 0; slot < elements; slot++)
-			{
-			if (slot * elements > elements_in_array)
-				{
-				/*
-					at end of input
-				*/
-				}
-			uint32_t slot_width = 0;
-			for (uint32_t word = 0; word < WORDS; word++)
-				{
-				uint32_t value;
-				if (word + slot * elements >= elements_in_array)
-					value = 0;
-				else
-					value = array[word + slot * elements];
-
-				uint32_t current_width = JASS::maths::ceiling_log2(value);
-				current_width = JASS::maths::maximum(current_width, static_cast<decltype(current_width)>(1));
-
-				slot_width = JASS::maths::maximum(slot_width, current_width);
-				}
-			total_width += slot_width;
-			if (total_width > WORD_WIDTH)
-				return false;
-			encodings[slot] = slot_width;
-			}
-		/*
-			Pad out the final slot
-		*/
-		encodings[elements - 1] += WORD_WIDTH - total_width;
-		encodings[elements] = 0;
-
-
-
-std::cout << "FITS:";
-for (size_t x = 0; encodings[x] != 0; x++)
-	std::cout << (int)encodings[x] << " ";
-std::cout << "\n";
-
-		return true;
-		}
-
-	/*
 		COMPRESS_INTEGER_PRN_512::ENCODE()
 		----------------------------------
 	*/
 	size_t compress_integer_prn_512::encode(void *encoded, size_t encoded_buffer_length, const integer *array, size_t elements)
 		{
-		uint8_t encodings[33];
-		const uint32_t *current;
-		uint32_t integers_to_encode = 0;
+		uint8_t encodings[33] = {0};
 		uint32_t *destination = (uint32_t *)encoded;
 		uint32_t *end_of_destination = (uint32_t *)((uint8_t *)encoded + encoded_buffer_length);
 
@@ -152,18 +71,43 @@ std::cout << "\n";
 				return 0;
 
 			/*
-				Get the initial guess
+				Compute the encoding
 			*/
-			uint32_t initial_guess = estimate(array, elements);
-std::cout << "Initial:" << initial_guess << "\n";
-			/*
-				Linear search for the best packing
-			*/
-			for (integers_to_encode = initial_guess; integers_to_encode >= 1; integers_to_encode--)
-				if (test_encoding(encodings, array, elements, integers_to_encode))
-					break;
+			uint32_t remaining = 32;
+			bool overflow = false;
+			for (uint32_t slice = 0; slice < 32; slice++)
+				{
+				uint32_t max_width = 0;
+				for (uint32_t word = 0; word < WORDS; word++)
+					{
+					size_t index = slice * WORDS + word;
+					uint32_t value;
 
-std::cout << "Actual:" << integers_to_encode << "\n";
+					if (index < elements)
+						value = array[index];
+					else
+						{
+						overflow = true;
+						value = 1;
+						}
+
+					uint32_t width = maths::ceiling_log2(value);
+					width = maths::maximum(width, static_cast<decltype(width)>(1));					// coz ffs(0) != 1.
+					max_width = maths::maximum(max_width, width);
+					}
+
+				if (max_width > remaining || overflow || (slice + 1) * WORDS >= elements)
+					{
+					/*
+						We can't fit this column so pad the previous width to the full 32-bits then mark this as end of list
+					*/
+					encodings[slice] = remaining;
+					encodings[slice + 1] = 0;
+					break;
+					}
+				remaining -= max_width;
+				encodings[slice] = max_width;
+				}
 
 			/*
 				Compute the selector
@@ -176,27 +120,36 @@ std::cout << "Actual:" << integers_to_encode << "\n";
 			memset(destination, 0, WORDS * 4);
 			uint32_t position_in_word = 0;
 			uint32_t cumulative_shift = 0;
+			uint32_t integers_encoded = 0;
 			printf("\n");
-			for (current = array; current < array + integers_to_encode * WORDS; current += WORDS)
+			for (uint32_t slice = 0; encodings[slice] != 0; slice++)
 				{
 				uint32_t width = encodings[position_in_word];
 				position_in_word++;
 				for (size_t word = 0; word < WORDS; word++)
 					{
-					uint32_t value = (current + word) < array + elements ? *(current + word) : 0;
-					printf("%08X ", value << cumulative_shift);
+					size_t index = slice * WORDS + word;
+					uint32_t value;
+					if (index < elements)
+						{
+						integers_encoded++;
+						value = array[index];
+						}
+					else
+						value = 0;
+
 					destination[word] |= value << cumulative_shift;
+					printf("%08X ", value << cumulative_shift);
 					}
 				cumulative_shift += width;
 				printf(" [%02d]\n", width);
+
 				}
 			destination += WORDS;
-			array += integers_to_encode * WORDS;
-
-			if (elements <= integers_to_encode * WORDS)
+			array += integers_encoded;
+			elements -= integers_encoded;
+			if (elements == 0)
 				break;
-
-			elements -= integers_to_encode * WORDS;
 			}
 
 		/*
@@ -248,7 +201,7 @@ std::cout << "Actual:" << integers_to_encode << "\n";
 		const uint8_t *source = (const uint8_t *)source_as_void;
 		__m256i *into = (__m256i *)decoded;
 
-		uint32_t selector = *(uint32_t *)source;
+		uint64_t selector = *(uint32_t *)source;
 		source += 4;
 		__m256i payload1 = _mm256_loadu_si256((__m256i *)source);
 		source += 32;
@@ -373,6 +326,7 @@ std::cout << "Actual:" << integers_to_encode << "\n";
 			payload1 = _mm256_srli_epi32(payload1, shift);
 			_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
 			payload2 = _mm256_srli_epi32(payload2, shift);
+
 			into += 2;
 			decoded += 16;
 			selector >>= shift;
@@ -387,7 +341,7 @@ std::cout << "Actual:" << integers_to_encode << "\n";
 		{
 		compress_integer_prn_512 compressor;
 		std::vector<uint32_t>compressed(sequence.size() * 5 + 1024);
-		std::vector<uint32_t>decompressed(sequence.size() + 256);
+		std::vector<uint32_t>decompressed(sequence.size() + 512);
 
 		auto size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &sequence[0], sequence.size());
 		compressor.decode(&decompressed[0], sequence.size(), &compressed[0], size_once_compressed);
@@ -408,10 +362,10 @@ std::cout << "Actual:" << integers_to_encode << "\n";
 		/*
 			1-bit integers
 		*/
-		every_case.clear();
-		for (instance = 0; instance < 32 * 8; instance++)
-			every_case.push_back(0x01);
-		unittest_one(every_case);
+//		every_case.clear();
+//		for (instance = 0; instance < 32 * 8; instance++)
+//			every_case.push_back(0x01);
+//		unittest_one(every_case);
 
 		/*
 			2-bit integers

@@ -14,6 +14,9 @@
 
 #include <stdint.h>
 #include <string.h>
+
+#include "forceinline.h"
+
 #include "compress_integer.h"
 
 namespace JASS
@@ -38,35 +41,13 @@ namespace JASS
 			static uint32_t compute_selector(const uint8_t *encodings);
 
 			/*
-				COMPRESS_INTEGER_PRN_512::ESTIMATE()
-				------------------------------------
-				@brief Estimate the number of integers that can be entropy encoded into 32-bits.
-				@param array [in] The integer array to encode.
-				@param elements [in] The length of array.
-				@return The number of integers that can be entropy encoded into 32-bits
-			*/
-			static uint32_t estimate(const uint32_t *array, size_t elements);
-
-			/*
-				COMPRESS_INTEGER_PRN_512::TEST_ENCODING()
-				-----------------------------------------
-				@brief Check to see whether this number of integers can be successfully encoded, and if so the return (in encodings) the width of the integers
-				@param encodings [out] On success, the resulting widths to use.
-				@param array [in] The integer array to encode.
-				@param elements_in_array [in] The length of array.
-				@param elements [in] The number of integers to try packing pack into a sigle word.
-				@return true on success, false of failure.
-			*/
-			static bool test_encoding(uint8_t *encodings, const uint32_t *array, size_t elements_in_array, size_t elements);
-
-			/*
 				COMPRESS_INTEGER_PRN_512::FIND_FIRST_SET_BIT()
 				----------------------------------------------
 				@brief return the position of the lest significant set bit (using a single machine code instruction)
 				@param [in] value the integer to check.
 				@return The position of the lowest set bit (or 0 if no bits are set)
 			*/
-			static inline uint32_t find_first_set_bit(uint32_t value)
+			static forceinline uint32_t find_first_set_bit(uint32_t value)
 				{
 				#ifdef _MSC_VER
 					unsigned long result;

@@ -13,6 +13,7 @@
 #pragma once
 
 #include <stdint.h>
+
 #include "compress_integer_bitpack.h"
 
 namespace JASS
