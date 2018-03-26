@@ -35,14 +35,14 @@ namespace JASS
 		uint32_t value = 0;
 		int current;
 
-		for (current = 32; current >  0; current--)
-			if (encodings[current] != 0)
+		for (current = 0; current < 32; current++)
+			if (encodings[current] == 0)
 				break;
 
 		/*
 			Compute the permutation number
 		*/
-		for (;current >=  0; current--)
+		for (current--; current >=  0; current--)
 			{
 			size_t number_of_0s = encodings[current];
 			value <<= number_of_0s;
@@ -91,6 +91,9 @@ uint32_t total_encoded = 0;
 						overflow = true;
 						value = 1;
 						}
+
+//if (value == 89484)
+//	int x = 0;
 
 					uint32_t width = maths::ceiling_log2(value);
 					width = maths::maximum(width, static_cast<decltype(width)>(1));					// coz ffs(0) != 1.
