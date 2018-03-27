@@ -15,6 +15,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include <vector>
+
 namespace JASS
 	{
 	/*
@@ -83,5 +85,24 @@ namespace JASS
 				@param source_length [in] The length (in bytes) of the source buffer.
 			*/
 			virtual void decode(integer *decoded, size_t integers_to_decode, const void *source, size_t source_length) = 0;
+
+			/*
+				COMPRESS_INTEGER::UNITTEST_ONE()
+				--------------------------------
+			*/
+			/*!
+				@brief Test one sequence to make sure it encodes and decodes to the same thing.  Assert if not.
+				@param sequence [in] the sequernce to encode.
+			*/
+			static void unittest_one(compress_integer &encoder, const std::vector<uint32_t> &sequence);
+
+			/*
+				COMPRESS_INTEGER::UNITTEST()
+				----------------------------
+			*/
+			/*!
+				@brief Unit test this class
+			*/
+			static void unittest(compress_integer &compressor);
 		} ;
 	}

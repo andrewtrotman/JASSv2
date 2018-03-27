@@ -39,6 +39,7 @@
 #include "accumulator_2d.h"
 #include "instream_memory.h"
 #include "run_export_trec.h"
+#include "hardware_support.h"
 #include "allocator_memory.h"
 #include "serialise_jass_v1.h"
 #include "serialise_integers.h"
@@ -89,6 +90,9 @@ int main(void)
 
 	try
 		{
+		puts("hardware_support");
+		JASS::hardware_support::unittest();
+
 		puts("threads");
 		JASS::thread::unittest();
 		

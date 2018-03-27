@@ -35,6 +35,7 @@ set(JASSlib_FILES
 	compress_general_zstd.h
 	compress_general_zstd.cpp
 	compress_integer.h
+	compress_integer.cpp
 	compress_integer_all.h
 	compress_integer_all.cpp
 	compress_integer_bitpack.h
@@ -93,6 +94,7 @@ set(JASSlib_FILES
 	file.cpp
 	forceinline.h
 	global_new_delete.h
+	hardware_support.h
 	hash_table.h
 	hash_pearson.h
 	hash_pearson.cpp

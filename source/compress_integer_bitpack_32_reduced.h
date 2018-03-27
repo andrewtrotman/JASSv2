@@ -87,15 +87,7 @@ namespace JASS
 			*/
 			virtual void decode(integer *decoded, size_t integers_to_decode, const void *source, size_t source_length);
 
-			/*
-				COMPRESS_INTEGER_BITPACK_32_REDUCED::UNITTEST_ONE()
-				---------------------------------------------------
-			*/
-			/*!
-				@brief Test one sequence to make sure it encodes and decodes to the same thing.  Assert if not.
-				@param sequence [in] the sequernce to encode.
-			*/
-			static void unittest_one(const std::vector<uint32_t> &sequence);
+
 
 			/*
 				COMPRESS_INTEGER_BITPACK_32_REDUCED::UNITTEST()
@@ -104,7 +96,11 @@ namespace JASS
 			/*!
 				@brief Unit test this class
 			*/
-			static void unittest(void);
+			static void unittest(void)
+				{
+				compress_integer::unittest(compress_integer_bitpack_32_reduced());
+				puts("compress_integer_bitpack_32_reduced::PASSED");
+				}
 		};
 	}
 

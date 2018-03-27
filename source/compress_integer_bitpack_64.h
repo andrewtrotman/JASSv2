@@ -20,7 +20,7 @@ namespace JASS
 	{
 	/*
 		CLASS COMPRESS_INTEGER_BITPACK_64
-		-----------------------------------
+		---------------------------------
 	*/
 	/*!
 		@brief Fixed-width pack integers into as few 64-bit words as possible.
@@ -42,7 +42,7 @@ namespace JASS
 		public:
 			/*
 				COMPRESS_INTEGER_BITPACK_64::ENCODE()
-				---------------------------------------
+				-------------------------------------
 			*/
 			/*!
 				@brief Encode a sequence of integers returning the number of bytes used for the encoding, or 0 if the encoded sequence doesn't fit in the buffer.
@@ -59,7 +59,7 @@ namespace JASS
 
 			/*
 				COMPRESS_INTEGER_BITPACK_64::DECODE()
-				---------------------------------------
+				-------------------------------------
 			*/
 			/*!
 				@brief Decode a sequence of integers encoded with this codex.
@@ -71,23 +71,17 @@ namespace JASS
 			virtual void decode(integer *decoded, size_t integers_to_decode, const void *source, size_t source_length);
 
 			/*
-				COMPRESS_INTEGER_BITPACK_64::UNITTEST_ONE()
-				---------------------------------------------
-			*/
-			/*!
-				@brief Test one sequence to make sure it encodes and decodes to the same thing.  Assert if not.
-				@param sequence [in] the sequernce to encode.
-			*/
-			static void unittest_one(const std::vector<uint32_t> &sequence);
-
-			/*
 				COMPRESS_INTEGER_BITPACK_64::UNITTEST()
-				-----------------------------------------
+				---------------------------------------
 			*/
 			/*!
 				@brief Unit test this class
 			*/
-			static void unittest(void);
+			static void unittest(void)
+				{
+				compress_integer::unittest(compress_integer_bitpack_64());
+				puts("compress_integer_bitpack_64::PASSED");
+				}
 		};
 	}
 
