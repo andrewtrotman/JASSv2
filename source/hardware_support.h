@@ -182,6 +182,7 @@ namespace JASS
 				data << hardware;
 								   
 				JASS_assert(hardware.x64 == true);
+				puts("hardware_support::PASSED");
 				}
 		};
 	/*

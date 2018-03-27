@@ -263,11 +263,23 @@ int main(void)
 		puts("compress_integer_bitpack_128");
 		JASS::compress_integer_bitpack_128::unittest();
 
-		puts("compress_integer_bitpack_256");
-		JASS::compress_integer_bitpack_256::unittest();
 
-		puts("compress_integer_prn_512");
-		JASS::compress_integer_prn_512::unittest();
+		JASS::hardware_support hardware;
+		if (hardware.AVX)
+			{
+			puts("compress_integer_bitpack_256");
+			JASS::compress_integer_bitpack_256::unittest();
+
+			puts("compress_integer_prn_512");
+			JASS::compress_integer_prn_512::unittest();
+			}
+		else
+			{
+			puts("compress_integer_bitpack_256");
+			puts("Cannot test as no 256-bit SIMD instructions on this CPU");
+			puts("compress_integer_prn_512");
+			puts("Cannot test as no 256-bit SIMD instructions on this CPU");
+			}
 
 		puts("accumulator_2d");
 		JASS::accumulator_2d<uint32_t, 1>::unittest();
