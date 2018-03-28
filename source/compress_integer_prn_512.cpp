@@ -219,8 +219,7 @@ namespace JASS
 
 		while (1)
 			{
-			uint32_t shift = find_first_set_bit(selector);
-			switch (shift)
+			switch (find_first_set_bit(selector))
 				{
 				case 0:
 					if (source >= ((const uint8_t *)source_as_void) + source_length)
@@ -235,110 +234,379 @@ namespace JASS
 					continue;
 				case 1:			// 16 * 1-bit integers
 					mask = _mm256_loadu_si256((__m256i *)static_mask_1);
-					break;
+
+					_mm256_storeu_si256(into + 0, _mm256_and_si256(payload1, mask));
+					payload1 = _mm256_srli_epi32(payload1, 1);
+					_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
+					payload2 = _mm256_srli_epi32(payload2, 1);
+
+					into += 2;
+					decoded += 16;
+					selector >>= 1;
+					continue;
 				case 2:
 					mask = _mm256_loadu_si256((__m256i *)static_mask_2);
-					break;
+
+					_mm256_storeu_si256(into + 0, _mm256_and_si256(payload1, mask));
+					payload1 = _mm256_srli_epi32(payload1, 2);
+					_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
+					payload2 = _mm256_srli_epi32(payload2, 2);
+
+					into += 2;
+					decoded += 16;
+					selector >>= 2;
+					continue;
 				case 3:
 					mask = _mm256_loadu_si256((__m256i *)static_mask_3);
-					break;
+
+					_mm256_storeu_si256(into + 0, _mm256_and_si256(payload1, mask));
+					payload1 = _mm256_srli_epi32(payload1, 3);
+					_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
+					payload2 = _mm256_srli_epi32(payload2, 3);
+
+					into += 2;
+					decoded += 16;
+					selector >>= 3;
+					continue;
 				case 4:
 					mask = _mm256_loadu_si256((__m256i *)static_mask_4);
-					break;
+
+					_mm256_storeu_si256(into + 0, _mm256_and_si256(payload1, mask));
+					payload1 = _mm256_srli_epi32(payload1, 4);
+					_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
+					payload2 = _mm256_srli_epi32(payload2, 4);
+
+					into += 2;
+					decoded += 16;
+					selector >>= 4;
+					continue;
 				case 5:
 					mask = _mm256_loadu_si256((__m256i *)static_mask_5);
-					break;
+
+					_mm256_storeu_si256(into + 0, _mm256_and_si256(payload1, mask));
+					payload1 = _mm256_srli_epi32(payload1, 5);
+					_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
+					payload2 = _mm256_srli_epi32(payload2, 5);
+
+					into += 2;
+					decoded += 16;
+					selector >>= 5;
+					continue;
 				case 6:
 					mask = _mm256_loadu_si256((__m256i *)static_mask_6);
-					break;
+
+					_mm256_storeu_si256(into + 0, _mm256_and_si256(payload1, mask));
+					payload1 = _mm256_srli_epi32(payload1, 6);
+					_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
+					payload2 = _mm256_srli_epi32(payload2, 6);
+
+					into += 2;
+					decoded += 16;
+					selector >>= 6;
+					continue;
 				case 7:
 					mask = _mm256_loadu_si256((__m256i *)static_mask_7);
-					break;
+
+					_mm256_storeu_si256(into + 0, _mm256_and_si256(payload1, mask));
+					payload1 = _mm256_srli_epi32(payload1, 7);
+					_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
+					payload2 = _mm256_srli_epi32(payload2, 7);
+
+					into += 2;
+					decoded += 16;
+					selector >>= 7;
+					continue;
 				case 8:
 					mask = _mm256_loadu_si256((__m256i *)static_mask_8);
-					break;
+
+					_mm256_storeu_si256(into + 0, _mm256_and_si256(payload1, mask));
+					payload1 = _mm256_srli_epi32(payload1, 8);
+					_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
+					payload2 = _mm256_srli_epi32(payload2, 8);
+
+					into += 2;
+					decoded += 16;
+					selector >>= 8;
+					continue;
 				case 9:
 					mask = _mm256_loadu_si256((__m256i *)static_mask_9);
-					break;
+
+					_mm256_storeu_si256(into + 0, _mm256_and_si256(payload1, mask));
+					payload1 = _mm256_srli_epi32(payload1, 9);
+					_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
+					payload2 = _mm256_srli_epi32(payload2, 9);
+
+					into += 2;
+					decoded += 16;
+					selector >>= 9;
+					continue;
 				case 10:
 					mask = _mm256_loadu_si256((__m256i *)static_mask_10);
-					break;
+
+					_mm256_storeu_si256(into + 0, _mm256_and_si256(payload1, mask));
+					payload1 = _mm256_srli_epi32(payload1, 10);
+					_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
+					payload2 = _mm256_srli_epi32(payload2, 10);
+
+					into += 2;
+					decoded += 16;
+					selector >>= 10;
+					continue;
 				case 11:
 					mask = _mm256_loadu_si256((__m256i *)static_mask_11);
-					break;
+
+					_mm256_storeu_si256(into + 0, _mm256_and_si256(payload1, mask));
+					payload1 = _mm256_srli_epi32(payload1, 11);
+					_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
+					payload2 = _mm256_srli_epi32(payload2, 11);
+
+					into += 2;
+					decoded += 16;
+					selector >>= 11;
+					continue;
 				case 12:
 					mask = _mm256_loadu_si256((__m256i *)static_mask_12);
-					break;
+
+					_mm256_storeu_si256(into + 0, _mm256_and_si256(payload1, mask));
+					payload1 = _mm256_srli_epi32(payload1, 12);
+					_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
+					payload2 = _mm256_srli_epi32(payload2, 12);
+
+					into += 2;
+					decoded += 16;
+					selector >>= 12;
+					continue;
 				case 13:
 					mask = _mm256_loadu_si256((__m256i *)static_mask_13);
-					break;
+
+					_mm256_storeu_si256(into + 0, _mm256_and_si256(payload1, mask));
+					payload1 = _mm256_srli_epi32(payload1, 13);
+					_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
+					payload2 = _mm256_srli_epi32(payload2, 13);
+
+					into += 2;
+					decoded += 16;
+					selector >>= 13;
+					continue;
 				case 14:
 					mask = _mm256_loadu_si256((__m256i *)static_mask_14);
-					break;
+
+					_mm256_storeu_si256(into + 0, _mm256_and_si256(payload1, mask));
+					payload1 = _mm256_srli_epi32(payload1, 14);
+					_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
+					payload2 = _mm256_srli_epi32(payload2, 14);
+
+					into += 2;
+					decoded += 16;
+					selector >>= 14;
+					continue;
 				case 15:
 					mask = _mm256_loadu_si256((__m256i *)static_mask_15);
-					break;
+
+					_mm256_storeu_si256(into + 0, _mm256_and_si256(payload1, mask));
+					payload1 = _mm256_srli_epi32(payload1, 15);
+					_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
+					payload2 = _mm256_srli_epi32(payload2, 15);
+
+					into += 2;
+					decoded += 16;
+					selector >>= 15;
+					continue;
 				case 16:
 					mask = _mm256_loadu_si256((__m256i *)static_mask_16);
-					break;
+
+					_mm256_storeu_si256(into + 0, _mm256_and_si256(payload1, mask));
+					payload1 = _mm256_srli_epi32(payload1, 16);
+					_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
+					payload2 = _mm256_srli_epi32(payload2, 16);
+
+					into += 2;
+					decoded += 16;
+					selector >>= 16;
+					continue;
 				case 17:
 					mask = _mm256_loadu_si256((__m256i *)static_mask_17);
-					break;
+
+					_mm256_storeu_si256(into + 0, _mm256_and_si256(payload1, mask));
+					payload1 = _mm256_srli_epi32(payload1, 17);
+					_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
+					payload2 = _mm256_srli_epi32(payload2, 17);
+
+					into += 2;
+					decoded += 16;
+					selector >>= 17;
+					continue;
 				case 18:
 					mask = _mm256_loadu_si256((__m256i *)static_mask_18);
-					break;
+
+					_mm256_storeu_si256(into + 0, _mm256_and_si256(payload1, mask));
+					payload1 = _mm256_srli_epi32(payload1, 18);
+					_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
+					payload2 = _mm256_srli_epi32(payload2, 18);
+
+					into += 2;
+					decoded += 16;
+					selector >>= 18;
+					continue;
 				case 19:
 					mask = _mm256_loadu_si256((__m256i *)static_mask_19);
-					break;
+
+					_mm256_storeu_si256(into + 0, _mm256_and_si256(payload1, mask));
+					payload1 = _mm256_srli_epi32(payload1, 19);
+					_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
+					payload2 = _mm256_srli_epi32(payload2, 19);
+
+					into += 2;
+					decoded += 16;
+					selector >>= 19;
+					continue;
 				case 20:
 					mask = _mm256_loadu_si256((__m256i *)static_mask_20);
-					break;
+
+					_mm256_storeu_si256(into + 0, _mm256_and_si256(payload1, mask));
+					payload1 = _mm256_srli_epi32(payload1, 20);
+					_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
+					payload2 = _mm256_srli_epi32(payload2, 20);
+
+					into += 2;
+					decoded += 16;
+					selector >>= 20;
+					continue;
 				case 21:
 					mask = _mm256_loadu_si256((__m256i *)static_mask_21);
-					break;
+					_mm256_storeu_si256(into + 0, _mm256_and_si256(payload1, mask));
+					payload1 = _mm256_srli_epi32(payload1, 21);
+					_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
+					payload2 = _mm256_srli_epi32(payload2, 21);
+
+					into += 2;
+					decoded += 16;
+					selector >>= 21;
+					continue;
 				case 22:
 					mask = _mm256_loadu_si256((__m256i *)static_mask_22);
-					break;
+					_mm256_storeu_si256(into + 0, _mm256_and_si256(payload1, mask));
+					payload1 = _mm256_srli_epi32(payload1, 22);
+					_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
+					payload2 = _mm256_srli_epi32(payload2, 22);
+
+					into += 2;
+					decoded += 16;
+					selector >>= 22;
+					continue;
 				case 23:
 					mask = _mm256_loadu_si256((__m256i *)static_mask_23);
-					break;
+					_mm256_storeu_si256(into + 0, _mm256_and_si256(payload1, mask));
+					payload1 = _mm256_srli_epi32(payload1, 23);
+					_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
+					payload2 = _mm256_srli_epi32(payload2, 23);
+
+					into += 2;
+					decoded += 16;
+					selector >>= 23;
+					continue;
 				case 24:
 					mask = _mm256_loadu_si256((__m256i *)static_mask_24);
-					break;
+					_mm256_storeu_si256(into + 0, _mm256_and_si256(payload1, mask));
+					payload1 = _mm256_srli_epi32(payload1, 24);
+					_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
+					payload2 = _mm256_srli_epi32(payload2, 24);
+
+					into += 2;
+					decoded += 16;
+					selector >>= 24;
+					continue;
 				case 25:
 					mask = _mm256_loadu_si256((__m256i *)static_mask_25);
-					break;
+					_mm256_storeu_si256(into + 0, _mm256_and_si256(payload1, mask));
+					payload1 = _mm256_srli_epi32(payload1, 25);
+					_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
+					payload2 = _mm256_srli_epi32(payload2, 25);
+
+					into += 2;
+					decoded += 16;
+					selector >>= 25;
+					continue;
 				case 26:
 					mask = _mm256_loadu_si256((__m256i *)static_mask_26);
-					break;
+					_mm256_storeu_si256(into + 0, _mm256_and_si256(payload1, mask));
+					payload1 = _mm256_srli_epi32(payload1, 26);
+					_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
+					payload2 = _mm256_srli_epi32(payload2, 26);
+
+					into += 2;
+					decoded += 16;
+					selector >>= 26;
+					continue;
 				case 27:
 					mask = _mm256_loadu_si256((__m256i *)static_mask_27);
-					break;
+					_mm256_storeu_si256(into + 0, _mm256_and_si256(payload1, mask));
+					payload1 = _mm256_srli_epi32(payload1, 27);
+					_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
+					payload2 = _mm256_srli_epi32(payload2, 27);
+
+					into += 2;
+					decoded += 16;
+					selector >>= 27;
+					continue;
 				case 28:
 					mask = _mm256_loadu_si256((__m256i *)static_mask_28);
-					break;
+					_mm256_storeu_si256(into + 0, _mm256_and_si256(payload1, mask));
+					payload1 = _mm256_srli_epi32(payload1, 28);
+					_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
+					payload2 = _mm256_srli_epi32(payload2, 28);
+
+					into += 2;
+					decoded += 16;
+					selector >>= 28;
+					continue;
 				case 29:
 					mask = _mm256_loadu_si256((__m256i *)static_mask_29);
-					break;
+					_mm256_storeu_si256(into + 0, _mm256_and_si256(payload1, mask));
+					payload1 = _mm256_srli_epi32(payload1, 29);
+					_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
+					payload2 = _mm256_srli_epi32(payload2, 29);
+
+					into += 2;
+					decoded += 16;
+					selector >>= 29;
+					continue;
 				case 30:
 					mask = _mm256_loadu_si256((__m256i *)static_mask_30);
-					break;
+					_mm256_storeu_si256(into + 0, _mm256_and_si256(payload1, mask));
+					payload1 = _mm256_srli_epi32(payload1, 30);
+					_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
+					payload2 = _mm256_srli_epi32(payload2, 30);
+
+					into += 2;
+					decoded += 16;
+					selector >>= 30;
+					continue;
 				case 31:
 					mask = _mm256_loadu_si256((__m256i *)static_mask_31);
-					break;
+					_mm256_storeu_si256(into + 0, _mm256_and_si256(payload1, mask));
+					payload1 = _mm256_srli_epi32(payload1, 31);
+					_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
+					payload2 = _mm256_srli_epi32(payload2, 31);
+
+					into += 2;
+					decoded += 16;
+					selector >>= 31;
+					continue;
 				case 32:
 					mask = _mm256_loadu_si256((__m256i *)static_mask_32);
-					break;
+					_mm256_storeu_si256(into + 0, _mm256_and_si256(payload1, mask));
+					payload1 = _mm256_srli_epi32(payload1, 32);
+					_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
+					payload2 = _mm256_srli_epi32(payload2, 32);
+
+					into += 2;
+					decoded += 16;
+					selector >>= 32;
+					continue;
+				default:
+					continue;
 				}
-
-			_mm256_storeu_si256(into + 0, _mm256_and_si256(payload1, mask));
-			payload1 = _mm256_srli_epi32(payload1, shift);
-			_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
-			payload2 = _mm256_srli_epi32(payload2, shift);
-
-			into += 2;
-			decoded += 16;
-			selector >>= shift;
 			}
 		}
 
