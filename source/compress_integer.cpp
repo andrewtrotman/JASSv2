@@ -33,7 +33,7 @@ namespace JASS
 		COMPRESS_INTEGER::UNITTEST()
 		----------------------------
 	*/
-	void compress_integer::unittest(compress_integer &compressor)
+	void compress_integer::unittest(compress_integer &&compressor)
 		{
 		std::vector<uint32_t> every_case;
 		size_t instance;

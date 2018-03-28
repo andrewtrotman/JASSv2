@@ -54,7 +54,7 @@ namespace JASS
 					_BitScanForward64(&result, value);
 					return result;
 				#else
-					return ffs(value);
+					return ffsl(value);
 				#endif
 				}
 

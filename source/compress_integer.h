@@ -103,6 +103,6 @@ namespace JASS
 			/*!
 				@brief Unit test this class
 			*/
-			static void unittest(compress_integer &compressor);
+			static void unittest(compress_integer &&compressor);
 		} ;
 	}
