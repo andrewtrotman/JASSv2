@@ -47,7 +47,7 @@ namespace JASS
 				@param [in] value the integer to check.
 				@return The position of the lowest set bit (or 0 if no bits are set)
 			*/
-			static forceinline uint32_t find_first_set_bit(uint64_t value)
+			static forceinline uint32_t find_first_set_bit(uint32_t value)
 				{
 				#ifdef _MSC_VER
 					unsigned long result;
