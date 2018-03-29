@@ -249,10 +249,7 @@ int main(int argc, const char *argv[])
 			Notify
 		*/
 		if (term_count % report_every == 0)
-			{
 			std::cout << "Terms processed:" << term_count << std::endl;
-			break;
-			}
 		}
 
 	std::cout << "Total terms:" << term_count << "\n";
