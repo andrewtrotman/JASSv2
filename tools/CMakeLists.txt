@@ -86,3 +86,15 @@ target_link_libraries(test_integer_compress
 	JASSlib
 	)
 
+#
+# test_integer_compress_average
+#
+
+add_executable(test_integer_compress_average
+	test_integer_compress_average.cpp
+	)
+
+target_link_libraries(test_integer_compress_average
+	JASSlib
+	)
+
