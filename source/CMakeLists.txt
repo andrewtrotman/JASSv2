@@ -60,6 +60,8 @@ set(JASSlib_FILES
 	compress_integer_nybble_8.cpp
 	compress_integer_prn_512.h
 	compress_integer_prn_512.cpp
+	compress_integer_prn_512_carryover.h
+	compress_integer_prn_512_carryover.cpp
 	compress_integer_qmx_improved.h
 	compress_integer_qmx_improved.cpp
 	compress_integer_qmx_jass_v1.h

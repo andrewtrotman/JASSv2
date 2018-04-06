@@ -1,6 +1,6 @@
 /*
-	COMPRESS_INTEGER_PRN_512.CPP
-	----------------------------
+	COMPRESS_INTEGER_PRN_512_CARRYOVER.H
+	------------------------------------
 	Copyright (c) 2018 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
@@ -13,50 +13,22 @@
 #include <iostream>
 
 #include "maths.h"
-#include "compress_integer_prn_512.h"
-#include "compress_integer_lyck_16.h"
-#include "compress_integer_nybble_8.h"
-#include "compress_integer_bitpack_64.h"
-#include "compress_integer_bitpack_256.h"
-#include "compress_integer_bitpack_128.h"
-#include "compress_integer_bitpack_32_reduced.h"
+#include "compress_integer_prn_512_carryover.h"
 
 #define WORD_WIDTH 32
 #define WORDS (512 / WORD_WIDTH)
 
 namespace JASS
 	{
+	static uint32_t mask_set[] =
+		{
+		};
+
 	/*
-		COMPRESS_INTEGER_PRN_512::COMPUTE_SELECTOR()
+		COMPRESS_INTEGER_PRN_512_CARRYOVER::ENCODE()
 		--------------------------------------------
 	*/
-	uint32_t compress_integer_prn_512::compute_selector(const uint8_t *encodings)
-		{
-		uint32_t value = 0;
-		int current;
-
-		for (current = 0; current < 32; current++)
-			if (encodings[current] == 0)
-				break;
-
-		/*
-			Compute the permutation number
-		*/
-		for (current--; current >=  0; current--)
-			{
-			size_t number_of_0s = encodings[current];
-			value <<= number_of_0s;
-			value |= 1 << (number_of_0s - 1);
-			}
-
-		return value;
-		}
-
-	/*
-		COMPRESS_INTEGER_PRN_512::ENCODE()
-		----------------------------------
-	*/
-	size_t compress_integer_prn_512::encode(void *encoded, size_t encoded_buffer_length, const integer *array, size_t elements)
+	size_t compress_integer_prn_512_carryover::encode(void *encoded, size_t encoded_buffer_length, const integer *array, size_t elements)
 		{
 		uint8_t encodings[33] = {0};
 		uint32_t *destination = (uint32_t *)encoded;
@@ -71,10 +43,27 @@ namespace JASS
 				return 0;
 
 			/*
-				Compute the encoding
+				Zero the result memory before writing the bit paterns into it
+			*/
+			memset(destination, 0, (WORDS + 1) * 4);
+
+			/*
+				Get the address of the selector and move on to the payload
+			*/
+			uint32_t *selector = destination;
+			destination++;
+
+			/*
+				Encode the next integer
 			*/
 			uint32_t remaining = 32;
+			uint32_t cumulative_shift = 0;
 			bool overflow = false;
+			uint32_t integers_encoded = 0;
+
+			/*
+				Find the width of this column
+			*/
 			for (uint32_t slice = 0; slice < 32; slice++)
 				{
 				uint32_t max_width = 0;
@@ -84,7 +73,10 @@ namespace JASS
 					uint32_t value;
 
 					if (index < elements)
+						{
+						integers_encoded++;
 						value = array[index];
+						}
 					else
 						{
 						overflow = true;
@@ -94,7 +86,11 @@ namespace JASS
 					uint32_t width = maths::ceiling_log2(value);
 					width = maths::maximum(width, static_cast<decltype(width)>(1));					// coz ffs(0) != 1.
 					max_width = maths::maximum(max_width, width);
+					destination[word] |= value << cumulative_shift;
+std::cout << value << ' ';
 					}
+
+				cumulative_shift += max_width;
 
 				if (max_width > remaining)
 					{
@@ -103,6 +99,33 @@ namespace JASS
 					*/
 					encodings[slice - 1] += remaining;
 					encodings[slice] = 0;
+					integers_encoded -= WORDS;		// Wind back to the start of this row as its about to become the start of the next block.
+					/*
+						set the top bits to 0.
+					*/
+					for (uint32_t word = 0; word < WORDS; word++)
+						{
+						size_t index = slice * WORDS + word;
+						uint32_t value;
+
+						if (index < elements)
+							{
+							integers_encoded++;
+							value = array[index];
+							}
+						else
+							{
+							overflow = true;
+							value = 1;
+							}
+
+						/*
+							turn the top bits off by clearing them and re-writing those integers
+						*/
+						uint32_t mask = mask_set[remaining];
+						destination[word] = (destination[word] & mask) | (value << cumulative_shift);
+						}
+std::cout << "-> +" << remaining << "\n";
 					break;
 					}
 				else if (max_width == remaining || overflow || (slice + 1) * WORDS >= elements)
@@ -112,48 +135,17 @@ namespace JASS
 					*/
 					encodings[slice] = remaining;
 					encodings[slice + 1] = 0;
+std::cout << "-> " << remaining << "\n";
 					break;
 					}
+					
 				remaining -= max_width;
 				encodings[slice] = max_width;
+std::cout << "-> " << max_width << "\n";
 				}
+			*selector = compute_selector(encodings);
+std::cout << "\n";
 
-			/*
-				Compute the selector
-			*/
-			*destination++ = compute_selector(encodings);
-
-			/*
-				Encode the answer
-			*/
-			memset(destination, 0, WORDS * 4);
-			uint32_t position_in_word = 0;
-			uint32_t cumulative_shift = 0;
-			uint32_t integers_encoded = 0;
-//			printf("\n");
-			for (uint32_t slice = 0; encodings[slice] != 0; slice++)
-				{
-				uint32_t width = encodings[position_in_word];
-				position_in_word++;
-				for (size_t word = 0; word < WORDS; word++)
-					{
-					size_t index = slice * WORDS + word;
-					uint32_t value;
-					if (index < elements)
-						{
-						integers_encoded++;
-						value = array[index];
-						}
-					else
-						value = 0;
-
-					destination[word] |= value << cumulative_shift;
-//					printf("%08X ", value << cumulative_shift);
-					}
-				cumulative_shift += width;
-//				printf(" [%02d]\n", width);
-
-				}
 			destination += WORDS;
 			array += integers_encoded;
 			elements -= integers_encoded;
@@ -161,9 +153,6 @@ namespace JASS
 				break;
 			}
 
-		/*
-			return the number of bytes that were used to encode the integer sequence.
-		*/
 		return (uint8_t *)destination - (uint8_t *)encoded;
 		}
 
@@ -205,10 +194,10 @@ namespace JASS
 		};
 
 	/*
-		COMPRESS_INTEGER_PRN_512::DECODE()
-		----------------------------------
+		COMPRESS_INTEGER_PRN_512_CARRYOVER::DECODE()
+		--------------------------------------------
 	*/
-	void compress_integer_prn_512::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
+	void compress_integer_prn_512_carryover::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
 		{
 		__m256i mask;
 		const uint8_t *source = (const uint8_t *)source_as_void;
@@ -216,14 +205,17 @@ namespace JASS
 		__m256i *into = (__m256i *)decoded;
 		uint32_t width;
 
-		uint64_t selector = *(uint32_t *)source;
+		uint32_t selector = *(uint32_t *)source;
 		__m256i payload1 = _mm256_loadu_si256((__m256i *)(source + 4));
 		__m256i payload2 = _mm256_loadu_si256((__m256i *)(source + 36));
 		source += 68;
 
+std::cout << "Widths:";
+
 		while (1)
 			{
 			width = __builtin_ctz(selector) + 1;
+std::cout << width << " ";
 			mask = _mm256_loadu_si256((__m256i *)mask_set[width]);
 			_mm256_storeu_si256(into, _mm256_and_si256(payload1, mask));
 			_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
@@ -235,8 +227,12 @@ namespace JASS
 			selector >>= width;
 			if (selector == 0)
 				{
+std::cout << "\n";
 				if (source >= end_of_source)
+					{
+std::cout << "\n";
 					return;
+					}
 
 				selector = *(uint32_t *)source;
 				payload1 = _mm256_loadu_si256((__m256i *)(source + 4));
@@ -244,16 +240,15 @@ namespace JASS
 				source += 68;
 				}
 		}
-	}
+}
 
 	/*
 		COMPRESS_INTEGER_PRN_512::UNITTEST()
 		------------------------------------
 	*/
-	void compress_integer_prn_512::unittest(void)
+	void compress_integer_prn_512_carryover::unittest(void)
 		{
-
-		compress_integer::unittest(compress_integer_prn_512());
+//		compress_integer::unittest(compress_integer_prn_512_carryover());
 
 		std::vector<uint32_t> broken_sequence =
 			{
@@ -266,7 +261,7 @@ namespace JASS
 			1,1,1,1,1,1,1,5,5,2,2,1,3,4,5,5,			// 3 bits
 			2,4,2,2,1,1,1,2,2,1,2,1,2,1,3,3,			// 3 bits
 			3,7,3,2,1,1,4,5,4,1,4,8,6,1,2,1,			// 4 bits
-			1,1,1,1,1,3,1,2,1,1,1,1,1,1,1,2,			// 2 bits
+			1,1,1,1,1,3,1,2,1,1,1,1,1,1,1,2,			// 2 bits						// 160 integers
 
 			1,3,2,2,3,1,2,1,1,2,1,1,1,1,1,2,			// 2 bits
 			9,1,1,4,5,6,1,4,2,5,4,6,7,1,1,2,			// 4 bits
@@ -276,18 +271,19 @@ namespace JASS
 			1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,1,			// 2 bits
 			2,1,1,1,2,2,1,4,1,1,4,1,1,1,1,1,			// 3 bits
 			1,1,1,1,1,2,5,3,1,3,1,1,4,1,2,1,			// 3 bits
-			3,1,3,1,1,1,1,1,1,1,1,1,1,1,1,1,			// 2 bits
-			1,1,1,1,1,2,2,1,1,1,8,3,1,2,56,2,		// 6 bits
+			3,1,3,1,1,1,1,1,1,1,1,1,1,1,1,1,			// 2 bits						// 304 integers
+			1,1,1,1,1,2,2,1,1,1,8,3,1,2,56,2,		// 6 bits (expand to 7)		// 320 integers
+
 			12,1,6,70,68,25,13,44,36,22,4,95,19,5,39,8, // 7 bits
-			25,14,9,8,27,6,1,1,8,11,8,3,4,1,2,8,
-			3,23,2,16,8,2,28,26,6,11,9,16,1,1,7,7,
-			45,2,33,39,20,14,2,1,8,26,1,10,12,3,16,3,
-			25,9,6,9,6,3,41,17,15,11,33,8,1,1,1,1
+			25,14,9,8,27,6,1,1,8,11,8,3,4,1,2,8,			// 5 bits
+			3,23,2,16,8,2,28,26,6,11,9,16,1,1,7,7,			// 5 bits
+			45,2,33,39,20,14,2,1,8,26,1,10,12,3,16,3,		// 6 bits
+			25,9,6,9,6,3,41,17,15,11,33,8,1,1,1,1			// 6 bits
 			};
 
-		compress_integer_prn_512 compressor;
-		compress_integer::unittest_one(compressor, broken_sequence);
+		compress_integer_prn_512_carryover compressor;
+		unittest_one(compressor, broken_sequence);
 
-		puts("compress_integer_prn_512::PASSED");
+		puts("compress_integer_prn_512_carryover::PASSED");
 		}
 	}

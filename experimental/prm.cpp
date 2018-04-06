@@ -12,13 +12,7 @@
 #include <iostream>
 
 #include "maths.h"
-#include "compress_integer_prn_512.h"
-#include "compress_integer_bitpack_256.h"
-#include "compress_integer_bitpack_128.h"
-#include "compress_integer_bitpack_64.h"
-#include "compress_integer_bitpack_32_reduced.h"
-#include "compress_integer_lyck_16.h"
-#include "compress_integer_nybble_8.h"
+#include "compress_integer_prn_512_carryover.h"
 
 uint32_t packable_data[] = {1,2,3,4,5,6,7,300,1,2,3,4,5,6,7,300,1,2,3,4,5,6,7,300,1,2,3,4,5,6,7,300,1,2,3,4,5,6,7,300,};
 size_t packable_data_size = sizeof(packable_data) / sizeof(*packable_data);
@@ -34,6 +28,6 @@ uint32_t test_set_size = sizeof(test_set) / sizeof(*test_set);
 
 int main(void)
 	{
-	JASS::compress_integer_bitpack_128 scheme;
+	JASS::compress_integer_prn_512_carryover scheme;
 	scheme.unittest();	
 	}

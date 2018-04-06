@@ -7,6 +7,7 @@
 #include <stdint.h>
 
 #include <vector>
+#include <iostream>
 
 #include "asserts.h"
 #include "compress_integer.h"
@@ -26,7 +27,13 @@ namespace JASS
 		auto size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &sequence[0], sequence.size());
 		compressor.decode(&decompressed[0], sequence.size(), &compressed[0], size_once_compressed);
 		decompressed.resize(sequence.size());
-		JASS_assert(decompressed == sequence);
+		if (decompressed != sequence)
+			{
+			for (size_t index = 0; index < decompressed.size(); index++)
+				std::cout << index << ":" << decompressed[index] << ' ' << sequence[index] << (decompressed[index] == sequence[index] ? "" : "   FAIL") << "\n";
+
+			JASS_assert(false);
+			}
 		}
 	
 	/*
