@@ -54,7 +54,7 @@ namespace JASS
 		0b11111111111111111111111111111000,
 		0b11111111111111111111111111111100,
 		0b11111111111111111111111111111110,
-		0b11111111111111111111111111111111,
+		0b11111111111111111111111111111111
 		};
 
 	/*
@@ -66,7 +66,8 @@ namespace JASS
 		uint8_t encodings[33] = {0};
 		uint32_t *destination = (uint32_t *)encoded;
 		uint32_t *end_of_destination = (uint32_t *)((uint8_t *)encoded + encoded_buffer_length);
-		bool carryover = 0;
+		uint32_t carryover = 0;
+		uint32_t actual_max_width = 0;
 
 		while (1)
 			{
@@ -123,10 +124,11 @@ namespace JASS
 					if (carryover == 0)
 						destination[word] |= value << cumulative_shift;
 					else
-						destination[word] |= value & ~high_bits[32 - carryover];
+						destination[word] |= value & ~high_bits[32 - (actual_max_width - carryover)];
 
 //std::cout << value << ' ';
 					}
+				actual_max_width = max_width;
 				max_width -= carryover;
 				carryover = 0;
 				cumulative_shift += max_width;
@@ -150,7 +152,6 @@ namespace JASS
 					/*
 						We can't fit this column so take the high bits of the next set of integers
 					*/
-					encodings[slice - 1] += remaining;
 					encodings[slice] = 0;
 					integers_encoded -= WORDS;		// Wind back to the start of this row as its about to become the start of the next block.
 
@@ -161,7 +162,9 @@ namespace JASS
 						{
 						size_t index = slice * WORDS + word;
 						uint32_t value = index < elements ? array[index] : 1;
-						destination[word] &= ~high_bits[remaining] | (value >> remaining);
+						destination[word] &= ~high_bits[remaining];
+						uint32_t shift = actual_max_width - remaining;
+						destination[word] |= (value >> shift) << (32 - remaining);
 						}
 					carryover = remaining;
 #endif
@@ -260,8 +263,8 @@ namespace JASS
 			payload2 = _mm256_srli_epi32(payload2, width);
 
 			into += 2;
-
 			selector >>= width;
+
 			while (selector == 0)
 				{
 				if (source >= end_of_source)
@@ -299,7 +302,6 @@ namespace JASS
 					mpove on to the next slector
 				*/
 				into += 2;
-
 				selector >>= width;
 				}
 		}
