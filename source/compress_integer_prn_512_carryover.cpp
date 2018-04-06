@@ -20,8 +20,41 @@
 
 namespace JASS
 	{
-	static uint32_t mask_set[] =
+	static const uint32_t high_bits[] =
 		{
+		0b00000000000000000000000000000000,
+		0b10000000000000000000000000000000,
+		0b11000000000000000000000000000000,
+		0b11100000000000000000000000000000,
+		0b11110000000000000000000000000000,
+		0b11111000000000000000000000000000,
+		0b11111100000000000000000000000000,
+		0b11111110000000000000000000000000,
+		0b11111111000000000000000000000000,
+		0b11111111100000000000000000000000,
+		0b11111111110000000000000000000000,
+		0b11111111111000000000000000000000,
+		0b11111111111100000000000000000000,
+		0b11111111111110000000000000000000,
+		0b11111111111111000000000000000000,
+		0b11111111111111100000000000000000,
+		0b11111111111111110000000000000000,
+		0b11111111111111111000000000000000,
+		0b11111111111111111100000000000000,
+		0b11111111111111111110000000000000,
+		0b11111111111111111111000000000000,
+		0b11111111111111111111100000000000,
+		0b11111111111111111111110000000000,
+		0b11111111111111111111111000000000,
+		0b11111111111111111111111100000000,
+		0b11111111111111111111111110000000,
+		0b11111111111111111111111111000000,
+		0b11111111111111111111111111100000,
+		0b11111111111111111111111111110000,
+		0b11111111111111111111111111111000,
+		0b11111111111111111111111111111100,
+		0b11111111111111111111111111111110,
+		0b11111111111111111111111111111111,
 		};
 
 	/*
@@ -87,7 +120,7 @@ namespace JASS
 					width = maths::maximum(width, static_cast<decltype(width)>(1));					// coz ffs(0) != 1.
 					max_width = maths::maximum(max_width, width);
 					destination[word] |= value << cumulative_shift;
-std::cout << value << ' ';
+//std::cout << value << ' ';
 					}
 
 				cumulative_shift += max_width;
@@ -100,32 +133,13 @@ std::cout << value << ' ';
 					encodings[slice - 1] += remaining;
 					encodings[slice] = 0;
 					integers_encoded -= WORDS;		// Wind back to the start of this row as its about to become the start of the next block.
+
 					/*
-						set the top bits to 0.
+						Set the top bits of the high integers back to 0.
 					*/
 					for (uint32_t word = 0; word < WORDS; word++)
-						{
-						size_t index = slice * WORDS + word;
-						uint32_t value;
-
-						if (index < elements)
-							{
-							integers_encoded++;
-							value = array[index];
-							}
-						else
-							{
-							overflow = true;
-							value = 1;
-							}
-
-						/*
-							turn the top bits off by clearing them and re-writing those integers
-						*/
-						uint32_t mask = mask_set[remaining];
-						destination[word] = (destination[word] & mask) | (value << cumulative_shift);
-						}
-std::cout << "-> +" << remaining << "\n";
+						destination[word] &= ~high_bits[remaining];
+//std::cout << "-> +" << remaining << "\n";
 					break;
 					}
 				else if (max_width == remaining || overflow || (slice + 1) * WORDS >= elements)
@@ -135,16 +149,16 @@ std::cout << "-> +" << remaining << "\n";
 					*/
 					encodings[slice] = remaining;
 					encodings[slice + 1] = 0;
-std::cout << "-> " << remaining << "\n";
+//std::cout << "-> " << remaining << "\n";
 					break;
 					}
 					
 				remaining -= max_width;
 				encodings[slice] = max_width;
-std::cout << "-> " << max_width << "\n";
+//std::cout << "-> " << max_width << "\n";
 				}
 			*selector = compute_selector(encodings);
-std::cout << "\n";
+//std::cout << "\n";
 
 			destination += WORDS;
 			array += integers_encoded;
@@ -153,7 +167,7 @@ std::cout << "\n";
 				break;
 			}
 
-		return (uint8_t *)destination - (uint8_t *)encoded;
+		return  (uint8_t *)destination - (uint8_t *)encoded;
 		}
 
 	alignas(64) static const uint32_t mask_set[33][16]=
@@ -205,17 +219,17 @@ std::cout << "\n";
 		__m256i *into = (__m256i *)decoded;
 		uint32_t width;
 
-		uint32_t selector = *(uint32_t *)source;
+		uint64_t selector = *(uint32_t *)source;
 		__m256i payload1 = _mm256_loadu_si256((__m256i *)(source + 4));
 		__m256i payload2 = _mm256_loadu_si256((__m256i *)(source + 36));
 		source += 68;
 
-std::cout << "Widths:";
+//std::cout << "Widths:";
 
 		while (1)
 			{
 			width = __builtin_ctz(selector) + 1;
-std::cout << width << " ";
+//std::cout << width << " ";
 			mask = _mm256_loadu_si256((__m256i *)mask_set[width]);
 			_mm256_storeu_si256(into, _mm256_and_si256(payload1, mask));
 			_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
@@ -227,10 +241,10 @@ std::cout << width << " ";
 			selector >>= width;
 			if (selector == 0)
 				{
-std::cout << "\n";
+//std::cout << "\n";
 				if (source >= end_of_source)
 					{
-std::cout << "\n";
+//std::cout << "\n";
 					return;
 					}
 
@@ -248,7 +262,7 @@ std::cout << "\n";
 	*/
 	void compress_integer_prn_512_carryover::unittest(void)
 		{
-//		compress_integer::unittest(compress_integer_prn_512_carryover());
+		compress_integer::unittest(compress_integer_prn_512_carryover());
 
 		std::vector<uint32_t> broken_sequence =
 			{
