@@ -66,6 +66,7 @@ namespace JASS
 		uint8_t encodings[33] = {0};
 		uint32_t *destination = (uint32_t *)encoded;
 		uint32_t *end_of_destination = (uint32_t *)((uint8_t *)encoded + encoded_buffer_length);
+		bool carryover = 0;
 
 		while (1)
 			{
@@ -119,14 +120,20 @@ namespace JASS
 					uint32_t width = maths::ceiling_log2(value);
 					width = maths::maximum(width, static_cast<decltype(width)>(1));					// coz ffs(0) != 1.
 					max_width = maths::maximum(max_width, width);
-					destination[word] |= value << cumulative_shift;
+					if (carryover == 0)
+						destination[word] |= value << cumulative_shift;
+					else
+						destination[word] |= value & ~high_bits[32 - carryover];
+
 //std::cout << value << ' ';
 					}
-
+				max_width -= carryover;
+				carryover = 0;
 				cumulative_shift += max_width;
 
 				if (max_width > remaining)
 					{
+#ifdef NEVER
 					/*
 						We can't fit this column so pad the previous width to the full 32-bits then mark this as end of list
 					*/
@@ -139,6 +146,25 @@ namespace JASS
 					*/
 					for (uint32_t word = 0; word < WORDS; word++)
 						destination[word] &= ~high_bits[remaining];
+#else
+					/*
+						We can't fit this column so take the high bits of the next set of integers
+					*/
+					encodings[slice - 1] += remaining;
+					encodings[slice] = 0;
+					integers_encoded -= WORDS;		// Wind back to the start of this row as its about to become the start of the next block.
+
+					/*
+						Encode the remaining high bits of the current integer set into the remaining space
+					*/
+					for (uint32_t word = 0; word < WORDS; word++)
+						{
+						size_t index = slice * WORDS + word;
+						uint32_t value = index < elements ? array[index] : 1;
+						destination[word] &= ~high_bits[remaining] | (value >> remaining);
+						}
+					carryover = remaining;
+#endif
 //std::cout << "-> +" << remaining << "\n";
 					break;
 					}
@@ -224,12 +250,9 @@ namespace JASS
 		__m256i payload2 = _mm256_loadu_si256((__m256i *)(source + 36));
 		source += 68;
 
-//std::cout << "Widths:";
-
 		while (1)
 			{
 			width = __builtin_ctz(selector) + 1;
-//std::cout << width << " ";
 			mask = _mm256_loadu_si256((__m256i *)mask_set[width]);
 			_mm256_storeu_si256(into, _mm256_and_si256(payload1, mask));
 			_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
@@ -239,19 +262,45 @@ namespace JASS
 			into += 2;
 
 			selector >>= width;
-			if (selector == 0)
+			while (selector == 0)
 				{
-//std::cout << "\n";
 				if (source >= end_of_source)
-					{
-//std::cout << "\n";
 					return;
-					}
 
+				/*
+					Save the remaining bits
+				*/
+				__m256i high_bits1 = payload1;
+				__m256i high_bits2 = payload2;
+
+				/*
+					move on to the next word
+				*/
 				selector = *(uint32_t *)source;
 				payload1 = _mm256_loadu_si256((__m256i *)(source + 4));
 				payload2 = _mm256_loadu_si256((__m256i *)(source + 36));
 				source += 68;
+
+				/*
+					get the low bits and write to memory
+				*/
+				width = __builtin_ctz(selector) + 1;
+
+				high_bits1 = _mm256_slli_epi32(high_bits1, width);
+				high_bits2 = _mm256_slli_epi32(high_bits2, width);
+
+				mask = _mm256_loadu_si256((__m256i *)mask_set[width]);
+				_mm256_storeu_si256(into, _mm256_or_si256(_mm256_and_si256(payload1, mask), high_bits1));
+				_mm256_storeu_si256(into + 1, _mm256_or_si256(_mm256_and_si256(payload2, mask), high_bits2));
+				payload1 = _mm256_srli_epi32(payload1, width);
+				payload2 = _mm256_srli_epi32(payload2, width);
+
+				/*
+					mpove on to the next slector
+				*/
+				into += 2;
+
+				selector >>= width;
 				}
 		}
 }
