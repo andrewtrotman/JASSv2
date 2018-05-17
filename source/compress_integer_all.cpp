@@ -26,6 +26,7 @@
 #include "compress_integer_simple_9_packed.h"
 #include "compress_integer_simple_16_packed.h"
 #include "compress_integer_simple_8b_packed.h"
+#include "compress_integer_prn_512_carryover.h"
 #include "compress_integer_bitpack_32_reduced.h"
 
 namespace JASS
@@ -34,7 +35,7 @@ namespace JASS
 		List of known compressors
 	*/
 	static compress_integer_none none;										///< identity compressor
-	static compress_integer_prn_512 prn512;								///< fixed width bin-packed into 32-bit integers
+	static compress_integer_prn_512 prn512;								///< prn-packed into 512-bit integers
 	static compress_integer_carry_8b carry_8b;							///< Carry-8b compressor
 	static compress_integer_simple_9 simple_9;							///< Simple-9 compressor
 	static compress_integer_simple_8b simple_8b;							///< Simple-8b compressor
@@ -52,6 +53,7 @@ namespace JASS
 	static compress_integer_simple_9_packed simple_9_packed;			///< Packed Simple-9 compressor
 	static compress_integer_simple_16_packed simple_16_packed;		///< Packed Simple-16 compressor
 	static compress_integer_simple_8b_packed simple_8b_packed;		///< Packed Simple-8b compressor
+	static compress_integer_prn_512_carryover prn_512_carryover;	///< fprn-packed into 512-bit integers with carryover
 	static compress_integer_bitpack_32_reduced bitpack_32_reduced;	///< fixed width bin-packed into 32-bit integers
 
 	/*!
@@ -60,26 +62,27 @@ namespace JASS
 	std::array<compress_integer_all::details, compress_integer_all::compressors_size> compress_integer_all::compressors
 		{
 			{
-			{"-cn",    "--compress_none", "None", &none},
-			{"-cv",    "--compress_vbyte", "Variable Byte", &variable_byte},
-			{"-cV",    "--compress_stream_vbyte", "Stream VByte", &stream_vbyte},
-			{"-cr",    "--compress_relative_10", "Relative-10", &relative_10},
 			{"-cc",    "--compress_carryover_12", "Carryover-12", &carryover_12},
 			{"-cC",    "--compress_carry_8b", "Carry-8b", &carry_8b},
-			{"-cs",    "--compress_simple_9", "Simple-9", &simple_9},
+			{"-cn",    "--compress_none", "None", &none},
 			{"-cp",    "--compress_simple_9_packed", "Optimal Packed Simple-9", &simple_9_packed},
-			{"-ct",    "--compress_simple_16", "Simple-16", &simple_16},
 			{"-cq",    "--compress_simple_16_packed", "Optimal Packed Simple-16", &simple_16_packed},
-			{"-cT",    "--compress_simple_8b", "Simple-8b", &simple_8b},
 			{"-cQ",    "--compress_simple_8b_packed", "Optimal Packed Simple-8b", &simple_8b_packed},
-			{"-c32r",  "--compress_32", "Binpack into 32-bit integers with 8 selectors", &bitpack_32_reduced},
-			{"-c64",   "--compress_64", "Binpack into 64-bit integers", &bitpack_64},
-			{"-c128",  "--compress_128", "Binpack into 128-bit SIMD integers", &bitpack_128},
-			{"-c256",  "--compress_256", "Binpack into 256-bit SIMD integers", &bitpack_256},
-			{"-c512p", "--compress_prn_512", "PRN  compress into 512-bit SIMD integers", &prn512},
+			{"-cr",    "--compress_relative_10", "Relative-10", &relative_10},
+			{"-cs",    "--compress_simple_9", "Simple-9", &simple_9},
+			{"-ct",    "--compress_simple_16", "Simple-16", &simple_16},
+			{"-cT",    "--compress_simple_8b", "Simple-8b", &simple_8b},
+			{"-cv",    "--compress_vbyte", "Variable Byte", &variable_byte},
+			{"-cV",    "--compress_stream_vbyte", "Stream VByte", &stream_vbyte},
 			{"-cX",    "--compress_qmx_improved", "QMX Improved", &qmx_improved},
 			{"-cx",    "--compress_qmx_original", "QMX Original", &qmx_original},
-			{"-cxX",   "--compress_qmx_jass_v1", "QMX JASS v1", &qmx_jass_v1},
+			{"-cZ",   "--compress_qmx_jass_v1", "QMX JASS v1", &qmx_jass_v1},
+			{"-c128",  "--compress_128", "Binpack into 128-bit SIMD integers", &bitpack_128},
+			{"-c256",  "--compress_256", "Binpack into 256-bit SIMD integers", &bitpack_256},
+			{"-c32r",  "--compress_32", "Binpack into 32-bit integers with 8 selectors", &bitpack_32_reduced},
+			{"-c512p", "--compress_prn_512", "PRN  compress into 512-bit SIMD integers", &prn512},
+			{"-c512c","--compress_prn_512_carryover", "PRN  compress into 512-bit SIMD integers with carryover", &prn_512_carryover},
+			{"-c64",   "--compress_64", "Binpack into 64-bit integers", &bitpack_64},
 			}
 		};
 

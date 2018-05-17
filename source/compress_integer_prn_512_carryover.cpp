@@ -101,6 +101,7 @@ namespace JASS
 			*/
 			for (uint32_t slice = 0; slice < 32; slice++)
 				{
+				uint32_t row_start = integers_encoded;
 				uint32_t max_width = 0;
 				for (uint32_t word = 0; word < WORDS; word++)
 					{
@@ -115,7 +116,7 @@ namespace JASS
 					else
 						{
 						overflow = true;
-						value = 1;
+						value = 0;					// if we overflow then pad with 0s (so that we don't carryover stray bits)
 						}
 
 					uint32_t width = maths::ceiling_log2(value);
@@ -125,8 +126,6 @@ namespace JASS
 						destination[word] |= value << cumulative_shift;
 					else
 						destination[word] |= value & ~high_bits[32 - (actual_max_width - carryover)];
-
-//std::cout << value << ' ';
 					}
 				actual_max_width = max_width;
 				max_width -= carryover;
@@ -135,25 +134,11 @@ namespace JASS
 
 				if (max_width > remaining)
 					{
-#ifdef NEVER
-					/*
-						We can't fit this column so pad the previous width to the full 32-bits then mark this as end of list
-					*/
-					encodings[slice - 1] += remaining;
-					encodings[slice] = 0;
-					integers_encoded -= WORDS;		// Wind back to the start of this row as its about to become the start of the next block.
-
-					/*
-						Set the top bits of the high integers back to 0.
-					*/
-					for (uint32_t word = 0; word < WORDS; word++)
-						destination[word] &= ~high_bits[remaining];
-#else
 					/*
 						We can't fit this column so take the high bits of the next set of integers
 					*/
 					encodings[slice] = 0;
-					integers_encoded -= WORDS;		// Wind back to the start of this row as its about to become the start of the next block.
+					integers_encoded = row_start;		// Wind back to the start of this row as its about to become the start of the next block.
 
 					/*
 						Encode the remaining high bits of the current integer set into the remaining space
@@ -161,33 +146,28 @@ namespace JASS
 					for (uint32_t word = 0; word < WORDS; word++)
 						{
 						size_t index = slice * WORDS + word;
-						uint32_t value = index < elements ? array[index] : 1;
+						uint32_t value = index < elements ? array[index] : 0;
 						destination[word] &= ~high_bits[remaining];
 						uint32_t shift = actual_max_width - remaining;
 						destination[word] |= (value >> shift) << (32 - remaining);
 						}
 					carryover = remaining;
-#endif
-//std::cout << "-> +" << remaining << "\n";
 					break;
 					}
 				else if (max_width == remaining || overflow || (slice + 1) * WORDS >= elements)
 					{
 					/*
-						We're past the end of the input data to pad the current slice and mark this as the end of the list.
+						We've filled a word without carryover.
 					*/
-					encodings[slice] = remaining;
+					encodings[slice] = max_width;
 					encodings[slice + 1] = 0;
-//std::cout << "-> " << remaining << "\n";
 					break;
 					}
-					
+
 				remaining -= max_width;
 				encodings[slice] = max_width;
-//std::cout << "-> " << max_width << "\n";
 				}
 			*selector = compute_selector(encodings);
-//std::cout << "\n";
 
 			destination += WORDS;
 			array += integers_encoded;
@@ -313,6 +293,8 @@ namespace JASS
 	*/
 	void compress_integer_prn_512_carryover::unittest(void)
 		{
+		compress_integer_prn_512_carryover compressor;
+
 		compress_integer::unittest(compress_integer_prn_512_carryover());
 
 		std::vector<uint32_t> broken_sequence =
@@ -346,8 +328,20 @@ namespace JASS
 			25,9,6,9,6,3,41,17,15,11,33,8,1,1,1,1			// 6 bits
 			};
 
-		compress_integer_prn_512_carryover compressor;
 		unittest_one(compressor, broken_sequence);
+
+		std::vector<uint32_t> second_broken_sequence =
+			{
+			1, 1, 1, 793, 1, 1, 1, 1, 2, 1, 5, 3, 2, 1, 5, 63,		// 10 bits
+			1, 2, 2, 1, 1, 1, 1, 1, 1, 1, 5, 6, 2, 4, 1, 2,			// 3 bits
+			1, 1, 1, 1, 4, 2, 1, 2, 2, 1, 1, 1, 3, 2, 2, 1,			// 3 bits
+			1, 1, 2, 3, 1, 1, 8, 1, 1, 21, 2, 9, 15, 27, 7, 4,		// 5 bits
+			2, 7, 1, 1, 2, 1, 1, 3, 2, 3, 1, 3, 3, 1, 2, 2,			// 3 bits
+			3, 1, 3, 1, 2, 1, 2, 4, 1, 1, 3, 10, 1, 2, 1, 1,		// 4 bits
+			6, 2, 1, 1, 3, 3, 7, 3, 2, 1, 2, 4, 3, 1, 2, 1,			// 3 bits <31 bits>, carryover 1 from next line
+			6, 2, 2, 1															// 3 bits
+			};
+		unittest_one(compressor, second_broken_sequence);
 
 		puts("compress_integer_prn_512_carryover::PASSED");
 		}

@@ -239,8 +239,8 @@ int main(int argc, const char *argv[])
 				if (postings_list[pos] != decompressed_postings_list[pos])
 					std::cout << "Fail at pos:" << pos << "[" <<  decompressed_postings_list[pos] << "!=" << postings_list[pos] << "]\n";
 
-			for (size_t pos = 0; pos < 400; pos++)
-				std::cout << postings_list[pos] << ",";
+			for (uint32_t pos = 10789632; pos < length; pos++)
+				std::cout << postings_list[pos] << ", ";
 
 			exit(0);
 			}
