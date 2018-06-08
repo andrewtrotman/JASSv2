@@ -68,6 +68,7 @@
 #include "compress_integer_simple_9_packed.h"
 #include "compress_integer_simple_8b_packed.h"
 #include "compress_integer_simple_16_packed.h"
+#include "compress_integer_prn_512_carryover.h"
 #include "compress_integer_bitpack_32_reduced.h"
 
 /*
@@ -263,7 +264,6 @@ int main(void)
 		puts("compress_integer_bitpack_128");
 		JASS::compress_integer_bitpack_128::unittest();
 
-
 		JASS::hardware_support hardware;
 		if (hardware.AVX)
 			{
@@ -272,12 +272,17 @@ int main(void)
 
 			puts("compress_integer_prn_512");
 			JASS::compress_integer_prn_512::unittest();
+
+			puts("compress_integer_prn_512_carryover");
+			JASS::compress_integer_prn_512_carryover::unittest();
 			}
 		else
 			{
 			puts("compress_integer_bitpack_256");
 			puts("Cannot test as no 256-bit SIMD instructions on this CPU");
 			puts("compress_integer_prn_512");
+			puts("Cannot test as no 256-bit SIMD instructions on this CPU");
+			puts("compress_integer_prn_512_carryover");
 			puts("Cannot test as no 256-bit SIMD instructions on this CPU");
 			}
 

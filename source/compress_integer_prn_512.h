@@ -51,13 +51,7 @@ namespace JASS
 			*/
 			static forceinline uint32_t find_first_set_bit(uint32_t value)
 				{
-				#ifdef _MSC_VER
-					unsigned long result;
-					_BitScanForward64(&result, value);
-					return result;
-				#else
-					return ffsl(value);
-				#endif
+				return _tzcnt_u64(value) + 1;
 				}
 
 		public:

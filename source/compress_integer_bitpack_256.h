@@ -80,7 +80,7 @@ namespace JASS
 			static void unittest(void)
 				{
 				compress_integer::unittest(compress_integer_bitpack_256());
-				puts("compress_integer_bitpack_128::PASSED");
+				puts("compress_integer_bitpack_256::PASSED");
 				}
 		};
 	}

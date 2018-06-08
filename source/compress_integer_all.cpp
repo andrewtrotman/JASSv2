@@ -101,7 +101,7 @@ namespace JASS
 		/*
 			Fake argc and argv[]
 		*/
-		const char *argv[] = {"program", "-cv"};
+		const char *argv[] = {"program", "-cC"};
 		
 		/*
 			Call the command line parser to get the selected option

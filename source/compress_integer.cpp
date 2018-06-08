@@ -22,7 +22,7 @@ namespace JASS
 	void compress_integer::unittest_one(compress_integer &compressor, const std::vector<uint32_t> &sequence)
 		{
 		std::vector<uint32_t>compressed(sequence.size() * 4);
-		std::vector<uint32_t>decompressed(sequence.size() + 256);
+		std::vector<uint32_t>decompressed(sequence.size() + 1024);
 
 		auto size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &sequence[0], sequence.size());
 		compressor.decode(&decompressed[0], sequence.size(), &compressed[0], size_once_compressed);

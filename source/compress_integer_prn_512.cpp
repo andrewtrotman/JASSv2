@@ -252,7 +252,6 @@ namespace JASS
 	*/
 	void compress_integer_prn_512::unittest(void)
 		{
-
 		compress_integer::unittest(compress_integer_prn_512());
 
 		std::vector<uint32_t> broken_sequence =
