@@ -16,6 +16,8 @@
 #include <string.h>
 #ifdef _MSC_VER
 	#include <intrin.h>
+#else
+	#include <immintrin.h>
 #endif
 
 #include "forceinline.h"
