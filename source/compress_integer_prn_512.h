@@ -14,9 +14,11 @@
 
 #include <stdint.h>
 #include <string.h>
+#ifdef _MSC_VER
+	#include <intrin.h>
+#endif
 
 #include "forceinline.h"
-
 #include "compress_integer.h"
 
 namespace JASS
@@ -43,7 +45,7 @@ namespace JASS
 			/*
 				COMPRESS_INTEGER_PRN_512::FIND_FIRST_SET_BIT()
 				----------------------------------------------
-				@brief return the position of the lest significant set bit (using a single machine code instruction)
+				@brief return the position of the least significant set bit (using a single machine code instruction)
 				@param [in] value the integer to check.
 				@return The position of the lowest set bit (or 0 if no bits are set)
 			*/
