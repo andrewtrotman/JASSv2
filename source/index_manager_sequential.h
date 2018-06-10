@@ -171,7 +171,6 @@ namespace JASS
 				/*
 					Tell index_manager that we have a new term than pass it on to the correct index_postings to manage.
 				*/
-
 				index_manager::term(term);
 				index[term.lexeme].push_back(get_highest_document_id(), get_highest_term_id());
 				}
