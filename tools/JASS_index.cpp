@@ -12,6 +12,7 @@
 */
 #include <string.h>
 
+#include "timer.h"
 #include "parser.h"
 #include "version.h"
 #include "commandline.h"
@@ -70,6 +71,8 @@ uint8_t usage(const std::string &exename)
 */
 int main(int argc, const char *argv[])
 	{
+	auto timer = JASS::timer::start();			// elapsed time since start (excluding static initialisers)
+
 	/*
 		Do the command line parsing.
 	*/
@@ -100,6 +103,8 @@ int main(int argc, const char *argv[])
 	JASS::index_manager_sequential index;
 
 	size_t total_documents = 0;
+
+	auto preamble_time = JASS::timer::stop(timer).nanoseconds();
 
 	/*
 		Parse the instream to get document (which are then indexed)
@@ -158,7 +163,9 @@ int main(int argc, const char *argv[])
 		index.end_document();
 		}
 	while (!document.isempty());
-	
+
+	auto time_to_end_parse = JASS::timer::stop(timer).nanoseconds();
+
 	std::cout << "Documents:" << total_documents << '\n';
 
 	/*
@@ -187,6 +194,15 @@ int main(int argc, const char *argv[])
 		JASS::serialise_integers serialiser;
 		index.iterate(serialiser);
 		}
+	auto time_to_end = JASS::timer::stop(timer).nanoseconds();
+	auto parse_time = time_to_end_parse - preamble_time;
+	auto serialise_time = time_to_end - time_to_end_parse;
+
+	std::cout << "Preamble time  :" << preamble_time << "ns (" << preamble_time / 1000000000 << " seconds)\n";
+	std::cout << "Parse time     :" << parse_time << "ns (" << parse_time / 1000000000 << " seconds)\n";
+	std::cout << "Serialise time :" << serialise_time << "ns (" << serialise_time / 1000000000 << " seconds)\n";
+	std::cout << "===============\n";
+	std::cout << "Total time     :" << time_to_end << "ns (" << time_to_end / 1000000000 << " seconds)\n";
 
 	return 0;
 	}
