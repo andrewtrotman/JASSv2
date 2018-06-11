@@ -96,9 +96,9 @@ printf("source[0] %d * %d-bits [23]\n", (int)transition_table[current_selector].
 			/*
 				Start at this selectors lowest possible tranition (that has the most possible integers in it)
 			*/
-			size_t selector = 0;
-			size_t terms;
-			size_t trial;
+			uint32_t selector = 0;
+			uint32_t terms;
+			uint32_t trial;
 
 			/*
 				Find out how many integers we can pack
@@ -134,7 +134,7 @@ printf("source[0] %d * %d-bits [23]\n", (int)transition_table[current_selector].
 			if (selector >= 4)
 				return 0;
 
-			size_t bits_per_integer = transition_table[trial].bits;
+			uint32_t bits_per_integer = transition_table[trial].bits;
 			terms = transition_table[trial].integers;
 
 			/*
@@ -143,7 +143,7 @@ printf("source[0] %d * %d-bits [23]\n", (int)transition_table[current_selector].
 			uint32_t word = 0;
 			for (int term = terms - 1; term >= 0; term--)
 				{
-				size_t value = (used + term >= source_integers) ? 0 : from[used + term];		// Make sure we don't overflow the input buffer
+				uint32_t value = (used + term >= source_integers) ? 0 : from[used + term];		// Make sure we don't overflow the input buffer
 				word = word << bits_per_integer | value;
 				}
 

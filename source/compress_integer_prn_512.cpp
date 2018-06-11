@@ -223,7 +223,7 @@ namespace JASS
 
 		while (1)
 			{
-			width = find_first_set_bit(selector);
+			width = (uint32_t)find_first_set_bit(selector);
 			mask = _mm256_loadu_si256((__m256i *)mask_set[width]);
 			_mm256_storeu_si256(into, _mm256_and_si256(payload1, mask));
 			_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));

@@ -4,6 +4,9 @@
 	Copyright (c) 2017 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
+#include <stdlib.h>
+
+#include <limits>
 #include <ostream>
 
 #include "reverse.h"
@@ -27,7 +30,13 @@ namespace JASS
 
 		for (const auto &header : reverse(impact_ordered))
 			{
-			uint32_t length = header.size();
+			auto actual_size = header.size();
+			if (actual_size > std::numeric_limits<uint32_t>::max())
+				{
+				std::cout << "Numeric overflow - can't write length as a 32-bit integer " << actual_size << " > " << std::numeric_limits<uint32_t>::max() << "\n";
+				exit(1);
+				}
+			uint32_t length = static_cast<uint32_t>(actual_size);
 			postings_file.write(&length, sizeof(length));
 			for (const auto &posting : header)
 				{

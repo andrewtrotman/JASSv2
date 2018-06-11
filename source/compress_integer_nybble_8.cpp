@@ -115,7 +115,7 @@ namespace JASS
 	void compress_integer_nybble_8::unittest(void)
 		{
 		std::vector<uint32_t> every_case;
-		size_t instance;
+		uint32_t instance;
 
 		/*
 			1-bit integers

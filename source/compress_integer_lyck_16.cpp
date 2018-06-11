@@ -35,7 +35,7 @@ namespace JASS
 
 			uint32_t integers_to_encode;
 			size_t cumulative = 0;
-			uint32_t ending = source_integers > 16 ? 16 : source_integers;
+			uint32_t ending = source_integers > 16 ? 16 : (uint32_t)source_integers;
 			for (integers_to_encode = 0; integers_to_encode < ending; integers_to_encode++)
 				{
 				auto bits = compress_integer_bitpack::bits_needed(source[integers_to_encode]);
@@ -172,7 +172,7 @@ namespace JASS
 	void compress_integer_lyck_16::unittest(void)
 		{
 		std::vector<uint32_t> every_case;
-		size_t instance;
+		uint32_t instance;
 
 		/*
 			1-bit integers

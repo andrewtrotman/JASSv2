@@ -179,7 +179,7 @@ namespace JASS
 		*/
 		forceinline void make_heap(void)
 			{
-			for (int position = size / 2 - 1; position >= 0; position--)
+			for (int64_t position = size / 2 - 1; position >= 0; position--)
 				heapify(position);
 			}
 

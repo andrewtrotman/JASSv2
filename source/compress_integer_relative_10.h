@@ -55,17 +55,17 @@ namespace JASS
 			class relative_10_lookup
 				{
 				public:
-					size_t numbers;					///< how many integers
-					size_t bits;						///< how many bits they take
-					size_t mask;						///< the mask to extract one
-					size_t transfer_array[10];		///< which selector to use when encoding
-					size_t relative_row[4];			///< given the previous row and a 2 bit selector, this is the new row to use
+					uint32_t numbers;					///< how many integers
+					uint32_t bits;						///< how many bits they take
+					uint32_t mask;						///< the mask to extract one
+					uint32_t transfer_array[10];		///< which selector to use when encoding
+					uint32_t relative_row[4];			///< given the previous row and a 2 bit selector, this is the new row to use
 				};
 
 		protected:
 			static const relative_10_lookup relative10_table[];	///< The Relative-10 selector table explaining how the encoding works.
-			static const size_t bits_to_use10[];						///< The number of bits that Relative-10 will be used to store an integer of the given the number of bits in length
-			static const size_t table_row10[];							///< The row of the table to use given the number of integers to can pack into the word
+			static const uint32_t bits_to_use10[];						///< The number of bits that Relative-10 will be used to store an integer of the given the number of bits in length
+			static const uint32_t table_row10[];							///< The row of the table to use given the number of integers to can pack into the word
 
 		public:
 			/*

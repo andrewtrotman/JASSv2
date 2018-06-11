@@ -51,7 +51,7 @@ namespace JASS
 		-------------------------------------------
 		This is the number of bits that simple-9 will be used to store an integer of the given the number of bits in length
 	*/
-	const size_t compress_integer_relative_10::bits_to_use10[] =
+	const uint32_t compress_integer_relative_10::bits_to_use10[] =
 		{
 		 1,  1,  2,  3,  4,  5,  6,  7,
 		10, 10, 10, 15, 15, 15, 15, 15,
@@ -68,7 +68,7 @@ namespace JASS
 		-----------------------------------------
 		This is the row of the table to use given the number of integers we can pack into the word
 	*/
-	const size_t compress_integer_relative_10::table_row10[] =
+	const uint32_t compress_integer_relative_10::table_row10[] =
 		{
 		0, 1, 2, 3, 4, 5, 6, 6, 6,
 		7, 7, 7, 7, 7, 8, 8, 8, 8,

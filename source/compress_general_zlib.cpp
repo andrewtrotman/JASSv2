@@ -98,10 +98,10 @@ namespace JASS
 		/*
 			Setup the parameter block
 		*/
-		stream.avail_in  = static_cast<decltype(stream.avail_in)>(source_bytes);
-		stream.next_in   = reinterpret_cast<decltype(stream.next_in)>(const_cast<void *>(source));
-		stream.avail_out = static_cast<decltype(stream.avail_out)>(destination_length);
-		stream.next_out  = static_cast<decltype(stream.next_out)>(decoded);
+		instream.avail_in  = static_cast<decltype(stream.avail_in)>(source_bytes);
+		instream.next_in   = reinterpret_cast<decltype(stream.next_in)>(const_cast<void *>(source));
+		instream.avail_out = static_cast<decltype(stream.avail_out)>(destination_length);
+		instream.next_out  = static_cast<decltype(stream.next_out)>(decoded);
 
 		/*
 			Decompress

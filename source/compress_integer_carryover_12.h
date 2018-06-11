@@ -47,10 +47,10 @@ namespace JASS
 				{
 				public:
 					const char *name;						///< The name of this selector (not used)
-					size_t bits;							///< The number of bits per integer
-					size_t integers;						///< The numner of integers of the given width
-					bool next_selector;					///< Is the next selector stored in this word?
-					size_t new_selector[4];				///< The 2-bit selector take you to the table row stored here
+					uint32_t bits;							///< The number of bits per integer
+					uint32_t integers;						///< The numner of integers of the given width
+					bool next_selector;						///< Is the next selector stored in this word?
+					uint32_t new_selector[4];					///< The 2-bit selector take you to the table row stored here
 				};
 
 		private:

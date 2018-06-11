@@ -51,7 +51,7 @@ namespace JASS
 				@param [in] value the integer to check.
 				@return The position of the lowest set bit (or 0 if no bits are set)
 			*/
-			static forceinline uint32_t find_first_set_bit(uint32_t value)
+			static forceinline uint64_t find_first_set_bit(uint64_t value)
 				{
 				return _tzcnt_u64(value) + 1;
 				}

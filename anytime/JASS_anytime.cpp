@@ -78,7 +78,7 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 		{
 		jass_query = new JASS::query<uint16_t, MAX_DOCUMENTS, MAX_TOP_K>(index.primary_keys(), index.document_count(), top_k);
 		}
-	catch (std::bad_array_new_length &error)
+	catch (std::bad_array_new_length &)
 		{
 		exit(printf("Can't load index as the number of documents is too large - change MAX_DOCUMENTS in %s\n", __FILE__));
 		}

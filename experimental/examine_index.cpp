@@ -146,7 +146,7 @@ void dump_tables(void)
 		{
 		printf("%2zu:", median);
 		for (size_t exception = 0; exception <= max_bitness; exception++)
-			printf("%7lu ", median_with_exceptions[median][exception]);
+			printf("%7lu ", (unsigned long)median_with_exceptions[median][exception]);
 
 		std::cout << "\n";
 		}
