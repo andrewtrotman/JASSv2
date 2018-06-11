@@ -46,14 +46,31 @@ namespace JASS
 	*/
 	size_t compress_general_zlib::encode(void *encoded, size_t encoded_buffer_length, const void *source, size_t source_bytes)
 		{
+		/*
+			Reset the zlib stream.
+		*/
 		if (deflateReset(&stream) != Z_OK)
 			return 0;
 
-		stream.avail_in = source_bytes;
-		stream.next_in = (Bytef *)source;
-		stream.avail_out = encoded_buffer_length;
-		stream.next_out = (Bytef *)encoded;
+		/*
+			Check for overflow before we go-ahead.
+		*/
+		if (source_bytes > std::numeric_limits<decltype(stream.avail_in)>::max())
+			return 0; 
+		if (encoded_buffer_length > std::numeric_limits<decltype(stream.avail_out)>::max())
+			return 0; 
 
+		/*
+			Setup the parameter block
+		*/
+		stream.avail_in  = static_cast<decltype(stream.avail_in)>(source_bytes);
+		stream.next_in   = reinterpret_cast<decltype(stream.next_in)>(const_cast<void *>(source));
+		stream.avail_out = static_cast<decltype(stream.avail_out)>(encoded_buffer_length);
+		stream.next_out  = static_cast<decltype(stream.next_out)>(encoded);
+
+		/*
+			Compress
+		*/
 		auto success = deflate(&stream, Z_FINISH);    /* no bad return value */
 		return success == Z_STREAM_END ? (encoded_buffer_length - stream.avail_out) : 0;
 		}
@@ -64,14 +81,31 @@ namespace JASS
 	*/
 	size_t compress_general_zlib::decode(void *decoded, size_t destination_length, const void *source, size_t source_bytes)
 		{
+		/*
+			Reset the zlib stream.
+		*/
 		if (inflateReset(&instream) != Z_OK)
 			return 0;
 
-		instream.avail_in = source_bytes;
-		instream.next_in = (Bytef *)source;
-		instream.avail_out = destination_length;
-		instream.next_out = (Bytef *)decoded;
+		/*
+			Check for overflow before we go-ahead.
+		*/
+		if (source_bytes > std::numeric_limits<decltype(stream.avail_in)>::max())
+			return 0; 
+		if (destination_length > std::numeric_limits<decltype(stream.avail_out)>::max())
+			return 0; 
 
+		/*
+			Setup the parameter block
+		*/
+		stream.avail_in  = static_cast<decltype(stream.avail_in)>(source_bytes);
+		stream.next_in   = reinterpret_cast<decltype(stream.next_in)>(const_cast<void *>(source));
+		stream.avail_out = static_cast<decltype(stream.avail_out)>(destination_length);
+		stream.next_out  = static_cast<decltype(stream.next_out)>(decoded);
+
+		/*
+			Decompress
+		*/
 		auto status = inflate(&instream, Z_FINISH);
 
 		return status == Z_STREAM_END ? (destination_length - instream.avail_out) : 0;
