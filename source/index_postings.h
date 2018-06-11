@@ -411,6 +411,7 @@ namespace JASS
 					highest_document = document_id;
 					term_frequencies.push_back(1);
 					}
+
 				/*
 					Always add a new position
 				*/

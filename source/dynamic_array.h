@@ -248,7 +248,8 @@ namespace JASS
 			*/
 			TYPE &back(void) const
 				{
-				return tail.load()->data[tail.load()->used - 1];
+				auto tail_pointer = tail.load();
+				return tail_pointer->data[tail_pointer->used - 1];
 				}
 			
 			/*
@@ -301,7 +302,7 @@ namespace JASS
 					}
 				while(true);
 				}
-			
+
 			/*
 				DYNAMIC_ARRAY::OPERATOR[]()
 				---------------------------

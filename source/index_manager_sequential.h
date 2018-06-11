@@ -123,7 +123,7 @@ namespace JASS
 			index_manager_sequential() :
 				index_manager(),
 				index(memory),
-				primary_key(memory)
+				primary_key(memory, 1000, 1.5)
 				{
 				/* Nothing */
 				}
