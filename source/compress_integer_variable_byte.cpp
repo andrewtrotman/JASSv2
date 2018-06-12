@@ -44,7 +44,7 @@ namespace JASS
 			/*
 				it fits so encode and add to the size used
 			*/
-			compress_into(encoded + used, *current);
+			compress_into(encoded, *current);
 			used += needed;
 			}
 
@@ -66,69 +66,7 @@ namespace JASS
 		*/
 		while (decoded < end)
 			{
-			/*
-				If the high bit is set the sequence is over, otherwise, in an unwound loop, decode the integers one at a time.
-			*/
-			if (*source & 0x80)
-				*decoded = *source++ & 0x7F;
-			else
-				{
-				*decoded = *source++;
-				if (*source & 0x80)
-					*decoded = (*decoded << 7) | (*source++ & 0x7F);
-				else
-					{
-					*decoded = (*decoded << 7) | *source++;
-					if (*source & 0x80)
-						*decoded = (*decoded << 7) | (*source++ & 0x7F);
-					else
-						{
-						*decoded = (*decoded << 7) | *source++;
-						if (*source & 0x80)
-							*decoded = (*decoded << 7) | (*source++ & 0x7F);
-						else
-							{
-							*decoded = (*decoded << 7) | *source++;
-							if (*source & 0x80)
-								*decoded = (*decoded << 7) | (*source++ & 0x7F);
-							else
-								{
-#if JASS_COMPRESS_INTEGER_BITS_PER_INTEGER == 64
-								*decoded = (*decoded << 7) | *source++;
-								if (*source & 0x80)
-									*decoded = (*decoded << 7) | (*source++ & 0x7F);
-								else
-									{
-									*decoded = (*decoded << 7) | *source++;
-									if (*source & 0x80)
-										*decoded = (*decoded << 7) | (*source++ & 0x7F);
-									else
-										{
-										*decoded = (*decoded << 7) | *source++;
-										if (*source & 0x80)
-											*decoded = (*decoded << 7) | (*source++ & 0x7F);
-										else
-											{
-											*decoded = (*decoded << 7) | *source++;
-											if (*source & 0x80)
-												*decoded = (*decoded << 7) | (*source++ & 0x7F);
-											else
-												{
-												*decoded = (*decoded << 7) | *source++;
-												if (*source & 0x80)
-													*decoded = (*decoded << 7) | (*source++ & 0x7F);
-												else
-													*decoded = (*decoded << 7) | *source++;
-												}
-											}
-										}
-									}
-#endif
-								}
-							}
-						}
-					}
-				}
+			decompress_into(decoded, source);
 			decoded++;
 			}
 		}
@@ -228,7 +166,8 @@ namespace JASS
 		/*
 			Now check that the example in the documentation is correct, and that the encoding is big-endian
 		*/
-		compress_into(encoded_buffer, 1905);
+		auto pointer = &encoded_buffer[0];
+		compress_into(pointer, 1905);
 		const uint8_t answer[] = {0x0E, 0xF1};
 		JASS_assert(memcmp(answer, encoded_buffer, 2) == 0);
 		

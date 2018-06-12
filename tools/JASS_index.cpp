@@ -124,7 +124,10 @@ int main(int argc, const char *argv[])
 			break;
 		total_documents++;
 		if (total_documents % parameter_report_every_n == 0)
-			std::cout << "Documents:" << total_documents << '\n';
+			{
+			auto took = JASS::timer::stop(timer).nanoseconds();
+			std::cout << "Documents:" << total_documents << " in:" << took << " ns" << "\n";
+			}
 
 		/*
 			parse the current document

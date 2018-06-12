@@ -92,7 +92,6 @@ set(JASSlib_FILES
 	deserialised_jass_v1.cpp
 	document.h
 	dynamic_array.h
-	dynamic_array.cpp
 	file.h
 	file.cpp
 	forceinline.h

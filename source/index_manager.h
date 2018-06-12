@@ -28,14 +28,12 @@ namespace JASS
 		declared it is used by calling begin_document() at the beginning of each document, end_document() at the end of each document, and term()
 		for each term in the token stream (i.e. "the cat and the dog" is 5 tokens, "the", "cat", "and", "the", "dog".  This class does not stem and
 		it does not stop words.  That behaviour is exterior to this class.  To find out how many documents have been indexed up-to a given point call
-		get_highest_document_id().  To find out how many tokens have been indexed call get_highest_term_id().  When subclassing, remember to call this
-		class's methods from the over-ridden methods in the sub-class.
+		get_highest_document_id().  When subclassing, remember to call this class's methods from the over-ridden methods in the sub-class.
 	*/
 	class index_manager
 		{
 		private:
 			size_t highest_document_id;					///< The highest document_id seen so far (counts from 1).
-			size_t highest_term_id;							///< The highest term_id seen so far (counts from 1).
 
 		public:
 			/*
@@ -93,8 +91,7 @@ namespace JASS
 				@brief Constructor
 			*/
 			index_manager() :
-				highest_document_id(0),				// initialised to 0, this is the number of documents that have (or is) being indexed.
-				highest_term_id(0)					// initialised to 0, this is the number of terms that have been seen.
+				highest_document_id(0)				// initialised to 0, this is the number of documents that have (or is) being indexed.
 				{
 				/*
 					Nothing
@@ -138,7 +135,7 @@ namespace JASS
 			*/
 			virtual void term(const parser::token &term)
 				{
-				highest_term_id++;
+				/* Nothing */
 				}
 			
 			/*
@@ -198,18 +195,6 @@ namespace JASS
 				}
 			
 			/*
-				INDEX_MANAGER::GET_HIGHEST_TERM_ID()
-				------------------------------------
-			*/
-			/*!
-				@brief Return the number of tokens that have been successfully indexed.
-			*/
-			size_t get_highest_term_id(void) const
-				{
-				return highest_term_id;
-				}
-
-			/*
 				INDEX_MANAGER::UNITTEST()
 				-------------------------
 			*/
@@ -223,7 +208,6 @@ namespace JASS
 				*/
 				index_manager index;
 			
-				JASS_assert(index.get_highest_term_id() == 0);
 				JASS_assert(index.get_highest_document_id() == 0);
 
 				/*
@@ -237,7 +221,6 @@ namespace JASS
 				/*
 					Make sure its no longer empty
 				*/
-				JASS_assert(index.get_highest_term_id() == 1);
 				JASS_assert(index.get_highest_document_id() == 1);
 				
 				/*

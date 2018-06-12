@@ -20,6 +20,7 @@
 #include "dynamic_array.h"
 #include "allocator_pool.h"
 #include "index_postings_impact.h"
+#include "compress_integer_variable_byte.h"
 
 namespace JASS
 	{
@@ -33,7 +34,7 @@ namespace JASS
 	class index_postings
 		{
 		private:
-			static constexpr size_t initial_size = 4;		///< Initially allocate space for 4 elements
+			static constexpr size_t initial_size = 16;		///< Initially allocate space for 4 elements
 			static constexpr double growth_factor = 1.5;	///< Grow dynamic arrays by a factor of 1.5
 
 		protected:
@@ -49,34 +50,30 @@ namespace JASS
 				public:
 					uint32_t document_id;						///< Internal document identifier
 					uint32_t term_frequency;					///< Number of times the term occurs in this dociument
-					uint32_t position;							///< The word position of this term in this document
+
 				public:
 					/*
 						INDEX_POSTINGS::POSTING::POSTING()
 						----------------------------------
 					*/
 					/*!
-						@brief COnstructor.
+						@brief Constructor.
 						@param document_id [in] the document ID to use
 						@param term_frequency [in] the term frequency to use
 						@param position [in] the word position to use
 					*/
-					posting(uint32_t document_id, uint32_t term_frequency, uint32_t position) :
+					posting(uint32_t document_id, uint32_t term_frequency) :
 						document_id(document_id),
-						term_frequency(term_frequency),
-						position(position)
+						term_frequency(term_frequency)
 						{
 						/* Nothing */
 						}
 				};
-			
+
 		private:
 			size_t highest_document;							///< The higest document number seen in this postings list (counting from 1)
-			size_t highest_position;							///< The higest position seen in this postings list (counting from 1)
 
-			dynamic_array<uint32_t> document_ids;			///< Array holding the document IDs
-			dynamic_array<uint16_t> term_frequencies;		///< Array holding the term frequencies
-			dynamic_array<uint32_t> positions;				///< Array holding the term positions
+			dynamic_array<uint8_t> postings;			///< Array holding the docids and the term frequencies (variable byte encoded docid first <d bytes>, then term frequency <1 byte>)
 
 			/*
 				CLASS INDEX_POSTINGS::ITERATOR
@@ -84,7 +81,6 @@ namespace JASS
 			*/
 			/*!
 				@brief C++ iterator for iterating over an index_postings object.
-				@details See http://www.cprogramming.com/c++11/c++11-ranged-for-loop.html for details on how to write a C++11 iterator.
 			*/
 			class iterator
 				{
@@ -103,11 +99,8 @@ namespace JASS
 						};
 
 				private:
-					dynamic_array<uint32_t>::iterator document;			///< The iterator for the documents (1 per document).
-					dynamic_array<uint16_t>::iterator frequency;			///< The iterator for the frequencies (1 per document).
-					dynamic_array<uint32_t>::iterator position;			///< The iterator for the word positions (frequency times per document).
-					dynamic_array<uint16_t>::iterator frequency_end;	///< Use to know when we've walked past the end of the pstings.
-					uint32_t frequencies_remaining;							///< The numner of word positions that have not yet been returned for this document.
+					dynamic_array<uint8_t>::iterator positon_in_postings_list;			///< The iterator for the documents (1 per document).
+					uint32_t last_docid;
 
 				public:
 					/*
@@ -120,13 +113,12 @@ namespace JASS
 						@param start [in] Whether this is an iterator for the START or END of the postings lists
 					*/
 					iterator(const index_postings &parent, where start):
-						document(start == START ? parent.document_ids.begin() : parent.document_ids.end()),
-						frequency(start == START ? parent.term_frequencies.begin() : parent.term_frequencies.end()),
-						position(start == START ? parent.positions.begin() : parent.positions.end()),
-						frequency_end(parent.term_frequencies.end()),
-						frequencies_remaining(frequency != parent.term_frequencies.end() ? *frequency : 0)
+						positon_in_postings_list(start == START ? parent.postings.begin() : parent.postings.end()),
+						last_docid(0)
 						{
-						/* Nothing */
+						/*
+							Nothing
+						*/
 						}
 
 					/*
@@ -144,7 +136,7 @@ namespace JASS
 						/*
 							If the positions are the same then the document and term frequency must be the same.
 						*/
-						if (other.position != position)
+						if (other.positon_in_postings_list != positon_in_postings_list)
 							return true;
 						else
 							return false;
@@ -157,9 +149,14 @@ namespace JASS
 					/*!
 						@brief Return a copy of the element pointed to by this iterator.
 					*/
-					const posting operator*() const
+					const posting operator*()
 						{
-						return posting(*document, *frequency, *position);
+						compress_integer::integer delta;
+						compress_integer_variable_byte::decompress_into(&delta, positon_in_postings_list);
+						last_docid += delta;
+						auto answer = posting(last_docid, *positon_in_postings_list);
+						++positon_in_postings_list;
+						return answer;
 						}
 
 					/*
@@ -171,145 +168,7 @@ namespace JASS
 					*/
 					const iterator &operator++()
 						{
-						frequencies_remaining--;
-						if (frequencies_remaining <= 0)
-							{
-							++document;
-							++frequency;
-							frequencies_remaining = frequency != frequency_end ? *frequency : 0;
-							}
-						++position;
 						return *this;
-						}
-				};
-
-			/*
-				CLASS INDEX_POSTINGS::TF_ITERATOR
-				---------------------------------
-			*/
-			/*!
-				@brief C++ iterator for iterating over the <document_id, term_frequency> paira in an index_postings object.
-			*/
-			class tf_iterator
-				{
-				private:
-					dynamic_array<uint32_t>::iterator document;			///< The iterator for the documents (1 per document).
-					dynamic_array<uint16_t>::iterator frequency;			///< The iterator for the frequencies (1 per document).
-
-				public:
-					/*
-						INDEX_POSTINGS::TF_ITERATOR::TF_ITERATOR()
-						------------------------------------------
-					*/
-					/*!
-						@brief Constructor
-						@param parent [in] The object that this iterator is iterating over
-						@param start [in] Whether this is an iterator for the START or END of the postings lists
-					*/
-					tf_iterator(const index_postings &parent, iterator::where start):
-						document(start == iterator::START ? parent.document_ids.begin() : parent.document_ids.end()),
-						frequency(start == iterator::START ? parent.term_frequencies.begin() : parent.term_frequencies.end())
-						{
-						/* Nothing */
-						}
-
-					/*
-						INDEX_POSTINGS::TF_ITERATOR::OPERATOR!=()
-						-----------------------------------------
-					*/
-					/*!
-						@brief Compare two iterator objects for non-equality.
-						@param other [in] The iterator object to compare to.
-						@return true if they differ, else false.
-					*/
-
-					bool operator!=(const tf_iterator &other) const
-						{
-						if (other.frequency != frequency)
-							return true;
-						else
-							return false;
-						}
-
-					/*
-						INDEX_POSTINGS::TF_ITERATOR::OPERATOR*()
-						----------------------------------------
-					*/
-					/*!
-						@brief Return a copy of the element pointed to by this iterator.
-					*/
-					const posting operator*() const
-						{
-						return posting(*document, *frequency, 0);
-						}
-
-					/*
-						INDEX_POSTINGS::TF_ITERATOR::OPERATOR++()
-						-----------------------------------------
-					*/
-					/*!
-						@brief Increment this iterator.
-					*/
-					const tf_iterator &operator++()
-						{
-						++document;
-						++frequency;
-
-						return *this;
-						}
-				};
-
-			/*
-				CLASS INDEX_POSTINGS::TF_ITERATOR_THUNK
-				---------------------------------------
-			*/
-			/*!
-				@brief Intermediary object used to create iterators over the non-positional parts of the index
-			*/
-			class tf_iterator_thunk
-				{
-				private:
-					const index_postings &parent;					///< The index_postings object we're thunking through
-
-				public:
-					/*
-						INDEX_POSTINGS::TF_ITERATOR_THUNK::TF_ITERATOR_THUNK()
-						------------------------------------------------------
-					*/
-					/*!
-						@brief Constructor
-						@param parent [in] The index_postings object that the tf_iterator will iterate over
-					*/
-					tf_iterator_thunk(const index_postings &parent) :
-						parent(parent)
-						{
-						/* Nothing */
-						}
-
-					/*
-						INDEX_POSTINGS::TF_ITERATOR_THUNK::BEGIN()
-						------------------------------------------
-					*/
-					/*!
-						@brief Return a tf_iterator pointing to the start of the postings.
-						@return tf_iterator pointing to start of the postings.
-					*/
-					auto begin(void) const
-						{
-						return tf_iterator(parent, iterator::START);
-						}
-						
-					/*
-						INDEX_POSTINGS::TF_ITERATOR_THUNK::END()
-						----------------------------------------
-					*/
-					/*!
-						@brief Return an iterator pointing to the end of the postings.
-						@return Iterator pointing to end of tne postings.
-					*/
-					auto end(void) const
-						{
-						return tf_iterator(parent, iterator::END);
 						}
 				};
 
@@ -338,10 +197,7 @@ namespace JASS
 			*/
 			index_postings(allocator &memory_pool) :
 				highest_document(0),															// starts at 0, counts from 1
-				highest_position(0),															// starts at 0, counts from 1
-				document_ids(memory_pool, initial_size, growth_factor),			// give the allocator to the array
-				term_frequencies(memory_pool, initial_size, growth_factor),		// give the allocator to the array
-				positions(memory_pool, initial_size, growth_factor)				// give the allocator to the array
+				postings(memory_pool, initial_size, growth_factor)					// give the allocator to the array
 				{
 				/* Nothing */
 				}
@@ -373,33 +229,21 @@ namespace JASS
 				}
 
 			/*
-				INDEX_POSTINGS::TF_ITERATE()
-				----------------------------
-			*/
-			/*!
-				@brief return an intermediary that can be used to iterate over the <document_id, term_frequency> pairs without positions
-			*/
-			const tf_iterator_thunk tf_iterate(void) const
-				{
-				return tf_iterator_thunk(*this);
-				}
-
-			/*
 				INDEX_POSTINGS::PUSH_BACK()
 				---------------------------
 			*/
 			/*!
 				@brief Add to the end of the postings list.
 			*/
-			virtual void push_back(size_t document_id, size_t position)
+			virtual void push_back(size_t document_id)
 				{
 				if (document_id == highest_document)
 					{
 					/*
 						If this is the second or subseqent occurrence then just add 1 to the term frequency (and make sure it doesn't overflow).
 					*/
-					uint16_t &frequency = term_frequencies.back();
-					if (frequency <= 0xFFFE)
+					uint8_t &frequency = postings.back();
+					if (frequency <= 0xFF)
 						frequency++;			// cppcheck produces a false positive "Variable 'frequency' is modified but its new value is never used." - it looks like it doesn't fully understand that frequency is a reference.
 					}
 				else
@@ -407,16 +251,20 @@ namespace JASS
 					/*
 						First time we've seen this term in this document so add a new document ID and set the term frequency to 1.
 					*/
-					document_ids.push_back(document_id);
-					highest_document = document_id;
-					term_frequencies.push_back(1);
-					}
+					uint8_t space[10];				// worst case for a 64-bit integer (70 bits  / 7 bits per byte = 10 bytes)
+					uint8_t *ending = space;		// write into here;
 
-				/*
-					Always add a new position
-				*/
-				positions.push_back(position);
-				highest_position = position;
+					/*
+						Compress into the temporary buffer then copy into the postings
+					*/
+					compress_integer_variable_byte::compress_into(ending, document_id - highest_document);
+
+					for (uint8_t *byte = space; byte < ending; byte++)
+						postings.push_back(*byte);
+					postings.push_back(1);
+
+					highest_document = document_id;
+					}
 				}
 			
 			/*
@@ -434,7 +282,7 @@ namespace JASS
 			*/
 			index_postings_impact &impact_order(allocator &memory) const
 				{
-				std::array<uint32_t, 0x10000> frequencies = {};
+				std::array<uint32_t, 0x100> frequencies = {};
 				size_t number_of_postings = 0;
 				size_t highest_impact = 0;
 				size_t lowest_impact = std::numeric_limits<size_t>::max();
@@ -442,7 +290,7 @@ namespace JASS
 				/*
 					Count up the number of times each impact is seen and compute the highest and lowest impact scores
 				*/
-				for (const auto &posting : tf_iterate())
+				for (const auto &posting : *this)
 					{
 					/*
 						Calculate the maximum and minimum impact scores seen
@@ -483,8 +331,8 @@ namespace JASS
 				*/
 				size_t cumulative = 0;
 				size_t current_impact = 0;
-				size_t impact_value = 0;
-				for (size_t which = 0; which <= 0xFFFF; which++)
+				size_t impact_value = lowest_impact;
+				for (size_t which = lowest_impact; which <= highest_impact; which++)
 					{
 					uint32_t *times = &frequencies[which];
 					if (*times != 0)
@@ -508,7 +356,7 @@ namespace JASS
 				/*
 					Now place the postings in the right places
 				*/
-				for (const auto &posting : tf_iterate())
+				for (const auto &posting : *this)
 					{
 					postings_list[frequencies[posting.term_frequency]] = posting.document_id;
 					frequencies[posting.term_frequency]++;
@@ -526,20 +374,8 @@ namespace JASS
 			*/
 			void text_render(std::ostream &stream) const
 				{
-				uint32_t previous_document_id = std::numeric_limits<uint32_t>::max();
 				for (const auto &posting : *this)
-					{
-					if (posting.document_id != previous_document_id)
-						{
-						if (previous_document_id != std::numeric_limits<uint32_t>::max())
-							stream << '>';
-						stream << '<' << posting.document_id << ',' << posting.term_frequency << ',' << posting.position;
-						previous_document_id = posting.document_id;
-						}
-					else
-						stream << ',' << posting.position;
-					}
-				stream << '>';
+					stream << '<' << posting.document_id << ',' << posting.term_frequency << '>';
 				}
 			
 			/*
@@ -554,16 +390,16 @@ namespace JASS
 				allocator_pool pool;
 				index_postings postings(pool);
 				
-				postings.push_back(1, 100);
-				postings.push_back(1, 101);
-				postings.push_back(2, 102);
-				postings.push_back(2, 103);
+				postings.push_back(1);
+				postings.push_back(1);
+				postings.push_back(2);
+				postings.push_back(173252);
 				
 				std::ostringstream result;
 				
 				postings.text_render(result);
 
-				JASS_assert(strcmp(result.str().c_str(), "<1,2,100,101><2,2,102,103>") == 0);
+				JASS_assert(strcmp(result.str().c_str(), "<1,2><2,1><173252,1>") == 0);
 
 				puts("index_postings::PASSED");
 				}

@@ -12,6 +12,7 @@
 */
 #pragma once
 
+#include "forceinline.h"
 #include "compress_integer.h"
 
 namespace JASS
@@ -139,7 +140,8 @@ namespace JASS
 				@param destination [out] The buffer to write into.
 				@param value [in] The value to encode.
 			*/
-			static inline void compress_into(uint8_t *destination, integer value)
+			template <typename DESTINATION>
+			static forceinline void compress_into(DESTINATION &destination, integer value)
 				{
 				/*
 					Work out how many bytes it'll take to encode
@@ -174,28 +176,158 @@ namespace JASS
 				*/
 #if JASS_COMPRESS_INTEGER_BITS_PER_INTEGER == 64
 				ten:
-					*destination++ = (value >> 63) & 0x7F;
+					*destination = (value >> 63) & 0x7F;
+					++destination;
 				nine:
-					*destination++ = (value >> 56) & 0x7F;
+					*destination = (value >> 56) & 0x7F;
+					++destination;
 				eight:
-					*destination++ = (value >> 49) & 0x7F;
+					*destination = (value >> 49) & 0x7F;
+					++destination;
 				seven:
-					*destination++ = (value >> 42) & 0x7F;
+					*destination = (value >> 42) & 0x7F;
+					++destination;
 				six:
-					*destination++ = (value >> 35) & 0x7F;
+					*destination = (value >> 35) & 0x7F;
+					++destination;
 #endif
 				five:
-					*destination++ = (value >> 28) & 0x7F;
+					*destination = (value >> 28) & 0x7F;
+					++destination;
 				four:
-					*destination++ = (value >> 21) & 0x7F;
+					*destination = (value >> 21) & 0x7F;
+					++destination;
 				three:
-					*destination++ = (value >> 14) & 0x7F;
+					*destination = (value >> 14) & 0x7F;
+					++destination;
 				two:
-					*destination++ = (value >> 7) & 0x7F;
+					*destination = (value >> 7) & 0x7F;
+					++destination;
 				one:
-					*destination++ = (value & 0x7F) | 0x80;
+					*destination = (value & 0x7F) | 0x80;
+					++destination;
 				}
-				
+
+
+			/*
+				COMPRESS_INTEGER_VARIABLE_BYTE::DECOMPRESS_INTO()
+				-------------------------------------------------
+			*/
+			/*!
+				@brief Encode the given integer placing the encoding into destination (whose size is not validated).
+				@param decoded [out] The decoded integer.
+				@param source [in] The buffer to decode from.
+			*/
+			template <typename SOURCE>
+			static forceinline void decompress_into(integer *decoded, SOURCE &source)
+				{
+				/*
+					If the high bit is set the sequence is over, otherwise, in an unwound loop, decode the integers one at a time.
+				*/
+				if (*source & 0x80)
+					{
+					*decoded = *source & 0x7F;
+					++source;
+					}
+				else
+					{
+					*decoded = *source;
+					++source;
+					if (*source & 0x80)
+						{
+						*decoded = (*decoded << 7) | (*source & 0x7F);
+						++source;
+						}
+					else
+						{
+						*decoded = (*decoded << 7) | *source;
+						++source;
+						if (*source & 0x80)
+							{
+							*decoded = (*decoded << 7) | (*source & 0x7F);
+							++source;
+							}
+						else
+							{
+							*decoded = (*decoded << 7) | *source;
+							++source;
+							if (*source & 0x80)
+								{
+								*decoded = (*decoded << 7) | (*source & 0x7F);
+								++source;
+								}
+							else
+								{
+								*decoded = (*decoded << 7) | *source;
+								++source;
+								if (*source & 0x80)
+									{
+									*decoded = (*decoded << 7) | (*source & 0x7F);
+									++source;
+									}
+								else
+									{
+	#if JASS_COMPRESS_INTEGER_BITS_PER_INTEGER == 64
+									*decoded = (*decoded << 7) | *source;
+									++source;
+									if (*source & 0x80)
+										{
+										*decoded = (*decoded << 7) | (*source & 0x7F);
+										++source;
+										}
+									else
+										{
+										*decoded = (*decoded << 7) | *source;
+										++source;
+										if (*source & 0x80)
+											{
+											*decoded = (*decoded << 7) | (*source & 0x7F);
+											++source;
+											}
+										else
+											{
+											*decoded = (*decoded << 7) | *source;
+											++source;
+											if (*source & 0x80)
+												{
+												*decoded = (*decoded << 7) | (*source & 0x7F);
+												++source;
+												}
+											else
+												{
+												*decoded = (*decoded << 7) | *source;
+												++source;
+												if (*source & 0x80)
+													{
+													*decoded = (*decoded << 7) | (*source & 0x7F);
+													++source;
+													}
+												else
+													{
+													*decoded = (*decoded << 7) | *source;
+													++source;
+													if (*source & 0x80)
+														{
+														*decoded = (*decoded << 7) | (*source & 0x7F);
+														++source;
+														}
+													else
+														{
+														*decoded = (*decoded << 7) | *source;
+														++source;
+														}
+													}
+												}
+											}
+										}
+	#endif
+									}
+								}
+							}
+						}
+					}
+				}
+
 			/*
 				COMPRESS_INTEGER_VARIABLE_BYTE::UNITTEST()
 				------------------------------------------
@@ -205,6 +337,4 @@ namespace JASS
 			*/
 			static void unittest(void);
 		} ;
-
-
 }
