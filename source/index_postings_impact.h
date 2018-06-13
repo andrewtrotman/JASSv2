@@ -28,6 +28,9 @@ namespace JASS
 	class index_postings_impact
 		{
 		public:
+			static constexpr size_t largest_impact = 0xFF;
+
+		public:
 			/*
 				CLASS INDEX_POSTINGS_IMPACT::IMPACT
 				-----------------------------------
@@ -39,8 +42,8 @@ namespace JASS
 				{
 				public:
 					size_t impact_score;				///< The impact score.
-					size_t *start;						///< Pointer into postings of the start of the document list for this impact score.
-					size_t *finish;					///< Pointer into postings of the end of the document list for this impact score.
+					size_t *start;						///< Pointer into the postings of the start of the document list for this impact score.
+					size_t *finish;					///< Pointer into the postings of the end of the document list for this impact score.
 
 				public:
 					/*
@@ -152,11 +155,11 @@ namespace JASS
 				};
 
 		protected:
-			allocator &memory;						///< All allocation  happens in this arena.
-			size_t number_of_impacts;				///< The number of impact objects in the impacts array.
-			impact *impacts;							///< List of impact pointers (the impact header).
-			size_t number_of_postings;				///< The length of the pistings array measured in size_t.
-			size_t *postings;							///< The list of document IDs, strung together for each postings segment.
+			allocator &memory;							///< All allocation  happens in this arena.
+			size_t number_of_impacts;					///< The number of impact objects in the impacts array.
+			impact impacts[largest_impact + 1];	///< List of impact pointers (the impact header).
+			size_t number_of_postings;					///< The length of the pistings array measured in size_t.
+			size_t *postings;								///< The list of document IDs, strung together for each postings segment.
 
 		public:
 			/*
@@ -174,7 +177,6 @@ namespace JASS
 			index_postings_impact(size_t unique_impacts, size_t total_postings, allocator &memory):
 				memory(memory),
 				number_of_impacts(unique_impacts),
-				impacts(static_cast<impact *>(memory.malloc(unique_impacts * sizeof(*impacts)))),
 				number_of_postings(total_postings),
 				postings(static_cast<size_t *>(memory.malloc(total_postings * sizeof(*postings))))
 				{
@@ -239,7 +241,7 @@ namespace JASS
 			*/
 			impact *begin(void) const
 				{
-				return impacts;
+				return &impacts[0];
 				}
 
 			/*
@@ -252,7 +254,7 @@ namespace JASS
 			*/
 			impact *end(void) const
 				{
-				return impacts + number_of_impacts;
+				return &impacts[number_of_impacts];
 				}
 
 			/*
@@ -265,7 +267,7 @@ namespace JASS
 			*/
 			auto rbegin(void) const
 				{
-				return reverse_iterator(impacts + number_of_impacts - 1);
+				return reverse_iterator(&impacts[number_of_impacts - 1]);
 				}
 
 			/*
@@ -278,7 +280,7 @@ namespace JASS
 			*/
 			auto rend(void) const
 				{
-				return reverse_iterator(impacts - 1);
+				return reverse_iterator(&impacts[-1]);
 				}
 
 			/*

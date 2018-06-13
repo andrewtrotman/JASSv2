@@ -6,6 +6,8 @@
 */
 #include <stdlib.h>
 
+#include <limits>
+
 #include "asserts.h"
 #include "unittest_data.h"
 #include "compress_general_zstd.h"
