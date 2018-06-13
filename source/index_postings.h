@@ -133,13 +133,7 @@ namespace JASS
 
 					bool operator!=(const iterator &other) const
 						{
-						/*
-							If the positions are the same then the document and term frequency must be the same.
-						*/
-						if (other.positon_in_postings_list != positon_in_postings_list)
-							return true;
-						else
-							return false;
+						return other.positon_in_postings_list != positon_in_postings_list;
 						}
 
 					/*
@@ -289,7 +283,7 @@ namespace JASS
 				/*
 					Count up the number of times each impact is seen and compute the highest and lowest impact scores
 				*/
-				for (const auto &posting : *this)
+				for (const auto posting : *this)
 					{
 					/*
 						Calculate the maximum and minimum impact scores seen
@@ -345,7 +339,7 @@ namespace JASS
 				/*
 					Now place the postings in the right places
 				*/
-				for (const auto &posting : *this)
+				for (const auto posting : *this)
 					{
 					postings_list.get_postings()[frequencies[posting.term_frequency]] = posting.document_id;
 					frequencies[posting.term_frequency]++;
