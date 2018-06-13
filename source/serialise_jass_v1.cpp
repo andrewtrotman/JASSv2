@@ -57,7 +57,7 @@ namespace JASS
 		/*
 			Impact order the postings list.
 		*/
-		const auto &impact_ordered = postings_list.impact_order(memory);
+		postings_list.impact_order(impact_ordered);
 
 		/*
 			Compute the number of impact headers we're going to see.
@@ -146,7 +146,6 @@ namespace JASS
 		/*
 			write the postings list to disk and keep a track of where it is.
 		*/
-		memory.rewind();
 		size_t number_of_impact_scores;
 
 		size_t postings_location;
@@ -196,7 +195,7 @@ namespace JASS
 			Serialise the index.
 		*/
 		{
-		serialise_jass_v1 serialiser;
+		serialise_jass_v1 serialiser(index.get_highest_document_id());
 		index.iterate(serialiser);
 		}
 

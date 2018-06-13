@@ -157,7 +157,7 @@ namespace JASS
 		protected:
 			allocator &memory;							///< All allocation  happens in this arena.
 			size_t number_of_impacts;					///< The number of impact objects in the impacts array.
-			impact impacts[largest_impact + 1];	///< List of impact pointers (the impact header).
+			impact impacts[largest_impact + 1];		///< List of impact pointers (the impact header).
 			size_t number_of_postings;					///< The length of the pistings array measured in size_t.
 			size_t *postings;								///< The list of document IDs, strung together for each postings segment.
 
@@ -170,17 +170,43 @@ namespace JASS
 				@brief Constructor
 				@details The postings lists are typvically stored \<impact\>\<d\>\<d\>...\<d\>\<0\>,  The headers point to the list
 				of \<d\>s (not the \<impact\> or the \<0\>.
-				@param unique_impacts [in] The number of unique impact vales seen n the postings list
 				@param total_postings [in] The number of integers in the potings list (including any imact scores and '0' terminators
 				@param memory [in] All memory allocation happens in this arena
 			*/
-			index_postings_impact(size_t unique_impacts, size_t total_postings, allocator &memory):
+			index_postings_impact(size_t total_postings, allocator &memory):
 				memory(memory),
-				number_of_impacts(unique_impacts),
+				number_of_impacts(0),
 				number_of_postings(total_postings),
-				postings(static_cast<size_t *>(memory.malloc(total_postings * sizeof(*postings))))
+				postings(static_cast<size_t *>(memory.malloc((total_postings + largest_impact + 1) * sizeof(*postings))))			// longest length is total_postings + all impacts + 1
 				{
 				/* Nothing */
+				}
+
+			/*
+				INDEX_POSTINGS_IMPACT::SET_IMPACT_COUNT()
+				-----------------------------------------
+			*/
+			/*!
+				@brief Tell this object how many impacts it holds.
+				@details This method should only be called by a method that builds one of these objects.
+				@param number_of_impacts [in] The number of impact segments this object holds
+			*/
+			void set_impact_count(size_t number_of_impacts)
+				{
+				this->number_of_impacts = number_of_impacts;
+				}
+
+			/*
+				INDEX_POSTINGS_IMPACT::GET_POSTINGS()
+				-------------------------------------
+			*/
+			/*!
+				@brief Return a pointer to the buffer containing the postings
+				@details This method should only be called by a method that builds one of these objects.
+			*/
+			size_t *get_postings(void)
+				{
+				return postings;
 				}
 
 			/*
@@ -211,7 +237,7 @@ namespace JASS
 				@param postings_end [in] The end of the range if postings that share this impact score
 
 			*/
-			void header(size_t index, size_t score, size_t *postings_start, size_t *postings_end) const
+			void header(size_t index, size_t score, size_t *postings_start, size_t *postings_end)
 				{
 				impacts[index].impact_score = score;
 				impacts[index].start = postings_start;
@@ -239,7 +265,7 @@ namespace JASS
 				@brief Return a pointer to the first impact header (for use in an iterator).
 				@return A pointer to the first impact header.
 			*/
-			impact *begin(void) const
+			const impact *begin(void) const
 				{
 				return &impacts[0];
 				}
@@ -252,7 +278,7 @@ namespace JASS
 				@brief Return a pointer to one element past the end of the impact headers (for use in an iterator).
 				@return A pointer to one element past the end of the impact headers.
 			*/
-			impact *end(void) const
+			const impact *end(void) const
 				{
 				return &impacts[number_of_impacts];
 				}
@@ -265,9 +291,9 @@ namespace JASS
 				@brief Return a pointer to the last impact header (for use in an reverse iterator).
 				@return A pointer to the first impact header.
 			*/
-			auto rbegin(void) const
+			const auto rbegin(void) const
 				{
-				return reverse_iterator(&impacts[number_of_impacts - 1]);
+				return reverse_iterator((impact *)(&impacts[number_of_impacts - 1]));
 				}
 
 			/*
@@ -278,9 +304,9 @@ namespace JASS
 				@brief Return a pointer to one element before the first impact headers (for use in reverse iteration iterator).
 				@return A pointer to one element past the end of the impact headers.
 			*/
-			auto rend(void) const
+			const auto rend(void) const
 				{
-				return reverse_iterator(&impacts[-1]);
+				return reverse_iterator((impact *)(&impacts[0] - 1));
 				}
 
 			/*
@@ -291,7 +317,7 @@ namespace JASS
 				@brief Dump a human-readable version of the postings list down the stream.
 				@param stream [in] The stream to write to.
 			*/
-			void text_render(std::ostream &stream) const
+			void text_render(std::ostream &stream)
 				{
 				stream << "{[";
 				for (const auto &header : *this)
@@ -316,7 +342,7 @@ namespace JASS
 			static void unittest(void)
 				{
 				allocator_pool memory;
-				index_postings_impact postings(2, 7, memory);
+				index_postings_impact postings(7, memory);
 
 				/*
 					Set up some postings
@@ -334,6 +360,7 @@ namespace JASS
 				*/
 				postings.header(0, 255, &postings[1], &postings[2]);
 				postings.header(1, 128, &postings[4], &postings[6]);
+				postings.set_impact_count(2);
 
 				/*
 					Check the data got into the right places.
@@ -380,7 +407,7 @@ namespace JASS
 		@param data [in] The postings list to write.
 		@return The stream once the postings list has been written.
 	*/
-	inline std::ostream &operator<<(std::ostream &stream, const index_postings_impact &data)
+	inline std::ostream &operator<<(std::ostream &stream, index_postings_impact &data)
 		{
 		data.text_render(stream);
 		return stream;

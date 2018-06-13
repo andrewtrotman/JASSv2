@@ -185,7 +185,7 @@ int main(int argc, const char *argv[])
 	*/
 	if (parameter_jass_v1_index)
 		{
-		JASS::serialise_jass_v1 serialiser;
+		JASS::serialise_jass_v1 serialiser(index.get_highest_document_id());
 		index.iterate(serialiser);
 		}
 
@@ -194,7 +194,7 @@ int main(int argc, const char *argv[])
 	*/
 	if (parameter_uint32_index)
 		{
-		JASS::serialise_integers serialiser;
+		JASS::serialise_integers serialiser(index.get_highest_document_id());
 		index.iterate(serialiser);
 		}
 	auto time_to_end = JASS::timer::stop(timer).nanoseconds();

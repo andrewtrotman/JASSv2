@@ -26,8 +26,8 @@ namespace JASS
 		---------------------
 	*/
 	/*!
-		@brief Addaptor class used in reverse iteratkion
-		@details When used withe reverse() this class makes it possible to write (in the JASS namespace):
+		@brief Addaptor class used in reverse iteration
+		@details When used with reverse() this class makes it possible to write (in the JASS namespace):
 		@code
 		void example(void)
 			{

@@ -201,11 +201,11 @@ int main(void)
 		puts("index_manager_sequential");
 		JASS::index_manager_sequential::unittest();
 
-		puts("serialise_jass_v1");
-		JASS::serialise_jass_v1::unittest();
-
 		puts("serialise_ci");
 		JASS::serialise_ci::unittest();
+
+		puts("serialise_jass_v1");
+		JASS::serialise_jass_v1::unittest();
 
 		puts("serialise_integers");
 		JASS::serialise_integers::unittest();

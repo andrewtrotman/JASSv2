@@ -35,8 +35,9 @@ namespace JASS
 	class serialise_integers : public index_manager::delegate
 		{
 		private:
-			file postings_file;						///< The postings file
-			allocator_pool memory;					///< Memory used to store the impact-ordered postings list.
+			file postings_file;									///< The postings file
+			allocator_pool memory;								///< Memory used to store the impact-ordered postings list.
+			index_postings_impact impact_ordered; 			/// << the impact-ordered postings list
 
 		public:
 			/*
@@ -44,10 +45,12 @@ namespace JASS
 				----------------------------------------
 			*/
 			/*!
-				Constructor
+				@brief Constructor
+				@param documents [in] the number of documents in the collection
 			*/
-			serialise_integers() :
-				postings_file("postings.bin", "w+b")
+			serialise_integers(size_t documents) :
+				postings_file("postings.bin", "w+b"),
+				impact_ordered(documents, memory)
 				{
 				/* Nothing. */
 				}

@@ -277,10 +277,9 @@ namespace JASS
 				an impact ordered postings list ordered \<i\>\<d\>...\<d\>\<0\>\<i\>\<d\>...\<d\>\<0\> with \<i\> being in decreasing order and \<d\>
 				begin in increasing order for each chunk.  It also generates a set of headers that poing to each \<d\>..\<d\> range,
 				excluding \<i\> and excluding \<0\>.
-				@param memory [in] All allocation to do with this process, including the result, is allocated in this arena.
-				@result A reference to the impact ordered posting list allocated in the arena passed as paramter memory.
+				@param postings_list [in / out] The constructed impact ordered postings list.
 			*/
-			index_postings_impact &impact_order(allocator &memory) const
+			void impact_order(index_postings_impact &postings_list) const
 				{
 				std::array<uint32_t, 0x100> frequencies = {};
 				size_t number_of_postings = 0;
@@ -314,17 +313,7 @@ namespace JASS
 				for (size_t which = lowest_impact; which <= highest_impact; which++)
 					if (frequencies[which] != 0)
 						number_of_impacts++;
-
-				/*
-					Allocate the postings list
-					This is a little awkward, but it works... The object itself if allocated using the allocator
-					passed by the caller, and as such it remains valid until that allocator's space is freed - which
-					is not done by this method or any it calls.  Thus its possible to return a reference to the object
-					and know its still valid once this method terminates
-				*/
-				index_postings_impact *postings_list_memory;
-				postings_list_memory = new (reinterpret_cast<index_postings_impact *>(memory.malloc(sizeof(*postings_list_memory)))) index_postings_impact(number_of_impacts, number_of_postings, memory);
-				index_postings_impact &postings_list = *postings_list_memory;
+				postings_list.set_impact_count(number_of_impacts);
 
 				/*
 					Put the headers into place and turn the frequencies into pointers
@@ -358,10 +347,9 @@ namespace JASS
 				*/
 				for (const auto &posting : *this)
 					{
-					postings_list[frequencies[posting.term_frequency]] = posting.document_id;
+					postings_list.get_postings()[frequencies[posting.term_frequency]] = posting.document_id;
 					frequencies[posting.term_frequency]++;
 					}
-				return postings_list;
 				}
 
 			/*

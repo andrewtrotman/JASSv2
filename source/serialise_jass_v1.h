@@ -78,7 +78,7 @@ namespace JASS
 				{
 				uncompressed = 's',				///< Postings are not compressed.
 				variable_byte = 'c',				///< Postings are compressed using ATIRE's variable byte encoding.
-				simple_8 = '8',					///< Postings are compressed using ATIRE's simple-8 encoding.
+				simple_8 = '8',					///< Postings are compressed using ATIRE's simple-8b encoding.
 				qmx = 'q',							///< Postings are compressed using QMX (with difference encoding).
 				qmx_d4 = 'Q',						///< Postings are compressed using QMX with Lemire's D4 delta encoding.
 				qmx_d0 = 'R'						///< Postings are compressed using QMX without delta encoding.
@@ -143,6 +143,7 @@ namespace JASS
 			std::vector<vocab_tripple> index_key;		///< The entry point into the JASS v1 index is CIvocab.bin, the index key.
 			std::vector<uint64_t> primary_key_offsets;///< A list of locations (on disk) of each primary key.
 			allocator_pool memory;							///< Memory used to store the impact-ordered postings list.
+			index_postings_impact impact_ordered;		///< The re-used impact ordered postings list.
 
 		private:
 			/*
@@ -164,13 +165,15 @@ namespace JASS
 			*/
 			/*!
 				@brief Constructor
+				@param documents [in] the number of documents in the collection
 			*/
-			serialise_jass_v1() :
+			serialise_jass_v1(size_t documents) :
 				vocabulary_strings("CIvocab_terms.bin", "w+b"),
 				vocabulary("CIvocab.bin", "w+b"),
 				postings("CIpostings.bin", "w+b"),
 				primary_keys("CIdoclist.bin", "w+b"),
-				memory(1024 * 1024)								///< The allocation block size is currently 1MB, big enough for most postings lists (but it'll grow for larger ones).
+				memory(1024 * 1024),								///< The allocation block size is currently 1MB, big enough for most postings lists (but it'll grow for larger ones).
+				impact_ordered(documents, memory)
 				{
 				/*
 					For the initial bring-up the postings ar not compressed.

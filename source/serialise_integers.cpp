@@ -25,8 +25,7 @@ namespace JASS
 		/*
 			Impact order the postings list.
 		*/
-		memory.rewind();
-		const auto &impact_ordered = postings_list.impact_order(memory);
+		postings_list.impact_order(impact_ordered);
 
 		for (const auto &header : reverse(impact_ordered))
 			{
@@ -65,7 +64,7 @@ namespace JASS
 			Serialise the index.
 		*/
 		{
-		serialise_integers serialiser;
+		serialise_integers serialiser(index.get_highest_document_id() + 1);
 		index.iterate(serialiser);
 		}
 
