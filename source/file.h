@@ -40,9 +40,14 @@ namespace JASS
 		{
 		protected:
 			FILE *fp; 		///< The underlying representation is a FILE *  from C (as they appear to be fast).
-			
-		public:
+			size_t file_position;
+			size_t buffer_size;					///< Size of the internal file buffering.
+			size_t buffer_used;					///< How much of the internal file buffer is being used.
+			std::unique_ptr<uint8_t> buffer;	/// < Internal file buffer
+			size_t bytes_written;				///< Number of bytes written to this file.
+			size_t bytes_read;					///< Number of bytes read from this file.
 
+		public:
 			/*
 				FILE::FILE()
 				------------
@@ -61,7 +66,13 @@ namespace JASS
 				@param fp [in] The FILE * object this object should use.  This class takes ownership and closes the file on destruction.
 			*/
 			file(FILE *fp) :
-				fp(fp)
+				fp(fp),
+				file_position(0),
+				buffer_size(10 * 1024 * 1024),					// start with a buffer of this size
+				buffer_used(0),
+				buffer(new uint8_t [buffer_size]),
+				bytes_written(0),
+				bytes_read(0)
 				{
 				/* Nothing */
 				}
@@ -76,7 +87,7 @@ namespace JASS
 				@param mode [in] The file open mode.  See C's fopen() for details on possible modes.
 			*/
 			file(const char *filename, const char *mode) :
-				fp(nullptr)
+				file(nullptr)
 				{
 				/*
 					Open the given file in the given mode
@@ -112,20 +123,29 @@ namespace JASS
 			*/
 			~file()
 				{
+				flush();
 				if (fp != nullptr && fp != stdin && fp != stdout && fp != stderr)
 					fclose(fp);
 				}
-			
+
 			/*
-				FILE::READ()
-				------------
+				FILE::FLUSH()
+				-------------
 			*/
-			/*!
-				@brief Read buffer.size() bytes from the give file into the buffer.  If at end of file then this method will resize buffer to the number of bytes read from the file.
-				@param buffer [in, out] Read buffer.size() bytes into buffer, calling buffer.resize() on failure.
-			*/
-			void read(std::vector<uint8_t> &buffer);
-			
+			void flush(void)
+				{
+				if (buffer_used > 0)
+					{
+					/*
+						All physical output to the disk happens with this one line of code.  If this is
+						done with blocking I/O then this causes a bottleneck as we wait for the OS
+						to write to disk.
+					*/
+					::fwrite(buffer.get(), 1, buffer_used, fp);
+					buffer_used = 0;
+					}
+				}
+
 			/*
 				FILE::READ()
 				------------
@@ -136,9 +156,51 @@ namespace JASS
 				@param bytes [in] The number of bytes of data to read.
 				@return The number of bytes of data that were read and written into buffer.
 			*/
-			size_t read(void *buffer, size_t bytes)
+			long read(void *data, size_t size)
 				{
-				return ::fread(buffer, 1, bytes, fp);
+				/*
+					Keep track of the number of bytes we've been asked to write
+				*/
+				bytes_read += size;
+
+				/*
+					Flush the write cache
+				*/
+				flush();
+
+				/*
+					Take note of the new file position (at the end of the read)
+				*/
+				file_position += size;		// this is where we'll be at the end of the read
+
+				/*
+					And now perform the read
+				*/
+				return ::fread(data, 1, size, fp);
+				}
+
+			/*
+				FILE::READ()
+				------------
+			*/
+			/*!
+				@brief Read buffer.size() bytes from the give file into the buffer.  If at end of file then this method will resize buffer to the number of bytes read from the file.
+				@param buffer [in, out] Read buffer.size() bytes into buffer, calling buffer.resize() on failure.
+			*/
+			void read(std::vector<uint8_t> &buffer)
+				{
+				/*
+					Read from the file
+				*/
+				size_t bytes_read = read(&buffer[0], buffer.size());
+
+				/*
+					If we got a short read then resize the buffer to signal back to the caller that we failed to read (probably EOF).
+				*/
+				if (bytes_read == 0)
+					buffer.resize(0);
+				else if (bytes_read != buffer.size())
+					buffer.resize(bytes_read);
 				}
 
 			/*
@@ -151,9 +213,48 @@ namespace JASS
 				@param bytes [in] The number of bytes of data to write.
 				@return The number of bytes of data that were written to the file.
 			*/
-			size_t write(const void *buffer, size_t bytes)
+			size_t write(const void *data, size_t size)
 				{
-				return ::fwrite(const_cast<void *>(buffer), 1, bytes, fp);
+				uint8_t *from;
+				size_t block_size;
+
+				/*
+					Keep track of the total number of bytes we've been asked to write to the file
+				*/
+				bytes_written += size;
+
+				/*
+					Update the file pointer
+				*/
+				file_position += size;
+
+				if (buffer_used + size < buffer_size)
+					{
+					/*
+						The data fits in the internal buffers
+					*/
+					memcpy(buffer.get() + buffer_used, data, (size_t)size);
+					buffer_used += size;
+					}
+				else
+					{
+					/*
+						The data does not fit in the internal buffers so it is
+						necessary to flush the buffers and then do the write
+					*/
+					from = (uint8_t *)data;
+					do
+						{
+						flush();
+						block_size = size <= buffer_size ? size : buffer_size;
+						memcpy(buffer.get(), from, (size_t)block_size);
+						buffer_used += block_size;
+						from += block_size;
+						size -= block_size;
+						}
+					while (size > 0);
+					}
+				return 1;
 				}
 
 			/*
@@ -167,7 +268,7 @@ namespace JASS
 			*/
 			size_t write(const std::string &buffer)
 				{
-				return ::fwrite(buffer.c_str(), 1, buffer.size(), fp);
+				return write(buffer.c_str(), buffer.size());
 				}
 
 			/*
@@ -188,8 +289,11 @@ namespace JASS
 				@brief Return the byte offset of the file pointer in the current file.
 				@return byte offset.  0 is returned either on error or non-existant file (or actually at 0).
 			*/
-			size_t tell(void);
-			
+			size_t tell(void)
+				{
+				return file_position;
+				}
+
 			/*
 				FILE::SEEK()
 				------------
@@ -199,7 +303,33 @@ namespace JASS
 				@details Throws std::out_of_range in the unlikely event of an error.
 				@param offset [in] The location to seek to.
 			*/
-			void seek(size_t offset);
+			void seek(size_t offset)
+				{
+				/*
+					Empty the write buffer
+				*/
+				flush();
+
+				/*
+					Seek
+				*/
+				#ifdef _MSC_VER
+					auto error = _fseeki64(fp, offset, SEEK_SET);
+				#else
+					auto error = fseeko(fp, offset, SEEK_SET);
+				#endif
+
+				/*
+					Store the file file position
+				*/
+				file_position = offset;
+
+				/*
+					if error is non-zero then seek failed - which if a fatal error.
+				*/
+				if (error != 0)
+					throw std::out_of_range("file::seek() failure");		// LCOV_EXCL_LINE	// This is highly unlikely to happen - its not clear why seek() can fail.
+				}
 
 			/*
 				FILE::READ_ENTIRE_FILE()

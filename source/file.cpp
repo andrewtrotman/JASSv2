@@ -165,26 +165,6 @@ namespace JASS
 		}
 
 	/*
-		FILE::READ()
-		------------
-	*/
-	void file::read(std::vector<uint8_t> &buffer)
-		{
-		/*
-			Read from the file
-		*/
-		size_t bytes_read = ::fread(&buffer[0], 1, buffer.size(), fp);
-		
-		/*
-			If we got a short read then resize the buffer to signal back to the caller that we failed to read (probably EOF).
-		*/
-		if (bytes_read == 0)
-			buffer.resize(0);
-		else if (bytes_read != buffer.size())
-			buffer.resize(bytes_read);
-		}
-	
-	/*
 		FILE::SIZE()
 		------------
 	*/
@@ -232,40 +212,7 @@ namespace JASS
 		*/
 		return file_size < 0 ? 0 : file_size;
 		}
-
-
-	/*
-		FILE::TELL()
-		------------
-	*/
-	size_t file::tell(void)
-		{
-		#ifdef WIN32
-			return _ftelli64(fp);
-		#else
-			return ftello(fp);
-		#endif
-		}
-
-	/*
-		FILE::SEEK()
-		------------
-	*/
-	void file::seek(size_t offset)
-		{
-		#ifdef WIN32
-			auto error = _fseeki64(fp, offset, SEEK_SET);
-		#else
-			auto error = fseeko(fp, offset, SEEK_SET);
-		#endif
-
-		/*
-			if error is non-zero then seek failed - which if a fatal error.
-		*/
-		if (error != 0)
-			throw std::out_of_range("file::seek() failure");		// LCOV_EXCL_LINE	// This is highly unlikely to happen - its not clear why seek() can fail.
-		}
-		
+	
 	/*
 		FILE::MKSTEMP()
 		---------------
