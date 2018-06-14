@@ -19,12 +19,17 @@ namespace JASS
 		SERIALISE_CI::SERIALISE_CI()
 		----------------------------
 	*/
-	serialise_ci::serialise_ci() :
+	serialise_ci::serialise_ci(size_t documents) :
 		postings_file("JASS_postings.cpp", "w+b"),
 		postings_header_file("JASS_postings.h", "w+b"),
 		vocab_file("JASS_vocabulary.cpp", "w+b"),
 		primary_key_file("JASS_primary_keys.cpp", "w+b"),
-		terms(0)
+		terms(0),
+		memory(1024 * 1024),
+		document_ids((decltype(document_ids))memory.malloc(documents * sizeof(*document_ids))),
+		term_frequencies((decltype(term_frequencies))memory.malloc(documents * sizeof(*term_frequencies))),
+		temporary_size(documents * (sizeof(*document_ids) / 7 + 1) * sizeof(*temporary)),
+		temporary((decltype(temporary))memory.malloc(temporary_size))			// enough space to decompress variable-byte encodings
 		{
 		/*
 			Write out the headers of each file
@@ -77,21 +82,25 @@ namespace JASS
 	void serialise_ci::operator()(const slice &term, const index_postings &postings)
 		{
 		std::ostringstream code;
-		uint64_t previous_document_id = (std::numeric_limits<uint64_t>::max)();
 
 		/*
 			Construct the method and write it out
 		*/
 		code << "void T_" << term << "(query<uint16_t, 10'000'000, 10> &q)\n";
 		code << "{\n";
-		for (const auto &posting : postings)
-			{
-			if (posting.document_id != previous_document_id)
-				{
-				code << "q.add_rsv(" << posting.document_id << ',' << posting.term_frequency << ");\n";
-				previous_document_id = posting.document_id;
-				}
-			}
+
+		/*
+			Serialise and decompress the postings themselves
+		*/
+		auto document_frequency = postings.linearize(temporary, temporary_size, document_ids, term_frequencies, documents_in_collection);
+
+		/*
+			Write out in this format
+		*/
+		auto end = document_ids + document_frequency;
+		auto current_tf = term_frequencies;
+		for (compress_integer::integer *current_id = document_ids; current_id < end; current_id++, current_tf++)
+			code << "q.add_rsv(" << *current_id << ',' << (size_t)*current_tf << ");\n";
 		code << "}\n";
 
 		postings_file.write(code.str());
@@ -142,7 +151,7 @@ namespace JASS
 			Serialise the index.
 		*/
 		{
-		serialise_ci serialiser;
+		serialise_ci serialiser(index.get_highest_document_id());
 		index.iterate(serialiser);
 		}
 

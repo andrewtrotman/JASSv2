@@ -35,6 +35,15 @@ namespace JASS
 			file vocab_file;						///< The vocabulary file (also know as the dictionary file)
 			file primary_key_file;					///< The list of primary keys.
 			uint64_t terms;							///< The number of terms in the vocabulary file.
+			allocator_pool memory;							///< Memory used to store the impact-ordered postings list.
+			size_t documents_in_collection;				///< The number of documents in the collection.
+			/*
+				Each of these buffers is re-used in the serialisation process
+			*/
+			compress_integer::integer *document_ids;					///< The re-used buffer storing decoded document ids
+			index_postings_impact::impact_type *term_frequencies;	///< The re-used buffer storing the term frequencies
+			size_t temporary_size;											///< The number of bytes in temporary
+			uint8_t *temporary;												///< Temporary buffer - cannot be used to store anything between calls
 
 		public:
 			/*
@@ -44,7 +53,8 @@ namespace JASS
 			/*!
 				Constructor
 			*/
-			serialise_ci();
+			serialise_ci() = delete;
+			serialise_ci(size_t documents);
 
 			/*
 				SERIALISE_CI::~SERIALISE_CI()

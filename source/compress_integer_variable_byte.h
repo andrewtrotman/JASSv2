@@ -88,7 +88,39 @@ namespace JASS
 				@param source [in] The encoded integers.
 				@param source_length [in] The length (in bytes) of the source buffer.
 			*/
-			virtual void decode(integer *decoded, size_t integers_to_decode, const void *source, size_t source_length);
+			virtual void decode(integer *decoded, size_t integers_to_decode, const void *source, size_t source_length)
+				{
+				/*
+					Call through to the static version of this function
+				*/
+				static_decode(decoded, integers_to_decode, source, source_length);
+				}
+
+			/*
+				COMPRESS_INTEGER_VARIABLE_BYTE::STATIC_DECODE()
+				-----------------------------------------------
+			*/
+			/*!
+				@brief Decode a sequence of integers encoded with this codex.
+				@param decoded [out] The sequence of decoded integers.
+				@param integers_to_decode [in] The minimum number of integers to decode (it may decode more).
+				@param source [in] The encoded integers.
+				@param source_length [in] The length (in bytes) of the source buffer.
+			*/
+			static inline void static_decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
+				{
+				const uint8_t *source = static_cast<const uint8_t *>(source_as_void);
+				integer *end = decoded + integers_to_decode;		// compute the stopping condition
+
+				/*
+					Count how many integers should be decoded
+				*/
+				while (decoded < end)
+					{
+					decompress_into(decoded, source);
+					decoded++;
+					}
+				}
 
 			/*
 				COMPRESS_INTEGER_VARIABLE_BYTE::BYTES_NEEDED_FOR()

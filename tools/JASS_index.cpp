@@ -176,7 +176,7 @@ int main(int argc, const char *argv[])
 	*/
 	if (parameter_compiled_index)
 		{
-		JASS::serialise_ci serialiser;
+		JASS::serialise_ci serialiser(index.get_highest_document_id());
 		index.iterate(serialiser);
 		}
 

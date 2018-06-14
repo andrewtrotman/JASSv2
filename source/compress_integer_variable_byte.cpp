@@ -51,26 +51,6 @@ namespace JASS
 		return used;
 		}
 
-
-	/*
-		COMPRESS_INTEGER_VARIABLE_BYTE::DECODE()
-		----------------------------------------
-	*/
-	void compress_integer_variable_byte::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
-		{
-		const uint8_t *source = static_cast<const uint8_t *>(source_as_void);
-		integer *end = decoded + integers_to_decode;		// compute the stopping condition
-
-		/*
-			Count how many integers should be decoded
-		*/
-		while (decoded < end)
-			{
-			decompress_into(decoded, source);
-			decoded++;
-			}
-		}
-
 	/*
 		COMPRESS_INTEGER_VARIABLE_BYTE::UNITTEST()
 		------------------------------------------

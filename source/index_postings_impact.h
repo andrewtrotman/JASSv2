@@ -29,6 +29,7 @@ namespace JASS
 		{
 		public:
 			static constexpr size_t largest_impact = 0xFF;
+			typedef uint8_t impact_type;
 
 		public:
 			/*

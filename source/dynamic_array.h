@@ -41,7 +41,7 @@ namespace JASS
 				-------------------------
 			*/
 			/*!
-				@brief The array is stored as a lined list of nodes where each node points to some number of elements.
+				@brief The array is stored as a linked list of nodes where each node points to some number of elements.
 			*/
 			class node
 				{
@@ -72,6 +72,7 @@ namespace JASS
 						data = new (pool.malloc(size * sizeof(TYPE))) TYPE[size];
 						}
 				};
+
 		public:
 			/*
 				CLASS DYNAMIC_ARRAY::ITERATOR
@@ -119,10 +120,7 @@ namespace JASS
 						/*
 							If the data pointers are different then the two must be different.
 						*/
-						if (data != other.data)
-							return true;
-						else
-							return false;
+						return data != other.data;
 						}
  
 					/*
@@ -340,7 +338,30 @@ namespace JASS
 				*/
 				return head->data[0];
 				}
-			
+
+			/*
+				DYNAMIC_ARRAY::SERIALISE()
+				--------------------------
+			*/
+			/*!
+				@brief Serialise the dynamic array into a single linear sequence.
+				@param into [out] pointer to the buffer to serialise (at most size_of_into elements) into.
+				@param size_of_into [in] the amount of space (in TYPE elements) available in into (so for long[1] it would be 1).
+				@return The amount of space it would take to store the entire serialised array.
+			*/
+			size_t serialise(TYPE *into, size_t size_of_into) const
+				{
+				size_t would_take = 0;
+
+				for (node *current = head; current != nullptr; current = current->next)
+					{
+					std::copy(current->data, current->data + (current->used <= size_of_into ? current->used.load() : size_of_into), into);
+					size_of_into -= current->used;
+					would_take += current->used;
+					}
+				return would_take;
+				}
+
 			/*
 				DYNAMIC_ARRAY::UNITTEST_THREAD()
 				--------------------------------

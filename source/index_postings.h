@@ -35,7 +35,7 @@ namespace JASS
 		{
 		private:
 			static constexpr size_t initial_size = 16;		///< Initially allocate space for 4 elements
-			static constexpr double growth_factor = 1.5;	///< Grow dynamic arrays by a factor of 1.5
+			static constexpr double growth_factor = 1.5;		///< Grow dynamic arrays by a factor of 1.5
 
 		protected:
 			/*
@@ -49,7 +49,7 @@ namespace JASS
 				{
 				public:
 					uint32_t document_id;						///< Internal document identifier
-					uint32_t term_frequency;					///< Number of times the term occurs in this dociument
+					uint32_t term_frequency;					///< Number of times the term occurs in this document
 
 				public:
 					/*
@@ -71,116 +71,13 @@ namespace JASS
 				};
 
 		private:
-			size_t highest_document;							///< The higest document number seen in this postings list (counting from 1)
-
-			dynamic_array<uint8_t> postings;			///< Array holding the docids and the term frequencies (variable byte encoded docid first <d bytes>, then term frequency <1 byte>)
-
-			/*
-				CLASS INDEX_POSTINGS::ITERATOR
-				------------------------------
-			*/
-			/*!
-				@brief C++ iterator for iterating over an index_postings object.
-			*/
-			class iterator
-				{
-				public:
-					/*
-						ENUM INDEX_POSTINGS::ITERATOR::WHERE
-						------------------------------------
-					*/
-					/*!
-						@brief Whether the iterator is at the start of the end of the postings lists
-					*/
-					enum where
-						{
-						START = 0,			///< Iterator is from the start of the postings
-						END = 1				///< Iterator is from the end of the postings
-						};
-
-				private:
-					dynamic_array<uint8_t>::iterator positon_in_postings_list;			///< The iterator for the documents (1 per document).
-					uint32_t last_docid;
-
-				public:
-					/*
-						INDEX_POSTINGS::ITERATOR::ITERATOR()
-						------------------------------------
-					*/
-					/*!
-						@brief Constructor
-						@param parent [in] The object that this iterator is iterating over
-						@param start [in] Whether this is an iterator for the START or END of the postings lists
-					*/
-					iterator(const index_postings &parent, where start):
-						positon_in_postings_list(start == START ? parent.postings.begin() : parent.postings.end()),
-						last_docid(0)
-						{
-						/*
-							Nothing
-						*/
-						}
-
-					/*
-						INDEX_POSTINGS::ITERATOR::OPERATOR!=()
-						--------------------------------------
-					*/
-					/*!
-						@brief Compare two iterator objects for non-equality.
-						@param other [in] The iterator object to compare to.
-						@return true if they differ, else false.
-					*/
-
-					bool operator!=(const iterator &other) const
-						{
-						return other.positon_in_postings_list != positon_in_postings_list;
-						}
-
-					/*
-						INDEX_POSTINGS::ITERATOR::OPERATOR*()
-						-------------------------------------
-					*/
-					/*!
-						@brief Return a copy of the element pointed to by this iterator.
-					*/
-					const posting operator*()
-						{
-						compress_integer::integer delta;
-						compress_integer_variable_byte::decompress_into(&delta, positon_in_postings_list);
-						last_docid += delta;
-						auto answer = posting(last_docid, *positon_in_postings_list);
-						++positon_in_postings_list;
-						return answer;
-						}
-
-					/*
-						INDEX_POSTINGS::ITERATOR::OPERATOR++()
-						--------------------------------------
-					*/
-					/*!
-						@brief Increment this iterator.
-					*/
-					const iterator &operator++()
-						{
-						return *this;
-						}
-				};
-
-		private:
-			/*
-				INDEX_POSTINGS::INDEX_POSTINGS()
-				--------------------------------
-			*/
-			/*!
-				@brief Parameterless construction is forbidden (so private).
-			*/
-			index_postings() :
-				index_postings(*new allocator_pool(1024))
-				{
-				assert(0);
-				}
+			size_t highest_document;															///< The higest document number seen in this postings list (counting from 1)
+			dynamic_array<uint8_t> document_ids;											///< Array holding the docids (variable byte encoded)
+			dynamic_array<index_postings_impact::impact_type> term_frequencies;	///< Array holding the term frequencies (as integers)
 
 		public:
+			index_postings() = delete;
+
 			/*
 				INDEX_POSTINGS::INDEX_POSTINGS()
 				--------------------------------
@@ -191,35 +88,10 @@ namespace JASS
 			*/
 			index_postings(allocator &memory_pool) :
 				highest_document(0),															// starts at 0, counts from 1
-				postings(memory_pool, initial_size, growth_factor)					// give the allocator to the array
+				document_ids(memory_pool, initial_size, growth_factor),					// give the allocator to the array
+				term_frequencies(memory_pool, initial_size, growth_factor)					// give the allocator to the array
 				{
 				/* Nothing */
-				}
-
-			/*
-				INDEX_POSTINGS::BEGIN()
-				-----------------------
-			*/
-			/*!
-				@brief Return an iterator pointing to the start of the postings.
-				@return Iterator pointing to start of the postings.
-			*/
-			iterator begin(void) const
-				{
-				return iterator(*this, iterator::START);
-				}
-
-			/*
-				INDEX_POSTINGS::END()
-				---------------------
-			*/
-			/*!
-				@brief Return an iterator pointing to the end of the postings.
-				@return Iterator pointing to end of tne postings.
-			*/
-			iterator end(void) const
-				{
-				return iterator(*this, iterator::END);
 				}
 
 			/*
@@ -236,8 +108,8 @@ namespace JASS
 					/*
 						If this is the second or subseqent occurrence then just add 1 to the term frequency (and make sure it doesn't overflow).
 					*/
-					uint8_t &frequency = postings.back();
-					if (frequency <= 0xFF)
+					index_postings_impact::impact_type &frequency = term_frequencies.back();
+					if (frequency <= index_postings_impact::largest_impact)
 						frequency++;			// cppcheck produces a false positive "Variable 'frequency' is modified but its new value is never used." - it looks like it doesn't fully understand that frequency is a reference.
 					}
 				else
@@ -254,26 +126,77 @@ namespace JASS
 					compress_integer_variable_byte::compress_into(ending, document_id - highest_document);
 
 					for (uint8_t *byte = space; byte < ending; byte++)
-						postings.push_back(*byte);
-					postings.push_back(1);
+						document_ids.push_back(*byte);
+					term_frequencies.push_back(1);
 
 					highest_document = document_id;
 					}
 				}
-			
+
+			/*
+				INDEX_POSTINGS::LINEARIZE()
+				---------------------------
+			*/
+			/*!
+				@brief Turn the internal format used to accumulate postings into a docid and term-frequencies array.
+				@param temporary [in] Buffer used as scratch space.
+				@param temporary_size [in] Length, in bytes, of temporary.
+				@param ids [out] Buffer to store the document ids.
+				@param frequencies [out] Buffer to store the term frequencies.
+				@param id_and_frequencies_length [in] The length of the id and frequencies buffers.
+
+				@return Returns the document frequency of this term, or 0 on failure.
+			*/
+			size_t linearize(uint8_t *temporary, size_t temporary_size, compress_integer::integer *ids, index_postings_impact::impact_type *frequencies, size_t id_and_frequencies_length) const
+				{
+				/*
+					Linearize the term frequencies
+				*/
+				size_t document_frequency = term_frequencies.serialise(frequencies, id_and_frequencies_length);
+				if (document_frequency > id_and_frequencies_length)
+					return 0;
+
+				/*
+					Linearize the document ids, which will still be variable byte encoded
+				*/
+				auto needs = document_ids.serialise(temporary, temporary_size);
+				if (needs > temporary_size)
+					return 0;
+
+				/*
+					Decompress the document ids
+				*/
+				compress_integer_variable_byte::static_decode(ids, document_frequency, temporary, needs);
+
+				/*
+					Decode the deltas
+				*/
+				compress_integer::integer sum = 0;
+				auto end = ids + document_frequency;
+				for (auto current = ids; current < end; current++)
+					{
+					sum += *current;
+					*current = sum;
+					}
+
+				/*
+					And return the document frequency
+				*/
+				return document_frequency;
+				}
+
 			/*
 				INDEX_POSTINGS::IMPACT_ORDER()
 				------------------------------
 			*/
 			/*!
-				@brief Take a postings list and turn it into an impact ordered postings list with impact headers.
-				@details Take a postings list ordered \<d, tf\>... \<d, tf\> with d being in increasing order, and trurn into
-				an impact ordered postings list ordered \<i\>\<d\>...\<d\>\<0\>\<i\>\<d\>...\<d\>\<0\> with \<i\> being in decreasing order and \<d\>
-				begin in increasing order for each chunk.  It also generates a set of headers that poing to each \<d\>..\<d\> range,
-				excluding \<i\> and excluding \<0\>.
+				@brief Return the postings list impact ordered postings list with impact headers.
 				@param postings_list [in / out] The constructed impact ordered postings list.
+				@param id_list [in] The list of document ids.
+				@param tf_list [in] The list of term frequencies.
+				@param document_frequency [in] the document frequency of this term (the length of id_list and tf_list).
 			*/
-			void impact_order(index_postings_impact &postings_list) const
+			void impact_order(index_postings_impact &postings_list, compress_integer::integer *id_list, index_postings_impact::impact_type *tf_list, size_t document_frequency) const
 				{
 				std::array<uint32_t, 0x100> frequencies = {};
 				size_t number_of_postings = 0;
@@ -283,20 +206,21 @@ namespace JASS
 				/*
 					Count up the number of times each impact is seen and compute the highest and lowest impact scores
 				*/
-				for (const auto posting : *this)
+				index_postings_impact::impact_type *end = tf_list + document_frequency;
+				for (index_postings_impact::impact_type *current_tf = tf_list; current_tf < end; current_tf++)
 					{
 					/*
 						Calculate the maximum and minimum impact scores seen
 					*/
-					if (posting.term_frequency > highest_impact)
-						highest_impact = posting.term_frequency;
-					if (posting.term_frequency < lowest_impact)
-						lowest_impact = posting.term_frequency;
+					if (*current_tf > highest_impact)
+						highest_impact = *current_tf;
+					if (*current_tf < lowest_impact)
+						lowest_impact = *current_tf;
 
 					/*
 						Count the number of times each frequency is seen
 					*/
-					frequencies[posting.term_frequency]++;
+					frequencies[*current_tf]++;
 					number_of_postings++;
 					}
 
@@ -339,10 +263,12 @@ namespace JASS
 				/*
 					Now place the postings in the right places
 				*/
-				for (const auto posting : *this)
+				compress_integer::integer *current_id = id_list;
+				for (index_postings_impact::impact_type *current_tf = tf_list; current_tf < end; current_tf++)
 					{
-					postings_list.get_postings()[frequencies[posting.term_frequency]] = posting.document_id;
-					frequencies[posting.term_frequency]++;
+					postings_list.get_postings()[frequencies[*current_tf]] = *current_id;
+					frequencies[*current_tf]++;
+					current_id++;
 					}
 				}
 
@@ -356,8 +282,29 @@ namespace JASS
 			*/
 			void text_render(std::ostream &stream) const
 				{
-				for (const auto &posting : *this)
-					stream << '<' << posting.document_id << ',' << posting.term_frequency << '>';
+				size_t document_frequency = term_frequencies.serialise(nullptr, 0);
+
+				/*
+					Serialise the postings
+				*/
+				compress_integer::integer *id_list = new compress_integer::integer[document_frequency];
+				index_postings_impact::impact_type *tf_list = new index_postings_impact::impact_type [document_frequency];
+				size_t temporary_size = document_frequency * 10;		 // worst case is that each integer is encoded in 10 bytes and so the linear buffer is 10 times the number of document frequencies
+				uint8_t *temporary = new uint8_t[temporary_size];
+
+				linearize(temporary, temporary_size, id_list, tf_list, document_frequency);
+
+				/*
+					write out the postings
+				*/
+				auto end = id_list + document_frequency;
+				auto current_tf = tf_list;
+				for (compress_integer::integer *current_id = id_list; current_id < end; current_id++, current_tf++)
+					stream << '<' << *current_id << ',' << (size_t)*current_tf << '>';
+
+				delete [] id_list;
+				delete [] tf_list;
+				delete [] temporary;
 				}
 			
 			/*

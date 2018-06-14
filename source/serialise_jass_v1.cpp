@@ -55,9 +55,14 @@ namespace JASS
 		size_t postings_location = postings.tell();
 
 		/*
+			Serialise and decompress
+		*/
+		auto document_frequency = postings_list.linearize(temporary, temporary_size, document_ids, term_frequencies, documents_in_collection);
+		
+		/*
 			Impact order the postings list.
 		*/
-		postings_list.impact_order(impact_ordered);
+		postings_list.impact_order(impact_ordered, document_ids, term_frequencies, document_frequency);
 
 		/*
 			Compute the number of impact headers we're going to see.
@@ -163,7 +168,7 @@ namespace JASS
 		vocabulary_strings.write("\0", 1);
 		
 		/*
-			Keep a copy of the term and the detals of the postings list for later sorting and writeing to CIvocab.bin
+			Keep a copy of the term and the detals of the postings list for later sorting and writing to CIvocab.bin
 		*/
 		index_key.push_back(vocab_tripple(term, term_offset, postings_location, number_of_impact_scores));
 		}
