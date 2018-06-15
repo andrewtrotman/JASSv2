@@ -17,6 +17,7 @@ before_install:
     fi
   - if [ "$TRAVIS_OS_NAME" != linux ]; then 
       system_profiler SPHardwareDataType | grep "Model Identifier";
+      sysctl -n machdep.cpu.brand_string;
       system_profiler SPSoftwareDataType;
       xcodebuild -version;
     fi
