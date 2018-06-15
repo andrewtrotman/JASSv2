@@ -63,12 +63,12 @@ else()
 endif()
 
 #
-#	Add SSE4.2 use.
+#	Add AVX and BMI use.
 #
 if(WIN32)
 #	add_definitions("/arch:AVX")
 else()
-	add_definitions("-mavx2")
+	add_definitions("-mavx2 -mbmi")
 endif()
 
 #

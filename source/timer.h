@@ -144,7 +144,7 @@ namespace JASS
 			static void unittest(void)
 				{
 				/*
-					Time abot 100 milliseconds
+					Time about 100 milliseconds
 				*/
 				auto clock = timer::start();
 				std::this_thread::sleep_for (std::chrono::milliseconds(100));
@@ -153,20 +153,20 @@ namespace JASS
 				/*
 					Get the actual time in different units
 				*/
-				auto nano = took.nanoseconds();
-				auto micro = took.microseconds();
-				auto milli = took.milliseconds();
+				size_t nano = took.nanoseconds();
+				size_t micro = took.microseconds();
+				size_t milli = took.milliseconds();
 
 				/*
 					Check that the timer took about the same time in nanoseconds as microseconds
 				*/
-				auto nano_as_micro = nano / 1000;
+				size_t nano_as_micro = nano / 1000;
 				JASS_assert((nano_as_micro >= micro - 1) && (nano_as_micro - 1 <= micro));
 
 				/*
 					Check that the timer took about the same time in nanoseconds as milliseconds
 				*/
-				auto nano_as_milli = nano / 1000'000;
+				size_t nano_as_milli = nano / 1000'000;
 				JASS_assert((nano_as_milli >= milli - 1) && (nano_as_milli - 1 <= milli));
 
 				/*
