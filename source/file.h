@@ -20,6 +20,7 @@
 
 #include <string>
 #include <vector>
+#include <memory>
 #include <stdexcept>
 
 namespace JASS
@@ -156,7 +157,7 @@ namespace JASS
 				@param bytes [in] The number of bytes of data to read.
 				@return The number of bytes of data that were read and written into buffer.
 			*/
-			long read(void *data, size_t size)
+			size_t read(void *data, size_t size)
 				{
 				/*
 					Keep track of the number of bytes we've been asked to write

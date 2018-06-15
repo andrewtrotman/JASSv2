@@ -33,7 +33,7 @@ namespace JASS
 	class index_manager
 		{
 		private:
-			size_t highest_document_id;					///< The highest document_id seen so far (counts from 1).
+			 compress_integer::integer highest_document_id;					///< The highest document_id seen so far (counts from 1).
 
 		public:
 			/*
@@ -189,7 +189,7 @@ namespace JASS
 			/*!
 				@brief Return the number of documents that have been successfully indexed or are in the process of being indexed.
 			*/
-			size_t get_highest_document_id(void) const
+			 compress_integer::integer get_highest_document_id(void) const
 				{
 				return highest_document_id;
 				}

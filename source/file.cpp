@@ -12,7 +12,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#ifdef WIN32
+#ifdef _MSC_VER
 	#include <io.h>
 #else
 	#include <unistd.h>

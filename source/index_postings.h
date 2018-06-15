@@ -18,6 +18,7 @@
 #include <iostream>
 
 #include "dynamic_array.h"
+#include "compress_integer.h"
 #include "allocator_pool.h"
 #include "index_postings_impact.h"
 #include "compress_integer_variable_byte.h"
@@ -71,7 +72,7 @@ namespace JASS
 				};
 
 		private:
-			size_t highest_document;															///< The higest document number seen in this postings list (counting from 1)
+			compress_integer::integer highest_document;															///< The higest document number seen in this postings list (counting from 1)
 			dynamic_array<uint8_t> document_ids;											///< Array holding the docids (variable byte encoded)
 			dynamic_array<index_postings_impact::impact_type> term_frequencies;	///< Array holding the term frequencies (as integers)
 
@@ -101,7 +102,7 @@ namespace JASS
 			/*!
 				@brief Add to the end of the postings list.
 			*/
-			virtual void push_back(size_t document_id)
+			virtual void push_back(JASS::compress_integer::integer document_id)
 				{
 				if (document_id == highest_document)
 					{
@@ -200,8 +201,8 @@ namespace JASS
 				{
 				std::array<uint32_t, 0x100> frequencies = {};
 				size_t number_of_postings = 0;
-				size_t highest_impact = 0;
-				size_t lowest_impact = std::numeric_limits<size_t>::max();
+				index_postings_impact::impact_type highest_impact = 0;
+				index_postings_impact::impact_type lowest_impact = std::numeric_limits<decltype(lowest_impact)>::max();
 
 				/*
 					Count up the number of times each impact is seen and compute the highest and lowest impact scores
@@ -236,9 +237,9 @@ namespace JASS
 				/*
 					Put the headers into place and turn the frequencies into pointers
 				*/
-				size_t cumulative = 0;
-				size_t current_impact = 0;
-				size_t impact_value = lowest_impact;
+				uint32_t cumulative = 0;
+				uint32_t current_impact = 0;
+				index_postings_impact::impact_type impact_value = lowest_impact;
 				for (size_t which = lowest_impact; which <= highest_impact; which++)
 					{
 					uint32_t *times = &frequencies[which];
