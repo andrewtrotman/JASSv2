@@ -128,7 +128,11 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 		current_segment = segment_order;
 		for (const auto &term : terms)
 			{
-//	std::cout << "TERM:" << term << "\n";
+std::cout << "TERM:" << term << "\n";
+if (term.token() == "policy")
+	{
+	int x = 0;
+	}
 
 			/*
 				Get the metadata for this term (and if this term isn't in the vocab them move on to the next term)
@@ -209,7 +213,7 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 		/*
 			Serialise the results list (don't time this)
 		*/
-		JASS::run_export(JASS::run_export::TREC, output.results_list, query_id.c_str(), *jass_query, "COMPILED", true);
+		JASS::run_export(JASS::run_export::TREC, output.results_list, query_id.c_str(), *jass_query, "COMPILED", false);
 
 		/*
 			Re-start the timer

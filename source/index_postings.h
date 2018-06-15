@@ -248,7 +248,7 @@ namespace JASS
 						/*
 							Put the header in place.
 						*/
-						postings_list.header(current_impact, impact_value, &postings_list[prior], &postings_list[prior + *times]);
+						postings_list.header(current_impact, impact_value, &(postings_list.get_postings()[prior]), &(postings_list.get_postings()[prior + *times]));
 
 						/*
 							Keep track of where in the list we are.

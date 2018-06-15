@@ -358,6 +358,7 @@ namespace JASS
 					std::copy(current->data, current->data + (current->used <= size_of_into ? current->used.load() : size_of_into), into);
 					size_of_into -= current->used;
 					would_take += current->used;
+					into += current->used;
 					}
 				return would_take;
 				}
