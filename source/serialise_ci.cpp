@@ -95,8 +95,6 @@ namespace JASS
 		*/
 		auto document_frequency = postings.linearize(temporary, temporary_size, document_ids, term_frequencies, documents_in_collection);
 
-
-//std::cout << term << "->" << document_frequency << "\n";
 		/*
 			Write out in this format
 		*/

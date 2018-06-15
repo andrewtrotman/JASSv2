@@ -154,7 +154,6 @@ namespace JASS
 					Linearize the term frequencies
 				*/
 				size_t document_frequency = term_frequencies.serialise(frequencies, id_and_frequencies_length);
-//std::cout << "df:" << document_frequency << " id_and_freq_len:" << id_and_frequencies_length << "\n";
 
 				if (document_frequency > id_and_frequencies_length)
 					return 0;
@@ -292,24 +291,21 @@ namespace JASS
 				/*
 					Serialise the postings
 				*/
-				compress_integer::integer *id_list = new compress_integer::integer[document_frequency];
-				index_postings_impact::impact_type *tf_list = new index_postings_impact::impact_type [document_frequency];
+				std::unique_ptr<compress_integer::integer> id_list(new compress_integer::integer[document_frequency]);
+				std::unique_ptr<index_postings_impact::impact_type> tf_list(new index_postings_impact::impact_type [document_frequency]);
 				size_t temporary_size = document_frequency * 10;		 // worst case is that each integer is encoded in 10 bytes and so the linear buffer is 10 times the number of document frequencies
-				uint8_t *temporary = new uint8_t[temporary_size];
+				std::unique_ptr<uint8_t>temporary(new uint8_t[temporary_size]);
 
-				linearize(temporary, temporary_size, id_list, tf_list, document_frequency);
+				linearize(temporary.get(), temporary_size, id_list.get(), tf_list.get(), document_frequency);
 
 				/*
 					write out the postings
 				*/
-				auto end = id_list + document_frequency;
-				auto current_tf = tf_list;
-				for (compress_integer::integer *current_id = id_list; current_id < end; current_id++, current_tf++)
+				auto end = id_list.get() + document_frequency;
+				auto current_tf = tf_list.get();
+				for (compress_integer::integer *current_id = id_list.get(); current_id < end; current_id++, current_tf++)
 					stream << '<' << *current_id << ',' << (size_t)*current_tf << '>';
 
-				delete [] id_list;
-				delete [] tf_list;
-				delete [] temporary;
 				}
 			
 			/*
