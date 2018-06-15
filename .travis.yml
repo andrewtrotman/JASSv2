@@ -14,6 +14,8 @@ before_install:
       export HOMEBREW_FORCE_VENDOR_RUBY=1;
       PATH="$HOME/.linuxbrew/bin:$PATH";
       travis_wait 30 brew install gcc;
+    else
+      system_profiler SPSoftwareDataType
     fi
   - if [ "$VALGRIND_RUN" == 1 ]; then 
       brew install valgrind;
