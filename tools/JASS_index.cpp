@@ -149,11 +149,7 @@ int main(int argc, const char *argv[])
 					finished = true;
 					break;
 				case JASS::parser::token::alpha:
-if (token.get() == "conflicting")
-{
-int x = 1;
-}
-					index.term(token);
+						index.term(token);
 					break;
 				case JASS::parser::token::numeric:
 					index.term(token);

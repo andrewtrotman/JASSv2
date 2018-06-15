@@ -148,10 +148,6 @@ namespace JASS
 	*/
 	void serialise_jass_v1::operator()(const slice &term, const index_postings &postings)
 		{
-if (term == "conflicting")
-{
-int x = 1;
-}
 		/*
 			write the postings list to disk and keep a track of where it is.
 		*/
