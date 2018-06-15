@@ -26,6 +26,7 @@ namespace JASS
 		primary_key_file("JASS_primary_keys.cpp", "w+b"),
 		terms(0),
 		memory(1024 * 1024),
+		documents_in_collection(documents),
 		document_ids((decltype(document_ids))memory.malloc(documents * sizeof(*document_ids))),
 		term_frequencies((decltype(term_frequencies))memory.malloc(documents * sizeof(*term_frequencies))),
 		temporary_size(documents * (sizeof(*document_ids) / 7 + 1) * sizeof(*temporary)),
@@ -94,6 +95,8 @@ namespace JASS
 		*/
 		auto document_frequency = postings.linearize(temporary, temporary_size, document_ids, term_frequencies, documents_in_collection);
 
+
+//std::cout << term << "->" << document_frequency << "\n";
 		/*
 			Write out in this format
 		*/

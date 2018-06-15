@@ -154,6 +154,8 @@ namespace JASS
 					Linearize the term frequencies
 				*/
 				size_t document_frequency = term_frequencies.serialise(frequencies, id_and_frequencies_length);
+//std::cout << "df:" << document_frequency << " id_and_freq_len:" << id_and_frequencies_length << "\n";
+
 				if (document_frequency > id_and_frequencies_length)
 					return 0;
 
