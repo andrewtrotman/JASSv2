@@ -89,6 +89,7 @@ namespace JASS
 				{
 				uint8_t *destination = (uint8_t *)encoded;
 				uint8_t *end_of_destination_buffer = destination + encoded_buffer_length;
+				const integer *end_of_source_buffer = array + source_integers;
 
 				while (1)
 					{
@@ -120,12 +121,13 @@ namespace JASS
 						Now encode the integers
 					*/
 					uint32_t *buffer = (uint32_t *)(destination + 1);
-					::memset(buffer, 0, WIDTH_IN_BITS / 8);							// zero the word before we write into it.
+					::memset(buffer, 0, WIDTH_IN_BITS / 8);			// zero the word before we write into it.
 					int32_t current_word = 0;
 					uint32_t placement = 0;
 					for (const uint32_t *current = array; current < end; current++)
 						{
-						buffer[current_word] = buffer[current_word] | (*current << (widest * placement));
+						auto value = current < end_of_source_buffer ? *current : 0;									// prevent overflow from the input stream while allowing and pack to end of word with 0s.
+						buffer[current_word] = buffer[current_word] | (value << (widest * placement));
 						current_word++;
 						if (current_word >= (WIDTH_IN_BITS / 32))
 							{

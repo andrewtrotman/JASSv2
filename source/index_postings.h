@@ -291,10 +291,10 @@ namespace JASS
 				/*
 					Serialise the postings
 				*/
-				std::unique_ptr<compress_integer::integer> id_list(new compress_integer::integer[document_frequency]);
-				std::unique_ptr<index_postings_impact::impact_type> tf_list(new index_postings_impact::impact_type [document_frequency]);
+				auto id_list = std::make_unique<compress_integer::integer>(document_frequency);
+				auto tf_list = std::make_unique<index_postings_impact::impact_type>(document_frequency);
 				size_t temporary_size = document_frequency * 10;		 // worst case is that each integer is encoded in 10 bytes and so the linear buffer is 10 times the number of document frequencies
-				std::unique_ptr<uint8_t>temporary(new uint8_t[temporary_size]);
+				auto temporary = std::make_unique<uint8_t []>(temporary_size);
 
 				linearize(temporary.get(), temporary_size, id_list.get(), tf_list.get(), document_frequency);
 

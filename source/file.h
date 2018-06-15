@@ -45,7 +45,7 @@ namespace JASS
 			size_t file_position;
 			size_t buffer_size;					///< Size of the internal file buffering.
 			size_t buffer_used;					///< How much of the internal file buffer is being used.
-			std::unique_ptr<uint8_t> buffer;	/// < Internal file buffer
+			std::unique_ptr<uint8_t []> buffer;	/// < Internal file buffer
 			size_t bytes_written;				///< Number of bytes written to this file.
 			size_t bytes_read;					///< Number of bytes read from this file.
 
@@ -72,7 +72,7 @@ namespace JASS
 				file_position(0),
 				buffer_size(10 * 1024 * 1024),					// start with a buffer of this size
 				buffer_used(0),
-				buffer(new uint8_t [buffer_size]),
+				buffer(std::make_unique<uint8_t []>(buffer_size)),
 				bytes_written(0),
 				bytes_read(0)
 				{
