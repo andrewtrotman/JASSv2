@@ -38,15 +38,6 @@ namespace JASS
 			file postings_file;									///< The postings file
 			allocator_pool memory;								///< Memory used to store the impact-ordered postings list.
 			index_postings_impact impact_ordered; 			/// << the impact-ordered postings list
-			size_t documents_in_collection;				///< The number of documents in the collection.
-			/*
-				Each of these buffers is re-used in the serialisation process
-			*/
-			compress_integer::integer *document_ids;					///< The re-used buffer storing decoded document ids
-			index_postings_impact::impact_type *term_frequencies;	///< The re-used buffer storing the term frequencies
-			size_t temporary_size;											///< The number of bytes in temporary
-			uint8_t *temporary;												///< Temporary buffer - cannot be used to store anything between calls
-
 
 		public:
 			/*
@@ -59,12 +50,7 @@ namespace JASS
 			*/
 			serialise_integers(size_t documents) :
 				postings_file("postings.bin", "w+b"),
-				impact_ordered(documents, memory),
-				document_ids((decltype(document_ids))memory.malloc(documents * sizeof(*document_ids))),
-				term_frequencies((decltype(term_frequencies))memory.malloc(documents * sizeof(*term_frequencies))),
-				temporary_size(documents * (sizeof(*document_ids) / 7 + 1) * sizeof(*temporary)),
-				temporary((decltype(temporary))memory.malloc(temporary_size))			// enough space to decompress variable-byte encodings
-
+				impact_ordered(documents, memory)
 				{
 				/* Nothing. */
 				}

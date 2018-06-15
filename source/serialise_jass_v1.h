@@ -143,15 +143,7 @@ namespace JASS
 			std::vector<vocab_tripple> index_key;		///< The entry point into the JASS v1 index is CIvocab.bin, the index key.
 			std::vector<uint64_t> primary_key_offsets;///< A list of locations (on disk) of each primary key.
 			allocator_pool memory;							///< Memory used to store the impact-ordered postings list.
-			size_t documents_in_collection;				///< The number of documents in the collection.
-			/*
-				Each of these buffers is re-used in the serialisation process
-			*/
-			index_postings_impact impact_ordered;						///< The re-used impact ordered postings list.
-			compress_integer::integer *document_ids;					///< The re-used buffer storing decoded document ids
-			index_postings_impact::impact_type *term_frequencies;	///< The re-used buffer storing the term frequencies
-			size_t temporary_size;											///< The number of bytes in temporary
-			uint8_t *temporary;												///< Temporary buffer - cannot be used to store anything between calls
+			index_postings_impact impact_ordered;		///< The re-used impact ordered postings list.
 
 		private:
 			/*
@@ -181,12 +173,7 @@ namespace JASS
 				postings("CIpostings.bin", "w+b"),
 				primary_keys("CIdoclist.bin", "w+b"),
 				memory(1024 * 1024),								///< The allocation block size is currently 1MB, big enough for most postings lists (but it'll grow for larger ones).
-				documents_in_collection(documents),
-				impact_ordered(documents, memory),
-				document_ids((decltype(document_ids))memory.malloc(documents * sizeof(*document_ids))),
-				term_frequencies((decltype(term_frequencies))memory.malloc(documents * sizeof(*term_frequencies))),
-				temporary_size(documents * (sizeof(*document_ids) * 8 / 7 + 1) * sizeof(*temporary)),
-				temporary((decltype(temporary))memory.malloc(temporary_size))			// enough space to decompress variable-byte encodings
+				impact_ordered(documents, memory)
 				{
 				/*
 					For the initial bring-up the postings ar not compressed.

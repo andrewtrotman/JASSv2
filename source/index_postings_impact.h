@@ -27,6 +27,8 @@ namespace JASS
 	*/
 	class index_postings_impact
 		{
+		friend class index_postings;
+		
 		public:
 			static constexpr size_t largest_impact = 0xFF;
 			typedef uint8_t impact_type;
@@ -161,6 +163,10 @@ namespace JASS
 			impact impacts[largest_impact + 1];		///< List of impact pointers (the impact header).
 			size_t number_of_postings;					///< The length of the pistings array measured in size_t.
 			size_t *postings;								///< The list of document IDs, strung together for each postings segment.
+			compress_integer::integer *document_ids;					///< The re-used buffer storing decoded document ids
+			index_postings_impact::impact_type *term_frequencies;	///< The re-used buffer storing the term frequencies
+			size_t temporary_size;											///< The number of bytes in temporary
+			uint8_t *temporary;												///< Temporary buffer - cannot be used to store anything between calls
 
 		public:
 			/*
@@ -171,14 +177,18 @@ namespace JASS
 				@brief Constructor
 				@details The postings lists are typvically stored \<impact\>\<d\>\<d\>...\<d\>\<0\>,  The headers point to the list
 				of \<d\>s (not the \<impact\> or the \<0\>.
-				@param total_postings [in] The number of integers in the potings list (including any imact scores and '0' terminators
+				@param document_count [in] The number of documents in the collection (the length of the longest postings list)
 				@param memory [in] All memory allocation happens in this arena
 			*/
-			index_postings_impact(size_t total_postings, allocator &memory):
+			index_postings_impact(size_t document_count, allocator &memory):
 				memory(memory),
 				number_of_impacts(0),
-				number_of_postings(total_postings),
-				postings(static_cast<size_t *>(memory.malloc((total_postings + largest_impact + 1) * sizeof(*postings))))			// longest length is total_postings + all impacts + 1
+				number_of_postings(document_count),
+				postings(static_cast<decltype(postings)>(memory.malloc((document_count + largest_impact + 1) * sizeof(*postings)))),			// longest length is total_postings + all impacts + 1
+				document_ids((decltype(document_ids))memory.malloc(document_count * sizeof(*document_ids))),
+				term_frequencies((decltype(term_frequencies))memory.malloc(document_count * sizeof(*term_frequencies))),
+				temporary_size(document_count * (sizeof(*document_ids) / 7 + 1) * sizeof(*temporary)),
+				temporary((decltype(temporary))memory.malloc(temporary_size))			// enough space to decompress variable-byte encodings
 				{
 				/* Nothing */
 				}

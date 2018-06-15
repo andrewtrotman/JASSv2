@@ -23,10 +23,9 @@ namespace JASS
 	void serialise_integers::operator()(const slice &term, const index_postings &postings_list)
 		{
 		/*
-			Serialise and decompress then impact order
+			Impact order this postings list
 		*/
-		auto document_frequency = postings_list.linearize(temporary, temporary_size, document_ids, term_frequencies, documents_in_collection);
-		postings_list.impact_order(impact_ordered, document_ids, term_frequencies, document_frequency);
+		postings_list.impact_order(impact_ordered);
 
 		/*
 			Write out

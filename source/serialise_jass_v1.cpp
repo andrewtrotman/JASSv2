@@ -55,14 +55,9 @@ namespace JASS
 		size_t postings_location = postings.tell();
 
 		/*
-			Serialise and decompress
-		*/
-		auto document_frequency = postings_list.linearize(temporary, temporary_size, document_ids, term_frequencies, documents_in_collection);
-		
-		/*
 			Impact order the postings list.
 		*/
-		postings_list.impact_order(impact_ordered, document_ids, term_frequencies, document_frequency);
+		postings_list.impact_order(impact_ordered);
 
 		/*
 			Compute the number of impact headers we're going to see.
