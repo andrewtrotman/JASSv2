@@ -14,7 +14,7 @@ before_install:
       export HOMEBREW_FORCE_VENDOR_RUBY=1;
       PATH="$HOME/.linuxbrew/bin:$PATH";
       travis_wait 30 brew install gcc;
-    if
+    fi
   - if [ "$TRAVIS_OS_NAME" != linux ]; then 
       system_profiler SPHardwareDataType | grep "Model Identifier"
       system_profiler SPSoftwareDataType
