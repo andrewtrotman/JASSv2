@@ -16,9 +16,9 @@ before_install:
       travis_wait 30 brew install gcc;
     fi
   - if [ "$TRAVIS_OS_NAME" != linux ]; then 
-      system_profiler SPHardwareDataType | grep "Model Identifier"
-      system_profiler SPSoftwareDataType
-      xcodebuild -version
+      system_profiler SPHardwareDataType | grep "Model Identifier";
+      system_profiler SPSoftwareDataType;
+      xcodebuild -version;
     fi
   - if [ "$VALGRIND_RUN" == 1 ]; then 
       brew install valgrind;
