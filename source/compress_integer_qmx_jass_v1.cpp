@@ -131,7 +131,7 @@ else
 */
 static void write_out(uint8_t **buffer, uint32_t *source, uint32_t raw_count, uint32_t size_in_bits, uint8_t **length_buffer)
 {
-uint32_t current, batch;
+uint32_t current;
 uint8_t *destination = *buffer;
 uint32_t *end = source + raw_count;
 uint8_t *key_store = *length_buffer;
@@ -225,11 +225,11 @@ else if (size_in_bits == 128)
 	count = raw_count;
 	}
 else
-	exit(printf("Can't compress into integers of size %dbits\n", size_in_bits));
+	exit(printf("Can't compress into integers of size %d bits\n", (int)size_in_bits));
 
 while (count > 0)
 	{
-	batch = count > 16 ? 16 : count;
+	uint32_t batch = count > 16 ? 16 : count;
 	*key_store++ = (type << 4) | (~(batch - 1) & 0x0F);
 
 	count -= batch;
@@ -878,7 +878,7 @@ return destination - (uint8_t *)into;	// return length in bytes
 			/*
 				256 0-bit integers
 			*/
-			for (uint32_t run = 0; run < 0x10 - (instance & 0x0F); run++)
+			for (int run = 0; run < 0x10 - (instance & 0x0F); run++)
 				{
 				printf("#ifdef NO_ZEROS\n");
 				printf("\t\t\ttmp = _mm_load_si128((__m128i *)static_mask_1);\n");
@@ -959,7 +959,7 @@ return destination - (uint8_t *)into;	// return length in bytes
 			/*
 				128 * 1-bit integers
 			*/
-			for (uint32_t run = 0; run < 0x10 - (instance & 0x0F); run++)
+			for (int run = 0; run < 0x10 - (instance & 0x0F); run++)
 				{
 				printf("\t\t\tbyte_stream = _mm_load_si128((__m128i *)in + %d);\n", run);
 				printf("\t\t\t_mm_store_si128((__m128i *)to + %d, _mm_and_si128(byte_stream, mask_1));\n", run * 32);
@@ -1036,7 +1036,7 @@ return destination - (uint8_t *)into;	// return length in bytes
 			/*
 				64 * 2-bit integers
 			*/
-			for (uint32_t run = 0; run < 0x10 - (instance & 0x0F); run++)
+			for (int run = 0; run < 0x10 - (instance & 0x0F); run++)
 				{
 				printf("\t\t\tbyte_stream = _mm_load_si128((__m128i *)in + %d);\n", run);
 				printf("\t\t\t_mm_store_si128((__m128i *)to + %d, _mm_and_si128(byte_stream, mask_2));\n", run * 16);
@@ -1082,7 +1082,7 @@ return destination - (uint8_t *)into;	// return length in bytes
 			/*
 				40 * 3-bit integers
 			*/
-			for (uint32_t run = 0; run < 0x10 - (instance & 0x0F); run++)
+			for (int run = 0; run < 0x10 - (instance & 0x0F); run++)
 				{
 				printf("\t\t\tbyte_stream = _mm_load_si128((__m128i *)in + %d);\n", run);
 				printf("\t\t\t_mm_store_si128((__m128i *)to + %d, _mm_and_si128(byte_stream, mask_3));\n", run * 10);
@@ -1116,7 +1116,7 @@ return destination - (uint8_t *)into;	// return length in bytes
 			/*
 				32 * 4-bit integers
 			*/
-			for (uint32_t run = 0; run < 0x10 - (instance & 0x0F); run++)
+			for (int run = 0; run < 0x10 - (instance & 0x0F); run++)
 				{
 				printf("\t\t\tbyte_stream = _mm_load_si128((__m128i *)in + %d);\n", run);
 				printf("\t\t\t_mm_store_si128((__m128i *)to + %d, _mm_and_si128(byte_stream, mask_4));\n", run * 8);
@@ -1146,7 +1146,7 @@ return destination - (uint8_t *)into;	// return length in bytes
 			/*
 				24 * 5-bit integers
 			*/
-			for (uint32_t run = 0; run < 0x10 - (instance & 0x0F); run++)
+			for (int run = 0; run < 0x10 - (instance & 0x0F); run++)
 				{
 				printf("\t\t\tbyte_stream = _mm_load_si128((__m128i *)in + %d);\n", run);
 				printf("\t\t\t_mm_store_si128((__m128i *)to + %d, _mm_and_si128(byte_stream, mask_5));\n", run * 6);
@@ -1171,7 +1171,7 @@ return destination - (uint8_t *)into;	// return length in bytes
 			/*
 				20 * 6-bit integers
 			*/
-			for (uint32_t run = 0; run < 0x10 - (instance & 0x0F); run++)
+			for (int run = 0; run < 0x10 - (instance & 0x0F); run++)
 				{
 				printf("\t\t\tbyte_stream = _mm_load_si128((__m128i *)in + %d);\n", run);
 				printf("\t\t\t_mm_store_si128((__m128i *)to + %d, _mm_and_si128(byte_stream, mask_6));\n", run * 5);
@@ -1194,7 +1194,7 @@ return destination - (uint8_t *)into;	// return length in bytes
 			/*
 				36 * 7 bit integers (in two 128-bit words)
 			*/
-			for (uint32_t run = 0; run < 0x10 - (instance & 0x0F); run++)
+			for (int run = 0; run < 0x10 - (instance & 0x0F); run++)
 				{
 				printf("\t\t\tbyte_stream = _mm_load_si128((__m128i *)in + %d);\n", run * 2);
 				printf("\t\t\t_mm_store_si128((__m128i *)to + %d, _mm_and_si128(byte_stream, mask_7));\n", run * 9);
@@ -1228,7 +1228,7 @@ return destination - (uint8_t *)into;	// return length in bytes
 			/*
 				16 * 8-bit integers
 			*/
-			for (uint32_t run = 0; run < 0x10 - (instance & 0x0F); run++)
+			for (int run = 0; run < 0x10 - (instance & 0x0F); run++)
 				{
 				printf("\t\t\ttmp = _mm_loadu_si128((__m128i *)in + %d);\n", run);
 				printf("\t\t\t_mm_store_si128((__m128i *)to + %d, _mm_cvtepu8_epi32(tmp));\n", run * 4);
@@ -1249,7 +1249,7 @@ return destination - (uint8_t *)into;	// return length in bytes
 			/*
 				28 * 9-bit ingtegers (in two 128-bit words)
 			*/
-			for (uint32_t run = 0; run < 0x10 - (instance & 0x0F); run++)
+			for (int run = 0; run < 0x10 - (instance & 0x0F); run++)
 				{
 				printf("\t\t\tbyte_stream = _mm_load_si128((__m128i *)in + %d);\n", run * 2);
 				printf("\t\t\t_mm_store_si128((__m128i *)to + %d, _mm_and_si128(byte_stream, mask_9));\n", run * 7);
@@ -1278,7 +1278,7 @@ return destination - (uint8_t *)into;	// return length in bytes
 			/*
 				12 * 10-bit integers
 			*/
-			for (uint32_t run = 0; run < 0x10 - (instance & 0x0F); run++)
+			for (int run = 0; run < 0x10 - (instance & 0x0F); run++)
 				{
 				printf("\t\t\tbyte_stream = _mm_load_si128((__m128i *)in + %d);\n", run);
 				printf("\t\t\t_mm_store_si128((__m128i *)to + %d, _mm_and_si128(byte_stream, mask_10));\n", run * 3);
@@ -1298,7 +1298,7 @@ return destination - (uint8_t *)into;	// return length in bytes
 			/*
 				20 * 12-bit ingtegers (in two 128-bit words)
 			*/
-			for (uint32_t run = 0; run < 0x10 - (instance & 0x0F); run++)
+			for (int run = 0; run < 0x10 - (instance & 0x0F); run++)
 				{
 				printf("\t\t\tbyte_stream = _mm_load_si128((__m128i *)in + %d);\n", run * 2);
 				printf("\t\t\t_mm_store_si128((__m128i *)to + %d, _mm_and_si128(byte_stream, mask_12));\n", run * 5);
@@ -1321,7 +1321,7 @@ return destination - (uint8_t *)into;	// return length in bytes
 			/*
 				16-bit integers
 			*/
-			for (uint32_t run = 0; run < 0x10 - (instance & 0x0F); run++)
+			for (int run = 0; run < 0x10 - (instance & 0x0F); run++)
 				{
 				printf("\t\t\ttmp = _mm_load_si128((__m128i *)in + %d);\n", run);
 				printf("\t\t\t_mm_store_si128((__m128i *)to + %d, _mm_cvtepu16_epi32(tmp));\n", 2 * run);
@@ -1338,7 +1338,7 @@ return destination - (uint8_t *)into;	// return length in bytes
 			/*
 				12 * 21-bit ingtegers (in two 128-bit words)
 			*/
-			for (uint32_t run = 0; run < 0x10 - (instance & 0x0F); run++)
+			for (int run = 0; run < 0x10 - (instance & 0x0F); run++)
 				{
 				printf("\t\t\tbyte_stream = _mm_load_si128((__m128i *)in + %d);\n", run * 2);
 				printf("\t\t\t_mm_store_si128((__m128i *)to + %d, _mm_and_si128(byte_stream, mask_21));\n", run * 3);
@@ -1356,7 +1356,7 @@ return destination - (uint8_t *)into;	// return length in bytes
 			/*
 				32-bit integers
 			*/
-			for (uint32_t run = 0; run < 0x10 - (instance & 0x0F); run++)
+			for (int run = 0; run < 0x10 - (instance & 0x0F); run++)
 				{
 				printf("\t\t\ttmp = _mm_load_si128((__m128i *)in + %d);\n", run);
 				printf("\t\t\t_mm_store_si128((__m128i *)to + %d, tmp);\n", run);

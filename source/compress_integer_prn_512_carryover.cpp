@@ -226,7 +226,6 @@ namespace JASS
 		const uint8_t *source = (const uint8_t *)source_as_void;
 		const uint8_t *end_of_source = source + source_length;
 		__m256i *into = (__m256i *)decoded;
-		uint32_t width;
 
 		uint64_t selector = *(uint32_t *)source;
 		__m256i payload1 = _mm256_loadu_si256((__m256i *)(source + 4));
@@ -235,7 +234,7 @@ namespace JASS
 
 		while (1)
 			{
-			width = (uint32_t)find_first_set_bit(selector);
+			uint32_t width = (uint32_t)find_first_set_bit(selector);
 			mask = _mm256_loadu_si256((__m256i *)mask_set[width]);
 			_mm256_storeu_si256(into, _mm256_and_si256(payload1, mask));
 			_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));

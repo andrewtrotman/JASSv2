@@ -30,6 +30,7 @@
 	so the columns are not individual runs.
 */
 #include <stdio.h>
+#include <inttypes.h>
 
 #include <map>
 #include <vector>
@@ -65,11 +66,11 @@ int main(int argc, const char *argv[])
 			if (!isdigit(*line))
 				continue;
 
-			size_t length;
-			size_t nanoseconds;
-			size_t bytes;
+			uint64_t length;
+			uint64_t nanoseconds;
+			uint64_t bytes;
 
-			sscanf(reinterpret_cast<char *>(line), "%zd %zd %zd", &length, &nanoseconds, &bytes);
+			sscanf(reinterpret_cast<char *>(line), "%" PRId64 "%" PRId64  "%" PRId64, &length, &nanoseconds, &bytes);
 			size_in_bytes[length] = bytes;
 			times_in_nanoseconds[length].push_back(nanoseconds);
 			}

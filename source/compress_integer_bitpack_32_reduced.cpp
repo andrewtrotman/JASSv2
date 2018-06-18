@@ -108,7 +108,6 @@ namespace JASS
 	void compress_integer_bitpack_32_reduced::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
 		{
 		uint32_t *into = (uint32_t *)decoded;
-		uint32_t data;
 		const uint8_t *source = (uint8_t *)source_as_void;
 		const uint8_t *end_of_source = source + source_length;
 
@@ -124,7 +123,7 @@ namespace JASS
 			{
 			uint32_t width = *source;
 			source++;
-			data = *((uint32_t *)source);
+			uint32_t data = *((uint32_t *)source);
 			switch (width)
 				{
 				case 0:

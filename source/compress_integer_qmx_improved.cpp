@@ -168,7 +168,7 @@ namespace JASS
 	*/
 	void compress_integer_qmx_improved::write_out(uint8_t **buffer, uint32_t *source, uint32_t raw_count, uint32_t size_in_bits, uint8_t **length_buffer)
 		{
-		uint32_t current, batch;
+		uint32_t current;
 		uint8_t *destination = *buffer;
 		uint8_t *key_store = *length_buffer;
 		uint32_t sequence_buffer[4];
@@ -177,7 +177,7 @@ namespace JASS
 		uint32_t count;
 
 		if (size_in_bits > 32)
-			exit(printf("Can't compress into integers of size %dbits\n", size_in_bits));				// LCOV_EXCL_LINE
+			exit(printf("Can't compress into integers of size %d bits\n", (int)size_in_bits));				// LCOV_EXCL_LINE
 		type = table[size_in_bits].type;
 		count = (raw_count + table[size_in_bits].integers - 1) / table[size_in_bits].integers;
 
@@ -185,7 +185,7 @@ namespace JASS
 
 		while (count > 0)
 			{
-			batch = count > 16 ? 16 : count;
+			uint32_t batch = count > 16 ? 16 : count;
 			*key_store++ = (type << 4) | (~(batch - 1) & 0x0F);
 
 			count -= batch;
