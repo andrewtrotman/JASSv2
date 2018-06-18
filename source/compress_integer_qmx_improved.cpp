@@ -402,7 +402,7 @@ namespace JASS
 		uint32_t *into = static_cast<uint32_t *>(into_as_void);
 		const uint32_t WASTAGE = 512;
 		uint8_t *current_length, *destination = (uint8_t *)into, *keys;
-		uint32_t *current, run_length, bits, new_needed, wastage;
+		uint32_t *current, run_length, bits, wastage;
 		uint32_t block, largest;
 
 		/*
@@ -666,7 +666,7 @@ namespace JASS
 		keys = length_buffer;				// we're going to re-use the length_buffer because it can't overlap and this saves a double malloc
 		for (current = (uint32_t *)source + 1; current < source + source_integers; current++)
 			{
-			new_needed = length_buffer[current - source];
+			uint32_t new_needed = length_buffer[current - source];
 			if (new_needed == bits)
 				run_length++;
 			else

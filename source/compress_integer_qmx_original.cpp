@@ -52,7 +52,7 @@ namespace JASS
 		delete [] length_buffer;
 		delete [] full_length_buffer;
 		#ifdef STATS
-			uint32_t which;
+			int which;
 			for (which = 0; which <= 32; which++)
 				if (stats[which] != 0)
 					printf("%d\t%d\ttimes\n", which, stats[which]);
@@ -180,13 +180,11 @@ namespace JASS
 	*/
 	static inline uint32_t vbyte_decompress(uint8_t *source) 
 		{
-		uint32_t result;
-
 		if (*source & 0x80)
 			return *source & 0x7F;
 		else
 			{
-			result = *source--;
+			uint32_t result = *source--;
 
 			while (!(*source & 0x80))
 			   result = (result << 7) | *source--;
@@ -260,7 +258,7 @@ namespace JASS
 	*/
 	void compress_integer_qmx_original::write_out(uint8_t **buffer, uint32_t *source, uint32_t raw_count, uint32_t size_in_bits, uint8_t **length_buffer)
 		{
-		uint32_t current, batch;
+		uint32_t current;
 		uint8_t *destination = *buffer;
 		uint8_t *key_store = *length_buffer;
 		uint32_t sequence_buffer[4];
@@ -269,7 +267,7 @@ namespace JASS
 		uint32_t count;
 
 		if (size_in_bits > 32)
-			exit(printf("Can't compress into integers of size %dbits\n", size_in_bits));				// LCOV_EXCL_LINE
+			exit(printf("Can't compress into integers of size %d bits\n", (int)size_in_bits));				// LCOV_EXCL_LINE
 		type = table[size_in_bits].type;
 		count = (raw_count + table[size_in_bits].integers - 1) / table[size_in_bits].integers;
 
@@ -277,7 +275,7 @@ namespace JASS
 
 		while (count > 0)
 			{
-			batch = count > 16 ? 16 : count;
+			uint32_t batch = count > 16 ? 16 : count;
 			*key_store++ = (type << 4) | (~(batch - 1) & 0x0F);
 
 			count -= batch;
@@ -490,7 +488,7 @@ namespace JASS
 		uint32_t *into = static_cast<uint32_t *>(into_as_void);
 		const uint32_t WASTAGE = 512;
 		uint8_t *current_length, *destination = (uint8_t *)into, *keys;
-		uint32_t *current, run_length, bits, new_needed, wastage;
+		uint32_t *current, run_length, bits, wastage;
 		uint32_t block, largest;
 
 		/*
@@ -754,7 +752,7 @@ namespace JASS
 		keys = length_buffer;				// we're going to re-use the length_buffer because it can't overlap and this saves a double malloc
 		for (current = (uint32_t *)source + 1; current < source + source_integers; current++)
 			{
-			new_needed = length_buffer[current - source];
+			uint32_t new_needed = length_buffer[current - source];
 			if (new_needed == bits)
 				run_length++;
 			else

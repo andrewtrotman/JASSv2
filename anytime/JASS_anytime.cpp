@@ -68,7 +68,6 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 		Allocate the Score-at-a-Time table
 	*/
 	uint64_t *segment_order = new uint64_t [MAX_TERMS_PER_QUERY * MAX_QUANTUM];
-	uint64_t *current_segment;
 
 	/*
 		Allocate a JASS query object
@@ -125,7 +124,7 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 		/*
 			Parse the query and extract the list of impact segments
 		*/
-		current_segment = segment_order;
+		uint64_t *current_segment = segment_order;
 		for (const auto &term : terms)
 			{
 // std::cout << "TERM:" << term << "\n";

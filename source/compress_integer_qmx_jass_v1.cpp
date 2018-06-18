@@ -80,10 +80,10 @@ compress_integer_qmx_jass_v1::~compress_integer_qmx_jass_v1()
 {
 delete [] length_buffer;
 #ifdef STATS
-	uint32_t which;
+	int which;
 	for (which = 0; which <= 32; which++)
 		if (stats[which] != 0)
-			printf("%d\t%d\ttimes\n", which, stats[which]);
+			printf("%d\t%ud\ttimes\n", which, stats[which]);
 #endif
 }
 
@@ -444,7 +444,7 @@ size_t compress_integer_qmx_jass_v1::encode(void *encoded, size_t encoded_buffer
 uint32_t *into = (uint32_t *)encoded;
 const uint32_t WASTAGE = 512;
 uint8_t *current_length, *destination = (uint8_t *)into, *keys;
-uint32_t *current, run_length, bits, new_needed, wastage;
+uint32_t *current, run_length, bits, wastage;
 uint32_t block, largest;
 
 /*
@@ -793,7 +793,7 @@ bits = length_buffer[0];
 keys = length_buffer;				// we're going to re-use the length_buffer because it can't overlap and this saves a double malloc
 for (current = (uint32_t *)source + 1; current < source + source_integers; current++)
 	{
-	new_needed = length_buffer[current - source];
+	uint32_t new_needed = length_buffer[current - source];
 	if (new_needed == bits)
 		run_length++;
 	else
@@ -832,7 +832,7 @@ return destination - (uint8_t *)into;	// return length in bytes
 	*/
 	int main(void)
 	{
-	uint32_t instance;
+	int instance;
 
 	printf("static uint32_t ALIGN_16 static_mask_21[]  = {0x1fffff, 0x1fffff, 0x1fffff, 0x1fffff};\n");
 	printf("static uint32_t ALIGN_16 static_mask_12[]  = {0xfff, 0xfff, 0xfff, 0xfff};\n");
@@ -1659,11 +1659,11 @@ return destination - (uint8_t *)into;	// return length in bytes
 	for (pos = 0; pos < sequence_length; pos++)
 		if (sequence[pos] != second_decompress_buffer[pos])
 			{
-			printf("p[%d]:%X != %X\n", pos, sequence[pos], second_decompress_buffer[pos]);
+			printf("p[%d]:%X != %X\n", (int)pos, sequence[pos], second_decompress_buffer[pos]);
 			fail = true;
 			}
 		else
-			printf("p[%d]:%X == %X\n", pos, sequence[pos], second_decompress_buffer[pos]);
+			printf("p[%d]:%X == %X\n", (int)pos, sequence[pos], second_decompress_buffer[pos]);
 
 	if (fail)
 		puts("Test failed");
