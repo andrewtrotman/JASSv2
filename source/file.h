@@ -131,8 +131,31 @@ namespace JASS
 				}
 
 			/*
+				FILE::SETVBUF()
+				---------------
+			*/
+			/*!
+				@brief change the size of the internal buffer (does not flush() first)
+				@details The C standard states "This function should be called once the stream
+				has been associated with an open file, but before any input or output operation
+				is performed with it", and this is true of this function too.
+				@param size [in] The new size of the buffer.
+				@return 1 on success, 0 on failure.
+
+			*/
+			size_t setvbuf(size_t size)
+				{
+				buffer_size = size;
+				buffer = std::make_unique<uint8_t []>(buffer_size);
+				return buffer == NULL ? 0 : 1;
+				}
+
+			/*
 				FILE::FLUSH()
 				-------------
+			*/
+			/*!
+				@brief Flush the internal buffers to disk (called automatically on close).
 			*/
 			void flush(void)
 				{

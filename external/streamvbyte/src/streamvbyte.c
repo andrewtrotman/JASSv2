@@ -1,3 +1,5 @@
+// LCOV_EXCL_START
+
 #include "../include/streamvbyte.h"
 #if defined(_MSC_VER)
 /* Microsoft C/C++-compatible compiler */
@@ -320,3 +322,5 @@ size_t streamvbyte_decode(const uint8_t *in, uint32_t *out, uint32_t count) {
   return svb_decode_scalar(out, keyPtr, dataPtr, count) - in;
 #endif
 }
+
+// LCOV_EXCL_STOP

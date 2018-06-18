@@ -135,6 +135,15 @@ namespace JASS
 		JASS_assert(became == unittest_data::ten_documents.size());
 		JASS_assert(decoded == unittest_data::ten_documents);
 
+		auto zero = codex.encode(const_cast<char *>(encoded.data()), std::numeric_limits<size_t>::max(), unittest_data::ten_documents.c_str(), unittest_data::ten_documents.size());
+		JASS_assert(zero == 0);
+		zero = codex.encode(const_cast<char *>(encoded.data()), encoded.size(), unittest_data::ten_documents.c_str(), std::numeric_limits<size_t>::max());
+		JASS_assert(zero == 0);
+		zero = codex.decode(const_cast<char *>(decoded.data()), std::numeric_limits<size_t>::max(), encoded.data(), took);
+		JASS_assert(zero == 0);
+		zero = codex.decode(const_cast<char *>(decoded.data()), decoded.size(), encoded.data(),  std::numeric_limits<size_t>::max());
+		JASS_assert(zero == 0);
+
 		/*
 			The tests have passed
 		*/

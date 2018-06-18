@@ -47,7 +47,7 @@ namespace JASS
 		bool sorted = true;
 		size_t trials = 0;
 		size_t max_trials = 100;
-		do
+		do		// LCOV_EXCL_LINE 		// LCOV thinks this line isn't covered!
 			{
 			trials++;
 			/*

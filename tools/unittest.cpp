@@ -278,12 +278,14 @@ int main(void)
 			}
 		else
 			{
+	// LCOV_EXCL_START
 			puts("compress_integer_bitpack_256");
 			puts("Cannot test as no 256-bit SIMD instructions on this CPU");
 			puts("compress_integer_prn_512");
 			puts("Cannot test as no 256-bit SIMD instructions on this CPU");
 			puts("compress_integer_prn_512_carryover");
 			puts("Cannot test as no 256-bit SIMD instructions on this CPU");
+	// LCOV_EXCL_STOP
 			}
 
 		puts("accumulator_2d");

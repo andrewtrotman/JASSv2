@@ -667,8 +667,8 @@ void normalize(void)
 		*/
 		while (answer.size() >= 1 && answer[0] == 0x20)
 			answer.erase(answer.begin());
-		while (answer.size() >= 1 && answer[answer.size() - 1] == 0x20)
-			answer.pop_back();					// LCOV_EXCL_LINE
+		while (answer.size() >= 1 && answer[answer.size() - 1] == 0x20)			// LCOV_EXCL_LINE
+			answer.pop_back();													// LCOV_EXCL_LINE
 
 		/*
 			Only write it out if it isn't an empty string (as most are empty and we only need to store that once).

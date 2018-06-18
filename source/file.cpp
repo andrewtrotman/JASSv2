@@ -251,7 +251,7 @@ namespace JASS
 			Dot must be a directory (on Linux and Windows and OS X)
 		*/
 		JASS_assert(is_directory("."));
-		JASS_assert(!is_directory(".JASS."));		// should fail on a file that dosn't exist (but this might, no easy way to check).
+		JASS_assert(!is_directory(".JASS."));		// should fail on a file that doesn't exist (but this might, no easy way to check).
 		
 		/*
 			something we know is not a directory.  In this case we'll use this very file.  Yes, this assumes
@@ -361,6 +361,21 @@ namespace JASS
 		*/
 		file star(nullptr);
 		JASS_assert(stdio.size() == (std::numeric_limits<size_t>::max)());
+
+		/*
+			CHECK SETVBUF
+		*/
+		{
+		auto filename = file::mkstemp("jass");
+		{
+		file tester(filename, "w+b");
+		tester.setvbuf(3);
+		tester.write(example_file);
+		}
+		std::string got;
+		read_entire_file(filename, got);
+		JASS_assert(got == example_file);
+		}
 
 		/*
 			Yay, we passed
