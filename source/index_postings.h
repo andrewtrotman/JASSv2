@@ -291,8 +291,8 @@ namespace JASS
 				/*
 					Serialise the postings
 				*/
-				auto id_list = std::make_unique<compress_integer::integer>(document_frequency);
-				auto tf_list = std::make_unique<index_postings_impact::impact_type>(document_frequency);
+				auto id_list = std::make_unique<compress_integer::integer []>(document_frequency);
+				auto tf_list = std::make_unique<index_postings_impact::impact_type []>(document_frequency);
 				size_t temporary_size = document_frequency * 10;		 // worst case is that each integer is encoded in 10 bytes and so the linear buffer is 10 times the number of document frequencies
 				auto temporary = std::make_unique<uint8_t []>(temporary_size);
 
