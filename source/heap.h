@@ -18,8 +18,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <chrono>
+#include <random>
+#include <sstream>
 #include <algorithm>
 
+#include "asserts.h"
 #include "forceinline.h"
 
 namespace JASS
@@ -252,20 +256,13 @@ namespace JASS
 						Add them to a heap that keeps a top-k of less than the number of elements in the sequence
 					*/
 					std::vector<int> buffer(5);
-					heap<int, std::equal_to<int>()> heap(buffer[0], 5);
+					heap<int, std::equal_to<int>> heap(buffer[0], 5);
 
 					for (const auto &element : sequence)
 						heap.push_back(element);
 
 					/*
-						Make sure we have a heap and its the right size
-					*/
-					JASS_assert(heap.end() - heap.begin() > 0);
-					JASS_assert(static_cast<size_t>(heap.end() - heap.begin()) == heap.size());
-					JASS_assert(std::is_heap(heap.begin(), heap.end(), std::greater<ELEMENT>()));
-
-					/*
-						Sort the heap
+						Sort the contents of the heap
 					*/
 					std::sort(buffer.begin(), buffer.end());
 		
@@ -273,8 +270,9 @@ namespace JASS
 						Serialise and compare to the known correct result
 					*/
 					std::ostringstream result;
-					result << buffer;
-					JASS_assert(result.str() == "9 8 7 6 5");
+					for (const auto &value : buffer)
+						result << value << " ";
+					JASS_assert(result.str() == "9 8 7 6 5 ");
 					}
 
 				/*
