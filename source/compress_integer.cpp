@@ -28,12 +28,12 @@ namespace JASS
 		compressor.decode(&decompressed[0], sequence.size(), &compressed[0], size_once_compressed);
 		decompressed.resize(sequence.size());
 		if (decompressed != sequence)
-			{
+			{		//LCOV_EXCL_START		// diagnostics when compression fails
 			for (size_t index = 0; index < decompressed.size(); index++)
 				std::cout << index << ":" << decompressed[index] << ' ' << sequence[index] << (decompressed[index] == sequence[index] ? "" : "   FAIL") << "\n";
 
 			JASS_assert(false);
-			}
+			}		//LCOV_EXCL_STOP
 		}
 	
 	/*

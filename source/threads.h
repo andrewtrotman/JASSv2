@@ -110,25 +110,25 @@ namespace JASS
 				#ifdef _MSC_VER
 					thread_id = _beginthreadex(NULL, DEFAULT_STACK_SIZE, bootstrap<decltype(functor)>, functor, 0, NULL);
 					if (thread_id == 0)
-						exit(printf("Can't start thread"));
+						exit(printf("Can't start thread"));				// LCOV_EXCL_LINE		// can't test this line
 				#else
 					/*
 						set any thread attributes we need
 					*/
 					if (pthread_attr_init(&attributes) != 0)
-						exit(printf("Can't start thread"));
+						exit(printf("Can't start thread"));				// LCOV_EXCL_LINE		// can't test this line
 
 					/*
 						give it a good-sized stack
 					*/
 					if (pthread_attr_setstacksize(&attributes, DEFAULT_STACK_SIZE) != 0)
-						exit(printf("Can't start thread"));
+						exit(printf("Can't start thread"));				// LCOV_EXCL_LINE		// can't test this line
 
 					/*
 						start the thread
 					*/
 					if (pthread_create(&thread_id, &attributes, bootstrap<decltype(functor)>, functor) != 0)
-						exit(printf("Can't start thread"));
+						exit(printf("Can't start thread"));				// LCOV_EXCL_LINE		// can't test this line
 				#endif
 				}
 

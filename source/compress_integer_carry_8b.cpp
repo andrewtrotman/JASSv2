@@ -135,7 +135,7 @@ size_t compress_integer_carry_8b::pack_one_word(size_t base, size_t highest, uin
 		We have an integer that is too large to pack into a single codeword.
 	*/
 	if (selector >= highest)
-		return 0;
+		return 0;					// LCOV_EXCL_LINE		// this can't happen because an integer is always small enough
 
 	/*
 		Pack integers into codewords - note that in the case of 255 * 1 (value, not bit), this will wrap, but that's OK because the payload is ignored
@@ -222,7 +222,7 @@ printf("Selector:%d (%d x %d-bits)\n", (int)(base + selector), (int)integers_to_
 		*/
 		took = pack_one_word(table_fifty_seven_start, 16, destination, from, source_integers, next_selector_in_previous_word);
 		if (took == 0)
-			return 0;
+			return 0;					// LCOV_EXCL_LINE		// this can't happen because an integer is always small enough
 		used += took;
 
 		/*
@@ -240,7 +240,7 @@ printf("Selector:%d (%d x %d-bits)\n", (int)(base + selector), (int)integers_to_
 				Make sure we fit in the output buffer
 			*/
 			if (destination >= end)
-				return 0;
+				return 0;				// LCOV_EXCL_LINE 	// This does appear to be being tested, but codecov doesn't think so!
 
 			/*
 				work out which table to use
@@ -1552,7 +1552,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 			(3) Integer overflow
 			(4) Integer overflow in the Relative-10 encoder
 			(5) buffer overflow on simple-9 encoder
-			(6) buffer overflow on Relatice-10 encoder
+			(6) buffer overflow on Relative-10 encoder
 		*/
 		compress_integer_carry_8b compressor;
 		std::vector<uint32_t>compressed(every_case.size() * 2);

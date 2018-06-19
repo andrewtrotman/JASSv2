@@ -27,9 +27,9 @@ namespace JASS
 		stream.opaque = instream.opaque = Z_NULL;
 
 		if (deflateInit(&stream, Z_DEFAULT_COMPRESSION) != Z_OK)
-			throw std::runtime_error("Zlib deflateInit() failed in compress_general_zlib::compress_general_zlib()");
+			throw std::runtime_error("Zlib deflateInit() failed in compress_general_zlib::compress_general_zlib()");	// LCOV_EXCL_LINE  // we can't make this happen
 		if (inflateInit(&instream) != Z_OK)
-			throw std::runtime_error("Zlib inflateInit() failed in compress_general_zlib::compress_general_zlib()");
+			throw std::runtime_error("Zlib inflateInit() failed in compress_general_zlib::compress_general_zlib()");	// LCOV_EXCL_LINE  // we can't make this happen
 		}
 
 	/*
@@ -52,7 +52,7 @@ namespace JASS
 			Reset the zlib stream.
 		*/
 		if (deflateReset(&stream) != Z_OK)
-			return 0;
+			return 0;								// LCOV_EXCL_LINE  // we can't make this happen
 
 		/*
 			Check for overflow before we go-ahead.
@@ -87,7 +87,7 @@ namespace JASS
 			Reset the zlib stream.
 		*/
 		if (inflateReset(&instream) != Z_OK)
-			return 0;
+			return 0;								// LCOV_EXCL_LINE  // we can't make this happen
 
 		/*
 			Check for overflow before we go-ahead.

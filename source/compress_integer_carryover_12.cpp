@@ -410,8 +410,10 @@ printf("at %d, Transiton:%d NextSelector:%d\n", (int)selector, (int)((payload >>
 					32-bit payload
 				*/
 				case 12:			// Can't happen!
-					JASS_assert(false);					//LCOV_EXCL_LINE			// can't happen as there is no way to get to state 12.
-					break;									//LCOV_EXCL_LINE			// can't happen as there is no way to get to state 12.
+					// LCOV_EXCL_START
+					JASS_assert(false);
+					break;
+					// LCOV_EXCL_STOP
 				case 13:
 					*(destination + 0) = payload >> 0 & 0x03;
 					*(destination + 1) = payload >> 2 & 0x03;

@@ -286,6 +286,22 @@ namespace JASS
 		compress_integer_prn_512 compressor;
 		compress_integer::unittest_one(compressor, broken_sequence);
 
+		/*
+			Test for overflow
+		*/
+		std::vector<uint32_t>compressed(4);
+		auto size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &broken_sequence[0], broken_sequence.size());
+		JASS_assert(size_once_compressed == 0);
+
+		/*
+			Test short lists
+		*/
+		std::vector<uint32_t> short_sequence = {6,10,2,1,2,1,1};
+		compress_integer::unittest_one(compressor, short_sequence);
+	 
+		/*
+			Passed
+		*/
 		puts("compress_integer_prn_512::PASSED");
 		}
 	}

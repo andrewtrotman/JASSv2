@@ -33,7 +33,7 @@ namespace JASS
 	*/
 
 	/*!
-		@brief A heap that keeps the top-k elements and discards the remainder.
+		@brief A heap that keeps the top-k elements and discards the remainder. SLOW, consider using JASS::heap instead.
 		@details A heap that keeps at most the top K elements. Comparison is done using operator>().  The underlying data structure is
 		a std::vector.  Elements are added to the vector using std::vector::push_back() and removed using std::vector::pop_back().  To add
 		an element to a top-k heap call top_k_heap::push_back().
