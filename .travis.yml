@@ -24,6 +24,10 @@ before_install:
       exit 0;
     fi
 
+install:
+script:
+after_success:
+
 matrix:
   include:
     - os: linux
@@ -34,9 +38,6 @@ matrix:
 
     - os: osx
       compiler: clang
-
-    - os: linux
-      compiler: gcc
 
 branches:
   only:
