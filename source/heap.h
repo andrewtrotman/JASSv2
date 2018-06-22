@@ -255,16 +255,31 @@ namespace JASS
 					/*
 						Add them to a heap that keeps a top-k of less than the number of elements in the sequence
 					*/
+					class unittest_compare
+						{
+						public:
+							int operator()(int a, int b)
+								{
+								return a < b ? -1 : a == b ? 0 : 1;
+								}
+						};
+
 					std::vector<int> buffer(5);
-					heap<int, std::equal_to<int>> heap(buffer[0], 5);
+					heap<int, unittest_compare> heap(buffer[0], buffer.size());
 
 					for (const auto &element : sequence)
-						heap.push_back(element);
+						{
+						/*
+							NOTE:  This code maintains the heap, it does not determine which values should be in it.
+						*/
+						if (element > buffer[0])
+							heap.push_back(element);
+						}
 
 					/*
 						Sort the contents of the heap
 					*/
-					std::sort(buffer.begin(), buffer.end());
+					std::sort(buffer.begin(), buffer.end(), std::greater<int>());
 		
 					/*
 						Serialise and compare to the known correct result
@@ -280,7 +295,6 @@ namespace JASS
 				*/
 				puts("heap::PASSED");
 				}
-
 		};
 	}
 

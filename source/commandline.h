@@ -354,7 +354,7 @@ namespace JASS
 				*/
 				std::ios state(NULL);
 				state.copyfmt(out);
-				std::ios::fmtflags fmt(std::cout.flags());
+				std::ios_base::fmtflags fmt(std::cout.flags());
 				/*
 					Dump out the usage
 				*/
@@ -362,15 +362,11 @@ namespace JASS
 					out << std::left << std::get<I>(tuple).description << '\n';
 				else
 					{
-					std::ios::fmtflags curreent_format(std::cout.flags());			// save the current state of the stream
-
 					out.width(width_of_shortname + 1);
 					out << std::left << std::get<I>(tuple).shortname;
 					out.width(width_of_longname + 1);
 					out << std::get<I>(tuple).longname;
 					out << std::get<I>(tuple).description << '\n';
-
-					std::cout.flags(curreent_format);										// restore the stream
 					}
 					
 				/*

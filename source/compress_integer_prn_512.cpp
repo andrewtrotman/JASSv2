@@ -101,8 +101,9 @@ namespace JASS
 					/*
 						We can't fit this column so pad the previous width to the full 32-bits then mark this as end of list
 					*/
-					/* coverity[OVERRUN] */		// this can't overrun because slice cannot be 0 at this point
-					encodings[slice - 1] += remaining;
+					/* coverity[OVERRUN] */
+					/* coverity[INTEGER_OVERFLOW] */
+					encodings[slice - 1] += remaining;			// this can't overflow because slice cannot be equal to 0 at this point (Coverity doesn't notice this)
 					encodings[slice] = 0;
 					break;
 					}

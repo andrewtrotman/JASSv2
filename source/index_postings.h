@@ -110,7 +110,7 @@ namespace JASS
 						If this is the second or subseqent occurrence then just add 1 to the term frequency (and make sure it doesn't overflow).
 					*/
 					index_postings_impact::impact_type &frequency = term_frequencies.back();
-					if (frequency <= index_postings_impact::largest_impact)
+					if (frequency < index_postings_impact::largest_impact)
 						frequency++;			// cppcheck produces a false positive "Variable 'frequency' is modified but its new value is never used." - it looks like it doesn't fully understand that frequency is a reference.
 					}
 				else

@@ -5,6 +5,7 @@
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 #include "file.h"
+#include "heap.h"
 #include "ascii.h"
 #include "maths.h"
 #include "query.h"
@@ -185,7 +186,7 @@ int main(void)
 		
 		puts("hash_table");
 		JASS::hash_table<JASS::slice, JASS::slice>::unittest();
-		
+
 		puts("dynamic_array");
 		JASS::dynamic_array<JASS::slice>::unittest();
 
@@ -293,6 +294,9 @@ int main(void)
 
 		puts("pointer_box");
 		JASS::pointer_box<int>::unittest();
+
+		puts("heap");
+		JASS::heap<int, int>::unittest();
 
 		puts("top_k_heap");
 		JASS::top_k_heap<int>::unittest();
