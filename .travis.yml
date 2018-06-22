@@ -2,6 +2,8 @@ language: cpp
 sudo: required
 dist: trusty
 group: deprecated-2017Q4
+services:
+  -docker
 
 
 notifications:
@@ -9,31 +11,21 @@ notifications:
 
 # Early exit coverity if we're in the wrong build
 before_install:
-  - if [ "$TRAVIS_OS_NAME" == linux ]; then 
-      git clone https://github.com/Linuxbrew/brew.git ~/.linuxbrew;
-      export HOMEBREW_FORCE_VENDOR_RUBY=1;
-      PATH="$HOME/.linuxbrew/bin:$PATH";
-      travis_wait 30 brew install gcc;
+  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then 
+      docker pull andrewtrotman/build-with-gcc
+      docker run andrewtrotman/build-with-gcc
     fi
-  - if [ "$TRAVIS_OS_NAME" != linux ]; then 
+  - if [ "$TRAVIS_OS_NAME" == osx ]; then 
       system_profiler SPHardwareDataType | grep "Model Identifier";
       sysctl -n machdep.cpu.brand_string;
       system_profiler SPSoftwareDataType;
       xcodebuild -version;
-    fi
-  - if [ "$VALGRIND_RUN" == 1 ]; then 
-      brew install valgrind;
+      exit 0;
     fi
   - if [ "$TRAVIS_BRANCH" == "coverity_scan" -a -z "$COVERITY_SCAN_TOKEN" ]; then 
       echo "Done. Early exit with 0." && sleep 1 && exit 0;
     fi
 
-install:
-script:
-  - if [ "$COVERITY_SCAN_BRANCH" != 1 -a "$VALGRIND_RUN" != 1 ]; then cd build && cmake -D FORCE_CMAKE_BUILD_TYPE=Debug .. && make && ./unittest; fi
-  - if [ "$VALGRIND_RUN" == 1 ]; then cd build && cmake -D FORCE_CMAKE_BUILD_TYPE=Debug .. && make && valgrind -q --error-exitcode=42 ./unittest; fi
-after_success:
-  - if [ "$CODECOV_RUN" == 1 ]; then bash <(curl -s https://codecov.io/bash); fi
 matrix:
   include:
     - os: linux
@@ -47,15 +39,6 @@ matrix:
 
     - os: linux
       compiler: gcc
-      env:
-          CODECOV_RUN=1
-          CFLAGS="-g -O0 -fprofile-arcs -ftest-coverage"
-          CXXFLAGS="-g -O0 -fprofile-arcs -ftest-coverage"
-
-    - os: linux
-      compiler: gcc
-      env:
-          VALGRIND_RUN=1
 
 branches:
   only:
@@ -70,7 +53,3 @@ addons:
     build_command_prepend: "cd build && cmake -D FORCE_CMAKE_BUILD_TYPE=Debug .."
     build_command: "make"
     branch_pattern: coverity_scan
-
-  apt:
-    packages:
-      libc6-dbg
