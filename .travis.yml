@@ -12,11 +12,11 @@ before_install:
   - if [ "$TRAVIS_BRANCH" == "coverity_scan" ]; then 
       echo "Done. Early exit with 0." && sleep 1 && exit 0;
     fi
-  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then 
+  - if [ "$TRAVIS_BRANCH" != "coverity_scan" -a "$TRAVIS_OS_NAME" == "linux" ]; then 
       docker pull andrewtrotman/build-with-gcc;
       docker run andrewtrotman/build-with-gcc;
     fi
-  - if [ "$TRAVIS_OS_NAME" == osx ]; then 
+  - if [ "$TRAVIS_BRANCH" != "coverity_scan" -a "$TRAVIS_OS_NAME" == osx ]; then 
       system_profiler SPHardwareDataType | grep "Model Identifier";
       sysctl -n machdep.cpu.brand_string;
       system_profiler SPSoftwareDataType;
