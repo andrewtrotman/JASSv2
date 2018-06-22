@@ -56,12 +56,16 @@ void process_one_list(const JASS::slice &term, JASS::deserialised_jass_v1 &index
 
 	total_integers += count;
 
+	if (count == 0)
+		exit(printf("Found an invalid list of length 0!"));
+
 	/*
 		add the the frequency count of lists of this length
 	*/
 	global_frequencies[count]++;
+
 	/*
-		Computer the mean width in this list (rounded up to the nearest integer).
+		Compute the mean width in this list (rounded up to the nearest integer).
 	*/
 	mean_magnitude[static_cast<size_t>(ceil(static_cast<double>(sum_of_bitness)/static_cast<double>(count)))]++;
 
@@ -91,7 +95,7 @@ void process_one_list(const JASS::slice &term, JASS::deserialised_jass_v1 &index
 template <typename DECODER>
 void process(JASS::deserialised_jass_v1 &index, JASS::compress_integer &decompressor)
 	{
-	auto decoder = new DECODER(index.document_count() + 4096);				// Some decoders write past the end of the output buffer (e.g. GroupVarInt) so we allocate enough space for the overflow
+	auto decoder = std::make_unique<DECODER>(index.document_count() + 4096);				// Some decoders write past the end of the output buffer (e.g. GroupVarInt) so we allocate enough space for the overflow
 
 	/*
 		Iterate over the vocabularay
@@ -162,13 +166,17 @@ int main(void)
 
 	std::string codex_name;
 	JASS::compress_integer &decompressor = index.codex(codex_name);
-	uint32_t d_ness = codex_name == "None" ? 0 : 1;
 	std::cout << codex_name << "\n";
 
+#ifdef NEVER
+	auto d_ness = codex_name == "None" ? 0 : 1;
 	if (d_ness == 0)
 		process<JASS::decoder_d0>(index, decompressor);				// Some decoders write past the end of the output buffer (e.g. GroupVarInt) so we allocate enough space for the overflow
 	else
 		process<JASS::decoder_d0>(index, decompressor);				// Some decoders write past the end of the output buffer (e.g. GroupVarInt) so we allocate enough space for the overflow
+#else
+		process<JASS::decoder_d0>(index, decompressor);				// Some decoders write past the end of the output buffer (e.g. GroupVarInt) so we allocate enough space for the overflow
+#endif
 
 	dump_tables();
 	return 0;

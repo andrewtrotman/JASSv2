@@ -48,6 +48,21 @@ namespace JASS
 					size_t *start;						///< Pointer into the postings of the start of the document list for this impact score.
 					size_t *finish;					///< Pointer into the postings of the end of the document list for this impact score.
 
+					/*
+						INDEX_POSTINGS_IMPACT::IMPACT::IMPACT
+						-------------------------------------
+					*/
+					/*!
+						@brief Constructor
+					*/
+					impact() :
+						impact_score(0),
+						start(nullptr),
+						finish(nullptr)
+						{
+						/* Nothing */
+						}
+
 				public:
 					/*
 						INDEX_POSTINGS_IMPACT::IMPACT::BEGIN()

@@ -108,7 +108,38 @@ namespace JASS
 			/*!
 				@brief Constructor.  Ask the CPU for details of what it is.
 			*/
-			hardware_support()
+			hardware_support() :
+				MMX(false),
+				x64(false),
+				ABM(false),
+				RDRAND(false),
+				BMI1(false),
+				BMI2(false),
+				ADX(false),
+				PREFETCHWT1(false),
+				SSE(false),
+				SSE2(false),
+				SSE3(false),
+				SSSE3(false),
+				SSE41(false),
+				SSE42(false),
+				SSE4a(false),
+				AES(false),
+				SHA(false),
+				AVX(false),
+				XOP(false),
+				FMA3(false),
+				FMA4(false),
+				AVX2(false),
+				AVX512F(false),
+				AVX512CD(false),
+				AVX512PF(false),
+				AVX512ER(false),
+				AVX512VL(false),
+				AVX512BW(false),
+				AVX512DQ(false),
+				AVX512IFMA(false),
+				AVX512VBMI(false)
 				{
 				int info[4];
 				cpuid(info, 0);
