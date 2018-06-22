@@ -12,8 +12,8 @@ notifications:
 # Early exit coverity if we're in the wrong build
 before_install:
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then 
-      docker pull andrewtrotman/build-with-gcc
-      docker run andrewtrotman/build-with-gcc
+      docker pull andrewtrotman/build-with-gcc;
+      docker run andrewtrotman/build-with-gcc;
     fi
   - if [ "$TRAVIS_OS_NAME" == osx ]; then 
       system_profiler SPHardwareDataType | grep "Model Identifier";
