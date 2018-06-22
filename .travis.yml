@@ -5,12 +5,13 @@ group: deprecated-2017Q4
 services:
   -docker
 
-
 notifications:
   slack: jassv2:IX7Yf0N9YJ0rM4OFVvCTrgCY
 
-# Early exit coverity if we're in the wrong build
 before_install:
+  - if [ "$TRAVIS_BRANCH" == "coverity_scan" ]; then 
+      echo "Done. Early exit with 0." && sleep 1 && exit 0;
+    fi
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then 
       docker pull andrewtrotman/build-with-gcc;
       docker run andrewtrotman/build-with-gcc;
@@ -21,9 +22,6 @@ before_install:
       system_profiler SPSoftwareDataType;
       xcodebuild -version;
       exit 0;
-    fi
-  - if [ "$TRAVIS_BRANCH" == "coverity_scan" -a -z "$COVERITY_SCAN_TOKEN" ]; then 
-      echo "Done. Early exit with 0." && sleep 1 && exit 0;
     fi
 
 matrix:
