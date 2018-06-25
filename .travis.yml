@@ -24,9 +24,9 @@ before_install:
       exit 0;
     fi
 
-install:
-script:
-after_success:
+install: true
+script: true
+after_success: true
 
 matrix:
   include:
