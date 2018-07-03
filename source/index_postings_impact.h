@@ -13,6 +13,7 @@
 #pragma once
 
 #include <vector>
+#include <limits>
 
 #include "allocator.h"
 
@@ -30,8 +31,8 @@ namespace JASS
 		friend class index_postings;
 		
 		public:
-			static constexpr size_t largest_impact = 0xFF;
 			typedef uint8_t impact_type;
+			static constexpr size_t largest_impact = std::numeric_limits<impact_type>::max();
 
 		public:
 			/*

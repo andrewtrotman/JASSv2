@@ -42,6 +42,7 @@
 #include "run_export_trec.h"
 #include "hardware_support.h"
 #include "allocator_memory.h"
+#include "ranking_function.h"
 #include "serialise_jass_v1.h"
 #include "serialise_integers.h"
 #include "instream_file_star.h"
@@ -57,6 +58,7 @@
 #include "compress_integer_simple_8b.h"
 #include "compress_integer_simple_16.h"
 #include "compress_integer_bitpack_64.h"
+#include "ranking_function_atire_bm25.h"
 #include "compress_integer_bitpack_128.h"
 #include "compress_integer_bitpack_256.h"
 #include "compress_integer_relative_10.h"
@@ -71,6 +73,7 @@
 #include "compress_integer_simple_16_packed.h"
 #include "compress_integer_prn_512_carryover.h"
 #include "compress_integer_bitpack_32_reduced.h"
+
 
 /*
 	MAIN()
@@ -92,6 +95,12 @@ int main(void)
 
 	try
 		{
+		puts("ranking_function_atire_bm25");
+		JASS::ranking_function_atire_bm25::unittest();
+
+		puts("ranking_function");
+		JASS::ranking_function<JASS::ranking_function_atire_bm25>::unittest();
+
 		puts("hardware_support");
 		JASS::hardware_support::unittest();
 
