@@ -115,6 +115,9 @@ namespace JASS
 		REVERSE_ADAPTER::UNITTEST()
 		---------------------------
 	*/
+	/*!
+		@brief Unit test this
+	*/
 	template <typename TYPE>
 	void reverse_adapter<TYPE>::unittest(void)
 		{

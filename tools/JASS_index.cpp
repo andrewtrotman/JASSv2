@@ -109,6 +109,7 @@ int main(int argc, const char *argv[])
 	/*
 		Parse the instream to get document (which are then indexed)
 	*/
+	uint64_t collection_length = 0;		// measured in terms
 	do
 		{
 		/*
@@ -139,6 +140,7 @@ int main(int argc, const char *argv[])
 			Process each token
 		*/
 		bool finished = false;
+		JASS::compress_integer::integer document_length = 0;				// measured in terms
 		do
 			{
 			const auto &token = parser.get_next_token();
@@ -149,9 +151,11 @@ int main(int argc, const char *argv[])
 					finished = true;
 					break;
 				case JASS::parser::token::alpha:
-						index.term(token);
+					document_length++;
+					index.term(token);
 					break;
 				case JASS::parser::token::numeric:
+					document_length++;
 					index.term(token);
 					break;
 				case JASS::parser::token::xml_start_tag:
@@ -163,6 +167,7 @@ int main(int argc, const char *argv[])
 				}
 			}
 		while (!finished);
+		collection_length += document_length;
 		index.end_document();
 		}
 	while (!document.isempty());
@@ -170,7 +175,7 @@ int main(int argc, const char *argv[])
 	auto time_to_end_parse = JASS::timer::stop(timer).nanoseconds();
 
 	std::cout << "Documents:" << total_documents << '\n';
-
+	std::cout << "Terms    :" << collection_length << '\n';
 	/*
 		Do we need to generate a compiled index?
 	*/

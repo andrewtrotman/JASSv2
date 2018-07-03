@@ -20,21 +20,45 @@
 
 namespace JASS
 	{
+	/*
+		CLASS RANKING_FUNCTION
+		----------------------
+	*/
+	/*!
+		@brief Helper functions for rankers
+	*/
 	template <typename RANKER>
 	class ranking_function
 		{
 		private:
-			std::shared_ptr<RANKER>ranker;
+			std::shared_ptr<RANKER>ranker;							///< pointer to the ranker
 
 		public:
+			/*
+				RANKING_FUNCTION::RANKING_FUNCTION()
+				------------------------------------
+			*/
+			/*!
+				@brief Constructor
+				@param ranker [in] a pointer to the ranker to use
+			*/
 			ranking_function(std::shared_ptr<RANKER>ranker) :
 				ranker(ranker)
 				{
+				/* Nothing */
 				}
 
 			/*
 				RANKING_FUNCTION::RANK()
 				------------------------
+			*/
+			/*!
+				@brief Compute the rsv from the ranker (inefficiently)
+				@param document_id [in] The ID of the document to score (used for document lengths, etc).
+				@param document_frequency [in] The number of documents containing this term.
+				@param documents_in_collection [in] The number of documents in the collection.
+				@param term_frequency [in] The number of times this term occurs in document document_id.
+				@return The result of the ranking function (the rsv).
 			*/
 			double rank(compress_integer::integer document_id, compress_integer::integer document_frequency, compress_integer::integer documents_in_collection, index_postings_impact::impact_type term_frequency)
 				{
@@ -47,6 +71,9 @@ namespace JASS
 				RANKING_FUNCTION::UNITTEST()
 				----------------------------
 			*/
+			/*!
+				@brief Unit test this class
+			*/
 			static void unittest(void)
 				{
 				double rsv;
@@ -56,7 +83,6 @@ namespace JASS
 				ranking_function<ranking_function_atire_bm25> generic_ranker(ranker);		// construct a ranker
 
 				rsv = generic_ranker.rank(1, 2, lengths.size(), 12);													// get the rsv
-
 				JASS_assert(static_cast<uint32_t>(rsv * 1000) == 2499);
 
 				puts("ranking_function::PASSED");

@@ -19,6 +19,9 @@
 #include <vector>
 
 #include "forceinline.h"
+#include "compress_integer.h"
+#include "index_postings_impact.h"
+
 
 namespace JASS
 	{
@@ -49,7 +52,7 @@ namespace JASS
 				@param b [in] the BM25 b parameter, 0.4 is a good value.
 				@param document_lengths [in] a vector holding the length of each document in the collection.
 			*/
-			ranking_function_atire_bm25(double k1, double b, std::vector<uint32_t> &document_lengths):
+			ranking_function_atire_bm25(double k1, double b, std::vector<compress_integer::integer> &document_lengths):
 				idf(0),
 				top_row(0),
 				k1_plus_1(k1 + 1.0),
@@ -90,7 +93,7 @@ namespace JASS
 				@param document_frequency [in] the number of documents that contain this term.
 				@param documents_in_collection [in] the number of documents in the collection.
 			*/
-			forceinline void compute_idf_component(size_t document_frequency, size_t documents_in_collection)
+			forceinline void compute_idf_component(index_postings_impact::impact_type document_frequency, compress_integer::integer documents_in_collection)
 				{
 				/*
 								 N
@@ -110,7 +113,7 @@ namespace JASS
 				@brief Compute and store internally the term-frequency based component of the ranking function (useful when postings lists are impact ordered)
 				@param term_frequency [in] The number of times the term occurs in the document.
 			*/
-			forceinline void compute_tf_component(size_t term_frequency)
+			forceinline void compute_tf_component(index_postings_impact::impact_type term_frequency)
 				{
 				top_row = term_frequency * k1_plus_1;
 				}
@@ -126,7 +129,7 @@ namespace JASS
 				@param document_id [in] The ID of the document (used to look up the length)
 				@param term_frequency [in] The number of times the term occurs in the document.
 			*/
-			forceinline double compute_score(uint32_t document_id, uint32_t term_frequency)
+			forceinline double compute_score(compress_integer::integer document_id, index_postings_impact::impact_type term_frequency)
 				{
 				/*
 										tf(td) * (k1 + 1)
@@ -144,10 +147,13 @@ namespace JASS
 				RANKING_FUNCTION_ATIRE_BM25::UNITTEST()
 				---------------------------------------
 			*/
+			/*!
+				@brief Unit test this class
+			*/
 			static void unittest(void)
 				{
 				double rsv;
-				std::vector<uint32_t> lengths{30, 40, 50, 60, 70};			// the lengths of the documents in this pseudo-index
+				std::vector<compress_integer::integer> lengths{30, 40, 50, 60, 70};			// the lengths of the documents in this pseudo-index
 				ranking_function_atire_bm25 ranker(0.9, 0.4, lengths);	// k1=0.9, b=0.4
 
 				ranker.compute_idf_component(2, lengths.size());			// this term occurs in 2 of 5 documents
