@@ -13,6 +13,7 @@
 */
 #pragma once
 
+#include <math.h>
 #include <stdio.h>
 #include <stdint.h>
 
@@ -93,7 +94,7 @@ namespace JASS
 				@param document_frequency [in] the number of documents that contain this term.
 				@param documents_in_collection [in] the number of documents in the collection.
 			*/
-			forceinline void compute_idf_component(index_postings_impact::impact_type document_frequency, compress_integer::integer documents_in_collection)
+			forceinline void compute_idf_component(compress_integer::integer document_frequency, compress_integer::integer documents_in_collection)
 				{
 				/*
 								 N

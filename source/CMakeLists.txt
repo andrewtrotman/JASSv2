@@ -120,6 +120,7 @@ set(JASSlib_FILES
 	parser_query.h
 	parser_query.cpp
 	pointer_box.h
+	quantize.h
 	query.h
 	query_term.h
 	query_term_list.h

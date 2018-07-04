@@ -12,17 +12,22 @@
 */
 #include <string.h>
 
+#include <vector>
+
 #include "timer.h"
 #include "parser.h"
 #include "version.h"
+#include "quantize.h"
 #include "commandline.h"
 #include "serialise_ci.h"
 #include "instream_file.h"
 #include "instream_memory.h"
+#include "compress_integer.h"
 #include "serialise_jass_v1.h"
 #include "serialise_integers.h"
 #include "instream_document_trec.h"
 #include "index_manager_sequential.h"
+#include "ranking_function_atire_bm25.h"
 
 /*
 	Declare the command line parameters
@@ -168,7 +173,7 @@ int main(int argc, const char *argv[])
 			}
 		while (!finished);
 		collection_length += document_length;
-		index.end_document();
+		index.end_document(document_length);
 		}
 	while (!document.isempty());
 
@@ -176,6 +181,15 @@ int main(int argc, const char *argv[])
 
 	std::cout << "Documents:" << total_documents << '\n';
 	std::cout << "Terms    :" << collection_length << '\n';
+
+	/*
+		quantize the index
+	*/
+	std::shared_ptr<JASS::ranking_function_atire_bm25> ranker(new JASS::ranking_function_atire_bm25(0.9, 0.4, index.get_document_length_vector()));
+	JASS::quantize<JASS::ranking_function_atire_bm25> quantizer(total_documents, ranker);
+	index.iterate(quantizer);
+	auto time_to_end_quantization = JASS::timer::stop(timer).nanoseconds();
+
 	/*
 		Do we need to generate a compiled index?
 	*/
@@ -204,13 +218,15 @@ int main(int argc, const char *argv[])
 		}
 	auto time_to_end = JASS::timer::stop(timer).nanoseconds();
 	auto parse_time = time_to_end_parse - preamble_time;
-	auto serialise_time = time_to_end - time_to_end_parse;
+	auto quantization_time = time_to_end_quantization - time_to_end_parse;
+	auto serialise_time = time_to_end - time_to_end_quantization;
 
-	std::cout << "Preamble time  :" << preamble_time << "ns (" << preamble_time / 1000000000 << " seconds)\n";
-	std::cout << "Parse time     :" << parse_time << "ns (" << parse_time / 1000000000 << " seconds)\n";
-	std::cout << "Serialise time :" << serialise_time << "ns (" << serialise_time / 1000000000 << " seconds)\n";
-	std::cout << "===============\n";
-	std::cout << "Total time     :" << time_to_end << "ns (" << time_to_end / 1000000000 << " seconds)\n";
+	std::cout << "Preamble time    :" << preamble_time << "ns (" << preamble_time / 1000000000 << " seconds)\n";
+	std::cout << "Parse time       :" << parse_time << "ns (" << parse_time / 1000000000 << " seconds)\n";
+	std::cout << "Quantization time:" << quantization_time << "ns (" << quantization_time / 1000000000 << " seconds)\n";
+	std::cout << "Serialise time   :" << serialise_time << "ns (" << serialise_time / 1000000000 << " seconds)\n";
+	std::cout << "=================\n";
+	std::cout << "Total time       :" << time_to_end << "ns (" << time_to_end / 1000000000 << " seconds)\n";
 
 	return 0;
 	}

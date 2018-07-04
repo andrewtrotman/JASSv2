@@ -33,7 +33,8 @@ namespace JASS
 	class index_manager
 		{
 		private:
-			 compress_integer::integer highest_document_id;					///< The highest document_id seen so far (counts from 1).
+			 compress_integer::integer highest_document_id;								///< The highest document_id seen so far (counts from 1).
+			 std::vector<compress_integer::integer> document_length_vector;		///< vector of document lengths.
 
 		public:
 			/*
@@ -93,9 +94,7 @@ namespace JASS
 			index_manager() :
 				highest_document_id(0)				// initialised to 0, this is the number of documents that have (or is) being indexed.
 				{
-				/*
-					Nothing
-				*/
+				document_length_vector.reserve(1'000'000);
 				}
 			
 			/*
@@ -145,11 +144,24 @@ namespace JASS
 			/*!
 				@brief Tell this object that you've finished with the current document (and are about to move on to the next, or are completely finished).
 			*/
-			virtual void end_document(void)
+			virtual void end_document(compress_integer::integer document_length)
 				{
-				/* Nothing */
+				document_length_vector.push_back(document_length);
 				}
-			
+
+			/*
+				INDEX_MANAGER::get_document_length_vector()
+				-------------------------------------------
+			*/
+			/*!
+				@brief Return a reference to the document length vector.
+				@return The document length vector.
+			*/
+			virtual std::vector<compress_integer::integer> &get_document_length_vector(void)
+				{
+				return document_length_vector;
+				}
+
 			/*
 				INDEX_MANAGER::TEXT_RENDER()
 				----------------------------
@@ -216,7 +228,7 @@ namespace JASS
 				parser::token token;
 				index.begin_document(slice("id"));
 				index.term(token);
-				index.end_document();
+				index.end_document(1);
 
 				/*
 					Make sure its no longer empty

@@ -1,7 +1,7 @@
 /*
 	UNITTEST.CPP
 	------------
-	Copyright (c) 2016-2017 Andrew Trotman
+	Copyright (c) 2016-2018 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 #include "file.h"
@@ -17,6 +17,7 @@
 #include "reverse.h"
 #include "threads.h"
 #include "checksum.h"
+#include "quantize.h"
 #include "decode_d0.h"
 #include "decode_d1.h"
 #include "bitstring.h"
@@ -324,6 +325,9 @@ int main(void)
 
 		puts("run_export");
 		JASS::run_export::unittest();
+
+		puts("quantize");
+		JASS::quantize<JASS::ranking_function_atire_bm25>::unittest();
 
 		puts("compress_general_zlib");
 		JASS::compress_general_zlib::unittest();

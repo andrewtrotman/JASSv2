@@ -148,7 +148,7 @@ namespace JASS
 
 				@return Returns the document frequency of this term, or 0 on failure.
 			*/
-			size_t linearize(uint8_t *temporary, size_t temporary_size, compress_integer::integer *ids, index_postings_impact::impact_type *frequencies, size_t id_and_frequencies_length) const
+			compress_integer::integer linearize(uint8_t *temporary, size_t temporary_size, compress_integer::integer *ids, index_postings_impact::impact_type *frequencies, size_t id_and_frequencies_length) const
 				{
 				/*
 					Linearize the term frequencies

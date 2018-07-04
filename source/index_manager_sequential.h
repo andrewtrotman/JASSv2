@@ -12,6 +12,7 @@
 */
 #pragma once
 
+#include <vector>
 #include <sstream>
 
 #include "parser.h"
@@ -36,10 +37,11 @@ namespace JASS
 	class index_manager_sequential : public index_manager
 		{
 		private:
-			allocator_pool memory;											///< All memory in allocatged from this allocator.
-			hash_table<slice, index_postings, 24> index;				///< The index is a hash table of index_postings keyed on the term (a slice).
-			dynamic_array<slice> primary_key;							///< The list of primary keys (i.e. external document identifiers) allocated in memory.
-			
+			allocator_pool memory;														///< All memory in allocatged from this allocator.
+			hash_table<slice, index_postings, 24> index;							///< The index is a hash table of index_postings keyed on the term (a slice).
+			dynamic_array<slice> primary_key;										///< The list of primary keys (i.e. external document identifiers) allocated in memory.
+			std::vector<compress_integer::integer> document_length_vector;	///< The vector of document lengths
+
 		public:
 			/*
 				CLASS INDEX_MANAGER_SEQUENTIAL::DELEGATE
@@ -168,26 +170,7 @@ namespace JASS
 			*/
 			virtual void term(const parser::token &term)
 				{
-				/*
-					Tell index_manager that we have a new term than pass it on to the correct index_postings to manage.
-				*/
-				index_manager::term(term);
 				index[term.lexeme].push_back(get_highest_document_id());
-				}
-			
-			/*
-				INDEX_MANAGER_SEQUENTIAL::END_DOCUMENT()
-				----------------------------------------
-			*/
-			/*!
-				@brief Tell this object that you've finished with the current document (and are about to move on to the next, or are completely finished).
-			*/
-			virtual void end_document(void)
-				{
-				/*
-					Tell index_manager that we have finished with this document.
-				*/
-				index_manager::end_document();
 				}
 			
 			/*
@@ -237,6 +220,7 @@ namespace JASS
 			/*!
 				@brief Build and index for the 10 sample documents.  This is used by several unit tests that need a valid index.
 				@param index [out] The index once built.
+				@param document_collection [in] The documents to index.
 			*/
 			static void unittest_build_index(index_manager_sequential &index, const std::string &document_collection)
 				{
@@ -250,6 +234,7 @@ namespace JASS
 				*/
 				do
 					{
+					compress_integer::integer document_length = 0;
 					/*
 						Read the next document and give it to the parser (until eof).
 					*/
@@ -281,10 +266,12 @@ namespace JASS
 						switch (token.type)
 							{
 							case JASS::parser::token::eof:
+								document_length++;
 								finished = true;						// finish up.
 								break;
 							case JASS::parser::token::alpha:
 							case JASS::parser::token::numeric:
+								document_length++;
 								index.term(token);					// add it to the index.
 								break;
 							default:
@@ -296,7 +283,7 @@ namespace JASS
 					/*
 						Mark that we're at the end of the document
 					*/
-					index.end_document();
+					index.end_document(document_length);
 					}
 				while (!document.isempty());
 				}
