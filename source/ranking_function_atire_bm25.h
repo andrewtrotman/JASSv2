@@ -119,7 +119,6 @@ namespace JASS
 				top_row = term_frequency * k1_plus_1;
 				}
 
-
 			/*
 				RANKING_FUNCTION_ATIRE_BM25::COMPUTE_SCORE()
 				--------------------------------------------

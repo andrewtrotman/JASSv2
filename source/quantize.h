@@ -113,7 +113,7 @@ namespace JASS
 						Compute the term / document score
 					*/
 					ranker->compute_tf_component(*current_tf);
-					auto score = ranker->compute_score(*current_id, *current_tf);
+					auto score = ranker->compute_score(*current_id - 1, *current_tf);
 
 					/*
 						Keep a running tally of the largest and smallest rsv we've seen so far

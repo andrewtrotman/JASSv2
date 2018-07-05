@@ -95,6 +95,7 @@ namespace JASS
 				highest_document_id(0)				// initialised to 0, this is the number of documents that have (or is) being indexed.
 				{
 				document_length_vector.reserve(1'000'000);
+				document_length_vector.push_back(0);
 				}
 			
 			/*
