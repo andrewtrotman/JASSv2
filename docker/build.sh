@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ev
 git clone https://github.com/andrewtrotman/JASSv2.git
 cd JASSv2
 cd build
