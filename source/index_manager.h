@@ -52,19 +52,6 @@ namespace JASS
 						-------------------------------------
 					*/
 					/*!
-						@brief Destructor
-					*/
-					virtual ~delegate()
-						{
-						/*
-							Nothing
-						*/
-						}
-					/*
-						INDEX_MANAGER::DELEGATE::OPERATOR()()
-						-------------------------------------
-					*/
-					/*!
 						@brief The callback function to serialise the postings (given the term) is operator().
 						@param term [in] The term name.
 						@param postings [in] The postings lists.
@@ -82,6 +69,45 @@ namespace JASS
 					*/
 					virtual void operator()(size_t document_id, const slice &primary_key) = 0;
 				};
+
+			/*
+				CLASS INDEX_MANAGER::QUANTIZING_DELEGATE
+				----------------------------------------
+			*/
+			/*!
+				@brief Base class for the callback function called by iterate.
+			*/
+			class quantizing_delegate
+				{
+				public:
+					/*
+						INDEX_MANAGER::QUANTIZING_DELEGATE::OPERATOR()()
+						------------------------------------------------
+					*/
+					/*!
+						@brief The callback function to serialise the postings (given the term) is operator().
+						@brief callback [in] The callback to export once quantised.
+						@param term [in] The term name.
+						@param postings [in] The postings lists.
+					*/
+					virtual void operator()(delegate &callback, const slice &term, const index_postings &postings) = 0;
+
+					/*
+						INDEX_MANAGER::QUANTIZING_DELEGATE::OPERATOR()()
+						------------------------------------------------
+					*/
+					/*!
+						@brief The callback function to serialise the primary keys (external document ids) is operator().
+						@brief callback [in] The callback to export once quantised.
+						@param document_id [in] The internal document identfier.
+						@param primary_key [in] This document's primary key (external document identifier).
+					*/
+					virtual void operator()(delegate &callback, size_t document_id, const slice &primary_key) = 0;
+				};
+
+
+
+
 
 		public:
 			/*
@@ -193,6 +219,19 @@ namespace JASS
 				index_postings postings(pool);
 				callback(slice(), postings);
 				callback(0, slice());
+				}
+			/*
+				INDEX_MANAGER_SEQUENTIAL::ITERATE()
+				-----------------------------------
+			*/
+			/*!
+				@brief Iterate over the index calling callback.operator() with each postings list.
+				@param quantizer [in] The quantizer that will quantize then call the serialiser callback.
+				@param callback [in] The callback that the quantizer should call.
+			*/
+			virtual void iterate(index_manager::quantizing_delegate &quantizer, index_manager::delegate &callback) const
+				{
+				/* Nothing */
 				}
 
 			/*

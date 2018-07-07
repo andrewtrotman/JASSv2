@@ -213,6 +213,33 @@ namespace JASS
 				}
 
 			/*
+				INDEX_MANAGER_SEQUENTIAL::ITERATE()
+				-----------------------------------
+			*/
+			/*!
+				@brief Iterate over the index calling callback.operator() with each postings list.
+				@param quantizer [in] The quantizer that will quantize then call the serialiser callback.
+				@param callback [in] The callback that the quantizer should call.
+			*/
+			virtual void iterate(index_manager::quantizing_delegate &quantizer, index_manager::delegate &callback) const
+				{
+				/*
+					Iterate over the hash table calling the callback function with each term->postings pair.
+				*/
+				for (const auto &listing : index)
+					quantizer(callback, listing.first, listing.second);
+
+				/*
+					Iterate over the primary keys calling the callback function with each docid->key pair.
+					Note that the search engine counts documents from 1, not from 0.
+				*/
+				size_t instance = 0;
+				quantizer(callback, instance, slice("-"));
+				for (const auto term : primary_key)
+					quantizer(callback, ++instance, term);
+				}
+
+			/*
 				INDEX_MANAGER_SEQUENTIAL::UNITTEST_BUILD_INDEX()
 				------------------------------------------------
 				Build a index from the standard 10-document collection.

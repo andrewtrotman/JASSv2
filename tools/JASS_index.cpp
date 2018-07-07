@@ -89,12 +89,21 @@ int main(int argc, const char *argv[])
 		exit(1);
 		}
 
+	/*
+		If we're not in quiet mode then dump the copyright message
+	*/
 	if (!parameter_quiet)
 		std::cout << JASS::version::build() << "\n";
 
+	/*
+		Decode the input filename
+	*/
 	if (parameter_filename == "")
 		std::cout << "filename needed";
 
+	/*
+		Provide help if needed.
+	*/
 	if (parameter_filename == "" || parameter_help)
 		exit(usage(argv[0]));
 
@@ -191,31 +200,25 @@ int main(int argc, const char *argv[])
 	auto time_to_end_quantization = JASS::timer::stop(timer).nanoseconds();
 
 	/*
-		Do we need to generate a compiled index?
+		Decode the export formats and encode into a vector
 	*/
+	std::vector<std::unique_ptr<JASS::index_manager::delegate>> exporters;
 	if (parameter_compiled_index)
-		{
-		JASS::serialise_ci serialiser(index.get_highest_document_id());
-		index.iterate(serialiser);
-		}
-
-	/*
-		Do we need to generate a JASS v1 index?
-	*/
+		exporters.push_back(std::make_unique<JASS::serialise_ci>(index.get_highest_document_id()));
 	if (parameter_jass_v1_index)
-		{
-		JASS::serialise_jass_v1 serialiser(index.get_highest_document_id());
-		index.iterate(serialiser);
-		}
+		exporters.push_back(std::make_unique<JASS::serialise_jass_v1>(index.get_highest_document_id()));
+	if (parameter_uint32_index)
+		exporters.push_back(std::make_unique<JASS::serialise_integers>(index.get_highest_document_id()));
 
 	/*
-		Do we need to generate a binary (uint32_t) dump of just the postings lists?
+		Write out the index in the desired formats.
 	*/
-	if (parameter_uint32_index)
-		{
-		JASS::serialise_integers serialiser(index.get_highest_document_id());
-		index.iterate(serialiser);
-		}
+	if (exporters.size() != 0)
+		quantizer.serialise_index(index, exporters);
+
+	/*
+		Dump the statistics to the console.
+	*/
 	auto time_to_end = JASS::timer::stop(timer).nanoseconds();
 	auto parse_time = time_to_end_parse - preamble_time;
 	auto quantization_time = time_to_end_quantization - time_to_end_parse;
@@ -228,5 +231,8 @@ int main(int argc, const char *argv[])
 	std::cout << "=================\n";
 	std::cout << "Total time       :" << time_to_end << "ns (" << time_to_end / 1000000000 << " seconds)\n";
 
+	/*
+		Done.
+	*/
 	return 0;
 	}

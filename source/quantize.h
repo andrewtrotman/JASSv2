@@ -27,10 +27,10 @@ namespace JASS
 		--------------
 	*/
 	/*!
-		@brief Quantize and index
+		@brief Quantize an index
 	*/
 	template <typename RANKER>
-	class quantize : public index_manager::delegate
+	class quantize : public index_manager::delegate, public index_manager::quantizing_delegate
 		{
 		private:
 			double largest_rsv;												///< The largest score seen for any document/term pair.
@@ -139,6 +139,33 @@ namespace JASS
 				/* Nothing. */
 				}
 
+			/*
+				QUANTIZE::OPERATOR()()
+				----------------------
+			*/
+			/*!
+				@brief The callback function for each postings list is operator().
+				@param term [in] The term name.
+				@param postings [in] The postings list.
+			*/
+			virtual void operator()(index_manager::delegate &writer, const slice &term, const index_postings &postings)
+				{
+				writer(term, postings);
+				}
+
+			/*
+				QUANTIZE::OPERATOR()()
+				----------------------
+			*/
+			/*!
+				@brief The callback function for primary keys (external document ids) is operator(). Not needed for quantization
+				@param document_id [in] The internal document identfier.
+				@param primary_key [in] This document's primary key (external document identifier).
+			*/
+			virtual void operator()(index_manager::delegate &writer, size_t document_id, const slice &primary_key)
+				{
+				writer(document_id, primary_key);
+				}
 
 			/*
 				QUANTIZE::GET_BOUNDS()
@@ -147,12 +174,27 @@ namespace JASS
 			/*!
 				@brief Get the smallest and largest term / document influence (should be called after the first round of the quantizer).
 				@param smallest [out] This collection's smallest term / document influence.
-				@param largest [out] This collection's largest term / document influence..
+				@param largest [out] This collection's largest term / document influence.
 			*/
 			void get_bounds(double &smallest, double &largest)
 				{
 				smallest = smallest_rsv;
 				largest = largest_rsv;
+				}
+
+			/*
+				QUANTIZE::SERIALISE_INDEX()
+				---------------------------
+			*/
+			/*!
+				@brief Given the index and a serialiser, serialise the index to disk.
+				@param index [in] The index to serialise.
+				@param serialiser [in] The serialiser that writes out in the desired format.
+			*/
+			void serialise_index(index_manager &index, std::vector<std::unique_ptr<index_manager::delegate>> &serialisers)
+				{
+				for (auto &outputter : serialisers)
+					index.iterate(*this, *outputter);
 				}
 
 			/*
