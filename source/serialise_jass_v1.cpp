@@ -141,7 +141,7 @@ namespace JASS
 		SERIALISE_JASS_V1::OPERATOR()()
 		-------------------------------
 	*/
-	void serialise_jass_v1::operator()(const slice &term, const index_postings &postings)
+	void serialise_jass_v1::operator()(const slice &term, const index_postings &postings, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies)
 		{
 		/*
 			write the postings list to disk and keep a track of where it is.

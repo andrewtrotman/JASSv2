@@ -40,7 +40,14 @@ namespace JASS
 			allocator_pool memory;														///< All memory in allocatged from this allocator.
 			hash_table<slice, index_postings, 24> index;							///< The index is a hash table of index_postings keyed on the term (a slice).
 			dynamic_array<slice> primary_key;										///< The list of primary keys (i.e. external document identifiers) allocated in memory.
-			std::vector<compress_integer::integer> document_length_vector;	///< The vector of document lengths
+			
+			/*
+				Each of these buffers is re-used in the serialisation process
+			*/
+			compress_integer::integer *document_ids;					///< The re-used buffer storing decoded document ids
+			index_postings_impact::impact_type *term_frequencies;	///< The re-used buffer storing the term frequencies
+			size_t temporary_size;											///< The number of bytes in temporary
+			uint8_t *temporary;												///< Temporary buffer - cannot be used to store anything between calls
 
 		public:
 			/*
@@ -94,7 +101,7 @@ namespace JASS
 						@param term [in] The term name.
 						@param postings [in] The postings lists.
 					*/
-					virtual void operator()(const slice &term, const index_postings &postings)
+					virtual void operator()(const slice &term, const index_postings &postings, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies)
 						{
 						postings_out << term << "->" << postings << std::endl;
 						}
@@ -113,6 +120,31 @@ namespace JASS
 						primary_keys_out << document_id << "->" << primary_key << std::endl;
 						}
 				};
+		protected:
+			/*
+				INDEX_MANAGER_SEQUENTIAL::MAKE_SPACE()
+				--------------------------------------
+			*/
+			/*!
+				@bried make sure all the internal buffers needed for iteration habe been allocated
+			*/
+			void make_space(void)
+				{
+				auto new_temporary_size = get_highest_document_id() * (sizeof(*document_ids) / 7 + 1) * sizeof(*temporary);
+
+				if (new_temporary_size > temporary_size)
+					{
+					temporary_size = new_temporary_size;
+					/*
+						we don't delete the old buffers because the memory object doesn't support allow us to do so
+						but, this would only be needed if the called serialises then adds then serialises without
+						deleting this object and newing another.
+					*/
+					document_ids = reinterpret_cast<decltype(document_ids)>(memory.malloc(get_highest_document_id() * sizeof(*document_ids)));
+					term_frequencies = reinterpret_cast<decltype(term_frequencies)>(memory.malloc(get_highest_document_id() * sizeof(*term_frequencies)));
+					temporary = reinterpret_cast<decltype(temporary)>(memory.malloc(temporary_size));
+					}
+				}
 
 		public:
 			/*
@@ -125,7 +157,11 @@ namespace JASS
 			index_manager_sequential() :
 				index_manager(),
 				index(memory),
-				primary_key(memory, 1000, 1.5)
+				primary_key(memory, 1000, 1.5),
+				document_ids(nullptr),
+				term_frequencies(nullptr),
+				temporary_size(0),
+				temporary(nullptr)
 				{
 				/* Nothing */
 				}
@@ -194,13 +230,21 @@ namespace JASS
 				@brief Iterate over the index calling callback.operator() with each postings list.
 				@param callback [in] The callback to call.
 			*/
-			virtual void iterate(index_manager::delegate &callback) const
+			virtual void iterate(index_manager::delegate &callback)
 				{
+				/*
+					Make sure we have allocated the memory necessary for iteration (i.e. to linearize the postings lists).
+				*/
+				make_space();
+
 				/*
 					Iterate over the hash table calling the callback function with each term->postings pair.
 				*/
 				for (const auto &listing : index)
-					callback(listing.first, listing.second);
+					{
+					auto document_frequency = listing.second.linearize(temporary, temporary_size, document_ids, term_frequencies, get_highest_document_id());
+					callback(listing.first, listing.second, document_frequency, document_ids, term_frequencies);
+					}
 
 				/*
 					Iterate over the primary keys calling the callback function with each docid->key pair.
@@ -221,14 +265,22 @@ namespace JASS
 				@param quantizer [in] The quantizer that will quantize then call the serialiser callback.
 				@param callback [in] The callback that the quantizer should call.
 			*/
-			virtual void iterate(index_manager::quantizing_delegate &quantizer, index_manager::delegate &callback) const
+			virtual void iterate(index_manager::quantizing_delegate &quantizer, index_manager::delegate &callback)
 				{
+				/*
+					Make sure we have allocated the memory necessary for iteration (i.e. to linearize the postings lists).
+				*/
+				make_space();
+
 				/*
 					Iterate over the hash table calling the callback function with each term->postings pair.
 				*/
 				for (const auto &listing : index)
-					quantizer(callback, listing.first, listing.second);
-
+					{
+					auto document_frequency = listing.second.linearize(temporary, temporary_size, document_ids, term_frequencies, get_highest_document_id());
+					quantizer(callback, listing.first, listing.second, document_frequency, document_ids, term_frequencies);
+					}
+					
 				/*
 					Iterate over the primary keys calling the callback function with each docid->key pair.
 					Note that the search engine counts documents from 1, not from 0.

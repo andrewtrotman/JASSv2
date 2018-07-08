@@ -24,13 +24,7 @@ namespace JASS
 		postings_header_file("JASS_postings.h", "w+b"),
 		vocab_file("JASS_vocabulary.cpp", "w+b"),
 		primary_key_file("JASS_primary_keys.cpp", "w+b"),
-		terms(0),
-		memory(1024 * 1024),
-		documents_in_collection(documents),
-		document_ids((decltype(document_ids))memory.malloc(documents * sizeof(*document_ids))),
-		term_frequencies((decltype(term_frequencies))memory.malloc(documents * sizeof(*term_frequencies))),
-		temporary_size(documents * (sizeof(*document_ids) / 7 + 1) * sizeof(*temporary)),
-		temporary((decltype(temporary))memory.malloc(temporary_size))			// enough space to decompress variable-byte encodings
+		terms(0)
 		{
 		/*
 			Write out the headers of each file
@@ -80,7 +74,7 @@ namespace JASS
 		SERIALISE_CI::OPERATOR()()
 		--------------------------
 	*/
-	void serialise_ci::operator()(const slice &term, const index_postings &postings)
+	void serialise_ci::operator()(const slice &term, const index_postings &postings, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies)
 		{
 		std::ostringstream code;
 
@@ -89,11 +83,6 @@ namespace JASS
 		*/
 		code << "void T_" << term << "(query<uint16_t, 10'000'000, 10> &q)\n";
 		code << "{\n";
-
-		/*
-			Serialise and decompress the postings themselves
-		*/
-		auto document_frequency = postings.linearize(temporary, temporary_size, document_ids, term_frequencies, documents_in_collection);
 
 		/*
 			Write out in this format

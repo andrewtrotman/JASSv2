@@ -48,6 +48,18 @@ namespace JASS
 				{
 				public:
 					/*
+						INDEX_MANAGER::DELEGATE::~DELEGATE()
+						------------------------------------
+					*/
+					/*!
+						@brief Destructor.
+					*/
+					virtual ~delegate()
+						{
+						/* Nothing */
+						}
+
+					/*
 						INDEX_MANAGER::DELEGATE::OPERATOR()()
 						-------------------------------------
 					*/
@@ -56,7 +68,7 @@ namespace JASS
 						@param term [in] The term name.
 						@param postings [in] The postings lists.
 					*/
-					virtual void operator()(const slice &term, const index_postings &postings) = 0;
+					virtual void operator()(const slice &term, const index_postings &postings, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies) = 0;
 
 					/*
 						INDEX_MANAGER::DELEGATE::OPERATOR()()
@@ -81,6 +93,18 @@ namespace JASS
 				{
 				public:
 					/*
+						INDEX_MANAGER::DELEGATE::~QUANTIZING_DELEGATE()
+						-----------------------------------------------
+					*/
+					/*!
+						@brief Destructor.
+					*/
+					virtual ~quantizing_delegate()
+						{
+						/* Nothing */
+						}
+
+					/*
 						INDEX_MANAGER::QUANTIZING_DELEGATE::OPERATOR()()
 						------------------------------------------------
 					*/
@@ -90,7 +114,7 @@ namespace JASS
 						@param term [in] The term name.
 						@param postings [in] The postings lists.
 					*/
-					virtual void operator()(delegate &callback, const slice &term, const index_postings &postings) = 0;
+					virtual void operator()(delegate &callback, const slice &term, const index_postings &postings, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies) = 0;
 
 					/*
 						INDEX_MANAGER::QUANTIZING_DELEGATE::OPERATOR()()
@@ -104,10 +128,6 @@ namespace JASS
 					*/
 					virtual void operator()(delegate &callback, size_t document_id, const slice &primary_key) = 0;
 				};
-
-
-
-
 
 		public:
 			/*
@@ -177,12 +197,12 @@ namespace JASS
 				}
 
 			/*
-				INDEX_MANAGER::get_document_length_vector()
+				INDEX_MANAGER::GET_DOCUMENT_LENGTH_VECTOR()
 				-------------------------------------------
 			*/
 			/*!
 				@brief Return a reference to the document length vector.
-				@return The document length vector.
+				@return The document length vector. This is only valid for as long as the index_manager object exists.
 			*/
 			virtual std::vector<compress_integer::integer> &get_document_length_vector(void)
 				{
@@ -194,7 +214,7 @@ namespace JASS
 				----------------------------
 			*/
 			/*!
-				@brief Dump a human-readable version of the index down the stream.
+				@brief unimplemented: Dump a human-readable version of the index down the stream.
 				@param stream [in] The stream to write to.
 			*/
 			virtual void text_render(std::ostream &stream) const
@@ -210,14 +230,14 @@ namespace JASS
 				@brief Iterate over the index calling callback.operator() with each postings list.
 				@param callback [in] The callback to call.
 			*/
-			virtual void iterate(delegate &callback) const
+			virtual void iterate(delegate &callback)
 				{
 				/*
 					This method exists simply to increase code coverage. It should never get called in an "ordinary" program.
 				*/
 				allocator_pool pool;
 				index_postings postings(pool);
-				callback(slice(), postings);
+				callback(slice(), postings, 0, nullptr, nullptr);
 				callback(0, slice());
 				}
 			/*
@@ -229,7 +249,7 @@ namespace JASS
 				@param quantizer [in] The quantizer that will quantize then call the serialiser callback.
 				@param callback [in] The callback that the quantizer should call.
 			*/
-			virtual void iterate(index_manager::quantizing_delegate &quantizer, index_manager::delegate &callback) const
+			virtual void iterate(index_manager::quantizing_delegate &quantizer, index_manager::delegate &callback)
 				{
 				/* Nothing */
 				}
@@ -284,7 +304,7 @@ namespace JASS
 
 				struct delegate_test : public delegate
 					{
-					virtual void operator()(const slice &term, const index_postings &postings)
+					virtual void operator()(const slice &term, const index_postings &postings, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies)
 						{
 						/* Nothing */
 						}

@@ -38,12 +38,6 @@ namespace JASS
 			std::shared_ptr<RANKER> ranker;								///< The ranker to use for quantization.
 			compress_integer::integer documents_in_collection;		///< The number of documents in the collection.
 
-			allocator_pool memory;											///< Memory used to store the postings lists.
-			compress_integer::integer *document_ids;					///< The re-used buffer storing decoded document ids.
-			index_postings_impact::impact_type *term_frequencies;	///< The re-used buffer storing the term frequencies.
-			size_t temporary_size;											///< The number of bytes in temporary.
-			uint8_t *temporary;												///< Temporary buffer - cannot be used to store anything between calls.
-
 		public:
 			/*
 				QUANTIZE::QUANTIZE()
@@ -58,12 +52,7 @@ namespace JASS
 				largest_rsv(std::numeric_limits<decltype(largest_rsv)>::min()),
 				smallest_rsv(std::numeric_limits<decltype(smallest_rsv)>::max()),
 				ranker(ranker),
-				documents_in_collection(documents),
-				memory(1024 * 1024),
-				document_ids((decltype(document_ids))memory.malloc(documents * sizeof(*document_ids))),
-				term_frequencies((decltype(term_frequencies))memory.malloc(documents * sizeof(*term_frequencies))),
-				temporary_size(documents * (sizeof(*document_ids) / 7 + 1) * sizeof(*temporary)),
-				temporary((decltype(temporary))memory.malloc(temporary_size))			// enough space to decompress variable-byte encodings
+				documents_in_collection(documents)
 				{
 				/* Nothing. */
 				}
@@ -90,13 +79,8 @@ namespace JASS
 				@param term [in] The term name.
 				@param postings [in] The postings list.
 			*/
-			virtual void operator()(const slice &term, const index_postings &postings)
+			virtual void operator()(const slice &term, const index_postings &postings, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies)
 				{
-				/*
-					Serialise and decompress the postings themselves
-				*/
-				auto document_frequency = postings.linearize(temporary, temporary_size, document_ids, term_frequencies, documents_in_collection);
-
 				/*
 					Compute the IDF component
 				*/
@@ -148,9 +132,9 @@ namespace JASS
 				@param term [in] The term name.
 				@param postings [in] The postings list.
 			*/
-			virtual void operator()(index_manager::delegate &writer, const slice &term, const index_postings &postings)
+			virtual void operator()(index_manager::delegate &writer, const slice &term, const index_postings &postings, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies)
 				{
-				writer(term, postings);
+				writer(term, postings, document_frequency, document_ids, term_frequencies);
 				}
 
 			/*

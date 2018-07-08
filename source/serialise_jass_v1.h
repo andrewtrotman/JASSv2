@@ -200,7 +200,7 @@ namespace JASS
 				@param term [in] The term name.
 				@param postings [in] The postings lists.
 			*/
-			virtual void operator()(const slice &term, const index_postings &postings);
+			virtual void operator()(const slice &term, const index_postings &postings, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies);
 
 			/*
 				SERIALISE_JASS_V1::DELEGATE::OPERATOR()()
