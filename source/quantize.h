@@ -78,6 +78,9 @@ namespace JASS
 				@brief The callback function for each postings list is operator().
 				@param term [in] The term name.
 				@param postings [in] The postings list.
+				@param document_frequency [in] The document frequency of the term
+				@param document_ids [in] An array (of length document_frequency) of document ids.
+				@param term_frequencies [in] An array (of length document_frequency) of term frequencies (corresponding to document_ids).
 			*/
 			virtual void operator()(const slice &term, const index_postings &postings, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies)
 				{
@@ -129,8 +132,12 @@ namespace JASS
 			*/
 			/*!
 				@brief The callback function for each postings list is operator().
+				@param writer [in] The delegate that writes the quantized result to the output media.
 				@param term [in] The term name.
 				@param postings [in] The postings list.
+				@param document_frequency [in] The document frequency of the term
+				@param document_ids [in] An array (of length document_frequency) of document ids.
+				@param term_frequencies [in] An array (of length document_frequency) of term frequencies (corresponding to document_ids).
 			*/
 			virtual void operator()(index_manager::delegate &writer, const slice &term, const index_postings &postings, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies)
 				{

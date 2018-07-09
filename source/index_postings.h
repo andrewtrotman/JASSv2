@@ -49,8 +49,8 @@ namespace JASS
 			class posting
 				{
 				public:
-					uint32_t document_id;						///< Internal document identifier
-					uint32_t term_frequency;					///< Number of times the term occurs in this document
+					compress_integer::integer document_id;						///< Internal document identifier
+					index_postings_impact::impact_type term_frequency;		///< Number of times the term occurs in this document
 
 				public:
 					/*
@@ -200,18 +200,33 @@ namespace JASS
 			*/
 			void impact_order(index_postings_impact &postings_list) const
 				{
+				auto document_frequency = linearize(postings_list.temporary, postings_list.temporary_size, postings_list.document_ids, postings_list.term_frequencies, postings_list.number_of_postings);
+				impact_order(postings_list, document_frequency, postings_list.document_ids, postings_list.term_frequencies);
+				}
+
+			/*
+				INDEX_POSTINGS::IMPACT_ORDER()
+				------------------------------
+			*/
+			/*!
+				@brief Return the postings list impact ordered postings list with impact headers.
+				@param postings_list [in / out] The constructed impact ordered postings list.
+				@param id_list [in] The list of document ids.
+				@param tf_list [in] The list of term frequencies.
+				@param document_frequency [in] the document frequency of this term (the length of id_list and tf_list).
+			*/
+			void impact_order(index_postings_impact &postings_list, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies) const
+				{
 				std::array<uint32_t, 0x100> frequencies = {};
 				size_t number_of_postings = 0;
 				index_postings_impact::impact_type highest_impact = 0;
 				index_postings_impact::impact_type lowest_impact = std::numeric_limits<decltype(lowest_impact)>::max();
 
-				auto document_frequency = linearize(postings_list.temporary, postings_list.temporary_size, postings_list.document_ids, postings_list.term_frequencies, postings_list.number_of_postings);
-
 				/*
 					Count up the number of times each impact is seen and compute the highest and lowest impact scores
 				*/
-				index_postings_impact::impact_type *end = postings_list.term_frequencies + document_frequency;
-				for (index_postings_impact::impact_type *current_tf = postings_list.term_frequencies; current_tf < end; current_tf++)
+				index_postings_impact::impact_type *end = term_frequencies + document_frequency;
+				for (index_postings_impact::impact_type *current_tf = term_frequencies; current_tf < end; current_tf++)
 					{
 					/*
 						Calculate the maximum and minimum impact scores seen
@@ -267,8 +282,8 @@ namespace JASS
 				/*
 					Now place the postings in the right places
 				*/
-				compress_integer::integer *current_id = postings_list.document_ids;
-				for (index_postings_impact::impact_type *current_tf = postings_list.term_frequencies; current_tf < end; current_tf++)
+				compress_integer::integer *current_id = document_ids;
+				for (index_postings_impact::impact_type *current_tf = term_frequencies; current_tf < end; current_tf++)
 					{
 					postings_list.get_postings()[frequencies[*current_tf]] = *current_id;
 					frequencies[*current_tf]++;

@@ -154,9 +154,12 @@ namespace JASS
 				@brief Convert the postings list to the JASS v1 format and serialise it to disk.
 				@param postings [in] The postings list to serialise.
 				@param number_of_impacts [out] The number of distinct impact scores seen in the postings list.
+				@param document_frequency [in] The document frequency of the term
+				@param document_ids [in] An array (of length document_frequency) of document ids.
+				@param term_frequencies [in] An array (of length document_frequency) of term frequencies (corresponding to document_ids).
 				@return The location (in CIpostings.bin) of the start of the serialised postings list.
 			*/
-			size_t write_postings(const index_postings &postings, size_t &number_of_impacts);
+			size_t write_postings(const index_postings &postings, size_t &number_of_impacts, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies);
 
 		public:
 			/*
@@ -199,6 +202,9 @@ namespace JASS
 				@brief The callback function to serialise the postings (given the term) is operator().
 				@param term [in] The term name.
 				@param postings [in] The postings lists.
+				@param document_frequency [in] The document frequency of the term
+				@param document_ids [in] An array (of length document_frequency) of document ids.
+				@param term_frequencies [in] An array (of length document_frequency) of term frequencies (corresponding to document_ids).
 			*/
 			virtual void operator()(const slice &term, const index_postings &postings, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies);
 

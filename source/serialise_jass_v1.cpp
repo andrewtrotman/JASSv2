@@ -47,7 +47,7 @@ namespace JASS
 		SERIALISE_JASS_V1::WRITE_POSTINGS()
 		-----------------------------------
 	*/
-	size_t serialise_jass_v1::write_postings(const index_postings &postings_list, size_t &number_of_impacts)
+	size_t serialise_jass_v1::write_postings(const index_postings &postings_list, size_t &number_of_impacts, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies)
 		{
 		/*
 			Keep a track of where the postings are stored on disk.
@@ -57,7 +57,7 @@ namespace JASS
 		/*
 			Impact order the postings list.
 		*/
-		postings_list.impact_order(impact_ordered);
+		postings_list.impact_order(impact_ordered, document_frequency, document_ids, term_frequencies);
 
 		/*
 			Compute the number of impact headers we're going to see.
@@ -144,12 +144,12 @@ namespace JASS
 	void serialise_jass_v1::operator()(const slice &term, const index_postings &postings, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies)
 		{
 		/*
-			write the postings list to disk and keep a track of where it is.
+			Write the postings list to disk and keep a track of where it is.
 		*/
 		size_t number_of_impact_scores;
 
 		size_t postings_location;
-		postings_location = write_postings(postings, number_of_impact_scores);
+		postings_location = write_postings(postings, number_of_impact_scores, document_frequency, document_ids, term_frequencies);
 
 		/*
 			Find out where we are in the vocabulary strings file - which will be the start of the term before we write it.

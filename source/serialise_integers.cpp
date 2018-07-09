@@ -25,7 +25,7 @@ namespace JASS
 		/*
 			Impact order this postings list
 		*/
-		postings_list.impact_order(impact_ordered);
+		postings_list.impact_order(impact_ordered, document_frequency, document_ids, term_frequencies);
 
 		/*
 			Write out
