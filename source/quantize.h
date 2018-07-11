@@ -37,6 +37,7 @@ namespace JASS
 			double smallest_rsv;												///< The smallest score seen for any document/term pair.
 			std::shared_ptr<RANKER> ranker;								///< The ranker to use for quantization.
 			compress_integer::integer documents_in_collection;		///< The number of documents in the collection.
+			static constexpr double impact_range = index_postings_impact::largest_impact - index_postings_impact::smallest_impact; ///< The number of values in the impact ordering range (normally 255).
 
 		public:
 			/*
@@ -141,6 +142,34 @@ namespace JASS
 			*/
 			virtual void operator()(index_manager::delegate &writer, const slice &term, const index_postings &postings, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies)
 				{
+				/*
+					Compute the IDF component
+				*/
+				ranker->compute_idf_component(document_frequency, documents_in_collection);
+
+				/*
+					Compute the document / term score and quantize it.
+				*/
+				auto end = document_ids + document_frequency;
+				auto current_tf = term_frequencies;
+				for (compress_integer::integer *current_id = document_ids; current_id < end; current_id++, current_tf++)
+					{
+					/*
+						Compute the term / document score
+					*/
+					ranker->compute_tf_component(*current_tf);
+					double score = ranker->compute_score(*current_id - 1, *current_tf);
+
+					/*
+						Quantize using uniform quantization, and write back as the new term frequency (which is now an impact score).
+					*/
+					index_postings_impact::impact_type impact = static_cast<index_postings_impact::impact_type>((score - smallest_rsv) / (largest_rsv - smallest_rsv) * impact_range) + index_postings_impact::smallest_impact;
+					*current_tf = impact;
+					}
+
+				/*
+					Pass the quantized list to the writer.
+				*/
 				writer(term, postings, document_frequency, document_ids, term_frequencies);
 				}
 
