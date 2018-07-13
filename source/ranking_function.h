@@ -83,7 +83,7 @@ namespace JASS
 				ranking_function<ranking_function_atire_bm25> generic_ranker(ranker);		// construct a ranker
 
 				rsv = generic_ranker.rank(1, 2, lengths.size(), 12);													// get the rsv
-				JASS_assert(static_cast<uint32_t>(rsv * 1000) == 2499);
+				JASS_assert(static_cast<uint32_t>(rsv * 1000) == 1635);
 
 				puts("ranking_function::PASSED");
 				}

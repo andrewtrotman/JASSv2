@@ -255,7 +255,7 @@ namespace JASS
 				quantizer.get_bounds(smallest, largest);
 
 				JASS_assert(static_cast<int>(smallest) == 0);
-				JASS_assert(static_cast<int>(largest) == 6);
+				JASS_assert(static_cast<int>(largest) == 2);
 
 				puts("quantize::PASSED");
 				}

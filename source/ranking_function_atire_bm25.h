@@ -160,7 +160,7 @@ namespace JASS
 				ranker.compute_tf_component(12);									// it occurs in this document 12 times
 				rsv = ranker.compute_score(1, 12);								// it occurs in document 1 a total of 12 times;
 
-				JASS_assert(static_cast<uint32_t>(rsv * 1000) == 2499);
+				JASS_assert(static_cast<uint32_t>(rsv * 1000) == 1635);
 				puts("ranking_function_atire_bm25::PASSED");
 				}
 		};
