@@ -66,11 +66,11 @@ namespace JASS
 				for (auto length : document_lengths)
 					sum += length;
 
-				mean_document_length = static_cast<double>(sum) / static_cast<double>(document_lengths.size());
+				mean_document_length = static_cast<double>(sum) / static_cast<double>(document_lengths.size() - 1);
 
-				auto correction = &length_correction[0];
+				auto correction = &length_correction[0];			// recall that we count from 1, not from 0
 				for (auto length : document_lengths)
-					*correction++ =  k1 * (one_minus_b + b * length / mean_document_length);
+					*correction++ =  k1 * (one_minus_b + b * static_cast<double>(length) / mean_document_length);
 				}
 
 			/*
@@ -140,7 +140,7 @@ namespace JASS
 
 					In this implementation we ignore k3 and the number of times the term occurs in the query.
 				*/
-				return idf * (top_row / term_frequency + length_correction[document_id]);
+				return idf * (top_row / (term_frequency + length_correction[document_id]));
 				}
 
 			/*

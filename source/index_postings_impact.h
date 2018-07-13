@@ -33,7 +33,7 @@ namespace JASS
 		public:
 			typedef uint8_t impact_type;
 			static constexpr size_t largest_impact = std::numeric_limits<impact_type>::max();
-			static constexpr size_t smallest_impact = std::numeric_limits<impact_type>::min();
+			static constexpr size_t smallest_impact = 1;
 
 		public:
 			/*

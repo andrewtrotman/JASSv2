@@ -28,6 +28,15 @@ namespace JASS
 	*/
 	/*!
 		@brief Quantize an index
+		@detail Generic quantization class that performs uniform quantization according to the equations in
+		V. N. Anh, O. de Kretser, A. Moffat (2001) Vector-space ranking with effective early termination. SIGIR 2001, PP.35-42.
+		The ranking function itself is a template parameter, and also passed to the constructor as the ranker
+		might need initialisation (BM25 does).
+
+		Uniform quantization if most effedctive for BM25 was BM25 has an exponential decay in the rsv scores and
+		so high impact segments are short and low impact scores are long.  The best documents have high impact scores
+		for each query term and so have high result list rsvs are rare.  Uniform quantization also does not require
+		decoding so the cost of ranking is an integer add!
 	*/
 	template <typename RANKER>
 	class quantize : public index_manager::delegate, public index_manager::quantizing_delegate
@@ -101,7 +110,7 @@ namespace JASS
 						Compute the term / document score
 					*/
 					ranker->compute_tf_component(*current_tf);
-					auto score = ranker->compute_score(*current_id - 1, *current_tf);
+					auto score = ranker->compute_score(*current_id, *current_tf);
 
 					/*
 						Keep a running tally of the largest and smallest rsv we've seen so far
@@ -158,12 +167,14 @@ namespace JASS
 						Compute the term / document score
 					*/
 					ranker->compute_tf_component(*current_tf);
-					double score = ranker->compute_score(*current_id - 1, *current_tf);
+					double score = ranker->compute_score(*current_id, *current_tf);
 
 					/*
 						Quantize using uniform quantization, and write back as the new term frequency (which is now an impact score).
+						This uses Uniform Quantiization as defined by Anh et al. in:
+						Vo Ngoc Anh, Owen de Kretser, and Alistair Moffat. 2001. Vector-space ranking with effective early termination. In Proceedings of the 24th annual international ACM SIGIR conference on Research and development in information retrieval (SIGIR '01). ACM, New York, NY, USA, 35-42. DOI: https://doi.org/10.1145/383952.383957
 					*/
-					index_postings_impact::impact_type impact = static_cast<index_postings_impact::impact_type>((score - smallest_rsv) / (largest_rsv - smallest_rsv) * impact_range) + index_postings_impact::smallest_impact;
+					index_postings_impact::impact_type impact = static_cast<index_postings_impact::impact_type>(((score - smallest_rsv) / (largest_rsv - smallest_rsv)) * impact_range) + index_postings_impact::smallest_impact;
 					*current_tf = impact;
 					}
 
