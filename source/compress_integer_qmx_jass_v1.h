@@ -27,7 +27,7 @@ namespace JASS
 	/*!
 		@brief QMX compatible with JASS v1 which had its own "special" version that managed end of sequence
 		differently from normal.
-		@depricated DO NOT USE EXCEPT FOR JASS VERISON 1 COMPATIBILITY
+		@deprecated DO NOT USE EXCEPT FOR JASS VERISON 1 COMPATIBILITY
 	*/
 	class compress_integer_qmx_jass_v1 : public compress_integer
 		{
@@ -42,7 +42,7 @@ namespace JASS
 			*/
 			/*!
 				@brief Constructor
-				@depricated DO NOT USE EXCEPT FOR JASS VERISON 1 COMPATIBILITY
+				@deprecated DO NOT USE EXCEPT FOR JASS VERISON 1 COMPATIBILITY
 			*/
 			compress_integer_qmx_jass_v1();
 
@@ -52,7 +52,7 @@ namespace JASS
 			*/
 			/*!
 				@brief Destructor
-				@depricated DO NOT USE EXCEPT FOR JASS VERISON 1 COMPATIBILITY
+				@deprecated DO NOT USE EXCEPT FOR JASS VERISON 1 COMPATIBILITY
 			*/
 			virtual ~compress_integer_qmx_jass_v1();
 
@@ -67,7 +67,7 @@ namespace JASS
 				@param source [in] The sequence of integers to encode.
 				@param source_integers [in] The length (in integers) of the source buffer.
 				@return The number of bytes used to encode the integer sequence, or 0 on error (i.e. overflow).
-				@depricated DO NOT USE EXCEPT FOR JASS VERISON 1 COMPATIBILITY
+				@deprecated DO NOT USE EXCEPT FOR JASS VERISON 1 COMPATIBILITY
 			*/
 			virtual size_t encode(void *encoded, size_t encoded_buffer_length, const integer *source, size_t source_integers);
 
@@ -81,7 +81,7 @@ namespace JASS
 				@param integers_to_decode [in] The minimum number of integers to decode (it may decode more).
 				@param source [in] The encoded integers.
 				@param source_length [in] The length (in bytes) of the source buffer.
-				@depricated DO NOT USE EXCEPT FOR JASS VERISON 1 COMPATIBILITY
+				@deprecated DO NOT USE EXCEPT FOR JASS VERISON 1 COMPATIBILITY
 			*/
 			virtual void decode(integer *decoded, size_t integers_to_decode, const void *source, size_t source_length);
 
@@ -93,7 +93,7 @@ namespace JASS
 			/*!
 				@brief Test one sequence to make sure it encodes and decodes to the same thing.  Assert if not.
 				@param sequence [in] the sequernce to encode.
-				@depricated DO NOT USE EXCEPT FOR JASS VERISON 1 COMPATIBILITY
+				@deprecated DO NOT USE EXCEPT FOR JASS VERISON 1 COMPATIBILITY
 			*/
 			static void unittest_one(const std::vector<uint32_t> &sequence);
 
@@ -103,7 +103,7 @@ namespace JASS
 			*/
 			/*!
 				@brief Unit test this class
-				@depricated DO NOT USE EXCEPT FOR JASS VERISON 1 COMPATIBILITY
+				@deprecated DO NOT USE EXCEPT FOR JASS VERISON 1 COMPATIBILITY
 			*/
 			static void unittest(void);
 		};

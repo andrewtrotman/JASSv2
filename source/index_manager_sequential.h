@@ -100,6 +100,9 @@ namespace JASS
 						@brief The callback function to serialise the postings (given the term) is operator().
 						@param term [in] The term name.
 						@param postings [in] The postings lists.
+						@param document_frequency [in] The documment frequency of term (the length of document_ids and term_frequencies).
+						@param document_ids [in] The array of document ids in which the term is found
+						@param term_frequencies [in] The number of occurences of the term in each document id in document_ids
 					*/
 					virtual void operator()(const slice &term, const index_postings &postings, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies)
 						{
@@ -126,7 +129,7 @@ namespace JASS
 				--------------------------------------
 			*/
 			/*!
-				@bried make sure all the internal buffers needed for iteration habe been allocated
+				@brief make sure all the internal buffers needed for iteration habe been allocated
 			*/
 			void make_space(void)
 				{

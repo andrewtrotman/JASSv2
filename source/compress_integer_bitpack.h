@@ -64,6 +64,11 @@ namespace JASS
 				COMPRESS_INTEGER_BITPACK::BITS_NEEDED()
 				---------------------------------------
 			*/
+			/*!
+				@brief retur the number of bits needed to represent the given integer.
+				@param integer [in] The integer to be represented.
+				@retur The number of bits neeeded.
+			*/
 			static inline uint32_t bits_needed(uint32_t integer)
 				{
 				uint32_t current_width = maths::ceiling_log2(integer);
@@ -80,8 +85,10 @@ namespace JASS
 				@tparam WIDTH_IN_BITS The size of the machine word (in bits).
 				@param encoded [out] The sequence of bytes that is the encoded sequence.
 				@param encoded_buffer_length [in] The length (in bytes) of the output buffer, encoded.
-				@param source [in] The sequence of integers to encode.
+				@param array [in] The sequence of integers to encode.
 				@param source_integers [in] The length (in integers) of the source buffer.
+				@param bits_to_use [in] the array of bit-widths to use.
+				@param selector_to_use [in] The array of selectors to use.
 				@return The number of bytes used to encode the integer sequence, or 0 on error (i.e. overflow).
 			*/
 			template <int32_t WIDTH_IN_BITS>

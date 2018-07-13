@@ -284,6 +284,7 @@ namespace JASS
 				#endif
 
 				/*!
+					@def sqrt_compiletime_helper_mid
 					@brief Compute the mean of 2 integers.
 				*/
 				#define sqrt_compiletime_helper_mid ((lo + hi + 1) / 2)

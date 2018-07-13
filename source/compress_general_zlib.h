@@ -23,7 +23,7 @@ namespace JASS
 	*/
 	/*!
 		@brief Encoding and decoding general purpose byte sequences using zlib
-		@detials see: http://zlib.net for details
+		@details see: http://zlib.net for details
 	*/
 	class compress_general_zlib : public compress_general
 		{

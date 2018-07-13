@@ -23,7 +23,7 @@ namespace JASS
 	*/
 	/*!
 		@brief Encoding and decoding general purpose byte sequences using zstd
-		@detials see: https://github.com/facebook/zstd for details
+		@details see: https://github.com/facebook/zstd for details
 	*/
 	class compress_general_zstd : public compress_general
 		{
@@ -31,12 +31,12 @@ namespace JASS
 			class resources
 				{
 				public:
-					size_t buffInSize;
-					size_t buffOutSize;
-					ZSTD_CStream *cstream;
+					size_t buffInSize;		///< size of the input buffer
+					size_t buffOutSize;		///< size of the output buffer
+					ZSTD_CStream *cstream;	///< the ZSTD stream
 				};
 		private:
-			resources ress;
+			resources ress;				///< The compression handle
 		
 		public:
 			/*

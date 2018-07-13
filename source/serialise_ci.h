@@ -37,14 +37,15 @@ namespace JASS
 			uint64_t terms;							///< The number of terms in the vocabulary file.
 
 		public:
+			serialise_ci() = delete;
 			/*
 				SERIALISE_CI::SERIALISE_CI()
 				----------------------------
 			*/
 			/*!
-				Constructor
+				@brief Constructor
+				@param documents [in] The numner of socuments in the collection.
 			*/
-			serialise_ci() = delete;
 			serialise_ci(size_t documents);
 
 			/*

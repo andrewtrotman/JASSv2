@@ -41,11 +41,11 @@ namespace JASS
 	class file
 		{
 		protected:
-			FILE *fp; 		///< The underlying representation is a FILE *  from C (as they appear to be fast).
-			size_t file_position;
+			FILE *fp; 								///< The underlying representation is a FILE *  from C (as they appear to be fast).
+			size_t file_position;				///< The ftell() position in the file.
 			size_t buffer_size;					///< Size of the internal file buffering.
 			size_t buffer_used;					///< How much of the internal file buffer is being used.
-			std::unique_ptr<uint8_t []> buffer;	/// < Internal file buffer
+			std::unique_ptr<uint8_t []> buffer;	///< Internal file buffer
 			size_t bytes_written;				///< Number of bytes written to this file.
 			size_t bytes_read;					///< Number of bytes read from this file.
 
@@ -177,8 +177,8 @@ namespace JASS
 			*/
 			/*!
 				@brief Read bytes number of bytes from the give file into the buffer.
-				@param buffer [out] Buffer large enough to hold bytes number of bytes of data which are written into the memory pointed to by buffer.
-				@param bytes [in] The number of bytes of data to read.
+				@param data [out] Buffer large enough to hold bytes number of bytes of data which are written into the memory pointed to by buffer.
+				@param size [in] The number of bytes of data to read.
 				@return The number of bytes of data that were read and written into buffer.
 			*/
 			size_t read(void *data, size_t size)
@@ -234,8 +234,8 @@ namespace JASS
 			*/
 			/*!
 				@brief Write bytes number of bytes to the give file at the current cursor position.
-				@param buffer [in] the byte sequence to write.
-				@param bytes [in] The number of bytes of data to write.
+				@param data [in] the byte sequence to write.
+				@param size [in] The number of bytes of data to write.
 				@return The number of bytes of data that were written to the file.
 			*/
 			size_t write(const void *data, size_t size)

@@ -55,7 +55,7 @@ namespace JASS
 		*/
 		/*!
 			@brief Callback function used to bootstrap from the Operating System thread library into C++.
-			@param param[in] A C++ binding used to perform the call.
+			@param param [in] A C++ binding used to perform the call.
 			@return Always returns nullptr.
 		*/
 			template<typename FUNCTOR>

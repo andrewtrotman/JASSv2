@@ -61,7 +61,6 @@ namespace JASS
 						@brief Constructor.
 						@param document_id [in] the document ID to use
 						@param term_frequency [in] the term frequency to use
-						@param position [in] the word position to use
 					*/
 					posting(uint32_t document_id, uint32_t term_frequency) :
 						document_id(document_id),
@@ -194,9 +193,6 @@ namespace JASS
 			/*!
 				@brief Return the postings list impact ordered postings list with impact headers.
 				@param postings_list [in / out] The constructed impact ordered postings list.
-				@param id_list [in] The list of document ids.
-				@param tf_list [in] The list of term frequencies.
-				@param document_frequency [in] the document frequency of this term (the length of id_list and tf_list).
 			*/
 			void impact_order(index_postings_impact &postings_list) const
 				{
@@ -211,9 +207,9 @@ namespace JASS
 			/*!
 				@brief Return the postings list impact ordered postings list with impact headers.
 				@param postings_list [in / out] The constructed impact ordered postings list.
-				@param id_list [in] The list of document ids.
-				@param tf_list [in] The list of term frequencies.
 				@param document_frequency [in] the document frequency of this term (the length of id_list and tf_list).
+				@param document_ids [in] The list of document ids.
+				@param term_frequencies [in] The list of term frequencies.
 			*/
 			void impact_order(index_postings_impact &postings_list, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies) const
 				{

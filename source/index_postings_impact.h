@@ -31,9 +31,9 @@ namespace JASS
 		friend class index_postings;
 		
 		public:
-			typedef uint8_t impact_type;
-			static constexpr size_t largest_impact = std::numeric_limits<impact_type>::max();
-			static constexpr size_t smallest_impact = 1;
+			typedef uint8_t impact_type;									///< An impact value (i.e. a term frequency value) is of this type.
+			static constexpr size_t largest_impact = std::numeric_limits<impact_type>::max();		///< The largest allowable immpact score (255 is an good value).
+			static constexpr size_t smallest_impact = 1;				///< The smallest allowable impact score (normally 1)
 
 		public:
 			/*

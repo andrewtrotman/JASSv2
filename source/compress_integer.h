@@ -92,6 +92,7 @@ namespace JASS
 			*/
 			/*!
 				@brief Test one sequence to make sure it encodes and decodes to the same thing.  Assert if not.
+				@param encoder [in] The integer encoded being tested.
 				@param sequence [in] the sequernce to encode.
 			*/
 			static void unittest_one(compress_integer &encoder, const std::vector<uint32_t> &sequence);

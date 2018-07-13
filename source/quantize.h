@@ -28,7 +28,7 @@ namespace JASS
 	*/
 	/*!
 		@brief Quantize an index
-		@detail Generic quantization class that performs uniform quantization according to the equations in
+		@details Generic quantization class that performs uniform quantization according to the equations in
 		V. N. Anh, O. de Kretser, A. Moffat (2001) Vector-space ranking with effective early termination. SIGIR 2001, PP.35-42.
 		The ranking function itself is a template parameter, and also passed to the constructor as the ranker
 		might need initialisation (BM25 does).
@@ -190,6 +190,7 @@ namespace JASS
 			*/
 			/*!
 				@brief The callback function for primary keys (external document ids) is operator(). Not needed for quantization
+				@param writer [in] A deligate object to manage the data once quantized.
 				@param document_id [in] The internal document identfier.
 				@param primary_key [in] This document's primary key (external document identifier).
 			*/
@@ -220,7 +221,7 @@ namespace JASS
 			/*!
 				@brief Given the index and a serialiser, serialise the index to disk.
 				@param index [in] The index to serialise.
-				@param serialiser [in] The serialiser that writes out in the desired format.
+				@param serialisers [in] The serialiser that writes out in the desired format.
 			*/
 			void serialise_index(index_manager &index, std::vector<std::unique_ptr<index_manager::delegate>> &serialisers)
 				{

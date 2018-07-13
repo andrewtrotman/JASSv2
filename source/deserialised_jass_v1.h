@@ -271,6 +271,8 @@ namespace JASS
 			/*
 				DESERIALISED_JASS_V1::BEGIN()
 				-----------------------------
+			*/
+			/*!
 				@brief return an iterator over the vocabulary.
 				@return an iterator over the vocabulary.
 			*/
@@ -281,7 +283,9 @@ namespace JASS
 
 			/*
 				DESERIALISED_JASS_V1::END()
-				-----------------------------
+				---------------------------
+			*/
+			/*!
 				@brief return an iterator to the end of the vocabulary.
 				@return an iterator to the end of the vocabulary.
 			*/

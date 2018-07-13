@@ -104,7 +104,7 @@ namespace JASS
 				@brief Decode a sequence of integers encoded with this codex.
 				@param decoded [out] The sequence of decoded integers.
 				@param integers_to_decode [in] The minimum number of integers to decode (it may decode more).
-				@param source [in] The encoded integers.
+				@param source_as_void [in] The encoded integers.
 				@param source_length [in] The length (in bytes) of the source buffer.
 			*/
 			static inline void static_decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
