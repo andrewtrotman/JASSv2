@@ -213,7 +213,7 @@ namespace JASS
 			*/
 			void impact_order(index_postings_impact &postings_list, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies) const
 				{
-				std::array<uint32_t, 0x100> frequencies = {};
+				std::array<compress_integer::integer, 0x100> frequencies = {};
 				size_t number_of_postings = 0;
 				index_postings_impact::impact_type highest_impact = 0;
 				index_postings_impact::impact_type lowest_impact = std::numeric_limits<decltype(lowest_impact)>::max();

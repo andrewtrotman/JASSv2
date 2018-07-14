@@ -76,12 +76,12 @@ namespace JASS
 			{"-cV",    "--compress_stream_vbyte", "Stream VByte", &stream_vbyte},
 			{"-cX",    "--compress_qmx_improved", "QMX Improved", &qmx_improved},
 			{"-cx",    "--compress_qmx_original", "QMX Original", &qmx_original},
-			{"-cZ",   "--compress_qmx_jass_v1", "QMX JASS v1", &qmx_jass_v1},
+			{"-cZ",    "--compress_qmx_jass_v1", "QMX JASS v1", &qmx_jass_v1},
 			{"-c128",  "--compress_128", "Binpack into 128-bit SIMD integers", &bitpack_128},
 			{"-c256",  "--compress_256", "Binpack into 256-bit SIMD integers", &bitpack_256},
 			{"-c32r",  "--compress_32", "Binpack into 32-bit integers with 8 selectors", &bitpack_32_reduced},
 			{"-c512p", "--compress_prn_512", "PRN  compress into 512-bit SIMD integers", &prn512},
-			{"-c512c","--compress_prn_512_carryover", "PRN  compress into 512-bit SIMD integers with carryover", &prn_512_carryover},
+			{"-c512c", "--compress_prn_512_carryover", "PRN  compress into 512-bit SIMD integers with carryover", &prn_512_carryover},
 			{"-c64",   "--compress_64", "Binpack into 64-bit integers", &bitpack_64},
 			}
 		};

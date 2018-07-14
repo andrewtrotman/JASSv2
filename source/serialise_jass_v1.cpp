@@ -76,36 +76,54 @@ namespace JASS
 			}
 
 		/*
-			Write out each impact header.
+			Write out each impact header, and compress as we go so we know where the data will be stored.
 		*/
 		size_t start_of_postings = offset + impact_header_size;			// +1 because there's a 0 terminator at the end
-
-		for (const auto &header : reverse(impact_ordered))
+		uint8_t *compress_into = &compressed_buffer[0];
+		auto compress_into_size = compressed_buffer.size();
+		compressed_segments.clear();
+		for (auto &header : reverse(impact_ordered))
 			{
 			/*
-				impact score (uint16_t).
+				Impact score (uint16_t).
 			*/
 			uint16_t score = static_cast<uint16_t>(header.impact_score);
 			postings.write(&score, sizeof(score));
 
 			/*
-				start loction on disk (uint64_t).
+				Start loction on disk (uint64_t).
 			*/
 			uint64_t start_location = start_of_postings;
 			postings.write(&start_location, sizeof(start_location));
 
 			/*
-				This is where compression happens - but since we're not initially compressing no work is necessary.
+				This is where compression happens.
+				First D1 encode, then use the encoder to compress.
 			*/
+			compress_integer::d1_encode(header.begin(), header.begin(), header.size());
+			*header.begin() -= 1;			// JASS v1 counts documents from 0.
+			auto took = encoder->encode(compress_into, compress_into_size, header.begin(), header.size());
+			if (took <= 0)
+				{
+				/*
+					Compression failed - exit
+				*/
+				std::cout <<  "Failed to compress postings list while serialising" << std::ends;
+				exit(1);
+				}
+
+			compressed_segments.push_back(slice(compress_into, took));
+			compress_into += took;
+			compress_into_size -= took;
 
 			/*
-				end location on disk (uint64_t).
+				End location on disk (uint64_t).
 			*/
-			uint64_t finish_location = start_of_postings + header.size() * sizeof(uint32_t);
+			uint64_t finish_location = start_of_postings + took;
 			postings.write(&finish_location, sizeof(finish_location));
 
 			/*
-				the number of document ids with this impact score (length of the impact segment measured in doc_ids).
+				The number of document ids with this impact score (length of the impact segment measured in doc_ids).
 			*/
 			uint32_t frequency = static_cast<uint32_t>(header.size());
 			postings.write(&frequency, sizeof(frequency));
@@ -113,26 +131,19 @@ namespace JASS
 			}
 
 		/*
-			write out a "blank" impact header
+			Write out a "blank" impact header
 		*/
 		uint8_t zero[] = {0, 0,  0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0};
 		postings.write(&zero, sizeof(zero));
 
 		/*
-			write out each postings list segment.
+			Write out each postings list segment.
 		*/
-		for (const auto &header : reverse(impact_ordered))
-			for (const auto &posting : header)
-				{
-				/*
-					uncompressed is an array of uint32_t integers counting from 0 (but the indexer counts from 1 so we subtract 1).
-				*/
-				uint32_t document_id = static_cast<uint32_t>(posting - 1);
-				postings.write(&document_id, sizeof(document_id));
-				}
+		for (auto &header : compressed_segments)
+			postings.write(header.address(), header.size());
 
 		/*
-			return the location of the postings list on disk
+			Return the location of the postings list on disk
 		*/
 		return postings_location;
 		}

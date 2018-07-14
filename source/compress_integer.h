@@ -60,6 +60,58 @@ namespace JASS
 				}
 
 			/*
+				COMPRESS_INTEGER::D1_ENCODE()
+				-----------------------------
+			*/
+			/*!
+				@brief Convert an array of integers into an array of D1 (delta, d-gap) encoded integers.
+				@param encoded [out] The d1-encoded result.
+				@parm source [in] The integers to be D1 encoded.
+				@param source_integers [in] The number of integers in the list.
+				@return The number of integers encoded.
+			*/
+			static size_t d1_encode(integer *encoded, const integer *source, size_t source_integers)
+				{
+				integer prior = 0;
+				const integer *end = source + source_integers;
+
+				for (const integer *current = source; current < end; current++)
+					{
+					/*
+						This is done in this order so that the encoded and source buffers can be the same array.
+					*/
+					integer d1 = *current - prior;
+					prior = *current;
+					*encoded++ = d1;
+					}
+				return source_integers;
+				}
+
+			/*
+				COMPRESS_INTEGER::D1_DECODE()
+				-----------------------------
+			*/
+			/*!
+				@brief Convert a D1 encoded array of integers into an array of integers.
+				@param encoded [out] The decoded integers.
+				@parm source [in] The D1 encoded integers.
+				@param source_integers [in] The number of integers in the list.
+				@return The number of integers encoded.
+			*/
+			static size_t d1_decode(integer *decoded, const integer *source, size_t source_integers)
+				{
+				integer sum = 0;
+				const integer *end = source + source_integers;
+
+				for (const integer *current = source; current < end; current++)
+					{
+					sum += *current;
+					*decoded++ = sum;
+					}
+				return source_integers;
+				}
+
+			/*
 				COMPRESS_INTEGER::ENCODE()
 				--------------------------
 			*/

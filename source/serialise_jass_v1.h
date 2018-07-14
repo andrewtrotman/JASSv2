@@ -14,8 +14,10 @@
 
 #include "file.h"
 #include "slice.h"
+#include "allocator_cpp.h"
 #include "index_postings.h"
 #include "index_manager.h"
+#include "compress_integer_qmx_jass_v1.h"
 
 namespace JASS
 	{
@@ -78,8 +80,8 @@ namespace JASS
 				{
 				uncompressed = 's',				///< Postings are not compressed.
 				variable_byte = 'c',				///< Postings are compressed using ATIRE's variable byte encoding.
-				simple_8 = '8',					///< Postings are compressed using ATIRE's simple-8b encoding.
-				qmx = 'q',							///< Postings are compressed using QMX (with difference encoding).
+				simple_8b = '8',					///< Postings are compressed using ATIRE's simple-8b encoding.
+				qmx = 'q',							///< Postings are compressed using JASS v1's variant of QMX (with difference (D1) encoding).
 				qmx_d4 = 'Q',						///< Postings are compressed using QMX with Lemire's D4 delta encoding.
 				qmx_d0 = 'R'						///< Postings are compressed using QMX without delta encoding.
 				};
@@ -94,7 +96,7 @@ namespace JASS
 			class vocab_tripple
 				{
 				public:
-					slice	token;			///< The term as a string (needed for sorting the std::vectorvocab_tripple array later)
+					slice	token;				///< The term as a string (needed for sorting the std::vector vocab_tripple array later)
 					uint64_t term;				///< The pointer to the \0 terminated string in the CI_vovab_terms.bin file.
 					uint64_t offset;			///< The pointer to the postings stored in the CIpostings.bin file.
 					uint64_t impacts;			///< The number of impacts that exist for this term.
@@ -136,14 +138,18 @@ namespace JASS
 				};
 			
 		private:
-			file vocabulary_strings;						///< The concatination of UTS-8 encoded unique tokens in the collection.
-			file vocabulary;									///< Details about the term (including a pointer to the term, a pointer to the postings, and the quantum count.
-			file postings;										///< The postings lists.
-			file primary_keys;								///< The list of external identifiers (document primary keys).
-			std::vector<vocab_tripple> index_key;		///< The entry point into the JASS v1 index is CIvocab.bin, the index key.
-			std::vector<uint64_t> primary_key_offsets;///< A list of locations (on disk) of each primary key.
-			allocator_pool memory;							///< Memory used to store the impact-ordered postings list.
-			index_postings_impact impact_ordered;		///< The re-used impact ordered postings list.
+			file vocabulary_strings;							///< The concatination of UTS-8 encoded unique tokens in the collection.
+			file vocabulary;										///< Details about the term (including a pointer to the term, a pointer to the postings, and the quantum count.
+			file postings;											///< The postings lists.
+			file primary_keys;									///< The list of external identifiers (document primary keys).
+			std::vector<vocab_tripple> index_key;			///< The entry point into the JASS v1 index is CIvocab.bin, the index key.
+			std::vector<uint64_t> primary_key_offsets;	///< A list of locations (on disk) of each primary key.
+			allocator_pool memory;								///< Memory used to store the impact-ordered postings list.
+			index_postings_impact impact_ordered;			///< The re-used impact ordered postings list.
+			std::unique_ptr<compress_integer> encoder;	///< The integer encoder used to compress postings lists.
+			allocator_cpp<uint8_t> allocator;				///< C++ allocator between memory object and std::vector object
+			std::vector<uint8_t, allocator_cpp<uint8_t>> compressed_buffer;		///< The buffer used to compress postings into.
+			std::vector<slice, allocator_cpp<slice>> compressed_segments;			///< vector of pointers (and lengths) to the compressed postings.
 
 		private:
 			/*
@@ -176,12 +182,23 @@ namespace JASS
 				postings("CIpostings.bin", "w+b"),
 				primary_keys("CIdoclist.bin", "w+b"),
 				memory(1024 * 1024),								///< The allocation block size is currently 1MB, big enough for most postings lists (but it'll grow for larger ones).
-				impact_ordered(documents, memory)
+				impact_ordered(documents, memory),
+				encoder(std::make_unique<compress_integer_qmx_jass_v1>()),
+				allocator(memory),
+				compressed_buffer(allocator),
+				compressed_segments(allocator)
 				{
 				/*
-					For the initial bring-up the postings ar not compressed.
+					allocate space for storing the compressed postings.  But, allocate too much space as some
+					encoders can't write a sequence smaller than a minimum size,
 				*/
-				uint8_t codex = static_cast<uint8_t>(jass_v1_codex::uncompressed);
+				compressed_buffer.resize((documents + 1024) * sizeof(compress_integer::integer));
+				compressed_segments.reserve(index_postings_impact::largest_impact);
+
+				/*
+					Postings are compressed using compress_integer_qmx_jass_v1, the best that JASS v1 supported.
+				*/
+				uint8_t codex = static_cast<uint8_t>(jass_v1_codex::qmx);
 				postings.write(&codex, 1);
 				}
 

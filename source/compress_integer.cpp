@@ -42,7 +42,7 @@ namespace JASS
 	*/
 	void compress_integer::unittest(compress_integer &&compressor)
 		{
-		std::vector<uint32_t> every_case;
+		std::vector<integer> every_case;
 		size_t instance;
 
 		/*
@@ -55,5 +55,22 @@ namespace JASS
 				every_case.push_back((1LL << bitness) - 1);
 			unittest_one(compressor, every_case);
 			}
+
+		/*
+			Test the delta (d-gap) encoder.
+		*/
+		every_case = {4, 5, 7, 9, 12};
+		std::vector<integer> answer = {4, 1, 2, 2, 3};
+
+		std::vector<integer> every_encoded;
+		std::vector<integer> every_decoded;
+		every_encoded.resize(every_case.size());
+		auto got = d1_encode(&every_encoded[0], &every_case[0], every_case.size());
+		JASS_assert(got == every_case.size());
+		JASS_assert(every_encoded == answer);
+
+		got = d1_decode(&every_decoded[0], &every_encoded[0], every_encoded.size());
+		JASS_assert(got == every_case.size());
+		JASS_assert(every_decoded == every_case);
 		}
 	}

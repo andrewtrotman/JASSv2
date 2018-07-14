@@ -119,6 +119,10 @@ int main(void)
 	for (size_t term = 0; term < vocab_length; term++)
 		{
 		std::cout << strings.c_str() + vocab[term].term << "->";
+if (strncmp(strings.c_str() + vocab[term].term, "and", 4) == 0)
+{
+int x = 0;
+}
 		dump_postings_list(postings.c_str(), vocab[term].offset, vocab[term].impacts);
 		std::cout << '\n';
 		}
