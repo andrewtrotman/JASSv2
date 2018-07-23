@@ -69,6 +69,7 @@ namespace JASS
 		JASS_assert(got == every_case.size());
 		JASS_assert(every_encoded == answer);
 
+		every_decoded.resize(every_case.size());
 		got = d1_decode(&every_decoded[0], &every_encoded[0], every_encoded.size());
 		JASS_assert(got == every_case.size());
 		JASS_assert(every_decoded == every_case);

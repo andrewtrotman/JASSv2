@@ -46,8 +46,8 @@ namespace JASS
 			class impact
 				{
 				public:
-					impact_type impact_score;				///< The impact score.
-					compress_integer::integer  *start;						///< Pointer into the postings of the start of the document list for this impact score.
+					impact_type impact_score;								///< The impact score.
+					compress_integer::integer  *start;					///< Pointer into the postings of the start of the document list for this impact score.
 					compress_integer::integer  *finish;					///< Pointer into the postings of the end of the document list for this impact score.
 
 					/*
@@ -414,11 +414,12 @@ namespace JASS
 				std::stringstream output;
 				for (const auto &header : postings)
 					{
-					output << header.impact_score << ":";
+					output << static_cast<int>(header.impact_score) << ":";
 					for (const auto &document_id : header)
 						output << document_id << " ";
 					output << '\n';
 					}
+
 				JASS_assert(output.str() == serialised_answer);
 
 				puts("index_postings_impact::PASSED");

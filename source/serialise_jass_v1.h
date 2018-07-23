@@ -146,10 +146,11 @@ namespace JASS
 			std::vector<uint64_t> primary_key_offsets;	///< A list of locations (on disk) of each primary key.
 			allocator_pool memory;								///< Memory used to store the impact-ordered postings list.
 			index_postings_impact impact_ordered;			///< The re-used impact ordered postings list.
-			std::unique_ptr<compress_integer> encoder;	///< The integer encoder used to compress postings lists.
+			std::shared_ptr<compress_integer> encoder;	///< The integer encoder used to compress postings lists.
 			allocator_cpp<uint8_t> allocator;				///< C++ allocator between memory object and std::vector object
 			std::vector<uint8_t, allocator_cpp<uint8_t>> compressed_buffer;		///< The buffer used to compress postings into.
 			std::vector<slice, allocator_cpp<slice>> compressed_segments;			///< vector of pointers (and lengths) to the compressed postings.
+			uint8_t alignment;									///< Postings lists are padded to this alignment (used for codexes that require word alignment).
 
 		private:
 			/*
@@ -175,18 +176,21 @@ namespace JASS
 			/*!
 				@brief Constructor
 				@param documents [in] The number of documents in the collection (used to allocate re-usable buffers).
+				@param encoder [in] An shared pointer to a codex responsible for performing the compression of postings lists (default = compress_integer_QMX_jass_v1()).
+				@param alignment [in] The start address of a postings list is padded to start on these boundaries (needed for compress_integer_QMX_jass_v1 (use 16), and others).  Default = 0.
 			*/
-			serialise_jass_v1(size_t documents) :
+			serialise_jass_v1(size_t documents, std::shared_ptr<compress_integer> encoder = std::make_shared<compress_integer_qmx_jass_v1>(), int8_t alignment = 16) :
 				vocabulary_strings("CIvocab_terms.bin", "w+b"),
 				vocabulary("CIvocab.bin", "w+b"),
 				postings("CIpostings.bin", "w+b"),
 				primary_keys("CIdoclist.bin", "w+b"),
 				memory(1024 * 1024),								///< The allocation block size is currently 1MB, big enough for most postings lists (but it'll grow for larger ones).
 				impact_ordered(documents, memory),
-				encoder(std::make_unique<compress_integer_qmx_jass_v1>()),
+				encoder(encoder),
 				allocator(memory),
 				compressed_buffer(allocator),
-				compressed_segments(allocator)
+				compressed_segments(allocator),
+				alignment(alignment)
 				{
 				/*
 					allocate space for storing the compressed postings.  But, allocate too much space as some

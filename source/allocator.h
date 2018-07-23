@@ -147,23 +147,37 @@ namespace JASS
 			*/
 			static size_t realign(const void *address, size_t boundary)
 				{
-				/*
-					Get the pointer as an integer
-				*/
-				uintptr_t current_pointer = (uintptr_t)address;
-				
+				return realign((uintptr_t)address, boundary);
+				}
+
+			/*
+				ALLOCATOR::REALIGN()
+				--------------------
+			*/
+			/*!
+				@brief Compute the number of extra bytes of memory necessary for an allocation to start on an aligned boundary.
+				@details Aligning all allocations on a machine-word boundary is a space / space trade off.  Allocating a string of single
+				bytes one after the other and word-aligned would result in a machine word being used per byte.  To avoid this wastage this
+				class, by default, does not word-align any allocations.  However, it is sometimes necessary to word-align because some
+				assembly instructions require word-alignment.  This method return the number of bytes of padding necessary to make an
+				address word-aligned.
+				@param current_pointer [in] Compute the number of wasted bytes from this address to the next bounday
+				@param boundary [in] The byte-boundary to which this address should be alligned (e.g. 4 will ensure the least significant 2 bits are alwasys 00)
+				@return The number of bytes to add to address to make it aligned
+			*/
+			static size_t realign(uintptr_t current_pointer, size_t boundary)
+				{
 				/*
 					Compute the amount of padding that is needed to pad to a boundary of size alignment_boundary
 				*/
 				size_t padding = (current_pointer % boundary == 0) ? 0 : boundary - current_pointer % boundary;
-				
+
 				/*
 					Return the number of bytes that must be addedd to address to make it aligned
 				*/
 				return padding;
 				}
 
-			
 			/*
 				ALLOCATOR::REWIND()
 				-------------------

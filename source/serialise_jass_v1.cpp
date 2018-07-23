@@ -8,7 +8,9 @@
 
 #include "reverse.h"
 #include "checksum.h"
+#include "allocator.h"
 #include "serialise_jass_v1.h"
+#include "compress_integer_none.h"
 #include "index_manager_sequential.h"
 
 namespace JASS
@@ -78,7 +80,10 @@ namespace JASS
 		/*
 			Write out each impact header, and compress as we go so we know where the data will be stored.
 		*/
-		size_t start_of_postings = offset + impact_header_size;			// +1 because there's a 0 terminator at the end
+		size_t start_of_postings = offset + impact_header_size;									// +1 because there's a 0 terminator at the end
+		auto wastage = allocator::realign(start_of_postings, alignment);						// Pad the start of the postings to be on a word boundary
+		start_of_postings += wastage;
+
 		uint8_t *compress_into = &compressed_buffer[0];
 		auto compress_into_size = compressed_buffer.size();
 		compressed_segments.clear();
@@ -94,6 +99,7 @@ namespace JASS
 				Start loction on disk (uint64_t).
 			*/
 			uint64_t start_location = start_of_postings;
+
 			postings.write(&start_location, sizeof(start_location));
 
 			/*
@@ -111,8 +117,16 @@ namespace JASS
 				std::cout <<  "Failed to compress postings list while serialising" << std::ends;
 				exit(1);
 				}
+				
+			/*
+				Round up to the next word-aligned boundary
+			*/
+			auto padding = allocator::realign(took, alignment);
 
-			compressed_segments.push_back(slice(compress_into, took));
+			/*
+				Store it for writing out later
+			*/
+			compressed_segments.push_back(slice(compress_into, took + padding));
 			compress_into += took;
 			compress_into_size -= took;
 
@@ -127,7 +141,8 @@ namespace JASS
 			*/
 			uint32_t frequency = static_cast<uint32_t>(header.size());
 			postings.write(&frequency, sizeof(frequency));
-			start_of_postings = finish_location;
+
+			start_of_postings = finish_location + padding;
 			}
 
 		/*
@@ -135,6 +150,11 @@ namespace JASS
 		*/
 		uint8_t zero[] = {0, 0,  0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0};
 		postings.write(&zero, sizeof(zero));
+
+		/*
+			Pad so that the postings are on a word boundary
+		*/
+		postings.write(zero, wastage);			
 
 		/*
 			Write out each postings list segment.
@@ -214,13 +234,13 @@ namespace JASS
 			Checksum the index to make sure its correct.
 		*/
 		auto checksum = checksum::fletcher_16_file("CIvocab.bin");
-		JASS_assert(checksum == 10977);
+		JASS_assert(checksum == 10231);
 
 		checksum = checksum::fletcher_16_file("CIvocab_terms.bin");
 		JASS_assert(checksum == 25057);
 
 		checksum = checksum::fletcher_16_file("CIpostings.bin");
-		JASS_assert(checksum == 9785);
+		JASS_assert(checksum == 43058);
 
 		checksum = checksum::fletcher_16_file("CIdoclist.bin");
 		JASS_assert(checksum == 3045);
