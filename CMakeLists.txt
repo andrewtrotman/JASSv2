@@ -68,7 +68,7 @@ endif()
 if(WIN32)
 #	add_definitions("/arch:AVX")
 else()
-	add_definitions("-mavx2 -mbmi")
+	add_definitions("-mavx2 -mbmi -msse2 -mlzcnt")
 endif()
 
 #
