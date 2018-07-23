@@ -52,6 +52,8 @@ set(JASSlib_FILES
 	compress_integer_carry_8b.cpp
 	compress_integer_carryover_12.h
 	compress_integer_carryover_12.cpp
+	compress_integer_elias_gamma.h
+	compress_integer_elias_gamma.cpp
 	compress_integer_lyck_16.h
 	compress_integer_lyck_16.cpp
 	compress_integer_none.h
