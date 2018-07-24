@@ -18,6 +18,7 @@ namespace JASS
 	size_t compress_integer_elias_gamma::encode(void *encoded_as_void, size_t encoded_buffer_length, const integer *source, size_t source_integers)
 		{
 		uint8_t *encoded = static_cast<uint8_t *>(encoded_as_void);
+
 		/*
 			Zero the destinarin array
 		*/
@@ -33,19 +34,15 @@ namespace JASS
 			n = maths::floor_log2(*value);
 
 			/*
-				Write n 0-bits
+				Write n 0-bits (no write necessary as the bits are already 0).
 			*/
 			into += n;
 
 			/*
-				zig-zag the value - rotate the bits, placing the high bit at the low end (technically, a left circular shift of the low n bits).  We do this so that the unary ends with a 1, and that we don't store that 1 more than once.
-			*/
-			uint32_t zig_zag = ((*value & ~(1UL << n)) << 1) + 1;
-
-			/*
 				Append the value in binary
 			*/
-			uint32_t pattern = zig_zag << (into % 8);
+			uint32_t shift = 31 - (into % 32) - n;
+			uint32_t pattern = static_cast<uint64_t>(*value) << shift;
 			uint32_t *address = reinterpret_cast<uint32_t *>(encoded + (into / 8));
 			*address |= pattern;
 			into += n + 1;
@@ -61,16 +58,19 @@ namespace JASS
 	void compress_integer_elias_gamma::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
 		{
 		integer *end = decoded + integers_to_decode;
-		const uint32_t *source = reinterpret_cast<const uint32_t *>(source_as_void);
-		uint64_t value = *source;
-
+		uint64_t bits_used = 0;
 		do
 			{
-			uint32_t unary = _tzcnt_u64(value);
-			uint32_t binary = _bextr_u32(value, unary + 1, unary);
-			value >>= unary + unary + 1;
+			const uint32_t *source = reinterpret_cast<const uint32_t *>(source_as_void) + (bits_used / 32);
+			uint32_t value = *source;
 
-			*decoded = binary + (1 << unary);
+			uint32_t unary = _lzcnt_u32(value);
+			uint32_t binary = _bextr_u32(value, 31 - unary - unary, unary + 1);
+
+			value <<= unary + unary + 1;
+			bits_used = unary + unary + 1;
+
+			*decoded = binary;
 			decoded++;
 			}
 		while (decoded < end);
@@ -85,7 +85,7 @@ namespace JASS
 		compress_integer_elias_gamma codec;
 
 		std::vector<uint8_t> buffer(1024);
-		std::vector<integer> sequence  {1, 2, 3, 4, 5};
+		std::vector<integer> sequence  {16, 15, 14, 13, 12};
 		std::vector<integer> into(sequence.size());
 
 		auto encoded_length = codec.encode(&buffer[0], buffer.size(), &sequence[0], sequence.size());
