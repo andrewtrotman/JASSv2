@@ -61,6 +61,7 @@
 #include "compress_integer_bitpack_64.h"
 #include "ranking_function_atire_bm25.h"
 #include "compress_integer_elias_gamma.h"
+#include "compress_integer_elias_delta.h"
 #include "compress_integer_bitpack_128.h"
 #include "compress_integer_bitpack_256.h"
 #include "compress_integer_relative_10.h"
@@ -97,6 +98,9 @@ int main(void)
 
 	try
 		{
+		puts("compress_integer_elias_delta");
+		JASS::compress_integer_elias_delta::unittest();
+
 		puts("compress_integer_elias_gamma");
 		JASS::compress_integer_elias_gamma::unittest();
 
