@@ -40,7 +40,7 @@ namespace JASS
 		COMPRESS_INTEGER::UNITTEST()
 		----------------------------
 	*/
-	void compress_integer::unittest(compress_integer &&compressor)
+	void compress_integer::unittest(compress_integer &&compressor, bool can_do_zero)
 		{
 		std::vector<integer> every_case;
 		size_t instance;
@@ -48,7 +48,7 @@ namespace JASS
 		/*
 			Check long strings of integers of different bit lengths (from 0..2^32-1)
 		*/
-		for (uint32_t bitness = 0; bitness <= 32; bitness++)
+		for (uint32_t bitness = can_do_zero ? 0 : 1; bitness <= 32; bitness++)
 			{
 			every_case.clear();
 			for (instance = 0; instance < 1024; instance++)

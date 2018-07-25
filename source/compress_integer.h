@@ -154,8 +154,10 @@ namespace JASS
 				----------------------------
 			*/
 			/*!
-				@brief Unit test this class
+				@brief Unit test this class, assert on failure.
+				@param compressor [in] a compressor
+				@param can_do_zero [in] should 0 be included in the tests (some schemes cannot encode a 0 (e.g. Elias gama).
 			*/
-			static void unittest(compress_integer &&compressor);
+			static void unittest(compress_integer &&compressor, bool can_do_zero = true);
 		} ;
 	}

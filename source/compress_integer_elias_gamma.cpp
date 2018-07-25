@@ -82,7 +82,9 @@ namespace JASS
 			/*
 				Append the next byte because 0x80000000 uses 63 bits (31 + 31 + 1), so if we have a string of 31-bit integers than they won't all fit!
 			*/
-			value |= *(reinterpret_cast<const uint8_t *>(source_as_void) + (bits_used / 8) + 1) << (64 - (bits_used % 8));
+			uint64_t extra_byte = *(reinterpret_cast<const uint8_t *>(source_as_void) + (bits_used / 8) + 1);
+			size_t shift = 32 - (bits_used % 8);
+			value |= (extra_byte << 32) << shift;		// this can't be done in a single shift as sometimes we want to shift by 64 which is invalid in C/C++.
 
 			/*
 				get the
@@ -111,13 +113,15 @@ namespace JASS
 		compress_integer_elias_gamma codec;
 
 		std::vector<uint8_t> buffer(1024);
-		std::vector<integer> sequence = {0x80000000, 0x80000001, 16, 200, 201, 202};
+		std::vector<integer> sequence = {3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3};
 		std::vector<integer> into(sequence.size());
 
 		auto encoded_length = codec.encode(&buffer[0], buffer.size(), &sequence[0], sequence.size());
 		codec.decode(&into[0], sequence.size(), &buffer[0], encoded_length);
 
 		JASS_assert(into == sequence);
+
+		compress_integer::unittest(compress_integer_elias_gamma(), false);
 		puts("compress_integer_elias_gamma::PASSED");
 		}
 	}
