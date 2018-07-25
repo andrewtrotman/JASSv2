@@ -65,16 +65,19 @@ namespace JASS
 	*/
 	void compress_integer_elias_gamma::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
 		{
-		integer *end = decoded + integers_to_decode;
 		uint64_t bits_used = 0;
-		const uint8_t *base = static_cast<const uint8_t *>(source_as_void);
-		do
+
+		for (integer *end = decoded + integers_to_decode; decoded < end; decoded++)
 			{
 			/*
 				read as many bits as we can from the lowest possible address
 			*/
-			const uint8_t *address = base + (bits_used / 8);
+			const uint8_t *address = static_cast<const uint8_t *>(source_as_void) + (bits_used / 8);
 			const uint64_t *source = reinterpret_cast<const uint64_t *>(address);
+			/*
+				but we might not be aligned with the start of the word so read the next word to get the top few bits
+			*/
+			uint64_t extra_byte = *reinterpret_cast<const uint64_t *>(address + 1);
 
 			/*
 				dismiss the bits we're already used
@@ -84,26 +87,30 @@ namespace JASS
 			/*
 				Append the next byte because 0x80000000 uses 63 bits (31 + 31 + 1), so if we have a string of 31-bit integers than they won't all fit!
 			*/
-			uint64_t extra_byte = *reinterpret_cast<const uint64_t *>(address + 1);
-			size_t shift = 32 - (bits_used % 8);
-			value |= (extra_byte << 32) << shift;		// this can't be done in a single shift as sometimes we want to shift by 64 which is invalid in C/C++.
+			value |= (extra_byte << (8 - (bits_used % 8))) & 0xFF00000000000000;
 
 			/*
-				get the
+				get the width
 			*/
 			uint64_t unary = _tzcnt_u64(value);
+
+			/*
+				get the zig-zag encoded binary
+			*/
 			uint64_t zig_zag = _bextr_u64(value, unary, unary + 1);
 
+			/*
+				unzig-zag it and store it
+			*/
 			uint32_t hight_bit = 1UL << unary;
 			uint32_t binary = (zig_zag >> 1) | hight_bit;
-
-			value >>= unary + unary + 1;
-			bits_used += unary + unary + 1;
-
 			*decoded = binary;
-			decoded++;
+
+			/*
+				Remember how much we've already used
+			*/
+			bits_used += unary + unary + 1;
 			}
-		while (decoded < end);
 		}
 
 	/*
@@ -123,7 +130,7 @@ namespace JASS
 
 		JASS_assert(into == sequence);
 
-//		compress_integer::unittest(compress_integer_elias_gamma(), false);
+		compress_integer::unittest(compress_integer_elias_gamma(), false);
 		puts("compress_integer_elias_gamma::PASSED");
 		}
 	}
