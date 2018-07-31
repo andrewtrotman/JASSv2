@@ -65,14 +65,14 @@ namespace JASS
 			into += unary + 1;
 
 			/*
-				We now know the length of the integer so we can encode the actual value in binary (without zig-zagging)
+				We now know the length of the integer so we can encode the actual value in binary (without zig-zagging) with the high bit turned off
 			*/
 			shift = into % 8;
-			pattern = *value << shift;
+			pattern = (*value & ~(1ULL << (n - 1))) << shift;
 			address = reinterpret_cast<uint64_t *>(encoded + (into / 8));
 			*address |= pattern;
 
-			into += n + 1;
+			into += n - 1;
 			}
 
 		return ((into + 7) / 8);
@@ -119,13 +119,14 @@ namespace JASS
 			uint32_t binary = (zig_zag >> 1) | hight_bit;
 
 			uint64_t result = _bextr_u64(value, unary + unary + 1, binary);
+			result |= 1 << (binary - 1);
 
 			*decoded = result;
 
 			/*
 				Remember how much we've already used
 			*/
-			bits_used += unary + unary + 1 + binary;
+			bits_used += unary + unary + binary;
 			}
 		}
 
@@ -138,7 +139,7 @@ namespace JASS
 		compress_integer_elias_delta codec;
 
 		std::vector<uint8_t> buffer(1024);
-		std::vector<integer> sequence = {2, 3, 4, 5, 6, 7, 8, 9, 10};
+		std::vector<integer> sequence = {1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, };
 		std::vector<integer> into(sequence.size());
 
 		auto encoded_length = codec.encode(&buffer[0], buffer.size(), &sequence[0], sequence.size());
@@ -146,7 +147,7 @@ namespace JASS
 
 		JASS_assert(into == sequence);
 
-//		compress_integer::unittest(compress_integer_elias_gamma(), false);
+		compress_integer::unittest(compress_integer_elias_delta(), false);
 		puts("compress_integer_elias_delta::PASSED");
 		}
 	}
