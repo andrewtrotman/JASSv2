@@ -32,7 +32,6 @@ namespace JASS
 		an overloaded operator[] would need to return something that can be assigned to - which would be an inter
 		mediate object that needs to know which bit is being referred to, and that would result in an object creation
 		which is undesirable.
-
 	*/
 	class bitstring
 		{

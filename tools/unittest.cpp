@@ -18,6 +18,7 @@
 #include "threads.h"
 #include "checksum.h"
 #include "quantize.h"
+#include "bitstream.h"
 #include "decode_d0.h"
 #include "decode_d1.h"
 #include "bitstring.h"
@@ -76,6 +77,8 @@
 #include "compress_integer_simple_16_packed.h"
 #include "compress_integer_prn_512_carryover.h"
 #include "compress_integer_bitpack_32_reduced.h"
+#include "compress_integer_elias_gamma_bitwise.h"
+#include "compress_integer_elias_delta_bitwise.h"
 
 /*
 	MAIN()
@@ -98,6 +101,15 @@ int main(void)
 
 	try
 		{
+		puts("bitstream");
+		JASS::bitstream::unittest();
+
+		puts("compress_integer_elias_gamma_bitwise");
+		JASS::compress_integer_elias_gamma_bitwise::unittest();
+
+		puts("compress_integer_elias_delta_bitwise");
+		JASS::compress_integer_elias_delta_bitwise::unittest();
+
 		puts("compress_integer_elias_delta");
 		JASS::compress_integer_elias_delta::unittest();
 

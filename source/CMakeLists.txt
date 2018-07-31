@@ -21,6 +21,7 @@ set(JASSlib_FILES
 	asserts.h
 	asserts.cpp
 	binary_tree.h
+	bitstream.h
 	bitstring.h
 	bitstring.cpp
 	channel.h
@@ -54,8 +55,10 @@ set(JASSlib_FILES
 	compress_integer_carryover_12.cpp
 	compress_integer_elias_delta.h
 	compress_integer_elias_delta.cpp
+	compress_integer_elias_delta_bitwise.h
 	compress_integer_elias_gamma.h
 	compress_integer_elias_gamma.cpp
+	compress_integer_elias_gamma_bitwise.h
 	compress_integer_lyck_16.h
 	compress_integer_lyck_16.cpp
 	compress_integer_none.h

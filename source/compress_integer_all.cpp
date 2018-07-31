@@ -30,35 +30,39 @@
 #include "compress_integer_simple_8b_packed.h"
 #include "compress_integer_prn_512_carryover.h"
 #include "compress_integer_bitpack_32_reduced.h"
+#include "compress_integer_elias_gamma_bitwise.h"
+#include "compress_integer_elias_delta_bitwise.h"
 
 namespace JASS
 	{
 	/*
 		List of known compressors
 	*/
-	static compress_integer_none none;										///< identity compressor
-	static compress_integer_prn_512 prn512;								///< prn-packed into 512-bit integers
-	static compress_integer_carry_8b carry_8b;							///< Carry-8b compressor
-	static compress_integer_simple_9 simple_9;							///< Simple-9 compressor
-	static compress_integer_simple_8b simple_8b;							///< Simple-8b compressor
-	static compress_integer_simple_16 simple_16;							///< Simple-16 compressor
-	static compress_integer_bitpack_64 bitpack_64;						///< fixed width bin-packed into 64-bit integers
-	static compress_integer_elias_gamma elias_gamma;					///< Elias gamma using bit-extract instructions
-	static compress_integer_elias_delta elias_delta;					///< Elias gamma using bit-extract instructions
-	static compress_integer_qmx_jass_v1 qmx_jass_v1;					///< QMX compressor compatile with JASS v1 (do not use)
-	static compress_integer_bitpack_128 bitpack_128;					///< fixed width bin-packed into 128-bit integers
-	static compress_integer_bitpack_256 bitpack_256;					///< fixed width bin-packed into 256-bit integers
-	static compress_integer_relative_10 relative_10;					///< Relative-10 compressor
-	static compress_integer_carryover_12 carryover_12;					///< Carryover-12 compressor
-	static compress_integer_qmx_original qmx_original;					///< QMX compressor
-	static compress_integer_qmx_improved qmx_improved;					///< Improved QMX compressor
-	static compress_integer_stream_vbyte stream_vbyte;					///< Stream VByte compressor
-	static compress_integer_variable_byte variable_byte;				///< Variable Byte compressor
-	static compress_integer_simple_9_packed simple_9_packed;			///< Packed Simple-9 compressor
-	static compress_integer_simple_16_packed simple_16_packed;		///< Packed Simple-16 compressor
-	static compress_integer_simple_8b_packed simple_8b_packed;		///< Packed Simple-8b compressor
-	static compress_integer_prn_512_carryover prn_512_carryover;	///< fprn-packed into 512-bit integers with carryover
-	static compress_integer_bitpack_32_reduced bitpack_32_reduced;	///< fixed width bin-packed into 32-bit integers
+	static compress_integer_none none;											///< identity compressor
+	static compress_integer_prn_512 prn512;									///< prn-packed into 512-bit integers
+	static compress_integer_carry_8b carry_8b;								///< Carry-8b compressor
+	static compress_integer_simple_9 simple_9;								///< Simple-9 compressor
+	static compress_integer_simple_8b simple_8b;								///< Simple-8b compressor
+	static compress_integer_simple_16 simple_16;								///< Simple-16 compressor
+	static compress_integer_bitpack_64 bitpack_64;							///< fixed width bin-packed into 64-bit integers
+	static compress_integer_elias_gamma elias_gamma;						///< Elias gamma using bit-extract instructions
+	static compress_integer_elias_delta elias_delta;						///< Elias gamma using bit-extract instructions
+	static compress_integer_qmx_jass_v1 qmx_jass_v1;						///< QMX compressor compatile with JASS v1 (do not use)
+	static compress_integer_bitpack_128 bitpack_128;						///< fixed width bin-packed into 128-bit integers
+	static compress_integer_bitpack_256 bitpack_256;						///< fixed width bin-packed into 256-bit integers
+	static compress_integer_relative_10 relative_10;						///< Relative-10 compressor
+	static compress_integer_carryover_12 carryover_12;						///< Carryover-12 compressor
+	static compress_integer_qmx_original qmx_original;						///< QMX compressor
+	static compress_integer_qmx_improved qmx_improved;						///< Improved QMX compressor
+	static compress_integer_stream_vbyte stream_vbyte;						///< Stream VByte compressor
+	static compress_integer_variable_byte variable_byte;					///< Variable Byte compressor
+	static compress_integer_simple_9_packed simple_9_packed;				///< Packed Simple-9 compressor
+	static compress_integer_simple_16_packed simple_16_packed;			///< Packed Simple-16 compressor
+	static compress_integer_simple_8b_packed simple_8b_packed;			///< Packed Simple-8b compressor
+	static compress_integer_prn_512_carryover prn_512_carryover;		///< fprn-packed into 512-bit integers with carryover
+	static compress_integer_bitpack_32_reduced bitpack_32_reduced;		///< fixed width bin-packed into 32-bit integers
+	static compress_integer_elias_gamma_bitwise elias_gamma_bitwise;	///< Elias gamma done with bit-wise instructions (slow)
+	static compress_integer_elias_delta_bitwise elias_delta_bitwise;	///< Elias delta done with bit-wise instructions (slow)
 
 	/*!
 		@brief Table of known compressors and their command line parameter names and actual names
@@ -69,7 +73,9 @@ namespace JASS
 			{"-cc",    "--compress_carryover_12", "Carryover-12", &carryover_12},
 			{"-cC",    "--compress_carry_8b", "Carry-8b", &carry_8b},
 			{"-cd",    "--compress_elias_delta", "Elias delta", &elias_delta},
+			{"-cD",    "--compress_elias_delta_bitwise", "Elias delta with bit instuctions (slow)", &elias_delta_bitwise},
 			{"-cg",    "--compress_elias_gamma", "Elias gamma", &elias_gamma},
+			{"-cG",    "--compress_elias_gamma_bitwise", "Elias gamma with bit instuctions (slow)", &elias_gamma_bitwise},
 			{"-cn",    "--compress_none", "None", &none},
 			{"-cp",    "--compress_simple_9_packed", "Optimal Packed Simple-9", &simple_9_packed},
 			{"-cq",    "--compress_simple_16_packed", "Optimal Packed Simple-16", &simple_16_packed},
