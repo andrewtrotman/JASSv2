@@ -14,6 +14,8 @@
 #include "compress_integer_simple_8b.h"
 #include "compress_integer_simple_16.h"
 #include "compress_integer_bitpack_64.h"
+#include "compress_integer_elias_gamma.h"
+#include "compress_integer_elias_delta.h"
 #include "compress_integer_bitpack_128.h"
 #include "compress_integer_bitpack_256.h"
 #include "compress_integer_qmx_jass_v1.h"
@@ -41,6 +43,8 @@ namespace JASS
 	static compress_integer_simple_8b simple_8b;							///< Simple-8b compressor
 	static compress_integer_simple_16 simple_16;							///< Simple-16 compressor
 	static compress_integer_bitpack_64 bitpack_64;						///< fixed width bin-packed into 64-bit integers
+	static compress_integer_elias_gamma elias_gamma;					///< Elias gamma using bit-extract instructions
+	static compress_integer_elias_delta elias_delta;					///< Elias gamma using bit-extract instructions
 	static compress_integer_qmx_jass_v1 qmx_jass_v1;					///< QMX compressor compatile with JASS v1 (do not use)
 	static compress_integer_bitpack_128 bitpack_128;					///< fixed width bin-packed into 128-bit integers
 	static compress_integer_bitpack_256 bitpack_256;					///< fixed width bin-packed into 256-bit integers
@@ -64,6 +68,8 @@ namespace JASS
 			{
 			{"-cc",    "--compress_carryover_12", "Carryover-12", &carryover_12},
 			{"-cC",    "--compress_carry_8b", "Carry-8b", &carry_8b},
+			{"-cd",    "--compress_elias_delta", "Elias delta", &elias_delta},
+			{"-cg",    "--compress_elias_gamma", "Elias gamma", &elias_gamma},
 			{"-cn",    "--compress_none", "None", &none},
 			{"-cp",    "--compress_simple_9_packed", "Optimal Packed Simple-9", &simple_9_packed},
 			{"-cq",    "--compress_simple_16_packed", "Optimal Packed Simple-16", &simple_16_packed},

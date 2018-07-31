@@ -97,6 +97,7 @@ namespace JASS
 			*/
 			const uint8_t *address = static_cast<const uint8_t *>(source_as_void) + (bits_used / 8);
 			const uint64_t *source = reinterpret_cast<const uint64_t *>(address);
+
 			/*
 				dismiss the bits we're already used
 			*/
@@ -108,20 +109,14 @@ namespace JASS
 			uint64_t unary = _tzcnt_u64(value);
 
 			/*
-				get the zig-zag encoded length of the integer
+				get the zig-zag encoded length of the integer and un-zig-zag it.
 			*/
-			uint64_t zig_zag = _bextr_u64(value, unary, unary + 1);
+			uint32_t binary = (_bextr_u64(value, unary, unary + 1) >> 1) | (1UL << unary);
 
 			/*
-				unzig-zag it
+				get the binary value that is encoded
 			*/
-			uint32_t hight_bit = 1UL << unary;
-			uint32_t binary = (zig_zag >> 1) | hight_bit;
-
-			uint64_t result = _bextr_u64(value, unary + unary + 1, binary);
-			result |= 1 << (binary - 1);
-
-			*decoded = result;
+			*decoded = _bextr_u64(value, unary + unary + 1, binary) | (1 << (binary - 1));
 
 			/*
 				Remember how much we've already used

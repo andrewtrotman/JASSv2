@@ -32,13 +32,15 @@
 */
 #define NUMBER_OF_DOCUMENTS (1024 * 1024 * 20)
 
-std::vector<uint32_t> postings_list;				// Buffer to hold the contents of the current postings list.  This is way too large, but only allocated once.
-std::vector<uint32_t> compressed_postings_list;		// Buffer to hold the compressed postings list
-std::vector<uint32_t> decompressed_postings_list;	// Buffer to hold the decompressed postings list - after compression then decompression this should equal postings_list[]
-std::vector<uint64_t> decompress_time;				// Buffer holding the sum of times to decompress postings lists of this length
-std::vector<uint64_t> decompress_count;				// Buffer holding the number of postings list of this length
-std::vector<uint64_t> compressed_size;				// Buffer holding the size (in bytes) of each compressed string
-std::vector<uint64_t> compressed_count;				// Buffer holding the number of postings list of this length, should be identical to decompress_count
+std::vector<uint32_t> postings_list;					//< Buffer to hold the contents of the current postings list.  This is way too large, but only allocated once.
+std::vector<uint32_t> compressed_postings_list;		//< Buffer to hold the compressed postings list
+std::vector<uint32_t> decompressed_postings_list;	//< Buffer to hold the decompressed postings list - after compression then decompression this should equal postings_list[]
+std::vector<uint64_t> decompress_time;					//< Buffer holding the sum of times to decompress postings lists of this length
+std::vector<uint64_t> decompress_count;				//< Buffer holding the number of postings list of this length
+std::vector<uint64_t> compressed_size;					//< Buffer holding the size (in bytes) of each compressed string
+std::vector<uint64_t> compressed_count;				//< Buffer holding the number of postings list of this length, should be identical to decompress_count
+
+bool data_counts_from_zero = false;						///< If the postings count from 0 then add 1 to each document ID to avoid compressing 0s (because Elias gamma and Elias delta cannot encode 0s)
 
 /*
 	DRAW_HISTOGRAM()
@@ -60,16 +62,23 @@ void draw_histogram(void)
 */
 void generate_differences(std::vector<uint32_t> &postings_list)
 	{
-	uint32_t previous = 0;
+	uint32_t previous = postings_list[0];
 	size_t length = postings_list.size();
 	
-	for (size_t current = 0; current < length; current++)
+	for (size_t current = 1; current < length; current++)
 		{
 		uint32_t was = postings_list[current];
 
 		postings_list[current] -= previous;
 		previous = was;
 		}
+
+	/*
+		Some codexes cannot encode zeros (e.g. Elias gamma and Elias delta) so if the data counts document IDs from 0 then we have to add 1.
+		This works because everything is delta encoded from the first ID so we just add 1 to the first ID.
+	*/
+	if (data_counts_from_zero)
+		postings_list[0]++;
 	}
 
 /*
@@ -121,6 +130,8 @@ int main(int argc, const char *argv[])
 			(
 			JASS::commandline::note("\nFILENAME PARSING\n----------------"),
 			JASS::commandline::parameter("-f", "--filename", "Name of encoded postings list file", filename),
+			JASS::commandline::parameter("-z", "--has-zeros", "The postings file counts from 0, so add 1 to avoid compressing 0s", data_counts_from_zero),
+
 			JASS::commandline::note("\nCOMPRESSORS\n-----------")
 			),
 		command_line,
