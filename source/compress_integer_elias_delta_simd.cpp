@@ -294,7 +294,8 @@ namespace JASS
 		uint32_t *into = (uint32_t *)mem.data();
 		compressor.rewind();
 		for (size_t x = 1; x <= end; x++)
-			compressor.push_selector(into, x);
+			if (compressor.push_selector(into, x))
+				into++;
 
 		compressor.flush(into);				// check the end case when we don't need to flush
 
