@@ -73,6 +73,7 @@
 #include "compress_integer_carryover_12.h"
 #include "compress_integer_variable_byte.h"
 #include "compress_integer_simple_9_packed.h"
+#include "compress_integer_elias_delta_simd.h"
 #include "compress_integer_simple_8b_packed.h"
 #include "compress_integer_simple_16_packed.h"
 #include "compress_integer_prn_512_carryover.h"
@@ -101,6 +102,9 @@ int main(void)
 
 	try
 		{
+		puts("compress_integer_elias_delta_simd");
+		JASS::compress_integer_elias_delta_simd::unittest();
+
 		puts("bitstream");
 		JASS::bitstream::unittest();
 

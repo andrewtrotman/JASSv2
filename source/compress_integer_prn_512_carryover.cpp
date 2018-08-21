@@ -287,8 +287,8 @@ namespace JASS
 }
 
 	/*
-		COMPRESS_INTEGER_PRN_512::UNITTEST()
-		------------------------------------
+		COMPRESS_INTEGER_PRN_512_CARRYOVER::UNITTEST()
+		----------------------------------------------
 	*/
 	void compress_integer_prn_512_carryover::unittest(void)
 		{

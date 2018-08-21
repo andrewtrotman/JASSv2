@@ -56,6 +56,8 @@ set(JASSlib_FILES
 	compress_integer_elias_delta.h
 	compress_integer_elias_delta.cpp
 	compress_integer_elias_delta_bitwise.h
+	compress_integer_elias_delta_simd.h
+	compress_integer_elias_delta_simd.cpp
 	compress_integer_elias_gamma.h
 	compress_integer_elias_gamma.cpp
 	compress_integer_elias_gamma_bitwise.h
