@@ -65,7 +65,6 @@ namespace JASS
 	*/
 	bool compress_integer_elias_delta_simd::push_selector(uint32_t *destination, uint8_t raw)
 		{
-std::cout << "[" << (int)raw << "]";
 		/*
 			Write out the length of the selector in unary
 		*/
@@ -85,7 +84,6 @@ std::cout << "[" << (int)raw << "]";
 		if (selector_bits_used > 32)
 			{
 			*destination = accumulated_selector & 0xFFFFFFFFFFFFFFFF;
-			std::cout << "<WS:" << *destination << ">";
 			accumulated_selector >>= 32;
 			selector_bits_used -= 32;
 
@@ -114,10 +112,9 @@ std::cout << "[" << (int)raw << "]";
 		*/
 		uint32_t *selector = destination;
 		destination++;
-printf("S");
 		uint32_t *payload = destination;
 		destination += WORDS;
-printf("P");
+
 		while (1)
 			{
 			/*
@@ -174,12 +171,9 @@ printf("P");
 				/*
 					We push the selector width (max_width) here.
 				*/
-if (carryover == 0)
-				if (push_selector(selector, max_width))
-					{
-					printf("S");
-					selector = destination++;
-					}
+				if (carryover == 0)
+					if (push_selector(selector, max_width))
+						selector = destination++;
 
 				/*
 					Manage the carryover
@@ -218,7 +212,6 @@ if (carryover == 0)
 
 			payload = destination;
 			destination += WORDS;
-printf("P");
 			array += integers_encoded;
 			elements -= integers_encoded;
 			if (elements == 0)
@@ -229,9 +222,8 @@ printf("P");
 			Flush the last selector.
 		*/
 		*selector = accumulated_selector & 0xFFFFFFFFFFFFFFFF;			// flush the final selector
-std::cout << "<WSf:" << *selector << ">";
 
-		return  (uint8_t *)destination - (uint8_t *)encoded;
+		return reinterpret_cast<uint8_t *>(destination) - reinterpret_cast<uint8_t *>(encoded);
 		}
 
 	alignas(64) static const uint32_t mask_set[33][16]=
@@ -292,7 +284,7 @@ std::cout << "<WSf:" << *selector << ">";
 			*/
 			uint64_t remainder = 32 - selector_bits_used;
 			accumulated_selector = *selector_set++;
-std::cout << "<RS:" << accumulated_selector << ">";
+
 			unary = _tzcnt_u64(accumulated_selector);
 			accumulated_selector >>= unary;
 			selector_bits_used = unary;
@@ -313,7 +305,6 @@ std::cout << "<RS:" << accumulated_selector << ">";
 			{
 			uint32_t low_bits = accumulated_selector;
 			accumulated_selector = *selector_set++;
-std::cout << "<RS:" << accumulated_selector << ">";
 			uint32_t high_bits = _bextr_u64(accumulated_selector, 0, 32 - selector_bits_used);
 			uint32_t zig_zag = (high_bits << (32 - selector_bits_used)) | low_bits;
 			decoded = (zig_zag >> 1) | (1UL << unary);
@@ -331,7 +322,6 @@ std::cout << "<RS:" << accumulated_selector << ">";
 		/*
 			Return the decoded selector
 		*/
-std::cout << "[" << decoded << "]";
 		return decoded;
 		}
 
@@ -341,35 +331,28 @@ std::cout << "[" << decoded << "]";
 	*/
 	void compress_integer_elias_delta_simd::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
 		{
+uint32_t integers_decoded = 0;
 		uint32_t used = 0;
 		__m256i mask;
 		const uint32_t *source = reinterpret_cast<const uint32_t *>(source_as_void);
-		const uint32_t *end_of_source = reinterpret_cast<const uint32_t *>(reinterpret_cast<const uint8_t *>(source_as_void) + source_length);
 		__m256i *into = (__m256i *)decoded;
-
+		__m256i *end_of_output = (__m256i *)(decoded + integers_to_decode);
 		/*
 			Set up the initial selector
 		*/
 		selector_bits_used = 0;
 		accumulated_selector = *source;
-std::cout << "\n<RS:" << accumulated_selector << ">";
 
 		/*
 			Set up the initial payload
 		*/
-std::cout << "P";
 		__m256i payload1 = _mm256_loadu_si256((__m256i *)(source + 1));
 		__m256i payload2 = _mm256_loadu_si256((__m256i *)(source + 9));
 		source += 17;
 
-		while (source < end_of_source)
+		while (into < end_of_output)
 			{
 			uint32_t width = decode_selector(source);
-
-if (width == 6)
-{
-int x = 0;
-}
 
 			if (used + width > 32)
 				{
@@ -385,7 +368,6 @@ int x = 0;
 				payload1 = _mm256_loadu_si256((__m256i *)(source));
 				payload2 = _mm256_loadu_si256((__m256i *)(source + 8));
 				source += 16;
-std::cout << "P";
 
 				/*
 					get the low bits and write to memory
@@ -401,6 +383,7 @@ std::cout << "P";
 
 				used = used + width - 32;
 				into += 2;
+integers_decoded += 16;
 				}
 			else
 				{
@@ -412,6 +395,7 @@ std::cout << "P";
 
 				used += width;
 				into += 2;
+integers_decoded += 16;
 				}
 		}
 	}
@@ -424,7 +408,7 @@ std::cout << "P";
 		{
 		compress_integer_elias_delta_simd compressor;
 
-//		compress_integer::unittest(compress_integer_elias_delta_simd());
+		compress_integer::unittest(compress_integer_elias_delta_simd(), false);
 
 		std::vector<uint32_t> broken_sequence =
 			{
@@ -457,9 +441,7 @@ std::cout << "P";
 			25,9,6,9,6,3,41,17,15,11,33,8,1,1,1,1			// 6 bits
 			};
 
-puts("\n");
 		unittest_one(compressor, broken_sequence);
-puts("\n");
 
 		std::vector<uint32_t> second_broken_sequence =
 			{
@@ -472,7 +454,7 @@ puts("\n");
 			6, 2, 1, 1, 3, 3, 7, 3, 2, 1, 2, 4, 3, 1, 2, 1,			// 3 bits <31 bits>, carryover 1 from next line
 			6, 2, 2, 1															// 3 bits
 			};
-puts("\n");
+
 		unittest_one(compressor, second_broken_sequence);
 
 exit(1);
