@@ -65,6 +65,7 @@ namespace JASS
 	*/
 	bool compress_integer_elias_delta_simd::push_selector(uint32_t *destination, uint8_t raw)
 		{
+std::cout << "[" << (int)raw << "]";
 		/*
 			Write out the length of the selector in unary
 		*/
@@ -173,6 +174,7 @@ printf("P");
 				/*
 					We push the selector width (max_width) here.
 				*/
+if (carryover == 0)
 				if (push_selector(selector, max_width))
 					{
 					printf("S");
@@ -277,37 +279,59 @@ std::cout << "<WSf:" << *selector << ">";
 	*/
 	uint32_t compress_integer_elias_delta_simd::decode_selector(const uint32_t *&selector_set)
 		{
-		/*
-			If we need to read more bits if we need to.  As values 1..32 all fit within 11 bits, a read will happen less often than once per integer
-		*/
-		if (selector_bits_used >= 32)
-			{
-			selector_bits_used -= 32;
-			uint64_t next_word = *selector_set++;
-std::cout << "<RS:" << next_word << ">";
-
-			accumulated_selector = accumulated_selector | (next_word << (32 - selector_bits_used));
-			}
+		uint64_t unary;
+		uint32_t decoded;
 
 		/*
 			Get the width
 		*/
-		uint64_t unary = _tzcnt_u64(accumulated_selector);
+		if (accumulated_selector == 0)
+			{
+			/*
+				The unary doesn't fit in the selector and is spread across 2 words
+			*/
+			uint64_t remainder = 32 - selector_bits_used;
+			accumulated_selector = *selector_set++;
+std::cout << "<RS:" << accumulated_selector << ">";
+			unary = _tzcnt_u64(accumulated_selector);
+			accumulated_selector >>= unary;
+			selector_bits_used = unary;
+			unary += remainder;
+
+			}
+		else
+			{
+			unary = _tzcnt_u64(accumulated_selector);
+			selector_bits_used += unary;
+			accumulated_selector >>= unary;
+			}
 
 		/*
 			Get the zig-zag encoded binary and unzig-zag it
 		*/
-		uint32_t decoded = (_bextr_u64(accumulated_selector, unary, unary + 1) >> 1) | (1UL << unary);
+		if (selector_bits_used + unary > 32)
+			{
+			uint32_t low_bits = accumulated_selector;
+			accumulated_selector = *selector_set++;
+std::cout << "<RS:" << accumulated_selector << ">";
+			uint32_t high_bits = _bextr_u64(accumulated_selector, 0, 32 - selector_bits_used);
+			uint32_t zig_zag = (high_bits << (32 - selector_bits_used)) | low_bits;
+			decoded = (zig_zag >> 1) | (1UL << unary);
 
-		/*
-			Remember how much we've already used
-		*/
-		selector_bits_used += unary + unary + 1;
-		accumulated_selector >>= unary + unary + 1;
+			selector_bits_used = selector_bits_used + unary - 32;
+			accumulated_selector >>= selector_bits_used;
+			}
+		else
+			{
+			decoded = (_bextr_u64(accumulated_selector, 0, unary + 1) >> 1) | (1UL << unary);
+			selector_bits_used += unary + 1;
+			accumulated_selector >>= unary + 1;
+			}
 
 		/*
 			Return the decoded selector
 		*/
+std::cout << "[" << decoded << "]";
 		return decoded;
 		}
 
@@ -326,7 +350,7 @@ std::cout << "<RS:" << next_word << ">";
 		/*
 			Set up the initial selector
 		*/
-		selector_bits_used = 32;
+		selector_bits_used = 0;
 		accumulated_selector = *source;
 std::cout << "\n<RS:" << accumulated_selector << ">";
 
@@ -341,6 +365,11 @@ std::cout << "P";
 		while (source < end_of_source)
 			{
 			uint32_t width = decode_selector(source);
+
+if (width == 6)
+{
+int x = 0;
+}
 
 			if (used + width > 32)
 				{
@@ -361,14 +390,14 @@ std::cout << "P";
 				/*
 					get the low bits and write to memory
 				*/
-				high_bits1 = _mm256_slli_epi32(high_bits1, 32 - used);
-				high_bits2 = _mm256_slli_epi32(high_bits2, 32 - used);
+				high_bits1 = _mm256_slli_epi32(high_bits1, width - (32 - used));
+				high_bits2 = _mm256_slli_epi32(high_bits2, width - (32 - used));
 
 				mask = _mm256_loadu_si256((__m256i *)mask_set[used + width - 32]);		// the remaining bits in the AVX word
 				_mm256_storeu_si256(into, _mm256_or_si256(_mm256_and_si256(payload1, mask), high_bits1));
 				_mm256_storeu_si256(into + 1, _mm256_or_si256(_mm256_and_si256(payload2, mask), high_bits2));
-				payload1 = _mm256_srli_epi32(payload1, width);
-				payload2 = _mm256_srli_epi32(payload2, width);
+				payload1 = _mm256_srli_epi32(payload1, used + width - 32);
+				payload2 = _mm256_srli_epi32(payload2, used + width - 32);
 
 				used = used + width - 32;
 				into += 2;
@@ -419,7 +448,7 @@ std::cout << "P";
 			2,1,1,1,2,2,1,4,1,1,4,1,1,1,1,1,			// 3 bits
 			1,1,1,1,1,2,5,3,1,3,1,1,4,1,2,1,			// 3 bits
 			3,1,3,1,1,1,1,1,1,1,1,1,1,1,1,1,			// 2 bits						// 304 integers
-			1,1,1,1,1,2,2,1,1,1,8,3,1,2,56,2,		// 6 bits (expand to 7)		// 320 integers
+			1,1,1,1,1,2,2,1,1,1,8,3,1,2,56,2,		// 6 bits						// 320 integers
 
 			12,1,6,70,68,25,13,44,36,22,4,95,19,5,39,8, // 7 bits
 			25,14,9,8,27,6,1,1,8,11,8,3,4,1,2,8,			// 5 bits
@@ -430,6 +459,7 @@ std::cout << "P";
 
 puts("\n");
 		unittest_one(compressor, broken_sequence);
+puts("\n");
 
 		std::vector<uint32_t> second_broken_sequence =
 			{
