@@ -84,6 +84,7 @@ namespace JASS
 		if (selector_bits_used > 32)
 			{
 			*destination = accumulated_selector & 0xFFFFFFFFFFFFFFFF;
+			std::cout << "<WS:" << *destination << ">";
 			accumulated_selector >>= 32;
 			selector_bits_used -= 32;
 
@@ -94,64 +95,14 @@ namespace JASS
 		}
 
 	/*
-		COMPRESS_INTEGER_ELIAS_DELTA_SIMD::FLUSH()
-		------------------------------------------
-	*/
-	void compress_integer_elias_delta_simd::flush(uint32_t *destination)
-		{
-		/*
-			Flush the selector.
-		*/
-		uint32_t value_to_write = accumulated_selector & 0xFFFFFFFFFFFFFFFF;
-		*destination = value_to_write;
-		}
-
-	/*
-		COMPRESS_INTEGER_ELIAS_DELTA_SIMD::DECODE_SELECTOR()
-		----------------------------------------------------
-		selector_bits_used = 0;
-		accumulated_selector = 0;
-	*/
-	uint32_t compress_integer_elias_delta_simd::decode_selector(uint32_t *&selector_set)
-		{
-		/*
-			If we need to read more bits if we need to.  As values 1..32 all fit within 11 bits, a read will happen less often than once per integer
-		*/
-		if (selector_bits_used >= 32)
-			{
-			selector_bits_used -= 32;
-			uint64_t next_word = *selector_set++;
-			accumulated_selector = accumulated_selector | (next_word << (32 - selector_bits_used));
-			}
-
-		/*
-			Get the width
-		*/
-		uint64_t unary = _tzcnt_u64(accumulated_selector);
-
-		/*
-			Get the zig-zag encoded binary and unzig-zag it
-		*/
-		uint32_t decoded = (_bextr_u64(accumulated_selector, unary, unary + 1) >> 1) | (1UL << unary);
-
-		/*
-			Remember how much we've already used
-		*/
-		selector_bits_used += unary + unary + 1;
-		accumulated_selector >>= unary + unary + 1;
-
-		/*
-			Return the decoded selector
-		*/
-		return decoded;
-		}
-
-	/*
 		COMPRESS_INTEGER_ELIAS_DELTA_SIMD::ENCODE()
 		-------------------------------------------
 	*/
 	size_t compress_integer_elias_delta_simd::encode(void *encoded, size_t encoded_buffer_length, const integer *array, size_t elements)
 		{
+		selector_bits_used = 0;
+		accumulated_selector = 0;
+
 		uint32_t *destination = reinterpret_cast<uint32_t *>(encoded);
 		uint32_t *end_of_destination = (uint32_t *)((uint8_t *)encoded + encoded_buffer_length);
 		uint32_t carryover = 0;
@@ -162,9 +113,10 @@ namespace JASS
 		*/
 		uint32_t *selector = destination;
 		destination++;
+printf("S");
 		uint32_t *payload = destination;
 		destination += WORDS;
-
+printf("P");
 		while (1)
 			{
 			/*
@@ -205,9 +157,6 @@ namespace JASS
 						}
 					else
 						{
-						if (!overflow)
-							flush(selector);			// flush the selector
-
 						overflow = true;
 						value = 0;					// if we overflow then pad with 0s (so that we don't carryover stray bits)
 						}
@@ -225,7 +174,10 @@ namespace JASS
 					We push the selector width (max_width) here.
 				*/
 				if (push_selector(selector, max_width))
+					{
+					printf("S");
 					selector = destination++;
+					}
 
 				/*
 					Manage the carryover
@@ -264,13 +216,99 @@ namespace JASS
 
 			payload = destination;
 			destination += WORDS;
+printf("P");
 			array += integers_encoded;
 			elements -= integers_encoded;
 			if (elements == 0)
 				break;
 			}
 
+		/*
+			Flush the last selector.
+		*/
+		*selector = accumulated_selector & 0xFFFFFFFFFFFFFFFF;			// flush the final selector
+std::cout << "<WSf:" << *selector << ">";
+
 		return  (uint8_t *)destination - (uint8_t *)encoded;
+		}
+
+	alignas(64) static const uint32_t mask_set[33][16]=
+		{
+		{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},								///< Sentinal as the selector cannot be 0.
+		{0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01},								///< AND mask for 1-bit integers
+		{0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03},								///< AND mask for 2-bit integers
+		{0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07},								///< AND mask for 3-bit integers
+		{0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f},								///< AND mask for 4-bit integers
+		{0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f},								///< AND mask for 5-bit integers
+		{0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f},								///< AND mask for 6-bit integers
+		{0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f},								///< AND mask for 7-bit integers
+		{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff},								///< AND mask for 8-bit integers
+		{0x1ff, 0x1ff, 0x1ff, 0x1ff, 0x1ff, 0x1ff, 0x1ff, 0x1ff, 0x1ff, 0x1ff, 0x1ff, 0x1ff, 0x1ff, 0x1ff, 0x1ff, 0x1ff},						///< AND mask for 9-bit integers
+		{0x3ff, 0x3ff, 0x3ff, 0x3ff, 0x3ff, 0x3ff, 0x3ff, 0x3ff, 0x3ff, 0x3ff, 0x3ff, 0x3ff, 0x3ff, 0x3ff, 0x3ff, 0x3ff},						///< AND mask for 10-bit integers
+		{0x7ff, 0x7ff, 0x7ff, 0x7ff, 0x7ff, 0x7ff, 0x7ff, 0x7ff, 0x7ff, 0x7ff, 0x7ff, 0x7ff, 0x7ff, 0x7ff, 0x7ff, 0x7ff},						///< AND mask for 11-bit integers
+		{0xfff, 0xfff, 0xfff, 0xfff, 0xfff, 0xfff, 0xfff, 0xfff, 0xfff, 0xfff, 0xfff, 0xfff, 0xfff, 0xfff, 0xfff, 0xfff},						///< AND mask for 12-bit integers
+		{0x1fff, 0x1fff, 0x1fff, 0x1fff, 0x1fff, 0x1fff, 0x1fff, 0x1fff, 0x1fff, 0x1fff, 0x1fff, 0x1fff, 0x1fff, 0x1fff, 0x1fff, 0x1fff},			///< AND mask for 13-bit integers
+		{0x3fff, 0x3fff, 0x3fff, 0x3fff, 0x3fff, 0x3fff, 0x3fff, 0x3fff, 0x3fff, 0x3fff, 0x3fff, 0x3fff, 0x3fff, 0x3fff, 0x3fff, 0x3fff},			///< AND mask for 14-bit integers
+		{0x7fff, 0x7fff, 0x7fff, 0x7fff, 0x7fff, 0x7fff, 0x7fff, 0x7fff, 0x7fff, 0x7fff, 0x7fff, 0x7fff, 0x7fff, 0x7fff, 0x7fff, 0x7fff},			///< AND mask for 15-bit integers
+		{0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff},			///< AND mask for 16-bit integers
+		{0x1ffff, 0x1ffff, 0x1ffff, 0x1ffff, 0x1ffff, 0x1ffff, 0x1ffff, 0x1ffff, 0x1ffff, 0x1ffff, 0x1ffff, 0x1ffff, 0x1ffff, 0x1ffff, 0x1ffff, 0x1ffff},								///< AND mask for 17-bit integers
+		{0x3ffff, 0x3ffff, 0x3ffff, 0x3ffff, 0x3ffff, 0x3ffff, 0x3ffff, 0x3ffff, 0x3ffff, 0x3ffff, 0x3ffff, 0x3ffff, 0x3ffff, 0x3ffff, 0x3ffff, 0x3ffff},								///< AND mask for 18-bit integers
+		{0x7ffff, 0x7ffff, 0x7ffff, 0x7ffff, 0x7ffff, 0x7ffff, 0x7ffff, 0x7ffff, 0x7ffff, 0x7ffff, 0x7ffff, 0x7ffff, 0x7ffff, 0x7ffff, 0x7ffff, 0x7ffff},								///< AND mask for 19-bit integers
+		{0xfffff, 0xfffff, 0xfffff, 0xfffff, 0xfffff, 0xfffff, 0xfffff, 0xfffff, 0xfffff, 0xfffff, 0xfffff, 0xfffff, 0xfffff, 0xfffff, 0xfffff, 0xfffff},								///< AND mask for 20-bit integers
+		{0x1fffff, 0x1fffff, 0x1fffff, 0x1fffff, 0x1fffff, 0x1fffff, 0x1fffff, 0x1fffff, 0x1fffff, 0x1fffff, 0x1fffff, 0x1fffff, 0x1fffff, 0x1fffff, 0x1fffff, 0x1fffff},								///< AND mask for 21-bit integers
+		{0x3fffff, 0x3fffff, 0x3fffff, 0x3fffff, 0x3fffff, 0x3fffff, 0x3fffff, 0x3fffff, 0x3fffff, 0x3fffff, 0x3fffff, 0x3fffff, 0x3fffff, 0x3fffff, 0x3fffff, 0x3fffff},								///< AND mask for 22-bit integers
+		{0x7fffff, 0x7fffff, 0x7fffff, 0x7fffff, 0x7fffff, 0x7fffff, 0x7fffff, 0x7fffff, 0x7fffff, 0x7fffff, 0x7fffff, 0x7fffff, 0x7fffff, 0x7fffff, 0x7fffff, 0x7fffff},								///< AND mask for 23-bit integers
+		{0xffffff, 0xffffff, 0xffffff, 0xffffff, 0xffffff, 0xffffff, 0xffffff, 0xffffff, 0xffffff, 0xffffff, 0xffffff, 0xffffff, 0xffffff, 0xffffff, 0xffffff, 0xffffff},								///< AND mask for 24-bit integers
+		{0x1ffffff, 0x1ffffff, 0x1ffffff, 0x1ffffff, 0x1ffffff, 0x1ffffff, 0x1ffffff, 0x1ffffff, 0x1ffffff, 0x1ffffff, 0x1ffffff, 0x1ffffff, 0x1ffffff, 0x1ffffff, 0x1ffffff, 0x1ffffff},						///< AND mask for 25-bit integers
+		{0x3ffffff, 0x3ffffff, 0x3ffffff, 0x3ffffff, 0x3ffffff, 0x3ffffff, 0x3ffffff, 0x3ffffff, 0x3ffffff, 0x3ffffff, 0x3ffffff, 0x3ffffff, 0x3ffffff, 0x3ffffff, 0x3ffffff, 0x3ffffff},						///< AND mask for 26-bit integers
+		{0x7ffffff, 0x7ffffff, 0x7ffffff, 0x7ffffff, 0x7ffffff, 0x7ffffff, 0x7ffffff, 0x7ffffff, 0x7ffffff, 0x7ffffff, 0x7ffffff, 0x7ffffff, 0x7ffffff, 0x7ffffff, 0x7ffffff, 0x7ffffff},						///< AND mask for 27-bit integers
+		{0xfffffff, 0xfffffff, 0xfffffff, 0xfffffff, 0xfffffff, 0xfffffff, 0xfffffff, 0xfffffff, 0xfffffff, 0xfffffff, 0xfffffff, 0xfffffff, 0xfffffff, 0xfffffff, 0xfffffff, 0xfffffff},						///< AND mask for 28-bit integers
+		{0x1fffffff, 0x1fffffff, 0x1fffffff, 0x1fffffff, 0x1fffffff, 0x1fffffff, 0x1fffffff, 0x1fffffff, 0x1fffffff, 0x1fffffff, 0x1fffffff, 0x1fffffff, 0x1fffffff, 0x1fffffff, 0x1fffffff, 0x1fffffff},			///< AND mask for 29-bit integers
+		{0x3fffffff, 0x3fffffff, 0x3fffffff, 0x3fffffff, 0x3fffffff, 0x3fffffff, 0x3fffffff, 0x3fffffff, 0x3fffffff, 0x3fffffff, 0x3fffffff, 0x3fffffff, 0x3fffffff, 0x3fffffff, 0x3fffffff, 0x3fffffff},			///< AND mask for 30-bit integers
+		{0x7fffffff, 0x7fffffff, 0x7fffffff, 0x7fffffff, 0x7fffffff, 0x7fffffff, 0x7fffffff, 0x7fffffff, 0x7fffffff, 0x7fffffff, 0x7fffffff, 0x7fffffff, 0x7fffffff, 0x7fffffff, 0x7fffffff, 0x7fffffff},			///< AND mask for 31-bit integers
+		{0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff},			///< AND mask for 32-bit integers
+		};
+
+	/*
+		COMPRESS_INTEGER_ELIAS_DELTA_SIMD::DECODE_SELECTOR()
+		----------------------------------------------------
+		selector_bits_used = 0;
+		accumulated_selector = 0;
+	*/
+	uint32_t compress_integer_elias_delta_simd::decode_selector(const uint32_t *&selector_set)
+		{
+		/*
+			If we need to read more bits if we need to.  As values 1..32 all fit within 11 bits, a read will happen less often than once per integer
+		*/
+		if (selector_bits_used >= 32)
+			{
+			selector_bits_used -= 32;
+			uint64_t next_word = *selector_set++;
+std::cout << "<RS:" << next_word << ">";
+
+			accumulated_selector = accumulated_selector | (next_word << (32 - selector_bits_used));
+			}
+
+		/*
+			Get the width
+		*/
+		uint64_t unary = _tzcnt_u64(accumulated_selector);
+
+		/*
+			Get the zig-zag encoded binary and unzig-zag it
+		*/
+		uint32_t decoded = (_bextr_u64(accumulated_selector, unary, unary + 1) >> 1) | (1UL << unary);
+
+		/*
+			Remember how much we've already used
+		*/
+		selector_bits_used += unary + unary + 1;
+		accumulated_selector >>= unary + unary + 1;
+
+		/*
+			Return the decoded selector
+		*/
+		return decoded;
 		}
 
 	/*
@@ -279,7 +317,75 @@ namespace JASS
 	*/
 	void compress_integer_elias_delta_simd::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
 		{
+		uint32_t used = 0;
+		__m256i mask;
+		const uint32_t *source = reinterpret_cast<const uint32_t *>(source_as_void);
+		const uint32_t *end_of_source = reinterpret_cast<const uint32_t *>(reinterpret_cast<const uint8_t *>(source_as_void) + source_length);
+		__m256i *into = (__m256i *)decoded;
+
+		/*
+			Set up the initial selector
+		*/
+		selector_bits_used = 32;
+		accumulated_selector = *source;
+std::cout << "\n<RS:" << accumulated_selector << ">";
+
+		/*
+			Set up the initial payload
+		*/
+std::cout << "P";
+		__m256i payload1 = _mm256_loadu_si256((__m256i *)(source + 1));
+		__m256i payload2 = _mm256_loadu_si256((__m256i *)(source + 9));
+		source += 17;
+
+		while (source < end_of_source)
+			{
+			uint32_t width = decode_selector(source);
+
+			if (used + width > 32)
+				{
+				/*
+					Save the remaining bits
+				*/
+				__m256i high_bits1 = payload1;
+				__m256i high_bits2 = payload2;
+
+				/*
+					move on to the next word
+				*/
+				payload1 = _mm256_loadu_si256((__m256i *)(source));
+				payload2 = _mm256_loadu_si256((__m256i *)(source + 8));
+				source += 16;
+std::cout << "P";
+
+				/*
+					get the low bits and write to memory
+				*/
+				high_bits1 = _mm256_slli_epi32(high_bits1, 32 - used);
+				high_bits2 = _mm256_slli_epi32(high_bits2, 32 - used);
+
+				mask = _mm256_loadu_si256((__m256i *)mask_set[used + width - 32]);		// the remaining bits in the AVX word
+				_mm256_storeu_si256(into, _mm256_or_si256(_mm256_and_si256(payload1, mask), high_bits1));
+				_mm256_storeu_si256(into + 1, _mm256_or_si256(_mm256_and_si256(payload2, mask), high_bits2));
+				payload1 = _mm256_srli_epi32(payload1, width);
+				payload2 = _mm256_srli_epi32(payload2, width);
+
+				used = used + width - 32;
+				into += 2;
+				}
+			else
+				{
+				mask = _mm256_loadu_si256((__m256i *)mask_set[width]);
+				_mm256_storeu_si256(into, _mm256_and_si256(payload1, mask));
+				_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
+				payload1 = _mm256_srli_epi32(payload1, width);
+				payload2 = _mm256_srli_epi32(payload2, width);
+
+				used += width;
+				into += 2;
+				}
 		}
+	}
 
 	/*
 		COMPRESS_INTEGER_ELIAS_DELTA_SIMD::UNITTEST()
@@ -287,28 +393,57 @@ namespace JASS
 	*/
 	void compress_integer_elias_delta_simd::unittest(void)
 		{
-		const size_t end = 50;
 		compress_integer_elias_delta_simd compressor;
-		std::vector<uint8_t> mem(1024);
 
-		uint32_t *into = (uint32_t *)mem.data();
-		compressor.rewind();
-		for (size_t x = 1; x <= end; x++)
-			if (compressor.push_selector(into, x))
-				into++;
+//		compress_integer::unittest(compress_integer_elias_delta_simd());
 
-		compressor.flush(into);				// check the end case when we don't need to flush
-
-		into = (uint32_t *)mem.data();
-		compressor.rewind2();
-		for (size_t x = 1; x <= end; x++)
+		std::vector<uint32_t> broken_sequence =
 			{
-			uint32_t got = compressor.decode_selector(into);
-			std::cout << x << "->" << got;
-			if (x != got)
-				std::cout << " WRONG";
-			std::cout << '\n';
-			}
+			6,10,2,1,2,1,1,1,1,2,2,1,1,14,1,1,		// 4 bits
+			4,1,2,1,2,5,3,4,3,1,3,4,2,3,1,1,			// 3 bits
+			6,13,5,1,2,8,4,2,5,1,1,1,2,1,1,2,		// 4 bits
+			3,1,2,1,1,2,2,1,3,1,1,1,1,1,1,1,			// 2 bits
+			1,2,1,1,1,1,1,1,2,1,1,1,1,1,2,3,			// 2 bits
+			1,7,1,4,5,3,2,1,10,1,8,1,2,5,1,24,		// 5 bits
+			1,1,1,1,1,1,1,5,5,2,2,1,3,4,5,5,			// 3 bits
+			2,4,2,2,1,1,1,2,2,1,2,1,2,1,3,3,			// 3 bits
+			3,7,3,2,1,1,4,5,4,1,4,8,6,1,2,1,			// 4 bits
+			1,1,1,1,1,3,1,2,1,1,1,1,1,1,1,2,			// 2 bits						// 160 integers (1 complete AVX-512 word).
+
+			1,3,2,2,3,1,2,1,1,2,1,1,1,1,1,2,			// 2 bits
+			9,1,1,4,5,6,1,4,2,5,4,6,7,1,1,2,			// 4 bits
+			1,1,9,2,2,1,2,1,1,1,1,1,1,1,1,1,			// 4 bits
+			1,1,1,1,1,1,1,6,4,1,5,7,1,1,1,1,			// 3 bits
+			2,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,			// 2 bits
+			1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,1,			// 2 bits
+			2,1,1,1,2,2,1,4,1,1,4,1,1,1,1,1,			// 3 bits
+			1,1,1,1,1,2,5,3,1,3,1,1,4,1,2,1,			// 3 bits
+			3,1,3,1,1,1,1,1,1,1,1,1,1,1,1,1,			// 2 bits						// 304 integers
+			1,1,1,1,1,2,2,1,1,1,8,3,1,2,56,2,		// 6 bits (expand to 7)		// 320 integers
+
+			12,1,6,70,68,25,13,44,36,22,4,95,19,5,39,8, // 7 bits
+			25,14,9,8,27,6,1,1,8,11,8,3,4,1,2,8,			// 5 bits
+			3,23,2,16,8,2,28,26,6,11,9,16,1,1,7,7,			// 5 bits
+			45,2,33,39,20,14,2,1,8,26,1,10,12,3,16,3,		// 6 bits
+			25,9,6,9,6,3,41,17,15,11,33,8,1,1,1,1			// 6 bits
+			};
+
+puts("\n");
+		unittest_one(compressor, broken_sequence);
+
+		std::vector<uint32_t> second_broken_sequence =
+			{
+			1, 1, 1, 793, 1, 1, 1, 1, 2, 1, 5, 3, 2, 1, 5, 63,		// 10 bits
+			1, 2, 2, 1, 1, 1, 1, 1, 1, 1, 5, 6, 2, 4, 1, 2,			// 3 bits
+			1, 1, 1, 1, 4, 2, 1, 2, 2, 1, 1, 1, 3, 2, 2, 1,			// 3 bits
+			1, 1, 2, 3, 1, 1, 8, 1, 1, 21, 2, 9, 15, 27, 7, 4,		// 5 bits
+			2, 7, 1, 1, 2, 1, 1, 3, 2, 3, 1, 3, 3, 1, 2, 2,			// 3 bits
+			3, 1, 3, 1, 2, 1, 2, 4, 1, 1, 3, 10, 1, 2, 1, 1,		// 4 bits
+			6, 2, 1, 1, 3, 3, 7, 3, 2, 1, 2, 4, 3, 1, 2, 1,			// 3 bits <31 bits>, carryover 1 from next line
+			6, 2, 2, 1															// 3 bits
+			};
+puts("\n");
+		unittest_one(compressor, second_broken_sequence);
 
 exit(1);
 		puts("compress_integer_prn_512_carryover::PASSED");

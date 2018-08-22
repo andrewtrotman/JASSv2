@@ -59,33 +59,15 @@ namespace JASS
 				@param [in] value the integer to check.
 				@return The position of the lowest set bit (or 0 if no bits are set)
 			*/
-			static forceinline uint64_t find_first_set_bit(uint32_t *destination, uint64_t value)
+			static forceinline uint64_t find_first_set_bit(uint64_t value)
 				{
 				return _tzcnt_u64(value) + 1;
 				}
 
 			bool push_selector(uint32_t *destination, uint8_t raw);
-			void flush(uint32_t *destination);
-			uint32_t decode_selector(uint32_t *&selector_set);
-
-			void rewind(void)
-				{
-				selector_bits_used = 0;
-				accumulated_selector = 0;
-				}
-
-			void rewind2(void)
-				{
-				selector_bits_used = 64;
-				accumulated_selector = 0;
-				}
-
+			uint32_t decode_selector(const uint32_t *&selector_set);
 
 		public:
-			compress_integer_elias_delta_simd()
-				{
-				selector_bits_used = 0;
-				}
 			/*
 				COMPRESS_INTEGER_ELIAS_DELTA_SIMD::ENCODE()
 				-------------------------------------------

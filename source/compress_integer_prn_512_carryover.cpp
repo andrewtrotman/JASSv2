@@ -278,13 +278,13 @@ namespace JASS
 				payload2 = _mm256_srli_epi32(payload2, width);
 
 				/*
-					mpove on to the next slector
+					move on to the next slector
 				*/
 				into += 2;
 				selector >>= width;
 				}
 		}
-}
+	}
 
 	/*
 		COMPRESS_INTEGER_PRN_512_CARRYOVER::UNITTEST()
