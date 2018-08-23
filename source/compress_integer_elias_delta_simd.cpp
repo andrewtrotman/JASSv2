@@ -22,6 +22,10 @@
 
 namespace JASS
 	{
+	/*
+		HIGH_BITS[]
+		-----------
+	*/
 	static const uint32_t high_bits[] =
 		{
 		0b00000000000000000000000000000000,
@@ -83,10 +87,9 @@ namespace JASS
 		*/
 		if (selector_bits_used > 32)
 			{
-			*destination = accumulated_selector & 0xFFFFFFFFFFFFFFFF;
+			*destination-- = accumulated_selector & 0xFFFFFFFFFFFFFFFF;
 			accumulated_selector >>= 32;
 			selector_bits_used -= 32;
-			destination--;
 			}
 		}
 
@@ -109,13 +112,15 @@ namespace JASS
 		*/
 		uint32_t *selector = reinterpret_cast<uint32_t *>(reinterpret_cast<uint8_t *>(encoded) + encoded_buffer_length) - 1;
 
-
 		/*
 			Place the payloads at the start of the buffer
 		*/
 		uint32_t *payload = destination;
 		destination += WORDS;
 
+		/*
+			Encode the integer sequence
+		*/
 		while (1)
 			{
 			/*
@@ -176,6 +181,12 @@ namespace JASS
 					push_selector(selector, max_width);
 
 				/*
+					Check for underflow of the selector pointr
+				*/
+				if (selector < reinterpret_cast<uint32_t *>(encoded))
+					return 0;
+
+				/*
 					Manage the carryover
 				*/
 				actual_max_width = max_width;
@@ -222,10 +233,12 @@ namespace JASS
 			Flush the last selector the move the selectors to the end of the payloads
 		*/
 		*selector = accumulated_selector & 0xFFFFFFFFFFFFFFFF;
-
 		size_t length_of_selectors = ((reinterpret_cast<uint8_t *>(encoded) + encoded_buffer_length)) - reinterpret_cast<uint8_t *>(selector);
 		memmove(destination, selector, length_of_selectors);
 
+		/*
+			Return the total length
+		*/
 		size_t payload_length = reinterpret_cast<uint8_t *>(destination) - reinterpret_cast<uint8_t *>(encoded);
 		size_t total_length =  payload_length + length_of_selectors;
 
@@ -273,7 +286,7 @@ namespace JASS
  		COMPRESS_INTEGER_ELIAS_DELTA_SIMD::DECODE_SELECTOR()
  		----------------------------------------------------
  	*/
- 	uint32_t compress_integer_elias_delta_simd::decode_selector(const uint32_t *&selector_set)
+ 	forceinline uint32_t compress_integer_elias_delta_simd::decode_selector(const uint32_t *&selector_set)
  		{
  		if (selector_bits_used >= 32)
  			{
@@ -379,7 +392,7 @@ namespace JASS
 		{
 		compress_integer_elias_delta_simd compressor;
 
-		compress_integer::unittest(compress_integer_elias_delta_simd(), false);
+//		compress_integer::unittest(compress_integer_elias_delta_simd(), false);
 
 		std::vector<uint32_t> broken_sequence =
 			{
