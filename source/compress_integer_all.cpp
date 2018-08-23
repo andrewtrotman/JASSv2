@@ -26,6 +26,7 @@
 #include "compress_integer_qmx_original.h"
 #include "compress_integer_stream_vbyte.h"
 #include "compress_integer_simple_9_packed.h"
+#include "compress_integer_elias_delta_simd.h"
 #include "compress_integer_simple_16_packed.h"
 #include "compress_integer_simple_8b_packed.h"
 #include "compress_integer_prn_512_carryover.h"
@@ -57,6 +58,7 @@ namespace JASS
 	static compress_integer_stream_vbyte stream_vbyte;						///< Stream VByte compressor
 	static compress_integer_variable_byte variable_byte;					///< Variable Byte compressor
 	static compress_integer_simple_9_packed simple_9_packed;				///< Packed Simple-9 compressor
+	static compress_integer_elias_delta_simd elias_delta_simd;			///< Elias delta SIMD
 	static compress_integer_simple_16_packed simple_16_packed;			///< Packed Simple-16 compressor
 	static compress_integer_simple_8b_packed simple_8b_packed;			///< Packed Simple-8b compressor
 	static compress_integer_prn_512_carryover prn_512_carryover;		///< fprn-packed into 512-bit integers with carryover
@@ -74,6 +76,7 @@ namespace JASS
 			{"-cC",    "--compress_carry_8b", "Carry-8b", &carry_8b},
 			{"-cd",    "--compress_elias_delta", "Elias delta", &elias_delta},
 			{"-cD",    "--compress_elias_delta_bitwise", "Elias delta with bit instuctions (slow)", &elias_delta_bitwise},
+			{"-ce",    "--compress_elias_delta_SIMD", "Elias delta with SIMD payloads", &elias_delta_simd},
 			{"-cg",    "--compress_elias_gamma", "Elias gamma", &elias_gamma},
 			{"-cG",    "--compress_elias_gamma_bitwise", "Elias gamma with bit instuctions (slow)", &elias_gamma_bitwise},
 			{"-cn",    "--compress_none", "None", &none},
