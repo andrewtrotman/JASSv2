@@ -63,7 +63,7 @@ namespace JASS
 		COMPRESS_INTEGER_ELIAS_DELTA_SIMD::PUSH_SELECTOR()
 		--------------------------------------------------
 	*/
-	bool compress_integer_elias_delta_simd::push_selector(uint32_t *destination, uint8_t raw)
+	void compress_integer_elias_delta_simd::push_selector(uint32_t *&destination, uint8_t raw)
 		{
 		/*
 			Write out the length of the selector in unary
@@ -86,11 +86,8 @@ namespace JASS
 			*destination = accumulated_selector & 0xFFFFFFFFFFFFFFFF;
 			accumulated_selector >>= 32;
 			selector_bits_used -= 32;
-
-			return true;
+			destination--;
 			}
-
-		return false;
 		}
 
 	/*
@@ -108,10 +105,14 @@ namespace JASS
 		uint32_t actual_max_width = 0;
 
 		/*
-			get the address of the first selector and the first payload
+			Place the selectors at the end of the buffer
 		*/
-		uint32_t *selector = destination;
-		destination++;
+		uint32_t *selector = reinterpret_cast<uint32_t *>(reinterpret_cast<uint8_t *>(encoded) + encoded_buffer_length) - 1;
+
+
+		/*
+			Place the payloads at the start of the buffer
+		*/
 		uint32_t *payload = destination;
 		destination += WORDS;
 
@@ -172,8 +173,7 @@ namespace JASS
 					We push the selector width (max_width) here.
 				*/
 				if (carryover == 0)
-					if (push_selector(selector, max_width))
-						selector = destination++;
+					push_selector(selector, max_width);
 
 				/*
 					Manage the carryover
@@ -219,11 +219,17 @@ namespace JASS
 			}
 
 		/*
-			Flush the last selector.
+			Flush the last selector the move the selectors to the end of the payloads
 		*/
-		*selector = accumulated_selector & 0xFFFFFFFFFFFFFFFF;			// flush the final selector
+		*selector = accumulated_selector & 0xFFFFFFFFFFFFFFFF;
 
-		return reinterpret_cast<uint8_t *>(destination) - reinterpret_cast<uint8_t *>(encoded);
+		size_t length_of_selectors = ((reinterpret_cast<uint8_t *>(encoded) + encoded_buffer_length)) - reinterpret_cast<uint8_t *>(selector);
+		memmove(destination, selector, length_of_selectors);
+
+		size_t payload_length = reinterpret_cast<uint8_t *>(destination) - reinterpret_cast<uint8_t *>(encoded);
+		size_t total_length =  payload_length + length_of_selectors;
+
+		return total_length;
 		}
 
 	alignas(64) static const uint32_t mask_set[33][16]=
@@ -264,66 +270,36 @@ namespace JASS
 		};
 
 	/*
-		COMPRESS_INTEGER_ELIAS_DELTA_SIMD::DECODE_SELECTOR()
-		----------------------------------------------------
-		selector_bits_used = 0;
-		accumulated_selector = 0;
-	*/
-	uint32_t compress_integer_elias_delta_simd::decode_selector(const uint32_t *&selector_set)
-		{
-		uint64_t unary;
-		uint32_t decoded;
+ 		COMPRESS_INTEGER_ELIAS_DELTA_SIMD::DECODE_SELECTOR()
+ 		----------------------------------------------------
+ 	*/
+ 	uint32_t compress_integer_elias_delta_simd::decode_selector(const uint32_t *&selector_set)
+ 		{
+ 		if (selector_bits_used >= 32)
+ 			{
+ 			selector_bits_used -= 32;
+ 			uint64_t next_word = *selector_set--;
+ 			accumulated_selector = accumulated_selector | (next_word << (32 - selector_bits_used));
+ 			}
 
-		/*
-			Get the width
-		*/
-		if (accumulated_selector == 0)
-			{
-			/*
-				The unary doesn't fit in the selector and is spread across 2 words
-			*/
-			uint64_t remainder = 32 - selector_bits_used;
-			accumulated_selector = *selector_set++;
+ 		/*
+ 			get the width
+ 		*/
+ 		uint64_t unary = _tzcnt_u64(accumulated_selector);
 
-			unary = _tzcnt_u64(accumulated_selector);
-			accumulated_selector >>= unary;
-			selector_bits_used = unary;
-			unary += remainder;
+ 		/*
+ 			get the zig-zag encoded binary, unzig-zag it and store it
+ 		*/
+ 		uint32_t decoded = (_bextr_u64(accumulated_selector, unary, unary + 1) >> 1) | (1UL << unary);
 
-			}
-		else
-			{
-			unary = _tzcnt_u64(accumulated_selector);
-			selector_bits_used += unary;
-			accumulated_selector >>= unary;
-			}
+ 		/*
+ 			Remember how much we've already used
+ 		*/
+ 		selector_bits_used += unary + unary + 1;
+ 		accumulated_selector >>= unary + unary + 1;
 
-		/*
-			Get the zig-zag encoded binary and unzig-zag it
-		*/
-		if (selector_bits_used + unary > 32)
-			{
-			uint32_t low_bits = accumulated_selector;
-			accumulated_selector = *selector_set++;
-			uint32_t high_bits = _bextr_u64(accumulated_selector, 0, 32 - selector_bits_used);
-			uint32_t zig_zag = (high_bits << (32 - selector_bits_used)) | low_bits;
-			decoded = (zig_zag >> 1) | (1UL << unary);
-
-			selector_bits_used = selector_bits_used + unary - 32;
-			accumulated_selector >>= selector_bits_used;
-			}
-		else
-			{
-			decoded = (_bextr_u64(accumulated_selector, 0, unary + 1) >> 1) | (1UL << unary);
-			selector_bits_used += unary + 1;
-			accumulated_selector >>= unary + 1;
-			}
-
-		/*
-			Return the decoded selector
-		*/
-		return decoded;
-		}
+ 		return decoded;
+ 		}
 
 	/*
 		COMPRESS_INTEGER_ELIAS_DELTA_SIMD::DECODE()
@@ -331,63 +307,32 @@ namespace JASS
 	*/
 	void compress_integer_elias_delta_simd::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
 		{
-uint32_t integers_decoded = 0;
 		uint32_t used = 0;
-		__m256i mask;
-		const uint32_t *source = reinterpret_cast<const uint32_t *>(source_as_void);
-		__m256i *into = (__m256i *)decoded;
-		__m256i *end_of_output = (__m256i *)(decoded + integers_to_decode);
+		__m256i *into = reinterpret_cast<__m256i *>(decoded);
+		__m256i *end_of_output = reinterpret_cast<__m256i *>(decoded + integers_to_decode);
+
 		/*
 			Set up the initial selector
 		*/
-		selector_bits_used = 0;
-		accumulated_selector = *source;
+		accumulated_selector = 0;
+		selector_bits_used = 64;
+		const uint32_t *selector = reinterpret_cast<const uint32_t *>(reinterpret_cast<const uint8_t *>(source_as_void) + source_length) - 1;
 
 		/*
 			Set up the initial payload
 		*/
-		__m256i payload1 = _mm256_loadu_si256((__m256i *)(source + 1));
-		__m256i payload2 = _mm256_loadu_si256((__m256i *)(source + 9));
-		source += 17;
+		const uint32_t *source = reinterpret_cast<const uint32_t *>(source_as_void);
+		__m256i payload1 = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(source));
+		__m256i payload2 = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(source + 8));
+		source += 16;
 
 		while (into < end_of_output)
 			{
-			uint32_t width = decode_selector(source);
+			uint32_t width = decode_selector(selector);
 
-			if (used + width > 32)
+			if (used + width <= 32)
 				{
-				/*
-					Save the remaining bits
-				*/
-				__m256i high_bits1 = payload1;
-				__m256i high_bits2 = payload2;
-
-				/*
-					move on to the next word
-				*/
-				payload1 = _mm256_loadu_si256((__m256i *)(source));
-				payload2 = _mm256_loadu_si256((__m256i *)(source + 8));
-				source += 16;
-
-				/*
-					get the low bits and write to memory
-				*/
-				high_bits1 = _mm256_slli_epi32(high_bits1, width - (32 - used));
-				high_bits2 = _mm256_slli_epi32(high_bits2, width - (32 - used));
-
-				mask = _mm256_loadu_si256((__m256i *)mask_set[used + width - 32]);		// the remaining bits in the AVX word
-				_mm256_storeu_si256(into, _mm256_or_si256(_mm256_and_si256(payload1, mask), high_bits1));
-				_mm256_storeu_si256(into + 1, _mm256_or_si256(_mm256_and_si256(payload2, mask), high_bits2));
-				payload1 = _mm256_srli_epi32(payload1, used + width - 32);
-				payload2 = _mm256_srli_epi32(payload2, used + width - 32);
-
-				used = used + width - 32;
-				into += 2;
-integers_decoded += 16;
-				}
-			else
-				{
-				mask = _mm256_loadu_si256((__m256i *)mask_set[width]);
+				const __m256i mask = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(mask_set[width]));
 				_mm256_storeu_si256(into, _mm256_and_si256(payload1, mask));
 				_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
 				payload1 = _mm256_srli_epi32(payload1, width);
@@ -395,7 +340,33 @@ integers_decoded += 16;
 
 				used += width;
 				into += 2;
-integers_decoded += 16;
+				}
+		else
+				{
+				/*
+					Save the remaining bits
+				*/
+				__m256i high_bits1 = _mm256_slli_epi32(payload1, width - (32 - used));
+				__m256i high_bits2 = _mm256_slli_epi32(payload2, width - (32 - used));
+
+				/*
+					move on to the next word
+				*/
+				payload1 = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(source));
+				payload2 = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(source + 8));
+				source += 16;
+
+				/*
+					Decode and write to memory
+				*/
+				__m256i mask = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(mask_set[used + width - 32]));		// the remaining bits in the AVX word
+				_mm256_storeu_si256(into, _mm256_or_si256(_mm256_and_si256(payload1, mask), high_bits1));
+				_mm256_storeu_si256(into + 1, _mm256_or_si256(_mm256_and_si256(payload2, mask), high_bits2));
+				payload1 = _mm256_srli_epi32(payload1, used + width - 32);
+				payload2 = _mm256_srli_epi32(payload2, used + width - 32);
+
+				used = used + width - 32;
+				into += 2;
 				}
 		}
 	}
@@ -457,7 +428,6 @@ integers_decoded += 16;
 
 		unittest_one(compressor, second_broken_sequence);
 
-exit(1);
 		puts("compress_integer_prn_512_carryover::PASSED");
 		}
 	}

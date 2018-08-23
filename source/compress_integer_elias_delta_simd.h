@@ -64,8 +64,8 @@ namespace JASS
 				return _tzcnt_u64(value) + 1;
 				}
 
-			bool push_selector(uint32_t *destination, uint8_t raw);
-			uint32_t decode_selector(const uint32_t *&selector_set);
+			forceinline void push_selector(uint32_t *&destination, uint8_t raw);
+ 			uint32_t forceinline decode_selector(const uint32_t *&selector_set);
 
 		public:
 			/*
