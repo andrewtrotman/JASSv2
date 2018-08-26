@@ -392,7 +392,7 @@ namespace JASS
 		{
 		compress_integer_elias_delta_simd compressor;
 
-//		compress_integer::unittest(compress_integer_elias_delta_simd(), false);
+		compress_integer::unittest(compress_integer_elias_delta_simd(), false);
 
 		std::vector<uint32_t> broken_sequence =
 			{
