@@ -102,6 +102,9 @@ int main(void)
 
 	try
 		{
+		puts("compress_integer_elias_delta");
+		JASS::compress_integer_elias_delta::unittest();
+
 		puts("compress_integer_elias_delta_simd");
 		JASS::compress_integer_elias_delta_simd::unittest();
 
@@ -113,9 +116,6 @@ int main(void)
 
 		puts("compress_integer_elias_delta_bitwise");
 		JASS::compress_integer_elias_delta_bitwise::unittest();
-
-		puts("compress_integer_elias_delta");
-		JASS::compress_integer_elias_delta::unittest();
 
 		puts("compress_integer_elias_gamma");
 		JASS::compress_integer_elias_gamma::unittest();

@@ -85,43 +85,68 @@ namespace JASS
 	void compress_integer_elias_delta::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
 		{
 		uint64_t bits_used = 0;
+		uint64_t unary = 0;
+
+		const uint64_t *source = reinterpret_cast<const uint64_t *>(source_as_void);
+		uint64_t value = *source;
 
 		for (integer *end = decoded + integers_to_decode; decoded < end; decoded++)
 			{
-			/*
-				Read as many bits as we can from the lowest possible address.
-				With the gamma code, a 32-bit integer uses 31 bits for the unary and 32 bits for the binary and if not aligned with the
-				start of a byte extra bits might be needed.  With the delta code the worst case is 32 bits for the binary, 6 bits for the unary,
-				the 6 bits for the length (total is 44), which means no extra bits are ever needed if a 64-bit read is performed (even if
-				the integer starts at bit position 8, because 44+8 < 64).
-			*/
-			const uint8_t *address = static_cast<const uint8_t *>(source_as_void) + (bits_used / 8);
-			const uint64_t *source = reinterpret_cast<const uint64_t *>(address);
-
-			/*
-				dismiss the bits we're already used
-			*/
-			uint64_t value = *source >> (bits_used % 8);
-
+			uint64_t binary;
 			/*
 				get the width of the width
 			*/
-			uint64_t unary = _tzcnt_u64(value);
+			if (value == 0)
+				{
+				unary = 64 - bits_used;
+				value = *source++;
+				bits_used = _tzcnt_u64(value);
+				value >>= bits_used;
+				unary += bits_used;
+				}
+			else
+				{
+				unary = _tzcnt_u64(value);
+				bits_used += unary;
+				value >>= unary;
+				}
 
 			/*
 				get the zig-zag encoded length of the integer and un-zig-zag it.
 			*/
-			uint32_t binary = (_bextr_u64(value, unary, unary + 1) >> 1) | (1UL << unary);
+			if (bits_used + unary > 64)
+				{
+				binary = value;
+				value = *source++;
+				binary |= _bextr_u64(value, 0, unary - (64 - bits_used) + 1) << (64 - bits_used);
+				bits_used = unary - (64 - bits_used);
+				binary = (binary >> 1) | (1UL << unary);				// un-zig-zag
+				value >>= bits_used;
+				}
+			else
+				{
+				binary = (_bextr_u64(value, 0, unary + 1) >> 1) | (1UL << unary);		// un-zig-zag
+				bits_used += unary + 1;
+				value >>= unary + 1;
+				}
 
 			/*
 				get the binary value that is encoded
 			*/
-			*decoded = _bextr_u64(value, unary + unary + 1, binary) | (1 << (binary - 1));
-
-			/*
-				Remember how much we've already used
-			*/
-			bits_used += unary + unary + binary;
+			if (bits_used + binary > 64)
+				{
+				*decoded = value;
+				value = *source++;
+				*decoded |= _bextr_u64(value, 0, binary - (64 - bits_used)) | (1 << (binary - 1));
+				bits_used = binary - (64 - bits_used);
+				value >>= bits_used;
+				}
+			else
+				{
+				*decoded = _bextr_u64(value, 0, binary) | (1 << (binary - 1));
+				bits_used += binary - 1;
+				value >>= binary - 1;
+				}
 			}
 		}
 
@@ -144,5 +169,6 @@ namespace JASS
 
 		compress_integer::unittest(compress_integer_elias_delta(), false);
 		puts("compress_integer_elias_delta::PASSED");
+exit(1);
 		}
 	}
