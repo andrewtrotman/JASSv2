@@ -12,7 +12,7 @@
 namespace JASS
 	{
 	/*
-		OMPRESS_INTEGER_ELIAS_DELTA::ENCODE()
+		COMPRESS_INTEGER_ELIAS_DELTA::ENCODE()
 		--------------------------------------
 	*/
 	size_t compress_integer_elias_delta::encode(void *encoded_as_void, size_t encoded_buffer_length, const integer *source, size_t source_integers)
@@ -79,7 +79,7 @@ namespace JASS
 		}
 
 	/*
-		OMPRESS_INTEGER_ELIAS_DELTA::DECODE()
+		COMPRESS_INTEGER_ELIAS_DELTA::DECODE()
 		--------------------------------------
 	*/
 	void compress_integer_elias_delta::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
@@ -92,6 +92,14 @@ namespace JASS
 
 		for (integer *end = decoded + integers_to_decode; decoded < end; decoded++)
 			{
+
+static uint32_t total = 0;
+if (total == 15)
+	{
+	int x = 0;
+	}
+total++;
+
 			uint64_t binary;
 			/*
 				get the width of the width
@@ -114,18 +122,21 @@ namespace JASS
 			/*
 				get the zig-zag encoded length of the integer and un-zig-zag it.
 			*/
-			if (bits_used + unary > 64)
+			if (bits_used + unary + 1 > 64)
 				{
-				binary = value;
+				binary = value << (unary - (64 - bits_used));
 				value = *source++;
-				binary |= _bextr_u64(value, 0, unary - (64 - bits_used) + 1) << (64 - bits_used);
-				bits_used = unary - (64 - bits_used);
+				uint64_t extra;
+				extra = _bextr_u64(value, 0, unary - (64 - bits_used) + 1);
+				binary |= extra;
+				bits_used = unary - (64 - bits_used) + 1;
 				binary = (binary >> 1) | (1UL << unary);				// un-zig-zag
 				value >>= bits_used;
 				}
 			else
 				{
-				binary = (_bextr_u64(value, 0, unary + 1) >> 1) | (1UL << unary);		// un-zig-zag
+				uint64_t before = _bextr_u64(value, 0, unary + 1);
+				binary = (before >> 1) | (1UL << unary);		// un-zig-zag
 				bits_used += unary + 1;
 				value >>= unary + 1;
 				}
@@ -135,9 +146,10 @@ namespace JASS
 			*/
 			if (bits_used + binary > 64)
 				{
-				*decoded = value;
+				*decoded = value << (binary - (64 - bits_used));
 				value = *source++;
-				*decoded |= _bextr_u64(value, 0, binary - (64 - bits_used)) | (1 << (binary - 1));
+				uint64_t low_bits = _bextr_u64(value, 0, binary - (64 - bits_used));
+				*decoded |= low_bits | (1 << (binary - 1));
 				bits_used = binary - (64 - bits_used);
 				value >>= bits_used;
 				}
@@ -151,23 +163,23 @@ namespace JASS
 		}
 
 	/*
-		OMPRESS_INTEGER_ELIAS_DELTA::UNITTEST()
+		COMPRESS_INTEGER_ELIAS_DELTA::UNITTEST()
 		----------------------------------------
 	*/
 	void compress_integer_elias_delta::unittest(void)
 		{
 		compress_integer_elias_delta codec;
 
-		std::vector<uint8_t> buffer(1024);
-		std::vector<integer> sequence = {1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, };
-		std::vector<integer> into(sequence.size());
+//		std::vector<uint8_t> buffer(1024);
+//		std::vector<integer> sequence = {1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, };
+//		std::vector<integer> into(sequence.size());
+//
+//		auto encoded_length = codec.encode(&buffer[0], buffer.size(), &sequence[0], sequence.size());
+//		codec.decode(&into[0], sequence.size(), &buffer[0], encoded_length);
+//
+//		JASS_assert(into == sequence);
 
-		auto encoded_length = codec.encode(&buffer[0], buffer.size(), &sequence[0], sequence.size());
-		codec.decode(&into[0], sequence.size(), &buffer[0], encoded_length);
-
-		JASS_assert(into == sequence);
-
-		compress_integer::unittest(compress_integer_elias_delta(), false);
+		compress_integer::unittest(compress_integer_elias_delta(), 2);
 		puts("compress_integer_elias_delta::PASSED");
 exit(1);
 		}

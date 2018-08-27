@@ -156,8 +156,8 @@ namespace JASS
 			/*!
 				@brief Unit test this class, assert on failure.
 				@param compressor [in] a compressor
-				@param can_do_zero [in] should 0 be included in the tests (some schemes cannot encode a 0 (e.g. Elias gama).
+				@param staring_from [in] normally 0.  The bitness to start testing from (some schemes cannot encode a 0 (e.g. Elias gama) so use 1 in those cases).
 			*/
-			static void unittest(compress_integer &&compressor, bool can_do_zero = true);
+			static void unittest(compress_integer &&compressor, uint32_t staring_from = 0);
 		} ;
 	}

@@ -126,7 +126,7 @@ namespace JASS
 
 		JASS_assert(into == sequence);
 
-		compress_integer::unittest(compress_integer_elias_gamma(), false);
+		compress_integer::unittest(compress_integer_elias_gamma(), 1);
 		puts("compress_integer_elias_gamma::PASSED");
 		}
 	}

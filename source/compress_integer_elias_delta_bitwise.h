@@ -131,7 +131,7 @@ namespace JASS
 			*/
 			static void unittest(void)
 				{
-				compress_integer::unittest(compress_integer_elias_delta_bitwise(), false);
+				compress_integer::unittest(compress_integer_elias_delta_bitwise(), 1);
 				puts("compress_integer_elias_delta_bitwise::PASSED");
 				}
 		};
