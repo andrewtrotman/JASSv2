@@ -86,20 +86,11 @@ namespace JASS
 		{
 		uint64_t bits_used = 0;
 		uint64_t unary = 0;
-
 		const uint64_t *source = reinterpret_cast<const uint64_t *>(source_as_void);
-		uint64_t value = *source;
+		uint64_t value = *source++;
 
 		for (integer *end = decoded + integers_to_decode; decoded < end; decoded++)
 			{
-
-static uint32_t total = 0;
-if (total == 15)
-	{
-	int x = 0;
-	}
-total++;
-
 			uint64_t binary;
 			/*
 				get the width of the width
@@ -124,10 +115,10 @@ total++;
 			*/
 			if (bits_used + unary + 1 > 64)
 				{
-				binary = value << (unary - (64 - bits_used));
+				binary = value;
 				value = *source++;
 				uint64_t extra;
-				extra = _bextr_u64(value, 0, unary - (64 - bits_used) + 1);
+				extra = _bextr_u64(value, 0, unary - (64 - bits_used) + 1) << (64 - bits_used);
 				binary |= extra;
 				bits_used = unary - (64 - bits_used) + 1;
 				binary = (binary >> 1) | (1UL << unary);				// un-zig-zag
@@ -146,11 +137,11 @@ total++;
 			*/
 			if (bits_used + binary > 64)
 				{
-				*decoded = value << (binary - (64 - bits_used));
+				*decoded = value;
 				value = *source++;
-				uint64_t low_bits = _bextr_u64(value, 0, binary - (64 - bits_used));
-				*decoded |= low_bits | (1 << (binary - 1));
-				bits_used = binary - (64 - bits_used);
+				uint64_t hight_bits = _bextr_u64(value, 0, binary - (64 - bits_used)) << (64 - bits_used);
+				*decoded |= hight_bits | (1 << (binary - 1));
+				bits_used = binary - (64 - bits_used) - 1;
 				value >>= bits_used;
 				}
 			else
@@ -170,17 +161,16 @@ total++;
 		{
 		compress_integer_elias_delta codec;
 
-//		std::vector<uint8_t> buffer(1024);
-//		std::vector<integer> sequence = {1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, };
-//		std::vector<integer> into(sequence.size());
-//
-//		auto encoded_length = codec.encode(&buffer[0], buffer.size(), &sequence[0], sequence.size());
-//		codec.decode(&into[0], sequence.size(), &buffer[0], encoded_length);
-//
-//		JASS_assert(into == sequence);
+		std::vector<uint8_t> buffer(1024);
+		std::vector<integer> sequence = {1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, };
+		std::vector<integer> into(sequence.size());
 
-		compress_integer::unittest(compress_integer_elias_delta(), 2);
+		auto encoded_length = codec.encode(&buffer[0], buffer.size(), &sequence[0], sequence.size());
+		codec.decode(&into[0], sequence.size(), &buffer[0], encoded_length);
+
+		JASS_assert(into == sequence);
+
+		compress_integer::unittest(compress_integer_elias_delta(), 3);
 		puts("compress_integer_elias_delta::PASSED");
-exit(1);
 		}
 	}
