@@ -5,6 +5,8 @@
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 #include <immintrin.h>
+#include <x86intrin.h>
+
 
 #include "maths.h"
 #include "compress_integer_elias_delta.h"
@@ -84,56 +86,46 @@ namespace JASS
 	*/
 	void compress_integer_elias_delta::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
 		{
-		int64_t bits_remaining = 64;
-		int64_t unary = 0;
 		const uint64_t *source = reinterpret_cast<const uint64_t *>(source_as_void);
-		uint64_t value = *source++;
+		uint64_t value = 0;
+		uint8_t unary;
+		uint8_t binary;
+		int8_t bits_used;		/// bits used in the second word if we cross a word boundary (and not kept from block to block)
+		int8_t bits_remaining = 0;
 
 		for (integer *end = decoded + integers_to_decode; decoded < end; decoded++)
 			{
-			int64_t binary;
 			/*
 				get the width of the width
 			*/
-			if (value == 0)
+			if (value != 0)
+				{
+				unary = _tzcnt_u64(value);
+				value >>= unary;
+				bits_remaining -= unary;
+				}
+			else
 				{
 				/*
 					The unary part splits a machine word
 				*/
-				unary = bits_remaining;
 				value = *source++;
-				int64_t bits_used = _tzcnt_u64(value);
-				unary += bits_used;
+				bits_used = _tzcnt_u64(value);
+				unary = bits_remaining + bits_used;
 				value >>= bits_used;
 				bits_remaining = 64 - bits_used;
-
-				/*
-					If the unary was split then the binary and the value is guaranteed to be in the new word so we don't need to check for a split to get the binary
-				*/
-				binary = (_bextr_u64(value, 0, unary + 1) >> 1) | (1UL << unary);		// un-zig-zag
-				bits_remaining -= unary + 1;
-				value >>= unary + 1;
-
-				/*
-					And we don't need to check for a split to get the final value
-				*/
-				*decoded = _bextr_u64(value, 0, binary) | (1 << (binary - 1));
-				bits_remaining -= binary - 1;
-				value >>= binary - 1;
-
-				continue;
-				}
-			else
-				{
-				unary = _tzcnt_u64(value);
-				bits_remaining -= unary;
-				value >>= unary;
 				}
 
 			/*
 				get the zig-zag encoded length of the integer and un-zig-zag it.
 			*/
-			if (bits_remaining - unary <= 0)
+			if (bits_remaining - unary > 0)
+				{
+				binary = (_bextr_u64(value, 0, unary + 1) >> 1) | (1UL << unary);		// un-zig-zag
+				bits_remaining -= unary + 1;
+				value >>= unary + 1;
+				}
+			else
 				{
 				/*
 					The binary splits a machine word
@@ -142,46 +134,31 @@ namespace JASS
 				value = *source++;
 				binary |= _bextr_u64(value, 0, unary - bits_remaining + 1) << bits_remaining;
 				binary = (binary >> 1) | (1UL << unary);				// un-zig-zag
-				int64_t bits_used = unary - bits_remaining + 1;
-				value >>= bits_used;
+				bits_used = unary - bits_remaining + 1;
 				bits_remaining = 64 - bits_used;
-
-				/*
-					If the binary was split then the final value is guaraneeed to be in the word we just read so read with out an overflow check.
-				*/
-				*decoded = _bextr_u64(value, 0, binary) | (1 << (binary - 1));
-				bits_remaining -= binary - 1;
-				value >>= binary - 1;
-
-				continue;
-				}
-			else
-				{
-				binary = (_bextr_u64(value, 0, unary + 1) >> 1) | (1UL << unary);		// un-zig-zag
-				bits_remaining -= unary + 1;
-				value >>= unary + 1;
+				value >>= bits_used;
 				}
 
 			/*
 				get the binary value that is encoded using elias delta
 			*/
-			if (bits_remaining - binary < 0)
-				{
-				/*
-					the encoded number splits a machine word
-				*/
-				*decoded = value;
-				value = *source++;
-				*decoded |= (_bextr_u64(value, 0, binary - bits_remaining) << bits_remaining) | (1 << (binary - 1));
-				int64_t bits_used = binary - bits_remaining - 1;
-				value >>= bits_used;
-				bits_remaining = 64 - bits_used;
-				}
-			else
+			if (bits_remaining - binary >= 0)
 				{
 				*decoded = _bextr_u64(value, 0, binary) | (1 << (binary - 1));
 				bits_remaining -= binary - 1;
 				value >>= binary - 1;
+				}
+			else
+				{
+				/*
+					the encoded number splits a machine word
+				*/
+				*decoded = value | (1 << (binary - 1));
+				value = *source++;
+				*decoded |= (_bextr_u64(value, 0, binary - bits_remaining) << bits_remaining);
+				bits_used = binary - bits_remaining - 1;
+				bits_remaining = 64 - bits_used;
+				value >>= bits_used;
 				}
 			}
 		}
