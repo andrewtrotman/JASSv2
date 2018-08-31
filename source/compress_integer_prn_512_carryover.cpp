@@ -216,75 +216,141 @@ namespace JASS
 		{0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff},			///< AND mask for 32-bit integers
 		};
 
+#ifdef __AVX512F__
 	/*
-		COMPRESS_INTEGER_PRN_512_CARRYOVER::DECODE()
-		--------------------------------------------
-	*/
-	void compress_integer_prn_512_carryover::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
-		{
-		__m256i mask;
-		const uint8_t *source = (const uint8_t *)source_as_void;
-		const uint8_t *end_of_source = source + source_length;
-		__m256i *into = (__m256i *)decoded;
-
-		uint64_t selector = *(uint32_t *)source;
-		__m256i payload1 = _mm256_loadu_si256((__m256i *)(source + 4));
-		__m256i payload2 = _mm256_loadu_si256((__m256i *)(source + 36));
-		source += 68;
-
-		while (1)
+			COMPRESS_INTEGER_PRN_512_CARRYOVER::DECODE()
+			--------------------------------------------
+		*/
+		void compress_integer_prn_512_carryover::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
 			{
-			uint32_t width = (uint32_t)find_first_set_bit(selector);
-			mask = _mm256_loadu_si256((__m256i *)mask_set[width]);
-			_mm256_storeu_si256(into, _mm256_and_si256(payload1, mask));
-			_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
-			payload1 = _mm256_srli_epi32(payload1, width);
-			payload2 = _mm256_srli_epi32(payload2, width);
+			__m512 mask;
+			const uint8_t *source = (const uint8_t *)source_as_void;
+			const uint8_t *end_of_source = source + source_length;
+			__m512 *into = (__m512i *)decoded;
 
-			into += 2;
-			selector >>= width;
+			uint64_t selector = *(uint32_t *)source;
+			__m256i payload = _mm512_loadu_si512((__m512i *)(source + 4));
+			source += 68;
 
-			while (selector == 0)
+			while (1)
 				{
-				if (source >= end_of_source)
-					return;
+				uint32_t width = (uint32_t)find_first_set_bit(selector);
+				mask = _mm512_loadu_si512((__m512i *)mask_set[width]);
+				_mm256_storeu_si512(into, _mm512_and_si512(payload, mask));
+				payload = _mm512_srli_epi32(payload, width);
 
-				/*
-					Save the remaining bits
-				*/
-				__m256i high_bits1 = payload1;
-				__m256i high_bits2 = payload2;
+				into += 2;
+				selector >>= width;
 
-				/*
-					move on to the next word
-				*/
-				selector = *(uint32_t *)source;
-				payload1 = _mm256_loadu_si256((__m256i *)(source + 4));
-				payload2 = _mm256_loadu_si256((__m256i *)(source + 36));
-				source += 68;
+				while (selector == 0)
+					{
+					if (source >= end_of_source)
+						return;
 
-				/*
-					get the low bits and write to memory
-				*/
-				width = (uint32_t)find_first_set_bit(selector);
+					/*
+						Save the remaining bits
+					*/
+					__m512i high_bits = payload;
 
-				high_bits1 = _mm256_slli_epi32(high_bits1, width);
-				high_bits2 = _mm256_slli_epi32(high_bits2, width);
+					/*
+						move on to the next word
+					*/
+					selector = *(uint32_t *)source;
+					payload = _mm512_loadu_si512((__m512i *)(source + 4));
+					source += 68;
 
+					/*
+						get the low bits and write to memory
+					*/
+					width = (uint32_t)find_first_set_bit(selector);
+
+					high_bits = _mm512_slli_epi32(high_bits, width);
+
+					mask = _mm512_loadu_si512((__m512i *)mask_set[width]);
+					_mm256_storeu_si512(into, _mm512_or_si512(_mm512_and_si512(payload, mask), high_bits));
+					payload = _mm512_srli_epi32(payload1, width);
+
+					/*
+						move on to the next slector
+					*/
+					into += 2;
+					selector >>= width;
+					}
+			}
+		}
+#elif defined(__AVX2__)
+		/*
+			COMPRESS_INTEGER_PRN_512_CARRYOVER::DECODE()
+			--------------------------------------------
+		*/
+		void compress_integer_prn_512_carryover::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
+			{
+			__m256i mask;
+			const uint8_t *source = (const uint8_t *)source_as_void;
+			const uint8_t *end_of_source = source + source_length;
+			__m256i *into = (__m256i *)decoded;
+
+			uint64_t selector = *(uint32_t *)source;
+			__m256i payload1 = _mm256_loadu_si256((__m256i *)(source + 4));
+			__m256i payload2 = _mm256_loadu_si256((__m256i *)(source + 36));
+			source += 68;
+
+			while (1)
+				{
+				uint32_t width = (uint32_t)find_first_set_bit(selector);
 				mask = _mm256_loadu_si256((__m256i *)mask_set[width]);
-				_mm256_storeu_si256(into, _mm256_or_si256(_mm256_and_si256(payload1, mask), high_bits1));
-				_mm256_storeu_si256(into + 1, _mm256_or_si256(_mm256_and_si256(payload2, mask), high_bits2));
+				_mm256_storeu_si256(into, _mm256_and_si256(payload1, mask));
+				_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
 				payload1 = _mm256_srli_epi32(payload1, width);
 				payload2 = _mm256_srli_epi32(payload2, width);
 
-				/*
-					move on to the next slector
-				*/
 				into += 2;
 				selector >>= width;
-				}
+
+				while (selector == 0)
+					{
+					if (source >= end_of_source)
+						return;
+
+					/*
+						Save the remaining bits
+					*/
+					__m256i high_bits1 = payload1;
+					__m256i high_bits2 = payload2;
+
+					/*
+						move on to the next word
+					*/
+					selector = *(uint32_t *)source;
+					payload1 = _mm256_loadu_si256((__m256i *)(source + 4));
+					payload2 = _mm256_loadu_si256((__m256i *)(source + 36));
+					source += 68;
+
+					/*
+						get the low bits and write to memory
+					*/
+					width = (uint32_t)find_first_set_bit(selector);
+
+					high_bits1 = _mm256_slli_epi32(high_bits1, width);
+					high_bits2 = _mm256_slli_epi32(high_bits2, width);
+
+					mask = _mm256_loadu_si256((__m256i *)mask_set[width]);
+					_mm256_storeu_si256(into, _mm256_or_si256(_mm256_and_si256(payload1, mask), high_bits1));
+					_mm256_storeu_si256(into + 1, _mm256_or_si256(_mm256_and_si256(payload2, mask), high_bits2));
+					payload1 = _mm256_srli_epi32(payload1, width);
+					payload2 = _mm256_srli_epi32(payload2, width);
+
+					/*
+						move on to the next slector
+					*/
+					into += 2;
+					selector >>= width;
+					}
+			}
 		}
-	}
+#else
+	#error "Must have either AVX2 or AVX512"
+#endif
 
 	/*
 		COMPRESS_INTEGER_PRN_512_CARRYOVER::UNITTEST()
