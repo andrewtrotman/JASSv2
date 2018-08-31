@@ -67,45 +67,57 @@ namespace JASS
 	*/
 	void compress_integer_elias_gamma::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
 		{
+		const uint64_t *source = reinterpret_cast<const uint64_t *>(source_as_void);
 		uint64_t bits_used = 0;
+		uint64_t bits_remaining = 0;
+		uint64_t value = 0;
+		uint8_t unary;
 
 		for (integer *end = decoded + integers_to_decode; decoded < end; decoded++)
 			{
 			/*
-				read as many bits as we can from the lowest possible address
-			*/
-			const uint8_t *address = static_cast<const uint8_t *>(source_as_void) + (bits_used / 8);
-			const uint64_t *source = reinterpret_cast<const uint64_t *>(address);
-
-			/*
-				but we might not be aligned with the start of the word so read the next word to get the top few bits
-			*/
-			uint64_t extra_byte = *reinterpret_cast<const uint64_t *>(address + 1);
-
-			/*
-				dismiss the bits we're already used
-			*/
-			uint64_t value = *source >> (bits_used % 8);
-
-			/*
-				Append the next byte because 0x80000000 uses 63 bits (31 + 31 + 1), so if we have a string of 31-bit integers than they won't all fit!
-			*/
-			value |= (extra_byte << (8 - (bits_used % 8))) & 0xFF00000000000000;
-
-			/*
 				get the width
 			*/
-			uint64_t unary = _tzcnt_u64(value);
+			if (value != 0)
+				{
+				unary = _tzcnt_u64(value);
+				value >>= unary;
+				bits_remaining -= unary;
+				}
+			else
+				{
+				/*
+					the length splits a machine word
+				*/
+				unary = bits_remaining;
+				value = *source++;
+				bits_used = _tzcnt_u64(value);
+				unary += bits_used;
+				value >>= bits_used;
+				bits_remaining = 64 - bits_used;
+				}
 
 			/*
 				get the zig-zag encoded binary, unzig-zag it and store it
 			*/
-			*decoded = (_bextr_u64(value, unary, unary + 1) >> 1) | (1UL << unary);
-
-			/*
-				Remember how much we've already used
-			*/
-			bits_used += unary + unary + 1;
+			if (bits_remaining > unary)
+				{
+				*decoded = (_bextr_u64(value, 0, unary + 1) >> 1) | (1UL << unary);
+				bits_remaining -= unary + 1;
+				value >>= unary + 1;
+				}
+			else
+				{
+				/*
+					the encoded number splits a machine word
+				*/
+				*decoded = value;
+				value = *source++;
+				*decoded |= (_bextr_u64(value, 0, unary - bits_remaining + 1) << bits_remaining);
+				bits_used = unary - bits_remaining + 1;
+				bits_remaining = 64 - bits_used;
+				value >>= bits_used;
+				}
 			}
 		}
 
