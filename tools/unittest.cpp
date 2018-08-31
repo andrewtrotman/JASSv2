@@ -54,7 +54,6 @@
 #include "compress_general_zlib.h"
 #include "instream_document_trec.h"
 #include "index_manager_sequential.h"
-#include "compress_integer_prn_512.h"
 #include "compress_integer_carry_8b.h"
 #include "compress_integer_simple_9.h"
 #include "compress_integer_simple_8b.h"
@@ -76,7 +75,7 @@
 #include "compress_integer_elias_delta_simd.h"
 #include "compress_integer_simple_8b_packed.h"
 #include "compress_integer_simple_16_packed.h"
-#include "compress_integer_prn_512_carryover.h"
+#include "compress_integer_elias_gamma_simd.h"
 #include "compress_integer_bitpack_32_reduced.h"
 #include "compress_integer_elias_gamma_bitwise.h"
 #include "compress_integer_elias_delta_bitwise.h"
@@ -102,6 +101,25 @@ int main(void)
 
 	try
 		{
+		JASS::hardware_support hardware;
+		if (hardware.AVX)
+			{
+			puts("compress_integer_bitpack_256");
+			JASS::compress_integer_bitpack_256::unittest();
+
+			puts("compress_integer_elias_gamma_simd");
+			JASS::compress_integer_elias_gamma_simd::unittest();
+			}
+		else
+			{
+	// LCOV_EXCL_START
+			puts("compress_integer_bitpack_256");
+			puts("Cannot test as no 256-bit SIMD instructions on this CPU");
+			puts("compress_integer_elias_gamma_simd");
+			puts("Cannot test as no 256-bit SIMD instructions on this CPU");
+	// LCOV_EXCL_STOP
+			}
+
 		puts("compress_integer_elias_gamma");
 		JASS::compress_integer_elias_gamma::unittest();
 
@@ -298,30 +316,6 @@ int main(void)
 
 		puts("compress_integer_bitpack_128");
 		JASS::compress_integer_bitpack_128::unittest();
-
-		JASS::hardware_support hardware;
-		if (hardware.AVX)
-			{
-			puts("compress_integer_bitpack_256");
-			JASS::compress_integer_bitpack_256::unittest();
-
-			puts("compress_integer_prn_512");
-			JASS::compress_integer_prn_512::unittest();
-
-			puts("compress_integer_prn_512_carryover");
-			JASS::compress_integer_prn_512_carryover::unittest();
-			}
-		else
-			{
-	// LCOV_EXCL_START
-			puts("compress_integer_bitpack_256");
-			puts("Cannot test as no 256-bit SIMD instructions on this CPU");
-			puts("compress_integer_prn_512");
-			puts("Cannot test as no 256-bit SIMD instructions on this CPU");
-			puts("compress_integer_prn_512_carryover");
-			puts("Cannot test as no 256-bit SIMD instructions on this CPU");
-	// LCOV_EXCL_STOP
-			}
 
 		puts("accumulator_2d");
 		JASS::accumulator_2d<uint32_t, 1>::unittest();

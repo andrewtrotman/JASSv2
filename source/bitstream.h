@@ -180,7 +180,7 @@ namespace JASS
 				@brief return the next bit in the stream
 				@return true or false
 			*/
-			inline bool get_bit(void)
+			inline int get_bit(void)
 				{
 				bool ans;
 

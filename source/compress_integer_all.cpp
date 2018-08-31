@@ -8,7 +8,6 @@
 
 #include "compress_integer_all.h"
 #include "compress_integer_none.h"
-#include "compress_integer_prn_512.h"
 #include "compress_integer_carry_8b.h"
 #include "compress_integer_simple_9.h"
 #include "compress_integer_simple_8b.h"
@@ -29,7 +28,7 @@
 #include "compress_integer_elias_delta_simd.h"
 #include "compress_integer_simple_16_packed.h"
 #include "compress_integer_simple_8b_packed.h"
-#include "compress_integer_prn_512_carryover.h"
+#include "compress_integer_elias_gamma_simd.h"
 #include "compress_integer_bitpack_32_reduced.h"
 #include "compress_integer_elias_gamma_bitwise.h"
 #include "compress_integer_elias_delta_bitwise.h"
@@ -40,7 +39,6 @@ namespace JASS
 		List of known compressors
 	*/
 	static compress_integer_none none;											///< identity compressor
-	static compress_integer_prn_512 prn512;									///< prn-packed into 512-bit integers
 	static compress_integer_carry_8b carry_8b;								///< Carry-8b compressor
 	static compress_integer_simple_9 simple_9;								///< Simple-9 compressor
 	static compress_integer_simple_8b simple_8b;								///< Simple-8b compressor
@@ -61,7 +59,7 @@ namespace JASS
 	static compress_integer_elias_delta_simd elias_delta_simd;			///< Elias delta SIMD
 	static compress_integer_simple_16_packed simple_16_packed;			///< Packed Simple-16 compressor
 	static compress_integer_simple_8b_packed simple_8b_packed;			///< Packed Simple-8b compressor
-	static compress_integer_prn_512_carryover prn_512_carryover;		///< fprn-packed into 512-bit integers with carryover
+	static compress_integer_elias_gamma_simd elias_gamma_simd;			///< elias gamma packed into SIMD regisers
 	static compress_integer_bitpack_32_reduced bitpack_32_reduced;		///< fixed width bin-packed into 32-bit integers
 	static compress_integer_elias_gamma_bitwise elias_gamma_bitwise;	///< Elias gamma done with bit-wise instructions (slow)
 	static compress_integer_elias_delta_bitwise elias_delta_bitwise;	///< Elias delta done with bit-wise instructions (slow)
@@ -77,6 +75,7 @@ namespace JASS
 			{"-cd",    "--compress_elias_delta", "Elias delta", &elias_delta},
 			{"-cD",    "--compress_elias_delta_bitwise", "Elias delta with bit instuctions (slow)", &elias_delta_bitwise},
 			{"-ce",    "--compress_elias_delta_SIMD", "Elias delta with SIMD payloads", &elias_delta_simd},
+			{"-cE",    "--compress_elias_gamma_SIMD", "Elias gamma with SIMD payloads", &elias_gamma_simd},
 			{"-cg",    "--compress_elias_gamma", "Elias gamma", &elias_gamma},
 			{"-cG",    "--compress_elias_gamma_bitwise", "Elias gamma with bit instuctions (slow)", &elias_gamma_bitwise},
 			{"-cn",    "--compress_none", "None", &none},
@@ -95,8 +94,6 @@ namespace JASS
 			{"-c128",  "--compress_128", "Binpack into 128-bit SIMD integers", &bitpack_128},
 			{"-c256",  "--compress_256", "Binpack into 256-bit SIMD integers", &bitpack_256},
 			{"-c32r",  "--compress_32", "Binpack into 32-bit integers with 8 selectors", &bitpack_32_reduced},
-			{"-c512p", "--compress_prn_512", "PRN  compress into 512-bit SIMD integers", &prn512},
-			{"-c512c", "--compress_prn_512_carryover", "PRN  compress into 512-bit SIMD integers with carryover", &prn_512_carryover},
 			{"-c64",   "--compress_64", "Binpack into 64-bit integers", &bitpack_64},
 			}
 		};

@@ -22,20 +22,3 @@ target_link_libraries(examine_index
 	JASSlib
 	)
 
-#
-# prm
-#
-
-set(PRN_FILES
-	prm.cpp
-	)
-
-add_executable(prm
-	${PRN_FILES}
-	)
-
-target_link_libraries(prm
-	JASSlib
-	)
-
-source_group ("Source Files" FILES ${PRN_FILES})

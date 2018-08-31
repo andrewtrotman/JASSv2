@@ -279,7 +279,13 @@ namespace JASS
 					JASS_assert((::isspace(character) && isspace(character)) || ((!::isspace(character) && !isspace(character))));
 					JASS_assert((::iscntrl(character) && iscntrl(character)) || ((!::iscntrl(character) && !iscntrl(character))));
 					JASS_assert((::isgraph(character) && isgraph(character)) || ((!::isgraph(character) && !isgraph(character))));
-					JASS_assert((::isprint(character) && isprint(character)) || ((!::isprint(character) && !isprint(character))));
+					if (character != 9)
+						{
+						/*
+							this is due to a windows bug, see: https://developercommunity.visualstudio.com/content/problem/297085/changing-result-of-isspacet.html
+						*/
+						JASS_assert((::isprint(character) && isprint(character)) || ((!::isprint(character) && !isprint(character))));
+						}
 					JASS_assert((::ispunct(character) && ispunct(character)) || ((!::ispunct(character) && !ispunct(character))));
 					JASS_assert((::isxdigit(character) && isxdigit(character)) || ((!::isxdigit(character) && !isxdigit(character))));
 

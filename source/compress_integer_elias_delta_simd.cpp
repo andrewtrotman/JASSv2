@@ -286,7 +286,7 @@ namespace JASS
  		COMPRESS_INTEGER_ELIAS_DELTA_SIMD::DECODE_SELECTOR()
  		----------------------------------------------------
  	*/
- 	forceinline uint32_t compress_integer_elias_delta_simd::decode_selector(const uint32_t *&selector_set)
+ 	forceinline uint8_t compress_integer_elias_delta_simd::decode_selector(const uint32_t *&selector_set)
  		{
  		if (selector_bits_used >= 32)
  			{
@@ -298,12 +298,12 @@ namespace JASS
  		/*
  			get the width
  		*/
- 		uint64_t unary = _tzcnt_u64(accumulated_selector);
+ 		uint8_t unary = (uint8_t)_tzcnt_u64(accumulated_selector);
 
  		/*
  			get the zig-zag encoded binary, unzig-zag it and store it
  		*/
- 		uint32_t decoded = (_bextr_u64(accumulated_selector, unary, unary + 1) >> 1) | (1UL << unary);
+ 		uint8_t decoded = (uint8_t)((_bextr_u64(accumulated_selector, unary, unary + 1) >> 1)) | (1UL << unary);
 
  		/*
  			Remember how much we've already used
@@ -314,6 +314,70 @@ namespace JASS
  		return decoded;
  		}
 
+#ifdef __AVX512F__
+	/*
+		COMPRESS_INTEGER_ELIAS_DELTA_SIMD::DECODE()
+		-------------------------------------------
+	*/
+	void compress_integer_elias_delta_simd::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
+		{
+		uint32_t used = 0;
+		__m512i *into = reinterpret_cast<__m512i *>(decoded);
+		__m512i *end_of_output = reinterpret_cast<__m512i *>(decoded + integers_to_decode);
+
+		/*
+			Set up the initial selector
+		*/
+		accumulated_selector = 0;
+		selector_bits_used = 64;
+		const uint32_t *selector = reinterpret_cast<const uint32_t *>(reinterpret_cast<const uint8_t *>(source_as_void) + source_length) - 1;
+
+		/*
+			Set up the initial payload
+		*/
+		const uint32_t *source = reinterpret_cast<const uint32_t *>(source_as_void);
+		__m512i payload = _mm512_loadu_si512(reinterpret_cast<const __m512i *>(source));
+		source += 16;
+
+		while (into < end_of_output)
+			{
+			uint32_t width = decode_selector(selector);
+
+			if (used + width <= 32)
+				{
+				const __m512i mask = _mm512_loadu_si512(reinterpret_cast<const __m512i *>(mask_set[width]));
+				_mm512_storeu_si512(into, _mm512_and_si512(payload, mask));
+				payload = _mm512_srli_epi32(payload, width);
+
+				used += width;
+				into++;
+				}
+		else
+				{
+				/*
+					Save the remaining bits
+				*/
+				__m512i high_bits = _mm512_slli_epi32(payload, width - (32 - used));
+
+				/*
+					move on to the next word
+				*/
+				payload = _mm512_loadu_si512(reinterpret_cast<const __m512i *>(source));
+				source += 16;
+
+				/*
+					Decode and write to memory
+				*/
+				__m512i mask = _mm512_loadu_si512(reinterpret_cast<const __m512i *>(mask_set[used + width - 32]));		// the remaining bits in the AVX word
+				_mm512_storeu_si512(into, _mm512_or_si512(_mm512_and_si512(payload, mask), high_bits));
+				payload = _mm512_srli_epi32(payload, used + width - 32);
+
+				used = used + width - 32;
+				into++;;
+				}
+		}
+	}
+#elif defined(__AVX2__)
 	/*
 		COMPRESS_INTEGER_ELIAS_DELTA_SIMD::DECODE()
 		-------------------------------------------
@@ -383,7 +447,9 @@ namespace JASS
 				}
 		}
 	}
-
+#else
+	#error "Must have either AVX2 or AVX512"
+#endif
 	/*
 		COMPRESS_INTEGER_ELIAS_DELTA_SIMD::UNITTEST()
 		---------------------------------------------
@@ -441,6 +507,6 @@ namespace JASS
 
 		unittest_one(compressor, second_broken_sequence);
 
-		puts("compress_integer_prn_512_carryover::PASSED");
+		puts("compress_integer_elias_delta_simd::PASSED");
 		}
 	}

@@ -80,7 +80,7 @@ namespace JASS
 			*/
 			if (value != 0)
 				{
-				unary = _tzcnt_u64(value);
+				unary = (uint8_t)_tzcnt_u64(value);
 				value >>= unary;
 				bits_remaining -= unary;
 				}
@@ -89,10 +89,10 @@ namespace JASS
 				/*
 					the length splits a machine word
 				*/
-				unary = bits_remaining;
+				unary = (uint8_t)bits_remaining;
 				value = *source++;
-				bits_used = _tzcnt_u64(value);
-				unary += bits_used;
+				bits_used = (uint8_t)_tzcnt_u64(value);
+				unary += (uint8_t)bits_used;
 				value >>= bits_used;
 				bits_remaining = 64 - bits_used;
 				}
@@ -102,7 +102,7 @@ namespace JASS
 			*/
 			if (bits_remaining > unary)
 				{
-				*decoded = (_bextr_u64(value, 0, unary + 1) >> 1) | (1UL << unary);
+				*decoded = (integer)((_bextr_u64(value, 0, unary + 1) >> 1)) | (1UL << unary);
 				bits_remaining -= unary + 1;
 				value >>= unary + 1;
 				}
@@ -111,9 +111,9 @@ namespace JASS
 				/*
 					the encoded number splits a machine word
 				*/
-				*decoded = value;
+				*decoded = (integer)value;
 				value = *source++;
-				*decoded |= (_bextr_u64(value, 0, unary - bits_remaining + 1) << bits_remaining);
+				*decoded |= (integer)((_bextr_u64(value, 0, (uint32_t)(unary - bits_remaining + 1))) << bits_remaining);
 				bits_used = unary - bits_remaining + 1;
 				bits_remaining = 64 - bits_used;
 				value >>= bits_used;

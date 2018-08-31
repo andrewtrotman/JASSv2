@@ -14,6 +14,8 @@
 #pragma once
 
 #include <stdint.h>
+#include <immintrin.h>
+
 
 #include "forceinline.h"
 #include "compress_integer.h"
@@ -65,7 +67,7 @@ namespace JASS
 				}
 
 			forceinline void push_selector(uint32_t *&destination, uint8_t raw);
- 			uint32_t forceinline decode_selector(const uint32_t *&selector_set);
+ 			uint8_t forceinline decode_selector(const uint32_t *&selector_set);
 
 		public:
 			/*

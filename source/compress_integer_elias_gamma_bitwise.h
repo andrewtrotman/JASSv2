@@ -64,7 +64,7 @@ namespace JASS
 				while (bitstream.get_bit() == 0)
 					exp++;
 
-				return (1ULL << exp) | bitstream.get_bits(exp);
+				return (integer)((1ULL << exp) | bitstream.get_bits(exp));
 				}
 
 			/*

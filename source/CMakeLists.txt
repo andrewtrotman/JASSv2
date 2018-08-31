@@ -61,16 +61,14 @@ set(JASSlib_FILES
 	compress_integer_elias_gamma.h
 	compress_integer_elias_gamma.cpp
 	compress_integer_elias_gamma_bitwise.h
+	compress_integer_elias_gamma_simd.h
+	compress_integer_elias_gamma_simd.cpp
 	compress_integer_lyck_16.h
 	compress_integer_lyck_16.cpp
 	compress_integer_none.h
 	compress_integer_none.cpp
 	compress_integer_nybble_8.h
 	compress_integer_nybble_8.cpp
-	compress_integer_prn_512.h
-	compress_integer_prn_512.cpp
-	compress_integer_prn_512_carryover.h
-	compress_integer_prn_512_carryover.cpp
 	compress_integer_qmx_improved.h
 	compress_integer_qmx_improved.cpp
 	compress_integer_qmx_jass_v1.h

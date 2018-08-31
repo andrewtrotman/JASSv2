@@ -66,10 +66,9 @@ endif()
 #	Add AVX and BMI use.
 #
 if(WIN32)
-#	add_definitions("/arch:AVX")
+	add_definitions("-D__AVX512F__=1")
 else()
 	add_definitions("-march=native")
-#	add_definitions("-mavx2 -mbmi -msse2 -mlzcnt")
 endif()
 
 #

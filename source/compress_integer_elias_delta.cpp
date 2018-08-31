@@ -5,7 +5,6 @@
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 #include <immintrin.h>
-#include <x86intrin.h>
 
 
 #include "maths.h"
@@ -100,7 +99,7 @@ namespace JASS
 			*/
 			if (value != 0)
 				{
-				unary = _tzcnt_u64(value);
+				unary = (uint8_t)_tzcnt_u64(value);
 				value >>= unary;
 				bits_remaining -= unary;
 				}
@@ -110,7 +109,7 @@ namespace JASS
 					The unary part splits a machine word
 				*/
 				value = *source++;
-				bits_used = _tzcnt_u64(value);
+				bits_used = (uint8_t)_tzcnt_u64(value);
 				unary = bits_remaining + bits_used;
 				value >>= bits_used;
 				bits_remaining = 64 - bits_used;
@@ -121,7 +120,7 @@ namespace JASS
 			*/
 			if (bits_remaining - unary > 0)
 				{
-				binary = (_bextr_u64(value, 0, unary + 1) >> 1) | (1UL << unary);		// un-zig-zag
+				binary = (uint8_t)((_bextr_u64(value, 0, unary + 1) >> 1)) | (1 << unary);		// un-zig-zag
 				bits_remaining -= unary + 1;
 				value >>= unary + 1;
 				}
@@ -130,9 +129,9 @@ namespace JASS
 				/*
 					The binary splits a machine word
 				*/
-				binary = value;
+				binary = (uint8_t)value;
 				value = *source++;
-				binary |= _bextr_u64(value, 0, unary - bits_remaining + 1) << bits_remaining;
+				binary |= (uint8_t)(_bextr_u64(value, 0, unary - bits_remaining + 1) << bits_remaining);
 				binary = (binary >> 1) | (1UL << unary);				// un-zig-zag
 				bits_used = unary - bits_remaining + 1;
 				bits_remaining = 64 - bits_used;
@@ -144,7 +143,7 @@ namespace JASS
 			*/
 			if (bits_remaining - binary >= 0)
 				{
-				*decoded = _bextr_u64(value, 0, binary) | (1 << (binary - 1));
+				*decoded = (integer)(_bextr_u64(value, 0, binary)) | (1 << (binary - 1));
 				bits_remaining -= binary - 1;
 				value >>= binary - 1;
 				}
@@ -153,7 +152,7 @@ namespace JASS
 				/*
 					the encoded number splits a machine word
 				*/
-				*decoded = value | (1 << (binary - 1));
+				*decoded = (uint32_t)value | (1 << (binary - 1));
 				value = *source++;
 				*decoded |= (_bextr_u64(value, 0, binary - bits_remaining) << bits_remaining);
 				bits_used = binary - bits_remaining - 1;

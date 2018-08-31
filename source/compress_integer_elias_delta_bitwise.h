@@ -56,7 +56,7 @@ namespace JASS
 				{
 				integer exp = (integer)compress_integer_elias_gamma_bitwise::decode() - 1;
 
-				return (1ULL << exp) | bitstream.get_bits(exp);
+				return (integer)((1ULL << exp) | bitstream.get_bits(exp));
 				}
 
 		public:
