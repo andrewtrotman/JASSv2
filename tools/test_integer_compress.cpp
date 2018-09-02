@@ -120,6 +120,7 @@ int main(int argc, const char *argv[])
 		Set up for parsing the command line
 	*/
 	uint64_t report_every = (std::numeric_limits<uint64_t>::max)();							// print a message every this number of postings lists
+	bool verify = false;
 	bool generate = false;																// should we generate a sample file (usually false)
 	std::string filename = "";															// the name of the postings list file to check with
 	std::array<bool, JASS::compress_integer_all::compressors_size> selectors = {};		// which compressor does the user select
@@ -131,6 +132,7 @@ int main(int argc, const char *argv[])
 			JASS::commandline::note("\nFILENAME PARSING\n----------------"),
 			JASS::commandline::parameter("-f", "--filename", "Name of encoded postings list file", filename),
 			JASS::commandline::parameter("-z", "--has-zeros", "The postings file counts from 0, so add 1 to avoid compressing 0s", data_counts_from_zero),
+			JASS::commandline::parameter("-v", "--verify", "verify the decoded sequence matches the original sequence", verify),
 
 			JASS::commandline::note("\nCOMPRESSORS\n-----------")
 			),
@@ -243,18 +245,19 @@ int main(int argc, const char *argv[])
 		/*
 			Verify
 		*/
-		if (memcmp(&postings_list[0], &decompressed_postings_list[0], length * sizeof(postings_list[0])) != 0)
-			{
-			std::cout << "Fail on list " << term_count << "\n";
-			for (uint32_t pos = 0; pos < length; pos++)
-				if (postings_list[pos] != decompressed_postings_list[pos])
-					std::cout << "Fail at pos:" << pos << "[" <<  decompressed_postings_list[pos] << "!=" << postings_list[pos] << "]\n";
+		if (verify)
+			if (memcmp(&postings_list[0], &decompressed_postings_list[0], length * sizeof(postings_list[0])) != 0)
+				{
+				std::cout << "Fail on list " << term_count << "\n";
+				for (uint32_t pos = 0; pos < length; pos++)
+					if (postings_list[pos] != decompressed_postings_list[pos])
+						std::cout << "Fail at pos:" << pos << "[" <<  decompressed_postings_list[pos] << "!=" << postings_list[pos] << "]\n";
 
-			for (uint32_t pos = 10789632; pos < length; pos++)
-				std::cout << postings_list[pos] << ", ";
+				for (uint32_t pos = 10789632; pos < length; pos++)
+					std::cout << postings_list[pos] << ", ";
 
-			exit(0);
-			}
+				exit(0);
+				}
 			
 		/*
 			Notify
