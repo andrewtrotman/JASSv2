@@ -68,9 +68,9 @@ namespace JASS
 	void compress_integer_elias_gamma::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
 		{
 		const uint64_t *source = reinterpret_cast<const uint64_t *>(source_as_void);
-		uint64_t bits_used = 0;
-		uint64_t bits_remaining = 0;
 		uint64_t value = 0;
+		uint8_t bits_used = 0;
+		uint8_t bits_remaining = 0;
 		uint8_t unary;
 
 		for (integer *end = decoded + integers_to_decode; decoded < end; decoded++)
@@ -89,10 +89,10 @@ namespace JASS
 				/*
 					the length splits a machine word
 				*/
-				unary = (uint8_t)bits_remaining;
+				unary = bits_remaining;
 				value = *source++;
 				bits_used = (uint8_t)_tzcnt_u64(value);
-				unary += (uint8_t)bits_used;
+				unary += bits_used;
 				value >>= bits_used;
 				bits_remaining = 64 - bits_used;
 				}
@@ -113,7 +113,7 @@ namespace JASS
 				*/
 				*decoded = (integer)value;
 				value = *source++;
-				*decoded |= (integer)((_bextr_u64(value, 0, (uint32_t)(unary - bits_remaining + 1))) << bits_remaining);
+				*decoded |= (integer)((_bextr_u64(value, 0, unary - bits_remaining + 1)) << bits_remaining);
 				bits_used = unary - bits_remaining + 1;
 				bits_remaining = 64 - bits_used;
 				value >>= bits_used;
