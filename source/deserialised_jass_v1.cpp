@@ -195,10 +195,16 @@ namespace JASS
 				case 'q':
 					name = "QMX JASS v1";
 					return compress_integer_all::get_by_name("QMX JASS v1");
+				case 'G':
+					name = "Group Elias Gamma SIMD";
+					return compress_integer_all::get_by_name("Group Elias Gamma SIMD");
+				case 'D':
+					name = "Group Elias Delta SIMD";
+					return compress_integer_all::get_by_name("Group Elias Delta SIMD");
 				default:
 					exit(printf("Unknown index format\n"));
 					/*
-						// This can't happen because of the exit() above, and cppcheck warns avout it.
+						// This can't happen because of the exit() above, and cppcheck warns about it.
 						name = "None";
 						return compress_integer_all::get_by_name("None");
 					*/
