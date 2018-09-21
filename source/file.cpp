@@ -37,8 +37,13 @@ namespace JASS
 	*/
 		size_t file::read_entire_file(const std::string &filename, std::string &into)
 		{
-		FILE *fp;							// "C" pointer to the file
+		FILE *fp;		
+		// "C" pointer to the file
+#ifdef _MSC_VER
+		struct __stat64 details;				// file system's details of the file
+#else
 		struct stat details;				// file system's details of the file
+#endif
 		size_t file_length = 0;			// length of the file in bytes
 
 		/*
@@ -46,7 +51,11 @@ namespace JASS
 		*/
 		if ((fp = fopen(filename.c_str(), "rb")) != nullptr)
 			{
+#ifdef _MSC_VER
+			if (_fstat64(fileno(fp), &details) == 0)
+#else
 			if (fstat(fileno(fp), &details) == 0)
+#endif
 				if ((file_length = details.st_size) != 0)
 					{
 					into.resize(file_length);
@@ -151,9 +160,9 @@ namespace JASS
 	*/
 	bool file::is_directory(const std::string &filename)
 		{
-		struct stat st;				// file system details
+		struct __stat64 st;				// file system details
 
-		if (stat(filename.c_str(), &st) == 0)
+		if (_stat64(filename.c_str(), &st) == 0)
 			{
 			#ifdef WIN32
 				return (st.st_mode & _S_IFDIR) == 0 ? false : true;		// check the _S_IFDIR flag as there is no S_ISDIR() on Windows

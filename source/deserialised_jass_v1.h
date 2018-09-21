@@ -259,12 +259,25 @@ namespace JASS
 			bool postings_details(metadata &metadata, const query_term &term) const
 				{
 				auto found = std::lower_bound(vocabulary_list.begin(), vocabulary_list.end(), term.token());
+
+				/*
+					Term not in the dictionary and we've walked off the end.
+				*/
+				if (found == vocabulary_list.end())
+					return false;
+
+				/*
+					Term might be in the dictionary, better check
+				*/
 				if (term.token() == found->term)
 					{
 					metadata = *found;
 					return true;
 					}
 
+				/*
+					We don't have a match
+				*/
 				return false;
 				}
 

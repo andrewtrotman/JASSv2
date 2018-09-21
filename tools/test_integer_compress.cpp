@@ -52,7 +52,17 @@ void draw_histogram(void)
 	std::cout << "length DecompressTimeInNanoseconds CompressedSizeInBytes\n";
 	for (uint32_t index = 0; index < NUMBER_OF_DOCUMENTS; index++)
 		if (decompress_time[index] != 0)
-			std::cout << index << " " << decompress_time[index] / decompress_count[index] << " " << compressed_size[index] / compressed_count[index] << "\n";
+			{
+			if (compressed_count[index] == 0)
+				std::cout << "COMPRESSED_COUNT[" << index << "] == 0\n";
+			if (decompress_count[index] == 0)
+				std::cout << "DECOMPRESS_COUNT[" << index << "] == 0\n";
+
+			if (compressed_count[index] != 0 && decompress_count[index] != 0)
+				std::cout << index << " " << decompress_time[index] / decompress_count[index] << " " << compressed_size[index] / compressed_count[index] << "\n";
+			}
+	std::cout << "DONE" << std::endl;
+	fflush(stdout);
 	}
 
 /*
