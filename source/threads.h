@@ -46,7 +46,8 @@ namespace JASS
 				uintptr_t thread_id;
 			#else
 				pthread_t thread_id;						///< The Posix threads thread id
-				pthread_attr_t attributes;				///< The Posix threads attributes
+				pthread_attr_t attributes;					///< The Posix threads attributes
+				bool valid									///< there is no "invalid" value for a pthread_t so we need to invent a way to say this object is invalid
 			#endif
 
 		/*
@@ -129,8 +130,31 @@ namespace JASS
 					*/
 					if (pthread_create(&thread_id, &attributes, bootstrap<decltype(functor)>, functor) != 0)
 						exit(printf("Can't start thread"));				// LCOV_EXCL_LINE		// can't test this line
+
+					valid = true;
 				#endif
 				}
+
+
+			/*
+				THREAD::THREAD()
+				----------------
+			*/
+			/*!
+				@brief Move constructor.
+				@param other [in] the object being moved.
+			*/
+			thread(thread &&other);
+
+			/*
+				THREAD::THREAD()
+				----------------
+			*/
+			/*!
+				@brief Move assignment operator
+				@param other [in] the object being moved.
+			*/
+			thread &operator=(thread &&other);
 
 			/*
 				THREAD::~THREAD()

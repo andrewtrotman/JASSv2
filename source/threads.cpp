@@ -16,6 +16,54 @@
 namespace JASS
 	{
 	/*
+		THREAD::THREAD()
+		----------------
+	*/
+	thread::thread(thread &&other)
+		{
+		#ifdef _MSC_VER
+			thread_id = other.thread_id;
+			other.thread_id = -1;
+		#else
+			thread_id = other.thread_id;
+
+			valid = other.valid;
+			other.valid = false;
+
+			attributes = other.attributes;
+			other.attributes = 0;
+		#endif
+		}
+
+	/*
+		THREAD::THREAD()
+		----------------
+	*/
+	thread &thread::operator=(thread &&other)
+		{  
+		if (this != &other)
+			{
+			#ifdef _MSC_VER
+				if (thread_id != -1)
+					CloseHandle((HANDLE)thread_id);
+
+				thread_id = other.thread_id;
+				other.thread_id = -1;
+			#else
+				thread_id = other.thread_id;
+
+				valid = other.valid;
+				other.valid = false;
+
+				attributes = other.attributes;
+				other.attributes = 0;
+			#endif
+			}
+
+		return *this;
+		}
+
+	/*
 		THREAD::~THREAD()
 		-----------------
 	*/
@@ -40,10 +88,14 @@ namespace JASS
 	void thread::join(void)
 		{
 		#ifdef _MSC_VER
-			WaitForSingleObject((HANDLE)thread_id, INFINITE);
+			if (thread_id != -1)
+				WaitForSingleObject((HANDLE)thread_id, INFINITE);
 		#else
-			void *return_value;
-			pthread_join(thread_id, &return_value);
+			if (valid)
+				{
+				void *return_value;
+				pthread_join(thread_id, &return_value);
+				}
 		#endif
 		}
 

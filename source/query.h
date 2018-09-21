@@ -353,7 +353,7 @@ public:
 		std::cout << "three:" << three << "\t";
 		std::cout << "four:" << four << "\t";
 		}
-} counting;
+} XXcountingXX;
 
 			/*
 				ADD_RSV()
@@ -420,22 +420,6 @@ public:
 				@param document_id [in] which document to increment
 				@param score [in] the amount of weight to add
 			*/
-class annotate
-{
-public:
-	uint64_t one, two;
-
-public:
-	annotate() : one(0), two(0) {}
-	~annotate()
-		{
-		std::cout << "one:" << one << "\t";
-		std::cout << "two:" << two << "\t";
-		}
-} counting;
-
-
-
 #ifndef DONT_INLINE_ADD_RSV
 			forceinline
 #endif
@@ -449,7 +433,6 @@ public:
 				*which += score;
 				if (cmp(which, accumulator_pointers[0]) >= 0)			// ==0 is the case where we're the current bottom of heap so might need to be promoted
 					{
-					counting.one++;
 					/*
 						We end up in the top-k, now to work out why.  As this is a rare occurence, we've got a little bit of time on our hands
 					*/
@@ -477,8 +460,6 @@ public:
 							top_results.promote(which);				// we're already in the heap so promote this document
 						}
 					}
-				else
-					counting.two++;
 				}
 #endif
 			/*
