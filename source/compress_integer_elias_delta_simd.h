@@ -48,10 +48,6 @@ namespace JASS
 	class compress_integer_elias_delta_simd: public compress_integer
 		{
 		protected:
-			uint32_t selector_bits_used;
-			uint64_t accumulated_selector;
-
-		protected:
 			/*
 				COMPRESS_INTEGER_ELIAS_DELTA_SIMD::FIND_FIRST_SET_BIT()
 				-------------------------------------------------------
@@ -66,8 +62,8 @@ namespace JASS
 				return _tzcnt_u64(value) + 1;
 				}
 
-			forceinline void push_selector(uint32_t *&destination, uint8_t raw);
- 			uint8_t forceinline decode_selector(const uint32_t *&selector_set);
+			forceinline void push_selector(uint32_t *&destination, uint8_t raw, uint32_t &selector_bits_used, uint64_t &accumulated_selector);
+ 			uint8_t forceinline decode_selector(const uint32_t *&selector_set, uint32_t &selector_bits_used, uint64_t &accumulated_selector);
 
 		public:
 			/*

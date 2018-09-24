@@ -31,7 +31,6 @@ namespace JASS
 			other.valid = false;
 
 			attributes = other.attributes;
-			other.attributes = 0;
 		#endif
 		}
 
@@ -56,7 +55,6 @@ namespace JASS
 				other.valid = false;
 
 				attributes = other.attributes;
-				other.attributes = 0;
 			#endif
 			}
 

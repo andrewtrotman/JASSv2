@@ -67,7 +67,7 @@ namespace JASS
 		COMPRESS_INTEGER_ELIAS_DELTA_SIMD::PUSH_SELECTOR()
 		--------------------------------------------------
 	*/
-	void compress_integer_elias_delta_simd::push_selector(uint32_t *&destination, uint8_t raw)
+	void compress_integer_elias_delta_simd::push_selector(uint32_t *&destination, uint8_t raw, uint32_t &selector_bits_used, uint64_t &accumulated_selector)
 		{
 		/*
 			Write out the length of the selector in unary
@@ -99,8 +99,8 @@ namespace JASS
 	*/
 	size_t compress_integer_elias_delta_simd::encode(void *encoded, size_t encoded_buffer_length, const integer *array, size_t elements)
 		{
-		selector_bits_used = 0;
-		accumulated_selector = 0;
+		uint32_t selector_bits_used = 0;
+		uint64_t accumulated_selector = 0;
 
 		uint32_t *destination = reinterpret_cast<uint32_t *>(encoded);
 		uint32_t *end_of_destination = (uint32_t *)((uint8_t *)encoded + encoded_buffer_length);
@@ -178,7 +178,7 @@ namespace JASS
 					We push the selector width (max_width) here.
 				*/
 				if (carryover == 0)
-					push_selector(selector, max_width);
+					push_selector(selector, max_width, selector_bits_used, accumulated_selector);
 
 				/*
 					Check for underflow of the selector pointr
@@ -286,7 +286,7 @@ namespace JASS
  		COMPRESS_INTEGER_ELIAS_DELTA_SIMD::DECODE_SELECTOR()
  		----------------------------------------------------
  	*/
- 	forceinline uint8_t compress_integer_elias_delta_simd::decode_selector(const uint32_t *&selector_set)
+ 	forceinline uint8_t compress_integer_elias_delta_simd::decode_selector(const uint32_t *&selector_set, uint32_t &selector_bits_used, uint64_t &accumulated_selector)
  		{
  		if (selector_bits_used >= 32)
  			{
@@ -328,8 +328,8 @@ namespace JASS
 		/*
 			Set up the initial selector
 		*/
-		accumulated_selector = 0;
-		selector_bits_used = 64;
+		uint64_t accumulated_selector = 0;
+		uint32_t selector_bits_used = 64;
 		const uint32_t *selector = reinterpret_cast<const uint32_t *>(reinterpret_cast<const uint8_t *>(source_as_void) + source_length) - 1;
 
 		/*
@@ -341,7 +341,7 @@ namespace JASS
 
 		while (into < end_of_output)
 			{
-			uint32_t width = decode_selector(selector);
+			uint32_t width = decode_selector(selector, selector_bits_used, accumulated_selector);
 
 			if (used + width <= 32)
 				{
@@ -391,8 +391,8 @@ namespace JASS
 		/*
 			Set up the initial selector
 		*/
-		accumulated_selector = 0;
-		selector_bits_used = 64;
+		uint64_t accumulated_selector = 0;
+		uint32_t selector_bits_used = 64;
 		const uint32_t *selector = reinterpret_cast<const uint32_t *>(reinterpret_cast<const uint8_t *>(source_as_void) + source_length) - 1;
 
 		/*
@@ -405,7 +405,7 @@ namespace JASS
 
 		while (into < end_of_output)
 			{
-			uint32_t width = decode_selector(selector);
+			uint32_t width = decode_selector(selector, selector_bits_used, accumulated_selector);
 
 			if (used + width <= 32)
 				{

@@ -160,17 +160,19 @@ namespace JASS
 	*/
 	bool file::is_directory(const std::string &filename)
 		{
-		struct __stat64 st;				// file system details
+		#ifdef WIN32
+			struct __stat64 st;				// file system details
 
-		if (_stat64(filename.c_str(), &st) == 0)
-			{
-			#ifdef WIN32
+			if (_stat64(filename.c_str(), &st) == 0)
 				return (st.st_mode & _S_IFDIR) == 0 ? false : true;		// check the _S_IFDIR flag as there is no S_ISDIR() on Windows
-			#else
-				return S_ISDIR(st.st_mode);		// simply check the S_ISDIR() flag
-			#endif
-			}
-		return false;
+			return false;
+		#else
+			struct stat st;				// file system details
+
+			if (stat(filename.c_str(), &st) == 0)
+					return S_ISDIR(st.st_mode);		// simply check the S_ISDIR() flag
+			return false;
+		#endif
 		}
 
 	/*

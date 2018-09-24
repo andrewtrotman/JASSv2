@@ -47,7 +47,7 @@ namespace JASS
 			#else
 				pthread_t thread_id;						///< The Posix threads thread id
 				pthread_attr_t attributes;					///< The Posix threads attributes
-				bool valid									///< there is no "invalid" value for a pthread_t so we need to invent a way to say this object is invalid
+				bool valid;									///< there is no "invalid" value for a pthread_t so we need to invent a way to say this object is invalid
 			#endif
 
 		/*
