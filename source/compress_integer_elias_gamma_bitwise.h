@@ -30,7 +30,7 @@ namespace JASS
 	class compress_integer_elias_gamma_bitwise : public compress_integer
 		{
 		protected:
-			bitstream bitstream;			///< The bit patern that is the Elias gamma encoding
+			JASS::bitstream bitstream;			///< The bit patern that is the Elias gamma encoding
 
 		protected:
 			/*
