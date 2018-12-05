@@ -143,7 +143,7 @@ set(JASSlib_FILES
 	serialise_jass_v1.cpp
 	serialise_jass_v1.h
 	slice.h
-	strings.h
+	string_cpp.h
 	threads.h
 	threads.cpp
 	timer.h

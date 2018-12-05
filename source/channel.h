@@ -19,7 +19,7 @@
 #include <sstream>
 #include <type_traits>
 
-#include "strings.h"
+#include "string_cpp.h"
 
 namespace JASS
 	{
