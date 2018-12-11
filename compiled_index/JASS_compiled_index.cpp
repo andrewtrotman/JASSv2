@@ -10,7 +10,7 @@
 #include <stdint.h>
 
 #include "query.h"
-#include "strings.h"
+#include "string_cpp.h"
 #include "channel_file.h"
 #include "parser_query.h"
 #include "allocator_pool.h"
