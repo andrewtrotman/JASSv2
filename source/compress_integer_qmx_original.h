@@ -87,6 +87,18 @@ namespace JASS
 			*/
 			void write_out(uint8_t **buffer, uint32_t *source, uint32_t raw_count, uint32_t size_in_bits, uint8_t **length_buffer);
 
+			/*
+				COMPRESS_INTEGER_QMX_ORIGINAL::COMPRESS_INTEGER_QMX_IMPROVED()
+				--------------------------------------------------------------
+			*/
+			/*!
+				@brief Not permitted to copy an object of this type due to memory use
+			*/
+			compress_integer_qmx_original(const compress_integer_qmx_original &obj)
+				{
+				assert(false);				// Added to keep Codacy from producing a warning.
+				}
+
 		public:
 			/*
 				COMPRESS_INTEGER_QMX_ORIGINAL::COMPRESS_INTEGER_QMX_IMPROVED()
