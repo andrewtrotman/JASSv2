@@ -66,7 +66,7 @@ endif()
 #	Add AVX and BMI use.
 #
 if(WIN32)
-	if(APPVEYOR)
+	if(APPVEYOR="True")
 		add_definitions("-D__AVX2__=1")
 	else()
 		add_definitions("-D__AVX512F__=1")
