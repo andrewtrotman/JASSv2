@@ -96,7 +96,7 @@ namespace JASS
 			*/
 			compress_integer_qmx_original(const compress_integer_qmx_original &obj)
 				{
-				assert(false);				// Added to keep Codacy from producing a warning.
+				JASS_assert(false);				// Added to keep Codacy from producing a warning.
 				}
 
 		public:
