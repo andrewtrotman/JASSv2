@@ -66,9 +66,12 @@ endif()
 #	Add AVX and BMI use.
 #
 if(WIN32)
-	if(APPVEYOR="True")
+	message("Build on WINDOWS APPVEYOR="${APPVEYOR})
+	if(APPVEYOR)
+		message("APV")
 		add_definitions("-D__AVX2__=1")
 	else()
+		messager("not APV")
 		add_definitions("-D__AVX512F__=1")
 	endif()
 else()
