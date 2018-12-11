@@ -66,16 +66,16 @@ endif()
 #	Add AVX and BMI use.
 #
 if(WIN32)
-	message("Build on WINDOWS APPVEYOR=" $ENV{APPVEYOR})
+	#
+	# At present (December 2018) appveyor builds do npt support AVX512
+	#
 	if($ENV{APPVEYOR})
-		message("APV")
 		add_definitions("-D__AVX2__=1")
 	else()
-		message("not APV")
 		add_definitions("-D__AVX512F__=1")
 	endif()
 else()
-	add_definitions("-march=native" -mbmi)
+	add_definitions("-march=native" -mbmi -mavx2)
 endif()
 
 #
