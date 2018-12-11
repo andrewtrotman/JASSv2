@@ -13,7 +13,7 @@
 #pragma once
 
 #include "parser.h"
-#include "strings.h"
+#include "string_cpp.h"
 #include "index_postings.h"
 
 namespace JASS
