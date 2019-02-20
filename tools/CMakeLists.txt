@@ -62,8 +62,10 @@ add_executable(ascii_database_to_c
 
 add_executable(JASSv1_to_human
 	JASSv1_to_human.cpp
-	../source/asserts.cpp
-	../source/file.cpp)
+)
+
+target_link_libraries(JASSv1_to_human JASSlib ${CMAKE_THREAD_LIBS_INIT})
+
 
 #
 # bin_to_human

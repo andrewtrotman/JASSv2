@@ -64,7 +64,7 @@ namespace JASS
 			class metadata
 				{
 				public:
-					slice term;						///< Pointer to a '\0' terminated string that is this terms
+					slice term;								///< Pointer to a '\0' terminated string that is this term's name
 					uint8_t *offset;						///< Offset to the postings for this term
 					uint64_t impacts;						///< The numner of impact segments this term has
 
@@ -175,7 +175,7 @@ namespace JASS
 				@brief Constructor
 				@param verbose [in] Should the index reading methods produce messages on stdout?
 			*/
-			explicit deserialised_jass_v1(bool verbose) :
+			explicit deserialised_jass_v1(bool verbose = false) :
 				verbose(verbose),
 				documents(0),
 				terms(0)

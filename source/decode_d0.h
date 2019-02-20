@@ -121,7 +121,7 @@ namespace JASS
 				for (auto document : *this)
 					accumulators.add_rsv(document, impact);
 				}
-				
+
 			/*
 				DECODER_D0::UNITTEST()
 				----------------------

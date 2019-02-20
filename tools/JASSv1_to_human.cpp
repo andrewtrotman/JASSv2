@@ -14,83 +14,69 @@
 #include <iostream>
 
 #include "file.h"
+#include "decode_d0.h"
+#include "decode_d1.h"
+#include "deserialised_jass_v1.h"
 
 /*
-	STRUCT VOCAB_TRIPPLE
-	--------------------
+	CLASS PRINTER
+	-------------
 */
 /*!
-	@brief A tripple representing the vocabulart structure of JASS v1
+	@brief Implementation of add_rsv() that prints an individual posting
 */
-#pragma pack(push, 1)
-struct vocab_tripple
+class printer
 	{
-	uint64_t term;			///< pointer to term in the term file
-	uint64_t offset;		///< pointer to the postings list.
-	uint64_t impacts;		///< The number of impacts for this term
-	};
-#pragma pack(pop)
-
-/*
-	STRUCT IMPACT_HEADER
-	--------------------
-*/
-/*!
-	@brief The layout (in memory) of each impact header.
-*/
-#pragma pack(push, 1)
-struct impact_header
-	{
-	uint16_t impact_score;			///< The impact score for this sequence.
-	uint64_t start;					///< Pointer (from start of file) to the postings for this impact.
-	uint64_t finish;					///< Pointer (from start of file) to the end of the postings for this term.
-	uint32_t documents;					///< Number of documents with this impact score
-	};
-#pragma pack(pop)
-
-/*
-	DUMP_DOCLIST()
-	--------------
-*/
-/*!
-	@brief Dump the list of external document IDs (i.e. Primary Keys). 
-*/
-void dump_doclist(void)
-	{
-	std::string doclist;
-	uint64_t unique_documents;
-
-	JASS::file::read_entire_file("CIdoclist.bin", doclist);
-	unique_documents = *reinterpret_cast<const uint64_t *>(doclist.c_str() + doclist.size() - sizeof(uint64_t));
-
-	const uint64_t *offset_base = reinterpret_cast<const uint64_t *>(doclist.c_str() + doclist.size() - (unique_documents * sizeof(uint64_t) + sizeof(uint64_t)));
-
-	for (uint64_t id = 0; id < unique_documents; id++)
-		std::cout << doclist.c_str() + offset_base[id] << '\n';
-	}
-
-/*
-	DUMP_POSTINGS_LIST()
-	--------------------
-*/
-/*!
-	@brief Dump the postings list in a human readable format.
-	@param file [in] The in-memory index file.
-	@param offset [in] The location (from the start of the file) of the postings list.
-*/
-void dump_postings_list(const char *file, size_t offset, size_t number_of_impacts)
-	{
-	auto header_offset = *reinterpret_cast<const uint64_t *>(file + offset);
-	auto header = reinterpret_cast<const impact_header *>(file + header_offset);
-
-	for (size_t current = 0; current < number_of_impacts; current++)
-		{
-		std::cout << header->impact_score << ":";
-		for (const uint32_t *document_id = reinterpret_cast<const uint32_t *>(file + header->start); reinterpret_cast<const char *>(document_id) < file + header->finish; document_id++)
+	public:
+		/*
+			PRINTER::ADD_RSV()
+			------------------
+		*/
+		/*!
+			@brief print the posting
+			@param document [in] The document identifier (docid) used internally.
+			@param impact [in] The impact score of this term in this document.
+		*/
+		void add_rsv(uint64_t document, uint64_t impact)
 			{
-			std::cout << *document_id << ' ';
+			std::cout << '[' << document << ',' << impact << ']';
 			}
-		header++;
+	} ;
+
+
+/*
+	WALK_INDEX
+	----------
+*/
+/*!
+	@brief Walk the index, term by term, and print each posting from each postings list.
+	@param index [in] Reference to a JASS v1 deserialised index object.
+	@param decompressor [in] reference to an object that can decompress a postings list segment.
+*/
+template <typename DECODER>
+void walk_index(JASS::deserialised_jass_v1 &index, JASS::compress_integer &decompressor)
+	{
+	printer out_stream;
+	DECODER decoder(index.document_count() + 4096);		// Some decoders write past the end of the output buffer (e.g. GroupVarInt) so we allocate enough space for the overflow
+
+	/*
+		Walk each term
+	*/
+	for (const auto &term : index)
+		{
+		std::cout << term.term;
+		/*
+			Walk each segment
+		*/
+		for (uint64_t current_segment = 0; current_segment < term.impacts; current_segment++)
+			{
+			uint64_t *postings = (uint64_t *)term.offset + current_segment;
+			const JASS::deserialised_jass_v1::segment_header &header = *reinterpret_cast<const JASS::deserialised_jass_v1::segment_header *>(index.postings() + *postings);
+
+			decoder.decode(decompressor, header.segment_frequency, index.postings() + header.offset, header.end - header.offset);
+			decoder.process(header.impact, out_stream);
+			}
+		std::cout << '\n';
 		}
 	}
 
@@ -103,32 +89,31 @@ void dump_postings_list(const char *file, size_t offset, size_t number_of_impact
 */
 int main(void)
 	{
-	std::string vocab_buffer;
-	JASS::file::read_entire_file("CIvocab.bin", vocab_buffer);
-	const vocab_tripple *vocab = reinterpret_cast<const vocab_tripple *>(vocab_buffer.c_str());
-	auto vocab_length = vocab_buffer.size() / sizeof(vocab_tripple);
 
-	std::string postings;
-	JASS::file::read_entire_file("CIpostings.bin", postings);
+	/*
+		Move to using JASS library methods for processing the postings lists
+	*/
+	JASS::deserialised_jass_v1 index(true);
+	index.read_index();
 
+	/*
+		Get the encoding scheme and the d-ness of the index
+	*/
+	std::string codex_name;
+	index.codex(codex_name);
+	JASS::compress_integer &decompressor = index.codex(codex_name);
+	uint32_t d_ness = codex_name == "None" ? 0 : 1;			// d_ness of other than 0 or 1 is (currently) invalid
 
-	std::string strings;
-	JASS::file::read_entire_file("CIvocab_terms.bin", strings);
+	std::cout << "\nPOSTINGS LISTS\n-------------\n";
 
-	std::cout << "POSTINGS LISTS\n--------------\n";
-	for (size_t term = 0; term < vocab_length; term++)
-		{
-		std::cout << strings.c_str() + vocab[term].term << "->";
-if (strncmp(strings.c_str() + vocab[term].term, "and", 4) == 0)
-{
-int x = 0;
-}
-		dump_postings_list(postings.c_str(), vocab[term].offset, vocab[term].impacts);
-		std::cout << '\n';
-		}
+	if (d_ness == 0)
+		walk_index<JASS::decoder_d0>(index, decompressor);
+	else
+		walk_index<JASS::decoder_d1>(index, decompressor);
 
 	std::cout << "\nPRIMARY KEY LIST\n----------------\n";
-	dump_doclist();
+	for (const auto &key : index.primary_keys())
+		std::cout << key << '\n';
 
 	return 0;
 	}
