@@ -16,7 +16,22 @@
 #include "file.h"
 #include "decode_d0.h"
 #include "decode_d1.h"
+#include "commandline.h"
 #include "deserialised_jass_v1.h"
+
+/*
+	PARAMETERS
+	----------
+*/
+bool parameter_look_like_atire = false;
+bool parameter_help = false;
+
+std::string parameters_errors;						///< Any errors as a result of command line parsing
+auto parameters = std::make_tuple					///< The  command line parameter block
+	(
+	JASS::commandline::parameter("-?", "--help", "Print this help.", parameter_help),
+	JASS::commandline::parameter("-A", "--ATIRE", "Make the output look as like 'atire_dictionary -p -q -e \"~\"')", parameter_look_like_atire)
+	);
 
 /*
 	CLASS PRINTER
@@ -39,10 +54,9 @@ class printer
 		*/
 		void add_rsv(uint64_t document, uint64_t impact)
 			{
-			std::cout << '[' << document << ',' << impact << ']';
+			std::cout << '<' << document << ',' << impact << '>';
 			}
 	} ;
-
 
 /*
 	WALK_INDEX
@@ -64,7 +78,7 @@ void walk_index(JASS::deserialised_jass_v1 &index, JASS::compress_integer &decom
 	*/
 	for (const auto &term : index)
 		{
-		std::cout << term.term;
+		std::cout << term.term << ' ';
 		/*
 			Walk each segment
 		*/
@@ -81,19 +95,43 @@ void walk_index(JASS::deserialised_jass_v1 &index, JASS::compress_integer &decom
 	}
 
 /*
+	USAGE()
+	-------
+*/
+/*!
+	@brief Print the usage line
+*/
+uint8_t usage(const std::string &exename)
+	{
+	std::cout << JASS::commandline::usage(exename, parameters) << "\n";
+	return 1;
+	}
+
+/*
 	MAIN()
 	------
 */
 /*!
 	@brief Dump a human-readable version of a JASS v1 index to standard out.
 */
-int main(void)
+int main(int argc, const char *argv[])
 	{
+	/*
+		Parse the commane line parameters
+	*/
+	auto success = JASS::commandline::parse(argc, argv, parameters, parameters_errors);
+	if (!success)
+		{
+		std::cout << parameters_errors;
+		exit(1);
+		}
+	if (parameter_help)
+		exit(usage(argv[0]));
 
 	/*
-		Move to using JASS library methods for processing the postings lists
+		Open and read the index
 	*/
-	JASS::deserialised_jass_v1 index(true);
+	JASS::deserialised_jass_v1 index(false);
 	index.read_index();
 
 	/*
@@ -104,16 +142,26 @@ int main(void)
 	JASS::compress_integer &decompressor = index.codex(codex_name);
 	uint32_t d_ness = codex_name == "None" ? 0 : 1;			// d_ness of other than 0 or 1 is (currently) invalid
 
-	std::cout << "\nPOSTINGS LISTS\n-------------\n";
+	if (!parameter_look_like_atire)
+		std::cout << "\nPOSTINGS LISTS\n-------------\n";
 
+	/*
+		Print the postings lists
+	*/
 	if (d_ness == 0)
 		walk_index<JASS::decoder_d0>(index, decompressor);
 	else
 		walk_index<JASS::decoder_d1>(index, decompressor);
 
-	std::cout << "\nPRIMARY KEY LIST\n----------------\n";
-	for (const auto &key : index.primary_keys())
-		std::cout << key << '\n';
+	/*
+		Print the primary key list
+	*/
+	if (!parameter_look_like_atire)
+		{
+		std::cout << "\nPRIMARY KEY LIST\n----------------\n";
+		for (const auto &key : index.primary_keys())
+			std::cout << key << '\n';
+		}
 
 	return 0;
 	}
