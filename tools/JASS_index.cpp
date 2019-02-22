@@ -39,6 +39,7 @@ std::string parameter_filename = "";
 bool parameter_quiet = false;
 bool parameter_help = false;
 size_t parameter_report_every_n = (std::numeric_limits<size_t>::max)();
+bool parameter_atire_similar = false;
 
 auto command_line_parameters = std::make_tuple
 	(
@@ -53,6 +54,9 @@ auto command_line_parameters = std::make_tuple
 
 	JASS::commandline::note("\nFILE HANDLING\n-------------"),
 	JASS::commandline::parameter("-f", "--filename", "<filename> Filename to index.", parameter_filename),
+
+	JASS::commandline::note("\nCOMPATIBILITY\n-------------"),
+	JASS::commandline::parameter("-A", "--atire", "ATIRE-like parsing (errors and all)", parameter_atire_similar),
 
 	JASS::commandline::note("\nINDEX GENERATION\n----------------"),
 	JASS::commandline::parameter("-I1", "--index_jass_v1", "Generate a JASS version 1 index.", parameter_jass_v1_index),
@@ -182,7 +186,11 @@ int main(int argc, const char *argv[])
 			}
 		while (!finished);
 		collection_length += document_length;
-		index.end_document(document_length);
+
+		/*
+			ATIRE has a bug that results in the document length calculation being off by one (one too large in ATIRE)
+		*/
+		index.end_document(document_length + (parameter_atire_similar ? 1 : 0));
 		}
 	while (!document.isempty());
 

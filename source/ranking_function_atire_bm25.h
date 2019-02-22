@@ -35,7 +35,7 @@ namespace JASS
 	*/
 	class ranking_function_atire_bm25
 		{
-		private:
+private:
 			double idf;												///< the IDF of the term being processed
 			double top_row;										///< the top-row of the ranking function for the term being processed (tf(td) * (k1 + 1))
 			double k1_plus_1;										///< k1 + 1
@@ -66,7 +66,7 @@ namespace JASS
 				for (auto length : document_lengths)
 					sum += length;
 
-				mean_document_length = static_cast<double>(sum) / static_cast<double>(document_lengths.size() - 1);
+				mean_document_length = static_cast<double>(sum) / static_cast<double>(document_lengths.size() - 1);			// -1 because ID 0 is not used (and should be 0)
 
 				auto correction = &length_correction[0];			// recall that we count from 1, not from 0
 				for (auto length : document_lengths)
@@ -140,7 +140,8 @@ namespace JASS
 
 					In this implementation we ignore k3 and the number of times the term occurs in the query.
 				*/
-				return idf * (top_row / (term_frequency + length_correction[document_id]));
+				double tf = term_frequency;
+				return idf * (top_row / (tf + length_correction[document_id]));
 				}
 
 			/*
