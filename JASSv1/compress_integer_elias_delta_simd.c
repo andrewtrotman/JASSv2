@@ -14,7 +14,7 @@
 #include <vector>
 #include <iostream>
 
-#include "../JASSv2/source/maths.h"
+#include "../source/maths.h"
 #include "compress_integer_elias_delta_simd.h"
 
 #define WORD_WIDTH 32
