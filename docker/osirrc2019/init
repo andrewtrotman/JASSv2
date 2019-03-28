@@ -1,0 +1,27 @@
+#!/bin/bash
+
+set -ev
+
+# Get JASSv1 and JASSv2
+git clone https://github.com/andrewtrotman/JASSv2.git
+
+# Get ATIRE
+cd JASSv2
+hg clone http://www.atire.org/hg/atire
+
+# make ATIRE
+cd atire 
+make
+cd ..
+
+# Build JASSv1
+cd JASSv1
+make
+cd ..
+
+# Build JASSv2
+cd build
+cmake -D FORCE_CMAKE_BUILD_TYPE=Release .. 
+make
+
+exit 0

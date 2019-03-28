@@ -1,0 +1,12 @@
+#!/bin/sh
+
+echo "Indexing..."
+
+# of threads
+NPROC=`nproc`
+
+# The name of the collection
+COLLECTION=$1
+
+java -cp anserini.jar io.anserini.index.IndexCollection -collection TrecCollection -generator JsoupGenerator -threads $NPROC -input /input/collections/$COLLECTION -index index -storePositions -storeDocvectors -storeRawDocs
+

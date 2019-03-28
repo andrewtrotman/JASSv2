@@ -1,0 +1,14 @@
+#!/bin/sh
+
+echo "Searching..."
+
+# The name of the topic file
+TOPIC=$1
+
+java -cp anserini.jar io.anserini.search.SearchCollection -topicreader Trec -index index -topics /input/topics/$TOPIC -output /output/run.robust04.bm25.topics.robust04.301-450.601-700.txt -bm25
+java -cp anserini.jar io.anserini.search.SearchCollection -topicreader Trec -index index -topics /input/topics/$TOPIC -output /output/run.robust04.bm25+rm3.topics.robust04.301-450.601-700.txt -bm25 -rm3
+java -cp anserini.jar io.anserini.search.SearchCollection -topicreader Trec -index index -topics /input/topics/$TOPIC -output /output/run.robust04.bm25+ax.topics.robust04.301-450.601-700.txt -bm25 -axiom -rerankCutoff 20 -axiom.deterministic
+java -cp anserini.jar io.anserini.search.SearchCollection -topicreader Trec -index index -topics /input/topics/$TOPIC -output /output/run.robust04.ql.topics.robust04.301-450.601-700.txt -ql
+java -cp anserini.jar io.anserini.search.SearchCollection -topicreader Trec -index index -topics /input/topics/$TOPIC -output /output/run.robust04.ql+rm3.topics.robust04.301-450.601-700.txt -ql -rm3
+java -cp anserini.jar io.anserini.search.SearchCollection -topicreader Trec -index index -topics /input/topics/$TOPIC -output /output/run.robust04.ql+ax.topics.robust04.301-450.601-700.txt -ql -axiom -rerankCutoff 20 -axiom.deterministic
+
