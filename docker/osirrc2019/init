@@ -9,9 +9,12 @@ git clone https://github.com/andrewtrotman/JASSv2.git
 cd JASSv2
 hg clone http://www.atire.org/hg/atire
 
-# make ATIRE
+# make ATIRE and trec2query
 cd atire 
 make
+cd evaluation
+make
+cd ..
 cd ..
 
 # Build JASSv1

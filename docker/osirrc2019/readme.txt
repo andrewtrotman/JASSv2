@@ -16,3 +16,7 @@ docker run -ti andrewtrotman/osirrc2019 bash
 
 python run.py prepare --repo andrewtrotman/osirrc2019 --tag latest --collection_name robust04 --collection_path /Users/andrew/programming/JASSv2/docker/osirrc2019/robust04
 
+
+# search command
+
+python run.py search --repo andrewtrotman/osirrc2019 --topic topics.robust04.301-450.601-700.txt --output /Users/andrew/programming/JASSv2/docker/osirrc2019/output --qrels $(pwd)/qrels/qrels.robust2004.txt
