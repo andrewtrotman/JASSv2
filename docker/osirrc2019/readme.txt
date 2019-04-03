@@ -12,4 +12,7 @@ docker images
 docker run -ti andrewtrotman/osirrc2019 bash
 
 
-python run.py prepare --repo rclancy/anserini-test --tag latest --collection_name robust04 --collection_path /path/to/disk45
+# The test suite init and index command
+
+python run.py prepare --repo andrewtrotman/osirrc2019 --tag latest --collection_name robust04 --collection_path /Users/andrew/programming/JASSv2/docker/osirrc2019/robust04
+

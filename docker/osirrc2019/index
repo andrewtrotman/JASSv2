@@ -1,12 +1,11 @@
 #!/bin/sh
 
-echo "Indexing..."
-
-# of threads
-NPROC=`nproc`
-
 # The name of the collection
-COLLECTION=$1
+COLLECTION=/input/collections/$1
 
-java -cp anserini.jar io.anserini.index.IndexCollection -collection TrecCollection -generator JsoupGenerator -threads $NPROC -input /input/collections/$COLLECTION -index index -storePositions -storeDocvectors -storeRawDocs
+ls -alR /input
 
+JASSv2/atire/bin/index -N1000 -sa -rrtrec $COLLECTION/disk4/FR94/01 
+
+# do the indexing job
+# atire/bin/index -N1000 -sa -rrtrec $COLLECTION/disk4/FR94/01 $COLLECTION/disk4/FR94/02 $COLLECTION/disk4/FR94/03 $COLLECTION/disk4/FR94/04 $COLLECTION/disk4/FR94/05 $COLLECTION/disk4/FR94/06 $COLLECTION/disk4/FR94/07 $COLLECTION/disk4/FR94/08 $COLLECTION/disk4/FR94/09 $COLLECTION/disk4/FR94/10 $COLLECTION/disk4/FR94/11 $COLLECTION/disk4/FR94/12 $COLLECTION/disk4/FT/FT911 $COLLECTION/disk4/FT/FT921 $COLLECTION/disk4/FT/FT922 $COLLECTION/disk4/FT/FT923 $COLLECTION/disk4/FT/FT924 $COLLECTION/disk4/FT/FT931 $COLLECTION/disk4/FT/FT932 $COLLECTION/disk4/FT/FT933 $COLLECTION/disk4/FT/FT934 $COLLECTION/disk4/FT/FT941 $COLLECTION/disk4/FT/FT942 $COLLECTION/disk4/FT/FT943 $COLLECTION/disk4/FT/FT944 $COLLECTION/disk5/FBIS/FB* $COLLECTION/disk5/LATIMES/LA*
