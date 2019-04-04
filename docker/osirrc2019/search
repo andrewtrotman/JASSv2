@@ -13,3 +13,6 @@ JASSv2/atire/evaluation/trec2query $TOPIC t > queries.txt
 
 # call JASSv2 to do the search
 JASSv2/build/anytime/JASS_anytime -q queries.txt -t $NPROC -k 100
+
+# now copy the output to the output directory
+cp ranking.txt /output/JASSv2.txt
