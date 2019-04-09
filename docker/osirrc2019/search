@@ -5,14 +5,11 @@ echo "Searching..."
 # The name of the topic file
 TOPIC=/input/topics/$1
 
-# of threads
-NPROC=`nproc`
-
 # Convert the topics from TREC XML format to one query per line for JASSv2
 JASSv2/atire/evaluation/trec2query $TOPIC t > queries.txt
 
-# call JASSv2 to do the search
-JASSv2/build/anytime/JASS_anytime -q queries.txt -t $NPROC -k 100
+# call JASS to do the search
+JASSv2/JASSv1/jass queries.txt 100 1000000000 
 
 # now copy the output to the output directory
 cp ranking.txt /output/JASSv2.txt

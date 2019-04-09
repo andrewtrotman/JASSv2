@@ -181,6 +181,32 @@ namespace JASS
 				--------------------
 			*/
 			/*!
+				@brief Extract a floating point value of the parameter from the command line parameters
+				@details manages floats and doubles and checks for out of range
+				@param messages [out] Any errors are reported down this stream.
+				@param parameter [in] The unparsed paramter as given by the user
+				@param element [out] where to put the value.
+			*/
+			template <typename TYPE,
+				typename std::enable_if <std::is_same<TYPE, float>::value ||
+							 std::is_same<TYPE, double>::value>::type* = nullptr>
+			static void extract(std::ostringstream &messages, const char *parameter, command<TYPE> element)
+				{
+				double answer = std::stod(parameter);
+
+				if (answer > (std::numeric_limits<TYPE>::max)())
+					messages << parameter << " Numeric overflow on parameter\n";
+				else if (answer < (std::numeric_limits<TYPE>::min)())
+					messages << parameter << " Numeric underflow on parameter\n";
+				else
+					element.parameter = static_cast<TYPE>(answer);
+				}
+
+			/*
+				COMMANDLINE::EXTRACT
+				--------------------
+			*/
+			/*!
 				@brief Extract a string value of the parameter from the command line parameters
 				@param messages [out] Any errors are reported down this stream.
 				@param parameter [in] The unparsed parameter as given by the user

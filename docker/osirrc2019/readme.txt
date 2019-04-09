@@ -6,11 +6,9 @@ docker build . -t andrewtrotman/osirrc2019
 
 docker images
 
-
 # run an interactive command in the image
 
 docker run -ti andrewtrotman/osirrc2019 bash
-
 
 # The test suite init and index command
 

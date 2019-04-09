@@ -36,18 +36,22 @@ constexpr size_t MAX_TOP_K = 1'000;
 	PARAMETERS
 	----------
 */
-std::string parameter_queryfilename;				///< Name of file containing the queries
-size_t parameter_threads = 1;							///< Number of concurrent queries
-size_t parameter_top_k = 10;							///< Number of results to return
+double rho = 100.0;												///< In the anytime paper rho is the prcentage of the collection that should be used as a cap to the number of postings processed.
+size_t maximum_number_of_postings_to_process = 0;	///< Computed from
+std::string parameter_queryfilename;					///< Name of file containing the queries
+size_t parameter_threads = 1;								///< Number of concurrent queries
+size_t parameter_top_k = 10;								///< Number of results to return
 bool parameter_help = false;
 
-std::string parameters_errors;						///< Any errors as a result of command line parsing
-auto parameters = std::make_tuple					///< The  command line parameter block
+std::string parameters_errors;							///< Any errors as a result of command line parsing
+auto parameters = std::make_tuple						///< The  command line parameter block
 	(
-	JASS::commandline::parameter("-?", "--help", "Print this help.", parameter_help),
-	JASS::commandline::parameter("-q", "--queryfile", "<filename>  Name of file containing a list of queries (1 per line, each line prefixed with query-id)", parameter_queryfilename),
-	JASS::commandline::parameter("-t", "--threads",   "<threadcount> Number of threads to use (one query per thread) [default = -t1]", parameter_threads),
-	JASS::commandline::parameter("-k", "--top-k",     "<top-k>      Number of results to return to the user (top-k value) [default = -k10]", parameter_top_k)
+	JASS::commandline::parameter("-?", "--help",      "Print this help.", parameter_help),
+	JASS::commandline::parameter("-q", "--queryfile", "<filename>        Name of file containing a list of queries (1 per line, each line prefixed with query-id)", parameter_queryfilename),
+	JASS::commandline::parameter("-t", "--threads",   "<threadcount>     Number of threads to use (one query per thread) [default = -t1]", parameter_threads),
+	JASS::commandline::parameter("-k", "--top-k",     "<top-k>           Number of results to return to the user (top-k value) [default = -k10]", parameter_top_k),
+	JASS::commandline::parameter("-r", "--rho",       "<integer_percent> Percent of the collection size to use as max number of postings to process [default = -r100] (overrides -RHO)", rho),
+	JASS::commandline::parameter("-R", "--RHO",       "<integer_max>     Max number of postings to process [default is all] (overridden by -rho)", maximum_number_of_postings_to_process)
 	);
 
 /*
@@ -185,6 +189,8 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 
 			/*
 				The anytime algorithms basically boils down to this... have we processed enough postings yet?  If so then stop
+				The definition of "enough" is that processing the next segment will exceed postings_to_process so we wil be over
+				the "time limit" so we must not do it.
 			*/
 			if (postings_processed + header.segment_frequency > postings_to_process)
 				break;
@@ -281,11 +287,18 @@ int main(int argc, const char *argv[])
 		exit(1);
 		}
 
-
 	/*
 		Set the Anytime stopping criteria
 	*/
 	size_t postings_to_process = (std::numeric_limits<size_t>::max)();
+
+	if (maximum_number_of_postings_to_process != 0)
+		postings_to_process = maximum_number_of_postings_to_process;
+
+	if (rho != 100.0)
+		postings_to_process = static_cast<size_t>(static_cast<double>(index.document_count()) * rho / 100.0);
+
+std::cout << "Postings to process:" << postings_to_process << "\n";
 
 	/*
 		Read from the query file into a list of queries array.
