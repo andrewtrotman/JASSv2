@@ -1,15 +1,15 @@
-#!/bin/sh
+#!/usr/bin/env python3
 
-echo "Searching..."
+import argparse
+import json
+import subprocess
 
-# The name of the topic file
-TOPIC=/input/topics/$1
+print("Searching...")
 
-# Convert the topics from TREC XML format to one query per line for JASSv2
-JASSv2/atire/evaluation/trec2query $TOPIC t > queries.txt
+parser = argparse.ArgumentParser()
+parser.add_argument("--json", type=json.loads, required=True, help="the json input")
 
-# call JASS to do the search
-JASSv2/JASSv1/jass queries.txt 100 1000000000 
+args, unknown = parser.parse_known_args()
 
-# now copy the output to the output directory
-cp ranking.txt /output/JASSv2.txt
+if args.json["collection"]["name"].lower() == "robust04":
+	subprocess.run("/search_robust04 " + args.json["topic"]["path"] + " " + str(args.json["top_k"]), shell=True)

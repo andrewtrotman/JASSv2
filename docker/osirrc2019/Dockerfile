@@ -10,6 +10,8 @@ RUN         apt-get update -y \
 COPY init init
 COPY index index
 COPY search search
+COPY index_robust04 index_robust04
+COPY search_robust04 search_robust04
 
 # Set working directory
 

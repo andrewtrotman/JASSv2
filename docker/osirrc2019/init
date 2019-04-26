@@ -27,4 +27,3 @@ cd build
 cmake -D FORCE_CMAKE_BUILD_TYPE=Release .. 
 make
 
-exit 0
