@@ -6,7 +6,7 @@
 */
 #include "parser.h"
 #include "instream_file.h"
-#include "instream_document_html.h"
+#include "instream_document_trec.h"
 
 /*
 	MAIN()
@@ -24,8 +24,7 @@ int main(int argc, char *argv[])
 		build a pipeline - recall that deletes cascade so file is deleted when source goes out of scope.
 	*/
 	std::shared_ptr<JASS::instream> file(new JASS::instream_file(argv[1]));
-	JASS::instream_document_html source(file);
-	//source.set_tags("html", "title");
+	JASS::instream_document_trec source(file);
 
 	/*
 		this program counts document and alphbetic tokens in those documents.
@@ -44,7 +43,6 @@ int main(int argc, char *argv[])
 		document.rewind();
 		source.read(document);
 
-		
 		/*
 			eof is signaled as an empty document.
 		*/
@@ -84,9 +82,6 @@ int main(int argc, char *argv[])
 						Count the number of alphabetic tokens.
 					*/
 					alphas++;
-					//size_t size = token.size();
-					//JASS::slice kupu = (JASS::slice) token;
-					//printf("%*.*s", kupu.length, kupu.length, kupu.pointer);
 					break;
 				default:
 					/*
