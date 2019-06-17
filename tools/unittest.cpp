@@ -79,6 +79,7 @@
 #include "compress_integer_bitpack_32_reduced.h"
 #include "compress_integer_elias_gamma_bitwise.h"
 #include "compress_integer_elias_delta_bitwise.h"
+#include "compress_integer_gather_elias_gamma_simd.h"
 
 /*
 	MAIN()
@@ -109,6 +110,12 @@ int main(void)
 
 			puts("compress_integer_elias_gamma_simd");
 			JASS::compress_integer_elias_gamma_simd::unittest();
+
+			puts("compress_integer_gather_elias_gamma_simd");
+			JASS::compress_integer_gather_elias_gamma_simd::unittest();
+
+			puts("compress_integer_elias_delta_simd");
+			JASS::compress_integer_elias_delta_simd::unittest();
 			}
 		else
 			{
@@ -125,9 +132,6 @@ int main(void)
 
 		puts("compress_integer_elias_delta");
 		JASS::compress_integer_elias_delta::unittest();
-
-		puts("compress_integer_elias_delta_simd");
-		JASS::compress_integer_elias_delta_simd::unittest();
 
 		puts("bitstream");
 		JASS::bitstream::unittest();

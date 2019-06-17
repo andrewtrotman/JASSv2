@@ -14,7 +14,6 @@
 
 namespace JASS
 	{
-
 	/*
 		COMPRESS_INTEGER::UNITTEST_ONE()
 		--------------------------------

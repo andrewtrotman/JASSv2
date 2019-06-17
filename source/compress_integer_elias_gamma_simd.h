@@ -16,8 +16,6 @@
 #include <string.h>
 #include <immintrin.h>
 
-
-
 #include "forceinline.h"
 #include "compress_integer.h"
 
@@ -32,7 +30,10 @@ namespace JASS
 	*/
 	class compress_integer_elias_gamma_simd: public compress_integer
 		{
-		private:
+		protected:
+			static const uint32_t mask_set[33][16];
+
+		protected:
 			/*
 				COMPRESS_INTEGER_ELIAS_GAMMA_SIMD::COMPUTE_SELECTOR()
 				-----------------------------------------------------

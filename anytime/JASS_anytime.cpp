@@ -200,8 +200,11 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 				Process the postings
 			*/
 			uint16_t impact = header.impact;
+/*
 			decoder->decode(decompressor, header.segment_frequency, index.postings() + header.offset, header.end - header.offset);
 			decoder->process(impact, *jass_query);
+*/
+			decoder->decode_and_process(impact, *jass_query, decompressor, header.segment_frequency, index.postings() + header.offset, header.end - header.offset);
 			}
 
 		jass_query->sort();

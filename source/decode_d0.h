@@ -123,6 +123,26 @@ namespace JASS
 				}
 
 			/*
+				DECODER_D0::DECODE_AND_PROCESS()
+				--------------------------------
+			*/
+			/*!
+				@brief Given the integer decoder, the number of integes to decode, and the compressed sequence, decompress (but do not process).
+				@param impact [in] The impact score to add for each document id in the list.
+				@param accumulators [in] The accumulators to add to
+				@param decoder [in] The codex to use to decompress into the D0 sequence.
+				@param integers [in] The number of integers that are compressed.
+				@param compressed [in] The compressed sequence.
+				@param compressed_size [in] The length of the compressed sequence.
+			*/
+			template <typename QUERY_T>
+			void decode_and_process(uint16_t impact, QUERY_T &accumulators, compress_integer &decoder, size_t integers, const void *compressed, size_t compressed_size)
+				{
+				decode(decoder, integers, compressed, compressed_size);
+				process(impact, accumulators);
+				}
+
+			/*
 				DECODER_D0::UNITTEST()
 				----------------------
 			*/
