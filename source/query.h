@@ -12,8 +12,7 @@
 */
 #pragma once
 
-//#define DONT_INLINE_ADD_RSV
-//#define JASSv1_ADD_RSV
+#include <immintrin.h>
 
 #include "heap.h"
 #include "top_k_qsort.h"
@@ -338,79 +337,7 @@ namespace JASS
 				top_k_qsort::sort(accumulator_pointers + needed_for_top_k, top_k - needed_for_top_k, top_k, final_sort_cmp);
 				}
 
-#ifdef JASSv1_ADD_RSV
-class annotate
-{
-public:
-	uint64_t one, two, three, four;
 
-public:
-	annotate() : one(0), two(0), three(0), four(0) {}
-	~annotate()
-		{
-		std::cout << "one:" << one << "\t";
-		std::cout << "two:" << two << "\t";
-		std::cout << "three:" << three << "\t";
-		std::cout << "four:" << four << "\t";
-		}
-} XXcountingXX;
-
-			/*
-				ADD_RSV()
-				---------
-			*/
-#ifndef DONT_INLINE_ADD_RSV
-			forceinline
-#endif
-			void add_rsv(size_t document_id, ACCUMULATOR_TYPE score)
-				{
-				ACCUMULATOR_TYPE old_value;
-				ACCUMULATOR_TYPE *which = &accumulators[document_id];			// this will also make sure the accumulator exists
-				add_rsv_compare cmp;
-
-				/*
-					Maintain the heap
-				*/
-				if (needed_for_top_k > 0)
-					{
-					counting.one++;
-					/*
-						We haven't got enough to worry about the heap yet, so just plonk it in
-					*/
-					old_value = *which;
-					*which += score;
-
-					if (old_value == 0)
-						accumulator_pointers[--needed_for_top_k] = which;
-
-					if (needed_for_top_k == 0)
-						top_results.make_heap();
-					}
-				else if (cmp(which, accumulator_pointers[0]) >= 0)
-					{
-					counting.two++;
-					/*
-						We were already in the heap, so update
-					*/
-					*which +=score;
-					top_results.promote(which);
-					}
-				else
-					{
-					/*
-						We weren't in the heap, but we could get put there
-					*/
-					*which += score;
-					if (cmp(which, accumulator_pointers[0]) > 0)
-						{
-						counting.three++;
-						top_results.push_back(which);
-						}
-					else
-						counting.four++;
-					}
-				}
-#else
 			/*
 				QUERY::ADD_RSV()
 				----------------
@@ -420,10 +347,7 @@ public:
 				@param document_id [in] which document to increment
 				@param score [in] the amount of weight to add
 			*/
-#ifndef DONT_INLINE_ADD_RSV
-			forceinline
-#endif
-			void add_rsv(size_t document_id, ACCUMULATOR_TYPE score)
+			forceinline void add_rsv(size_t document_id, ACCUMULATOR_TYPE score)
 				{
 				ACCUMULATOR_TYPE *which = &accumulators[document_id];			// This will create the accumulator if it doesn't already exist.
 
@@ -461,7 +385,27 @@ public:
 						}
 					}
 				}
-#endif
+				
+			/*
+				QUERY::PUSH_BACK()
+				------------------
+			*/
+			forceinline void push_back(__m256i document_ids, ACCUMULATOR_TYPE score)
+				{
+				uint32_t each[8];
+				__m256i *into = (__m256i *)each;
+
+				_mm256_storeu_si256(into, document_ids);
+				add_rsv(each[0], score);
+				add_rsv(each[1], score);
+				add_rsv(each[2], score);
+				add_rsv(each[3], score);
+				add_rsv(each[4], score);
+				add_rsv(each[5], score);
+				add_rsv(each[6], score);
+				add_rsv(each[7], score);
+				}
+
 			/*
 				QUERY::UNITTEST()
 				-----------------

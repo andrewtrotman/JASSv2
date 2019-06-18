@@ -55,9 +55,10 @@ namespace JASS
 				@param impact [in] The impact score passed by the decompressor.
 				@paraM integers [in] The sequence of document ids.
 			*/
-		void push_back(uint16_t impact, __m256i integers)
+		void push_back(__m256i integers, uint16_t impact)
 			{
-			*into++ = integers;
+			_mm256_storeu_si256(into, integers);
+			into++;
 			}
 		} ;
 

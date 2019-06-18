@@ -59,8 +59,8 @@ namespace JASS
 					{
 					uint32_t width = (uint32_t)find_first_set_bit(selector);
 					mask = _mm256_loadu_si256((__m256i *)mask_set[width]);
-					decoded.push_back(impact, _mm256_and_si256(payload1, mask));
-					decoded.push_back(impact, _mm256_and_si256(payload2, mask));
+					decoded.push_back(_mm256_and_si256(payload1, mask), impact);
+					decoded.push_back(_mm256_and_si256(payload2, mask), impact);
 					payload1 = _mm256_srli_epi32(payload1, width);
 					payload2 = _mm256_srli_epi32(payload2, width);
 
@@ -94,8 +94,8 @@ namespace JASS
 						high_bits2 = _mm256_slli_epi32(high_bits2, width);
 
 						mask = _mm256_loadu_si256((__m256i *)mask_set[width]);
-						decoded.push_back(impact, _mm256_or_si256(_mm256_and_si256(payload1, mask), high_bits1));
-						decoded.push_back(impact, _mm256_or_si256(_mm256_and_si256(payload2, mask), high_bits2));
+						decoded.push_back(_mm256_or_si256(_mm256_and_si256(payload1, mask), high_bits1), impact);
+						decoded.push_back(_mm256_or_si256(_mm256_and_si256(payload2, mask), high_bits2), impact);
 
 						payload1 = _mm256_srli_epi32(payload1, width);
 						payload2 = _mm256_srli_epi32(payload2, width);
