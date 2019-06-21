@@ -179,28 +179,33 @@ namespace JASS
 		DESERIALISED_JASS_V1::CODEX()
 		-----------------------------
 	*/
-	compress_integer &deserialised_jass_v1::codex(std::string &name) const
+	compress_integer &deserialised_jass_v1::codex(std::string &name, int32_t &d_ness) const
 		{
 		if (postings_memory.size() == 0)
 			{
 			name = "None";
+			d_ness = 0;
 			return compress_integer_all::get_by_name("None");
 			}
 		else
 			switch (postings_memory[0])
 				{
-				case 's':
-					name = "None";
-					return compress_integer_all::get_by_name("None");
-				case 'q':
-					name = "QMX JASS v1";
-					return compress_integer_all::get_by_name("QMX JASS v1");
-				case 'G':
-					name = "Group Elias Gamma SIMD";
-					return compress_integer_all::get_by_name("Group Elias Gamma SIMD");
 				case 'D':
 					name = "Group Elias Delta SIMD";
+					d_ness = 1;
 					return compress_integer_all::get_by_name("Group Elias Delta SIMD");
+				case 'G':
+					name = "Group Elias Gamma SIMD";
+					d_ness = 1;
+					return compress_integer_all::get_by_name("Group Elias Gamma SIMD");
+				case 'q':
+					name = "QMX JASS v1";
+					d_ness = 1;
+					return compress_integer_all::get_by_name("QMX JASS v1");
+				case 's':
+					name = "None";
+					d_ness = 1;
+					return compress_integer_all::get_by_name("None");
 				default:
 					exit(printf("Unknown index format\n"));
 					/*

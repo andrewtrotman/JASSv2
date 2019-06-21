@@ -203,9 +203,11 @@ namespace JASS
 			*/
 			/*!
 				@brief Return a reference to a decompressor that can be used with this index
+				@param name [out] The name of the compression codex
+				@param d_ness [out] Whether the codex requires D0, D1, etc decoding (-1 if it supports decode_and_process via decode_none)
 				@return A reference to a compress_integer that can decode the given codex
 			*/
-			compress_integer &codex(std::string &name) const;
+			compress_integer &codex(std::string &name, int32_t &d_ness) const;
 
 			/*
 				DESERIALISED_JASS_V1::PRIMARY_KEYS()

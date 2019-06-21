@@ -1,6 +1,6 @@
 /*
-	DECODE_NONE
-	-----------
+	DECODE_NONE.H
+	-------------
 	Copyright (c) 2017 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
@@ -72,7 +72,7 @@ namespace JASS
 			void decode_and_process(uint16_t impact, QUERY_T &accumulators, DECOMPRESSOR_T &decoder, size_t integers, const void *compressed, size_t compressed_size)
 				{
 				accumulators.set_score(impact);
-//				decoder.decode(accumulators, integers, compressed, compressed_size);
+				decoder.decode(accumulators, integers, compressed, compressed_size);
 				}
 		};
 	}

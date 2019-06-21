@@ -66,7 +66,8 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 		Extract the compression scheme from the index
 	*/
 	std::string codex_name;
-	JASS::compress_integer &decompressor = index.codex(codex_name);
+	int32_t d_ness;
+	JASS::compress_integer &decompressor = index.codex(codex_name, d_ness);
 	auto decoder = new DECODER(index.document_count() + 4096);				// Some decoders write past the end of the output buffer (e.g. GroupVarInt) so we allocate enough space for the overflow
 
 	/*
@@ -333,8 +334,8 @@ std::cout << "Postings to process:" << postings_to_process << "\n";
 		Start the work
 	*/
 	std::string codex_name;
-	index.codex(codex_name);
-	int32_t d_ness = codex_name == "None" ? 0 : 1;
+	int32_t d_ness;
+	index.codex(codex_name, d_ness);
 
 	/*
 		Start the work
@@ -357,7 +358,7 @@ std::cout << "Postings to process:" << postings_to_process << "\n";
 				anytime<JASS::decoder_d1>(output[0], index, query_list, postings_to_process, parameter_top_k);
 				break;
 			default:
-				JASS_assert("Unknown decoder, must be D0, D1, or Dnone");
+				JASS_assert("Unknown decoder, must be D0, D1, or D_none");
 				break;
 			}
 		}
@@ -379,7 +380,7 @@ std::cout << "Postings to process:" << postings_to_process << "\n";
 					thread_pool.push_back(JASS::thread(anytime<JASS::decoder_d1>, std::ref(output[which]), std::ref(index), std::ref(query_list), postings_to_process, parameter_top_k));
 					break;
 				default:
-					JASS_assert("Unknown decoder, must be D0, D1, or Dnone");
+					JASS_assert("Unknown decoder, must be D0, D1, or D_none");
 					break;
 				}
 		/*

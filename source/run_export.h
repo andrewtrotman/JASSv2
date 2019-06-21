@@ -90,8 +90,7 @@ namespace JASS
 				std::ostringstream result;
 
 				decoder_d1 decoder(20);
-				decoder.decode(identity, integer_sequence.size(), integer_sequence.data(), sizeof(integer_sequence[0]) * integer_sequence.size());
-				decoder.process(1, query);
+				decoder.decode_and_process(1, query, identity, integer_sequence.size(), integer_sequence.data(), sizeof(integer_sequence[0]) * integer_sequence.size());
 
 				run_export(run_export::TREC, result, "qid", query, "unittest", true);
 

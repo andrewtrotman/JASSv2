@@ -106,23 +106,6 @@ namespace JASS
 				}
 
 			/*
-				DECODER_D0::PROCESS()
-				---------------------
-				We put the processing code here so that a decoder can work in parallel - if needed.
-			*/
-			/*!
-				@brief Process the integer sequence as a D0 impact-ordered sequence into the accumulators
-				@param impact [in] The impact score to add for each document id in the list.
-				@param accumulators [in] The accumulators to add to
-			*/
-			template <typename QUERY_T>
-			void process(uint16_t impact, QUERY_T &accumulators) const
-				{
-				for (auto document : *this)
-					accumulators.add_rsv(document, impact);
-				}
-
-			/*
 				DECODER_D0::DECODE_AND_PROCESS()
 				--------------------------------
 			*/
@@ -135,11 +118,14 @@ namespace JASS
 				@param compressed [in] The compressed sequence.
 				@param compressed_size [in] The length of the compressed sequence.
 			*/
-			template <typename QUERY_T>
-			void decode_and_process(uint16_t impact, QUERY_T &accumulators, compress_integer &decoder, size_t integers, const void *compressed, size_t compressed_size)
+			template <typename QUERY_T, typename DECOMPRESSOR_T>
+			void decode_and_process(uint16_t impact, QUERY_T &accumulators, DECOMPRESSOR_T &decoder, size_t integers, const void *compressed, size_t compressed_size)
 				{
-				decode(decoder, integers, compressed, compressed_size);
-				process(impact, accumulators);
+				decoder.decode(decompress_buffer.data(), integers, compressed, compressed_size);
+				this->integers = integers;
+
+				for (auto document : *this)
+					accumulators.add_rsv(document, impact);
 				}
 
 			/*
@@ -158,8 +144,7 @@ namespace JASS
 				std::ostringstream result;
 
 				decoder_d0 decoder(20);
-				decoder.decode(identity, integer_sequence.size(), integer_sequence.data(), sizeof(integer_sequence[0]) * integer_sequence.size());
-				decoder.process(1, jass_query);
+				decoder.decode_and_process(1, jass_query, identity, integer_sequence.size(), integer_sequence.data(), sizeof(integer_sequence[0]) * integer_sequence.size());
 				for (const auto &answer : jass_query)
 					result << answer.document_id << " ";
 

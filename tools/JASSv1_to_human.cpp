@@ -7,15 +7,16 @@
 /*!
 	@brief Dump a human-readable version of a JASS v1 index to standard out.
 */
-
 #include <stdio.h>
 #include <stdint.h>
+#include <immintrin.h>
 
 #include <iostream>
 
 #include "file.h"
 #include "decode_d0.h"
 #include "decode_d1.h"
+#include "decode_none.h"
 #include "commandline.h"
 #include "deserialised_jass_v1.h"
 
@@ -42,7 +43,42 @@ auto parameters = std::make_tuple					///< The  command line parameter block
 */
 class printer
 	{
+	private:
+		uint64_t impact;			///< The impact score to use when push_back() is called.
+
 	public:
+		/*
+			PRINTER::SET_SCORE()
+			--------------------
+		*/
+		/*!
+			@brief remember the impact score for when printing via push_back().
+			@param impact [in] the impact score to rememnber.
+		*/
+		void set_score(uint64_t impact)
+			{
+			this->impact = impact;
+			}
+
+			/*
+				PRINTER::PUSH_BACK()
+				--------------------
+			*/
+			/*!
+				@brief Print a bunch of <docid, impact> scores
+				@param document_ids [in] The document IDs that the impact should be added to.
+			*/
+			void push_back(__m256i document_ids)
+				{
+				uint32_t each[8];
+				__m256i *into = (__m256i *)each;
+				_mm256_storeu_si256(into, document_ids);
+
+				for (size_t which = 0; which < 8; which++)
+					if (each[which] != 0)
+						std::cout << '<' << each[which] << ',' << impact << '>';
+				}
+
 		/*
 			PRINTER::ADD_RSV()
 			------------------
@@ -87,8 +123,7 @@ void walk_index(JASS::deserialised_jass_v1 &index, JASS::compress_integer &decom
 			uint64_t *postings = (uint64_t *)term.offset + current_segment;
 			const JASS::deserialised_jass_v1::segment_header &header = *reinterpret_cast<const JASS::deserialised_jass_v1::segment_header *>(index.postings() + *postings);
 
-			decoder.decode(decompressor, header.segment_frequency, index.postings() + header.offset, header.end - header.offset);
-			decoder.process(header.impact, out_stream);
+			decoder.decode_and_process(header.impact, out_stream, decompressor, header.segment_frequency, index.postings() + header.offset, header.end - header.offset);
 			}
 		std::cout << '\n';
 		}
@@ -138,9 +173,8 @@ int main(int argc, const char *argv[])
 		Get the encoding scheme and the d-ness of the index
 	*/
 	std::string codex_name;
-	index.codex(codex_name);
-	JASS::compress_integer &decompressor = index.codex(codex_name);
-	uint32_t d_ness = codex_name == "None" ? 0 : 1;			// d_ness of other than 0 or 1 is (currently) invalid
+	int32_t d_ness;
+	JASS::compress_integer &decompressor = index.codex(codex_name, d_ness);
 
 	if (!parameter_look_like_atire)
 		std::cout << "\nPOSTINGS LISTS\n-------------\n";
@@ -150,8 +184,10 @@ int main(int argc, const char *argv[])
 	*/
 	if (d_ness == 0)
 		walk_index<JASS::decoder_d0>(index, decompressor);
-	else
+	else if (d_ness == 1)
 		walk_index<JASS::decoder_d1>(index, decompressor);
+	else
+		walk_index<JASS::decoder_none>(index, decompressor);
 
 	/*
 		Print the primary key list

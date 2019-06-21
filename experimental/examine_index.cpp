@@ -165,7 +165,8 @@ int main(void)
 	index.read_index();
 
 	std::string codex_name;
-	JASS::compress_integer &decompressor = index.codex(codex_name);
+	int32_t d_ness;
+	JASS::compress_integer &decompressor = index.codex(codex_name, d_ness);
 	std::cout << codex_name << "\n";
 
 #ifdef NEVER
