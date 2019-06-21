@@ -1,7 +1,7 @@
 /*
 	COMPRESS_INTEGER_GATHER_ELIAS_GAMMA_SIMD.H
 	------------------------------------------
-	Copyright (c) 2018 Andrew Trotman
+	Copyright (c) 2019 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 #include <string.h>
@@ -26,6 +26,7 @@ namespace JASS
 		{
 		private:
 			__m256i *into;						// pointer to where in the answer vector to put the next sequence of integers.
+			uint16_t impact;					// the impact score to add to the array of accumulators
 
 		public:
 			std::vector<uint32_t> answer;	// this is where the sequence of document ids is put
@@ -47,15 +48,28 @@ namespace JASS
 				}
 
 			/*
+				COMPRESS_INTEGER_GATHER_ELIAS_GAMMA_SIMD_UNITTEST::SET_SCORE()
+				--------------------------------------------------------------
+			*/
+			/*!
+				@brief Remember the impact score to add to an array of documents on a push_back() call
+				@param impact [in] The impact score passed by the decompressor.
+			*/
+		void set_score(uint16_t impact)
+			{
+			this->impact = impact;
+			}
+
+
+			/*
 				COMPRESS_INTEGER_GATHER_ELIAS_GAMMA_SIMD_UNITTEST::PUSH_BACK()
 				--------------------------------------------------------------
 			*/
 			/*!
-				@brief Constructor
-				@param impact [in] The impact score passed by the decompressor.
+				@brief Add the impact score to the array of itegers
 				@paraM integers [in] The sequence of document ids.
 			*/
-		void push_back(__m256i integers, uint16_t impact)
+		void push_back(__m256i integers)
 			{
 			_mm256_storeu_si256(into, integers);
 			into++;
@@ -74,7 +88,8 @@ namespace JASS
 
 		auto size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &sequence[0], sequence.size());
 
-		compressor.decode(first_output, 12, sequence.size(), &compressed[0], size_once_compressed);
+		first_output.set_score(12);
+		compressor.decode(first_output, sequence.size(), &compressed[0], size_once_compressed);
 		first_output.answer.resize(sequence.size());
 
 		if (first_output.answer != sequence)

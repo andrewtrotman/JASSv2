@@ -1,7 +1,7 @@
 /*
 	COMPRESS_INTEGER_GATHER_ELIAS_GAMMA_SIMD.H
 	------------------------------------------
-	Copyright (c) 2018 Andrew Trotman
+	Copyright (c) 2019 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 /*!
@@ -44,7 +44,7 @@ namespace JASS
 				@param source_length [in] The length (in bytes) of the source buffer.
 			*/
 			template <typename INTO>
-			void decode(INTO &decoded, uint16_t impact, size_t integers_to_decode, const void *source_as_void, size_t source_length)
+			void decode(INTO &decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
 				{
 				__m256i mask;
 				const uint8_t *source = (const uint8_t *)source_as_void;
@@ -59,8 +59,8 @@ namespace JASS
 					{
 					uint32_t width = (uint32_t)find_first_set_bit(selector);
 					mask = _mm256_loadu_si256((__m256i *)mask_set[width]);
-					decoded.push_back(_mm256_and_si256(payload1, mask), impact);
-					decoded.push_back(_mm256_and_si256(payload2, mask), impact);
+					decoded.push_back(_mm256_and_si256(payload1, mask));
+					decoded.push_back(_mm256_and_si256(payload2, mask));
 					payload1 = _mm256_srli_epi32(payload1, width);
 					payload2 = _mm256_srli_epi32(payload2, width);
 
@@ -94,8 +94,8 @@ namespace JASS
 						high_bits2 = _mm256_slli_epi32(high_bits2, width);
 
 						mask = _mm256_loadu_si256((__m256i *)mask_set[width]);
-						decoded.push_back(_mm256_or_si256(_mm256_and_si256(payload1, mask), high_bits1), impact);
-						decoded.push_back(_mm256_or_si256(_mm256_and_si256(payload2, mask), high_bits2), impact);
+						decoded.push_back(_mm256_or_si256(_mm256_and_si256(payload1, mask), high_bits1));
+						decoded.push_back(_mm256_or_si256(_mm256_and_si256(payload2, mask), high_bits2));
 
 						payload1 = _mm256_srli_epi32(payload1, width);
 						payload2 = _mm256_srli_epi32(payload2, width);

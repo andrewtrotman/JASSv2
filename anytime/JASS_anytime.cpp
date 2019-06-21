@@ -18,6 +18,7 @@
 #include "threads.h"
 #include "decode_d0.h"
 #include "run_export.h"
+#include "decode_none.h"
 #include "commandline.h"
 #include "channel_file.h"
 #include "compress_integer.h"
@@ -333,7 +334,7 @@ std::cout << "Postings to process:" << postings_to_process << "\n";
 	*/
 	std::string codex_name;
 	index.codex(codex_name);
-	uint32_t d_ness = codex_name == "None" ? 0 : 1;
+	int32_t d_ness = codex_name == "None" ? 0 : 1;
 
 	/*
 		Start the work
@@ -346,11 +347,17 @@ std::cout << "Postings to process:" << postings_to_process << "\n";
 		*/
 		switch (d_ness)
 			{
+			case -1:
+				anytime<JASS::decoder_none>(output[0], index, query_list, postings_to_process, parameter_top_k);
+				break;
 			case 0:
-					anytime<JASS::decoder_d0>(output[0], index, query_list, postings_to_process, parameter_top_k);
+				anytime<JASS::decoder_d0>(output[0], index, query_list, postings_to_process, parameter_top_k);
+				break;
+			case 1:
+				anytime<JASS::decoder_d1>(output[0], index, query_list, postings_to_process, parameter_top_k);
 				break;
 			default:
-					anytime<JASS::decoder_d1>(output[0], index, query_list, postings_to_process, parameter_top_k);
+				JASS_assert("Unknown decoder, must be D0, D1, or Dnone");
 				break;
 			}
 		}
@@ -362,11 +369,17 @@ std::cout << "Postings to process:" << postings_to_process << "\n";
 		for (size_t which = 0; which < parameter_threads ; which++)
 			switch (d_ness)
 				{
+				case -1:
+					thread_pool.push_back(JASS::thread(anytime<JASS::decoder_none>, std::ref(output[which]), std::ref(index), std::ref(query_list), postings_to_process, parameter_top_k));
+					break;
 				case 0:
-						thread_pool.push_back(JASS::thread(anytime<JASS::decoder_d0>, std::ref(output[which]), std::ref(index), std::ref(query_list), postings_to_process, parameter_top_k));
+					thread_pool.push_back(JASS::thread(anytime<JASS::decoder_d0>, std::ref(output[which]), std::ref(index), std::ref(query_list), postings_to_process, parameter_top_k));
+					break;
+				case 1:
+					thread_pool.push_back(JASS::thread(anytime<JASS::decoder_d1>, std::ref(output[which]), std::ref(index), std::ref(query_list), postings_to_process, parameter_top_k));
 					break;
 				default:
-						thread_pool.push_back(JASS::thread(anytime<JASS::decoder_d1>, std::ref(output[which]), std::ref(index), std::ref(query_list), postings_to_process, parameter_top_k));
+					JASS_assert("Unknown decoder, must be D0, D1, or Dnone");
 					break;
 				}
 		/*

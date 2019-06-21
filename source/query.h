@@ -207,6 +207,7 @@ namespace JASS
 			ACCUMULATOR_TYPE zero;														///< Constant zero used for pointer dereferenced comparisons
 			allocator_pool memory;														///< All memory allocation happens in this "arena"
 			ACCUMULATOR_TYPE *accumulator_pointers[MAX_TOP_K];					///< Array of pointers to the top k accumulators
+			ACCUMULATOR_TYPE impact;													///< The impact score to be added on a call to push_back()
 			accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;	///< The accumulators, one per document in the collection
 			size_t needed_for_top_k;													///< The number of results we still need in order to fill the top-k
 			heap<ACCUMULATOR_TYPE *, add_rsv_compare> top_results;			///< Heap containing the top-k results
@@ -232,6 +233,7 @@ namespace JASS
 			*/
 			query(const std::vector<std::string> &primary_keys, size_t documents = 1024, size_t top_k = 10) :
 				zero(0),
+				impact(0),
 				accumulators(documents),
 				top_results(*accumulator_pointers, top_k),
 				parser(memory),
@@ -385,25 +387,45 @@ namespace JASS
 						}
 					}
 				}
-				
+
+			/*
+				QUERY::SET_SCORE()
+				------------------
+			*/
+			/*!
+				@brief Set the impact score to use in a push_back().
+				@param score [in] The impact score to be added to accumulators.
+			*/
+			forceinline void set_score(ACCUMULATOR_TYPE score)
+				{
+				this->impact = score;
+				}
+
 			/*
 				QUERY::PUSH_BACK()
 				------------------
 			*/
-			forceinline void push_back(__m256i document_ids, ACCUMULATOR_TYPE score)
+			/*!
+				@brief Add the impact score to a bunch of accumulators
+				@param document_ids [in] The document IDs that the impact should be added to.
+				@details The first valid document id is 1, any calls with a document id of 0 will add to
+				the accumulator for document id 0, but since that is a non-existant document, the value is later
+				ignored.  So it IS safe to pad documet_ids with 0s.
+			*/
+			forceinline void push_back(__m256i document_ids)
 				{
 				uint32_t each[8];
 				__m256i *into = (__m256i *)each;
 
 				_mm256_storeu_si256(into, document_ids);
-				add_rsv(each[0], score);
-				add_rsv(each[1], score);
-				add_rsv(each[2], score);
-				add_rsv(each[3], score);
-				add_rsv(each[4], score);
-				add_rsv(each[5], score);
-				add_rsv(each[6], score);
-				add_rsv(each[7], score);
+				add_rsv(each[0], impact);
+				add_rsv(each[1], impact);
+				add_rsv(each[2], impact);
+				add_rsv(each[3], impact);
+				add_rsv(each[4], impact);
+				add_rsv(each[5], impact);
+				add_rsv(each[6], impact);
+				add_rsv(each[7], impact);
 				}
 
 			/*
