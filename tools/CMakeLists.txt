@@ -100,3 +100,15 @@ target_link_libraries(test_integer_compress_average
 	JASSlib
 	)
 
+
+#
+# shared_image_format: read Jimmy Lin's shared index format protobuf formatted index
+#
+
+add_executable(shared_index_format
+	shared_index_format.cpp
+	)
+
+target_link_libraries(shared_index_format
+	JASSlib
+	)
