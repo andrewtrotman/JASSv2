@@ -89,10 +89,7 @@ const char *protopub_type_name(protopub_type type)
 */
 int64_t un_zigzag(uint64_t bits)
 	{
-	if ((bits & 1) != 0)
-		return -(bits >> 1);
-	else
-		return bits >> 1;
+	return (int64_t)((bits >> 1) ^ -(bits & 0x1));
 	}
 
 /*
@@ -106,7 +103,12 @@ uint64_t get_uint64_t(uint8_t *&stream)
 	uint8_t shift = 0;
 
 	if (((got = *stream++) & 0x80) == 0)
+		{
+printf("[%x]", (int)got);
 		return got;
+		}
+
+printf("[%x]", (int)got);
 
 	got &= 0x7F;
 
@@ -114,7 +116,11 @@ uint64_t get_uint64_t(uint8_t *&stream)
 		{
 		shift += 7;
 		if (((next = *stream++) & 0x80) == 0)
+			{
+printf("[%x]", (int)next);
 			return got | next << shift;
+			}
+printf("[%x]", (int)next);
 		got |= (next & 0x7F) << shift;
 		}
 
@@ -156,14 +162,16 @@ uint8_t get_type_and_field(protopub_type &type, uint8_t *&stream)
 	{
 	uint8_t encoding = *stream++;
 
+printf("%x->", encoding);
+
 	type = (protopub_type)(encoding & 0x07);
 
 	return encoding >> 3;
 	}
 
 /*
-	DECODE_BLOB()
-	-------------
+	GET_BLOB()
+	----------
 */
 std::string decode_blob(size_t &length, uint8_t *&stream)
 	{
@@ -182,27 +190,36 @@ void get_next(uint8_t *&stream)
 	{
 	protopub_type type;
 	uint8_t field = get_type_and_field(type, stream);
-	printf("%s field_%d\n", protopub_type_name(type), field);
+	printf("%s field_%d: ", protopub_type_name(type), field);
 
 	switch (type)
 		{
 		case VARINT:
-			std::cout << "int";
+			{
+			uint64_t value = get_uint64_t(stream);
+			std::cout << "(int) " << value << "\n";
 			break;
+			}
 		case BLOB:
 			{
 			size_t length;
 			std::string term = decode_blob(length, stream);
 
-			std::cout << "[(" << length << ")" << term << "]\n";
+			if (field == 1)
+				std::cout << "(Blob:" << length << ")\"" << term << "\"\n";
+			else
+				{
+				std::cout << "(Blob:" << length << ")\n";
+
+				uint8_t *here = (uint8_t *)&term[0];
+				uint8_t *end = here + length;
+				while (here < end)
+					get_next(here);
+				}
 			break;
 			}
 		case THIRTY_TWO_BIT:
-			std::cout << "32-bit";
-			break;
 		case SIXTY_FOUR_BIT:
-			std::cout <<  "64-bit";
-			break;
 		case GROUP_START:
 		case GROUP_END:
 		default:
@@ -224,6 +241,14 @@ int main(int argc, const char *argv[])
 
 	int64_t first = get_uint64_t(stream);
 	printf("%d-byte chunk\n", (int)first);
+	uint8_t *end = stream + first;
+
+	while (stream < end)
+		get_next(stream);
+
+	first = get_uint64_t(stream);
+	printf("%d-byte chunk\n", (int)first);
+	get_next(stream);
 	get_next(stream);
 	get_next(stream);
 	get_next(stream);
