@@ -43,6 +43,37 @@
 #include "file.h"
 #include "forceinline.h"
 
+/*
+	CLASS SLICE
+	-----------
+*/
+class slice
+	{
+	public:
+		uint8_t *start;
+		size_t length;
+
+	public:
+		/*
+			SLICE::SLICE()
+			--------------
+		*/
+		slice(uint8_t *start, size_t length) :
+			start(start),
+			length(length)
+			{
+			/* Nothing */
+			}
+
+		/*
+			SLICE::SLICE()
+			--------------
+		*/
+		slice() : slice(0,0)
+			{
+			/* Nothing */
+			}
+	} ;
 
 /*
 	ENUM PROTOPUB_TYPE
@@ -87,7 +118,7 @@ const char *protopub_type_name(protopub_type type)
 	UN_ZIGZAG()
 	------------
 */
-int64_t un_zigzag(uint64_t bits)
+forceinline int64_t un_zigzag(uint64_t bits)
 	{
 	return (int64_t)((bits >> 1) ^ -(bits & 0x1));
 	}
@@ -103,12 +134,7 @@ uint64_t get_uint64_t(uint8_t *&stream)
 	uint8_t shift = 0;
 
 	if (((got = *stream++) & 0x80) == 0)
-		{
-printf("[%x]", (int)got);
 		return got;
-		}
-
-printf("[%x]", (int)got);
 
 	got &= 0x7F;
 
@@ -116,11 +142,7 @@ printf("[%x]", (int)got);
 		{
 		shift += 7;
 		if (((next = *stream++) & 0x80) == 0)
-			{
-printf("[%x]", (int)next);
 			return got | next << shift;
-			}
-printf("[%x]", (int)next);
 		got |= (next & 0x7F) << shift;
 		}
 
@@ -162,8 +184,6 @@ uint8_t get_type_and_field(protopub_type &type, uint8_t *&stream)
 	{
 	uint8_t encoding = *stream++;
 
-printf("%x->", encoding);
-
 	type = (protopub_type)(encoding & 0x07);
 
 	return encoding >> 3;
@@ -173,55 +193,108 @@ printf("%x->", encoding);
 	GET_BLOB()
 	----------
 */
-std::string decode_blob(size_t &length, uint8_t *&stream)
+slice decode_blob(uint8_t *&stream)
 	{
-	length = get_uint64_t(stream);
-	auto at = stream;
+	size_t length = get_uint64_t(stream);
+	uint8_t *at = &stream[0];
 	stream += length;
 
-	return std::string((char *)at, (size_t)length);
+	return slice(at, length);
 	}
 
 /*
-	GET_NEXT()
-	----------
+	CLASS POSTING
+	-------------
 */
-void get_next(uint8_t *&stream)
+class posting
+	{
+	public:
+		uint32_t docid;
+		uint32_t term_frequency;
+	} ;
+
+/*
+	CLASS POSTINGS_LIST
+	-------------------
+*/
+class postings_list
+	{
+	public:
+		slice term;
+		uint64_t document_frequency;
+		uint64_t collection_frequency;
+		std::vector<posting> postings;
+	};
+
+/*
+	GET_NEXT_POSTINGS_LIST()
+	------------------------
+*/
+void get_next_postings_list(posting &into, uint8_t *&stream)
 	{
 	protopub_type type;
 	uint8_t field = get_type_and_field(type, stream);
-	printf("%s field_%d: ", protopub_type_name(type), field);
+//	printf("%s field_%d\n", protopub_type_name(type), field);
 
 	switch (type)
 		{
 		case VARINT:
 			{
 			uint64_t value = get_uint64_t(stream);
-			std::cout << "(int) " << value << "\n";
+			if (field == 1)
+				into.docid = value;
+			else if (field == 2)
+				into.term_frequency = value;
+			else
+				std::cout << "ERROR: (int) " << value << "\n";
+			break;
+			}
+		default:
+			std::cout << "ERROR\n";
+			break;
+		}
+	}
+
+/*
+	GET_NEXT_TERM()
+	---------------
+*/
+void get_next_term(postings_list &into, uint8_t *&stream)
+	{
+	protopub_type type;
+	uint8_t field = get_type_and_field(type, stream);
+//	printf("%s field_%d\n", protopub_type_name(type), field);
+
+	switch (type)
+		{
+		case VARINT:
+			{
+			uint64_t value = get_uint64_t(stream);
+			if (field == 2)
+				into.document_frequency = value;
+			else if (field == 3)
+				into.collection_frequency = value;
+			else
+				std::cout << "ERROR: (int) " << value << "\n";
 			break;
 			}
 		case BLOB:
 			{
-			size_t length;
-			std::string term = decode_blob(length, stream);
+			slice term = decode_blob(stream);
 
 			if (field == 1)
-				std::cout << "(Blob:" << length << ")\"" << term << "\"\n";
-			else
+				into.term = term;
+			else if (field == 4)
 				{
-				std::cout << "(Blob:" << length << ")\n";
-
-				uint8_t *here = (uint8_t *)&term[0];
-				uint8_t *end = here + length;
+				uint8_t *here = term.start;
+				uint8_t *end = here + term.length;
+				posting d_tf_pair;
 				while (here < end)
-					get_next(here);
+					get_next_postings_list(d_tf_pair, here);
+				into.postings.push_back(d_tf_pair);
 				}
 			break;
 			}
-		case THIRTY_TWO_BIT:
-		case SIXTY_FOUR_BIT:
-		case GROUP_START:
-		case GROUP_END:
 		default:
 			std::cout << "ERROR\n";
 			break;
@@ -236,22 +309,22 @@ int main(int argc, const char *argv[])
 	{
 	std::string file;
 	size_t file_size = JASS::file::read_entire_file(argv[1], file);
-
 	uint8_t *stream = (uint8_t *)&file[0];
+	uint8_t *eof = stream + file_size;
 
-	int64_t first = get_uint64_t(stream);
-	printf("%d-byte chunk\n", (int)first);
-	uint8_t *end = stream + first;
 
-	while (stream < end)
-		get_next(stream);
+	while (stream < eof)
+		{
+		int64_t postings_list_length = get_uint64_t(stream);
+//		printf("%d-byte chunk\n", (int)postings_list_length);
+		uint8_t *end = stream + postings_list_length;
+		postings_list postings;
 
-	first = get_uint64_t(stream);
-	printf("%d-byte chunk\n", (int)first);
-	get_next(stream);
-	get_next(stream);
-	get_next(stream);
-	get_next(stream);
+		while (stream < end)
+			get_next_term(postings, stream);
+		std::cout.write((char *)postings.term.start, postings.term.length);
+		std::cout << " " << postings.document_frequency << " " << postings.collection_frequency << "\n";
+		}
 
 	return 0;
 	}
