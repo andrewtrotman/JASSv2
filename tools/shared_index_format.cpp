@@ -177,19 +177,6 @@ forceinline int32_t get_int32_t(uint8_t *&stream)
 	}
 
 /*
-	GET_TYPE_AND_FIELD()
-	--------------------
-*/
-uint8_t get_type_and_field(protopub_type &type, uint8_t *&stream)
-	{
-	uint8_t encoding = *stream++;
-
-	type = (protopub_type)(encoding & 0x07);
-
-	return encoding >> 3;
-	}
-
-/*
 	GET_BLOB()
 	----------
 */
@@ -200,6 +187,19 @@ slice decode_blob(uint8_t *&stream)
 	stream += length;
 
 	return slice(at, length);
+	}
+
+/*
+	GET_TYPE_AND_FIELD()
+	--------------------
+*/
+uint8_t get_type_and_field(protopub_type &type, uint8_t *&stream)
+	{
+	uint8_t encoding = *stream++;
+
+	type = (protopub_type)(encoding & 0x07);
+
+	return encoding >> 3;
 	}
 
 /*
