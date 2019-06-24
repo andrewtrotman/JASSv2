@@ -106,6 +106,8 @@ target_link_libraries(test_integer_compress_average
 #
 
 add_executable(shared_index_format
+	protobuf.h
+	ciff_lin.h
 	shared_index_format.cpp
 	)
 
