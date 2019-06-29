@@ -59,17 +59,34 @@ namespace JASS
 			Test the delta (d-gap) encoder.
 		*/
 		every_case = {4, 5, 7, 9, 12};
-		std::vector<integer> answer = {4, 1, 2, 2, 3};
+		std::vector<integer> d1_answer = {4, 1, 2, 2, 3};
 
 		std::vector<integer> every_encoded;
 		std::vector<integer> every_decoded;
+
 		every_encoded.resize(every_case.size());
 		auto got = d1_encode(&every_encoded[0], &every_case[0], every_case.size());
 		JASS_assert(got == every_case.size());
-		JASS_assert(every_encoded == answer);
+		JASS_assert(every_encoded == d1_answer);
 
 		every_decoded.resize(every_case.size());
 		got = d1_decode(&every_decoded[0], &every_encoded[0], every_encoded.size());
+		JASS_assert(got == every_case.size());
+		JASS_assert(every_decoded == every_case);
+
+		/*
+			Check Dn-encoding (where n == 2)
+		*/
+		std::vector<integer> d2_answer = {4, 5, 3, 4, 5};
+		every_encoded.resize(0);
+		every_encoded.resize(every_case.size());
+		got = dn_encode(&every_encoded[0], &every_case[0], every_case.size(), 2);
+		JASS_assert(got == every_case.size());
+		JASS_assert(every_encoded == d2_answer);
+
+		every_decoded.resize(0);
+		every_decoded.resize(every_case.size());
+		got = dn_decode(&every_decoded[0], &every_encoded[0], every_encoded.size(), 2);
 		JASS_assert(got == every_case.size());
 		JASS_assert(every_decoded == every_case);
 		}

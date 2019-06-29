@@ -65,7 +65,7 @@ namespace JASS
 			*/
 			/*!
 				@brief Convert an array of integers into an array of D1 (delta, d-gap) encoded integers.
-				@param encoded [out] The d1-encoded result.
+				@param encoded [out] The d1-encoded result (can be the same buffer as source).
 				@parm source [in] The integers to be D1 encoded.
 				@param source_integers [in] The number of integers in the list.
 				@return The number of integers encoded.
@@ -93,7 +93,7 @@ namespace JASS
 			*/
 			/*!
 				@brief Convert a D1 encoded array of integers into an array of integers.
-				@param encoded [out] The decoded integers.
+				@param decoded [out] The decoded integers (can be the same buffer as source).
 				@parm source [in] The D1 encoded integers.
 				@param source_integers [in] The number of integers in the list.
 				@return The number of integers encoded.
@@ -108,6 +108,86 @@ namespace JASS
 					sum += *current;
 					*decoded++ = sum;
 					}
+				return source_integers;
+				}
+
+			/*
+				COMPRESS_INTEGER::DN_ENCODE()
+				-----------------------------
+			*/
+			/*!
+				@brief Convert an array of integers into an array of Dn (delta, d-gap) encoded integers with a gap of n.
+				@param encoded [out] The Dn-encoded result (can be the same buffer as source).
+				@parm source [in] The integers to be Dn encoded.
+				@param source_integers [in] The number of integers in the list.
+				@param n [in] The encoding distance (normally 1, but can be any inteter up-to source_integers).
+				@return The number of integers encoded.
+			*/
+			static size_t dn_encode(integer *encoded, const integer *source, size_t source_integers, size_t n = 1)
+				{
+				integer prior[n];	// temporary buffer of unencoded values stored so that source cab equal encoded (the pointes, that is)
+
+				/*
+					The first n are not encoded, so write then directly into the output buffer
+				*/
+				std::copy(source, source + n, encoded);
+
+				/*
+					In order to be able to use the input buffer as the output buffer we cycle through an internal buffer
+				*/
+				std::copy(source, source + n, prior);
+
+				/*
+					The remainder are differences.  We'll use two pointers to keep track of the sum and one for where we write into.
+				*/
+				integer *into = encoded + n;
+				const integer *current = source + n;
+				size_t where = 0;
+
+				const integer *end = source + source_integers;
+				while (current < end)
+					{
+					integer difference = *current - prior[where];
+					prior[where] = *current;
+					*into = difference;
+					into++;
+					current++;
+					where = (where + 1) % n;
+					}
+
+				return source_integers;
+				}
+
+			/*
+				COMPRESS_INTEGER::DN_DECODE()
+				-----------------------------
+			*/
+			/*!
+				@brief Convert a Dn encoded array of integers into an array of integers.
+				@param decoded [out] The decoded integers (can be the same buffer as source).
+				@parm source [in] The Dn encoded integers.
+				@param source_integers [in] The number of integers in the list.
+				@param n [in] The encoding distance (normally 1, but can be any inteter up-to source_integers).
+				@return The number of integers encoded.
+			*/
+			static size_t dn_decode(integer *decoded, const integer *source, size_t source_integers, size_t n = 1)
+				{
+				/*
+					The first n are not encoded, so write then directly into the output buffer
+				*/
+				std::copy(source, source + n, decoded);
+
+				/*
+					The remainder are encoded so decode them
+				*/
+				integer *into = decoded + n;
+				integer *previous = decoded;
+				const integer *current = source + n;
+
+				const integer *end = decoded + source_integers;
+				while (into < end)
+					*into++ = *previous++ + *current++;
+
 				return source_integers;
 				}
 
