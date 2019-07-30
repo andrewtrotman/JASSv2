@@ -40,6 +40,8 @@
 
 #include <stdint.h>
 
+#include <vector>
+
 #include "protobuf.h"
 
 namespace JASS
@@ -79,6 +81,16 @@ namespace JASS
 	class ciff_lin
 		{
 		public:
+			/*!
+				@enum error_code
+				@brief success or failure.
+			*/
+			enum error_code
+				{
+				OK = 0,			///< Method completed successfully
+				FAIL = 1			///< Method did not completed successfully
+				} ;
+
 			/*
 				CLASS CIFF_LIN::POSTINGS_LIST
 				-----------------------------
@@ -89,15 +101,6 @@ namespace JASS
 			class postings_list
 				{
 				public:
-					/*!
-						@enum error_code
-						@brief success or failure.
-					*/
-					enum error_code
-						{
-						OK = 0,			///< Method completed successfully
-						FAIL = 1			///< Method did not completed successfully
-						} ;
 					/*
 						CLASS CIFF_LIN::POSTING
 						-----------------------
@@ -130,7 +133,7 @@ namespace JASS
 						@param stream_end [in] A pointer to the byte after the last byte in the stream.
 						@return OK on success, FAIL on error (unknown field number)
 					*/
-					static postings_list::error_code get_next_postings_pair(postings_list::posting &into, const uint8_t *&stream, const uint8_t *stream_end)
+					static error_code get_next_postings_pair(postings_list::posting &into, const uint8_t *&stream, const uint8_t *stream_end)
 						{
 						while (stream < stream_end)
 							{
@@ -165,7 +168,7 @@ namespace JASS
 						@param stream_end [in] A pointer to the byte after the last byte in the stream.
 						@return OK on success, FAIL on error (unknown field number)
 					*/
-					static postings_list::error_code get_next_postings(postings_list &into, const uint8_t *&stream, const uint8_t *stream_end)
+					static error_code get_next_postings(postings_list &into, const uint8_t *&stream, const uint8_t *stream_end)
 						{
 						while (stream < stream_end)
 							{
@@ -216,7 +219,7 @@ namespace JASS
 			class iterator
 				{
 				private:
-					const ciff_lin &source;					///< The ciff_lin being iterated over
+					ciff_lin &source;					///< The ciff_lin being iterated over
 					const uint8_t *stream;					///< Where in the source stream we are reading from
 					size_t where;						///< Are we the start or end of the data
 					postings_list postings;			///< The postings list we just made
@@ -231,7 +234,7 @@ namespace JASS
 						@param of [in] The ciff_lin object we iterate over
 						@where [in] Either 0 for start() or file_size for end()
 					*/
-					iterator(const ciff_lin &of, size_t where) :
+					iterator(ciff_lin &of, size_t where) :
 						source(of),
 						stream(source.source_file),
 						where(where)
@@ -244,14 +247,21 @@ namespace JASS
 						--------------------------------
 					*/
 					/*!
-						@brief Move on to the next postings list by constructing and storing the current one
-						@return A referece to this iterator
+						@brief Move on to the next postings list by constructing and storing the current one.  On error move to the end of the stream and mark it as bad
+						@return A reference to this iterator
 					*/
 					const iterator &operator++()
 						{
 						int64_t postings_list_length = protobuf::get_uint64_t(stream);
 
-						postings_list::get_next_postings(postings, stream, stream + postings_list_length);
+						if (postings_list::get_next_postings(postings, stream, stream + postings_list_length) == FAIL)
+							{
+							/*
+								On error move to the end of the stream and mark the stream as bad
+							*/
+							stream = source.source_file + source.source_file_length;
+							source.status = FAIL;
+							}
 
 						return *this;
 						}
@@ -286,6 +296,9 @@ namespace JASS
 		private:
 			const uint8_t *source_file;		///< The CIFF file in memory
 			size_t source_file_length;			///< The length of the CIFF file in bytes
+			
+		public:
+			error_code status;					///< OK or FAIL (FAIL only on error in input stream)
 
 		public:
 			/*
@@ -299,7 +312,8 @@ namespace JASS
 			*/
 			ciff_lin(const uint8_t *source_file, size_t source_file_length) :
 				source_file(source_file),
-				source_file_length(source_file_length)
+				source_file_length(source_file_length),
+				status(OK)
 				{
 				/* Nothing */
 				}
@@ -311,7 +325,7 @@ namespace JASS
 			/*!
 				@brief Return and iterator to the start of this object
 			*/
-			const iterator begin() const
+			const iterator begin()
 				{
 				return ++iterator(*this, 0);
 				}
@@ -323,7 +337,7 @@ namespace JASS
 			/*!
 				@brief Return and iterator to the end of this object
 			*/
-			const iterator end() const
+			const iterator end()
 				{
 				return iterator(*this, source_file_length);
 				}

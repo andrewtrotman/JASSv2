@@ -102,15 +102,15 @@ target_link_libraries(test_integer_compress_average
 
 
 #
-# shared_image_format: read Jimmy Lin's shared index format protobuf formatted index
+# dump_ciff_lin: read Jimmy Lin's shared index format protobuf formatted index
 #
 
-add_executable(shared_index_format
+add_executable(dump_ciff_lin
 	protobuf.h
 	ciff_lin.h
-	shared_index_format.cpp
+	dump_ciff_lin.cpp
 	)
 
-target_link_libraries(shared_index_format
+target_link_libraries(dump_ciff_lin
 	JASSlib
 	)
