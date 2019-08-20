@@ -157,7 +157,7 @@ private:
 				std::vector<compress_integer::integer> lengths{30, 40, 50, 60, 70};			// the lengths of the documents in this pseudo-index
 				ranking_function_atire_bm25 ranker(0.9, 0.4, lengths);	// k1=0.9, b=0.4
 
-				ranker.compute_idf_component(2, lengths.size());			// this term occurs in 2 of 5 documents
+				ranker.compute_idf_component(2, static_cast<uint32_t>(lengths.size()));			// this term occurs in 2 of 5 documents
 				ranker.compute_tf_component(12);									// it occurs in this document 12 times
 				rsv = ranker.compute_score(1, 12);								// it occurs in document 1 a total of 12 times;
 

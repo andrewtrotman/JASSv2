@@ -316,7 +316,7 @@ namespace JASS
 					Check the iterator
 				*/
 				std::ostringstream output;
-				for (const auto &element : map)
+				for (const auto element : map)
 					output << element.first;
 				JASS_assert(output.str() == "0614538729");
 	

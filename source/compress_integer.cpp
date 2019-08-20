@@ -51,7 +51,7 @@ namespace JASS
 			{
 			every_case.clear();
 			for (instance = 0; instance < 1024; instance++)
-				every_case.push_back((1LL << bitness) - 1);
+				every_case.push_back(static_cast<integer>((1LL << bitness) - 1));
 			unittest_one(compressor, every_case);
 			}
 

@@ -49,7 +49,7 @@ namespace JASS
 			run_export_trec(std::ostream &stream, const QUERY_ID &topic_id, QUERY &result, const NAME &run_name, bool include_internal_ids = false)
 				{
 				size_t current = 0;
-				for (const auto &document : result)
+				for (const auto document : result)
 					{
 					current++;
 					stream << topic_id << " Q0 "<< document.primary_key << ' ' << current << ' ' << document.rsv << ' ' << run_name;

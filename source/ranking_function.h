@@ -82,7 +82,7 @@ namespace JASS
 				std::shared_ptr<ranking_function_atire_bm25>ranker(new ranking_function_atire_bm25(0.9, 0.4, lengths));							// k1=0.9, b=0.4
 				ranking_function<ranking_function_atire_bm25> generic_ranker(ranker);		// construct a ranker
 
-				rsv = generic_ranker.rank(1, 2, lengths.size(), 12);													// get the rsv
+				rsv = generic_ranker.rank(1, 2, static_cast<uint32_t>(lengths.size()), 12);													// get the rsv
 				JASS_assert(static_cast<uint32_t>(rsv * 1000) == 1635);
 
 				puts("ranking_function::PASSED");

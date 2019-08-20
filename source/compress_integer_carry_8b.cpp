@@ -618,7 +618,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					break;
 // LCOV_EXCL_START		// Can't test integers 2^32
 				case 20:			//		{"u60", 56, 1, 0}
-					*(destination + 0) = payload >> 0 & 0xFFFFFFFFFFFFFF;
+					*(destination + 0) = static_cast<integer>(payload >> 0 & 0xFFFFFFFFFFFFFF);
 					destination += 1;
 
 					source++;
@@ -627,7 +627,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					base = sixty_start;
 					break;
 				case 21:			//		{"v60", 60, 1, 0}
-					*(destination + 0) = payload >> 0 & 0x0FFFFFFFFFFFFFFF;
+					*(destination + 0) = static_cast<integer>(payload >> 0 & 0x0FFFFFFFFFFFFFFF);
 					destination += 1;
 
 					source++;

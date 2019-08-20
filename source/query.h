@@ -140,7 +140,7 @@ namespace JASS
 
 				public:
 					query<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent;			///< The query object that this is iterating over
-					size_t where;																				///< Where in the results list we are
+					size_t where;																		///< Where in the results list we are
 
 				public:
 					/*
@@ -450,7 +450,7 @@ namespace JASS
 				query_object.add_rsv(1, 1);
 				query_object.add_rsv(1, 14);
 
-				for (const auto &rsv : query_object)
+				for (const auto rsv : query_object)
 					string << "<" << rsv.document_id << "," << rsv.rsv << ">";
 				JASS_assert(string.str() == "<3,20><1,15>");
 

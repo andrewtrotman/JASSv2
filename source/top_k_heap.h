@@ -455,7 +455,7 @@ namespace JASS
 				pointer_heap.sort();
 
 				std::ostringstream pointer_result;
-				for (const auto pointer : pointer_heap)
+				for (const auto &pointer : pointer_heap)
 					pointer_result << *pointer;
 				JASS_assert(pointer_result.str() == "1110");
 

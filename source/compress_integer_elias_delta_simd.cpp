@@ -86,7 +86,7 @@ namespace JASS
 		*/
 		if (selector_bits_used > 32)
 			{
-			*destination-- = accumulated_selector & 0xFFFFFFFFFFFFFFFF;
+			*destination-- = static_cast<uint32_t>(accumulated_selector & 0xFFFFFFFFFFFFFFFF);
 			accumulated_selector >>= 32;
 			selector_bits_used -= 32;
 			}
@@ -231,7 +231,7 @@ namespace JASS
 		/*
 			Flush the last selector the move the selectors to the end of the payloads
 		*/
-		*selector = accumulated_selector & 0xFFFFFFFFFFFFFFFF;
+		*selector = static_cast<uint32_t>(accumulated_selector & 0xFFFFFFFFFFFFFFFF);
 		size_t length_of_selectors = ((reinterpret_cast<uint8_t *>(encoded) + encoded_buffer_length)) - reinterpret_cast<uint8_t *>(selector);
 		memmove(destination, selector, length_of_selectors);
 

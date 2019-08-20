@@ -55,11 +55,11 @@ namespace JASS
 			class node
 				{
 				public:
-					const KEY key;							///< Data in the tree are keyed on this.
-					ELEMENT element;						///< This is the data stored in the tree.
-					std::atomic<node *>left;			///< Pointer to the left (smaller than) data.
-					std::atomic<node *>right;			///< Pointer to the right (larger than) data.
-					std::atomic<node *>parent;						///< Pointer to the parent node.
+					const KEY key;												///< Data in the tree are keyed on this.
+					ELEMENT element;											///< This is the data stored in the tree.
+					std::atomic<node *>left;								///< Pointer to the left (smaller than) data.
+					std::atomic<node *>right;								///< Pointer to the right (larger than) data.
+					std::atomic<node *>parent;								///< Pointer to the parent node.
 					
 				public:
 					/*
@@ -386,7 +386,7 @@ namespace JASS
 					Check the tree iterator
 				*/
 				std::ostringstream output;
-				for (const auto &key : tree)
+				for (const auto key : tree)
 					output << key.first;
 				
 				JASS_assert(output.str() == "9876543210");

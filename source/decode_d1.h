@@ -213,7 +213,7 @@ namespace JASS
 
 				decoder_d1 decoder(20);
 				decoder.decode_and_process(1, query, identity, integer_sequence.size(), integer_sequence.data(), sizeof(integer_sequence[0]) * integer_sequence.size());
-				for (const auto &answer : query)
+				for (const auto answer : query)
 					result << answer.document_id << " ";
 
 				JASS_assert(result.str() == "19 17 13 11 7 ");

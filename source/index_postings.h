@@ -183,7 +183,7 @@ namespace JASS
 				/*
 					And return the document frequency
 				*/
-				return document_frequency;
+				return static_cast<compress_integer::integer>(document_frequency);
 				}
 
 			/*

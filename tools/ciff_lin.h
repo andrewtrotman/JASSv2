@@ -144,9 +144,9 @@ namespace JASS
 								{
 								uint64_t value = protobuf::get_uint64_t(stream);
 								if (field == 1)
-									into.docid = value;
+									into.docid = static_cast<uint32_t>(value);
 								else if (field == 2)
-									into.term_frequency = value;
+									into.term_frequency = static_cast<uint32_t>(value);
 								else
 									return FAIL;
 								}

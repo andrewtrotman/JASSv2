@@ -29,7 +29,7 @@ namespace JASS
 		/*
 			Serialise the contents of CIvocab.bin
 		*/
-		for (const auto line : index_key)
+		for (const auto &line : index_key)
 			{
 			vocabulary.write(&line.term, sizeof(line.term));
 			vocabulary.write(&line.offset, sizeof(line.offset));

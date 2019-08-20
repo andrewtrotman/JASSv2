@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
 			/*
 				Dump the top-k to the output channel
 			*/
-			for (const auto &element : jass_query)
+			for (const auto element : jass_query)
 				{
 				std::cout << element.document_id << ":" <<element.document_id << "::" << element.rsv << "\n";
 				//output << element.document_id << ":" << element.rsv << "\n";

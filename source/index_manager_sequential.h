@@ -243,7 +243,7 @@ namespace JASS
 				/*
 					Iterate over the hash table calling the callback function with each term->postings pair.
 				*/
-				for (const auto &listing : index)
+				for (const auto listing : index)
 					{
 					auto document_frequency = listing.second.linearize(temporary, temporary_size, document_ids, term_frequencies, get_highest_document_id());
 					callback(listing.first, listing.second, document_frequency, document_ids, term_frequencies);
@@ -255,7 +255,7 @@ namespace JASS
 				*/
 				size_t instance = 0;
 				callback(instance, slice("-"));
-				for (const auto term : primary_key)
+				for (const auto &term : primary_key)
 					callback(++instance, term);
 				}
 
@@ -278,7 +278,7 @@ namespace JASS
 				/*
 					Iterate over the hash table calling the callback function with each term->postings pair.
 				*/
-				for (const auto &listing : index)
+				for (const auto listing : index)
 					{
 					auto document_frequency = listing.second.linearize(temporary, temporary_size, document_ids, term_frequencies, get_highest_document_id());
 					quantizer(callback, listing.first, listing.second, document_frequency, document_ids, term_frequencies);
@@ -290,7 +290,7 @@ namespace JASS
 				*/
 				size_t instance = 0;
 				quantizer(callback, instance, slice("-"));
-				for (const auto term : primary_key)
+				for (const auto &term : primary_key)
 					quantizer(callback, ++instance, term);
 				}
 

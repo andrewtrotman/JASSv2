@@ -62,7 +62,7 @@ namespace JASS
 				largest_rsv(std::numeric_limits<decltype(largest_rsv)>::min()),
 				smallest_rsv(std::numeric_limits<decltype(smallest_rsv)>::max()),
 				ranker(ranker),
-				documents_in_collection(documents)
+				documents_in_collection(static_cast<compress_integer::integer>(documents))
 				{
 				/* Nothing. */
 				}

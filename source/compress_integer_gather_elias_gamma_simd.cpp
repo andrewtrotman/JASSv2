@@ -83,7 +83,7 @@ namespace JASS
 	*/
 	void compress_integer_gather_elias_gamma_simd::unittest_one(compress_integer_gather_elias_gamma_simd &compressor, const std::vector<uint32_t> &sequence)
 		{
-		compress_integer_gather_elias_gamma_simd_unittest first_output(sequence.size());
+		compress_integer_gather_elias_gamma_simd_unittest first_output(static_cast<integer>(sequence.size()));
 		std::vector<uint32_t>compressed(sequence.size() * 4);
 
 		auto size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &sequence[0], sequence.size());

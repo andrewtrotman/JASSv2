@@ -103,7 +103,7 @@ namespace JASS
 			*/
 			if (bits_remaining > unary)
 				{
-				*decoded = (integer)((_bextr_u64(value, 0, unary + 1) >> 1)) | (1UL << unary);
+				*decoded = static_cast<integer>(((_bextr_u64(value, 0, unary + 1) >> 1)) | (1UL << unary));
 				bits_remaining -= unary + 1;
 				value >>= unary + 1;
 				}
@@ -112,10 +112,10 @@ namespace JASS
 				/*
 					the encoded number splits a machine word
 				*/
-				*decoded = (integer)value;
+				*decoded = static_cast<integer>(value);
 				value = *source++;
-				*decoded |= (integer)((_bextr_u64(value, 0, unary - bits_remaining + 1)) << bits_remaining);
-				*decoded = (*decoded >> 1) | (1UL << unary);				// unzig-zag
+				*decoded |= static_cast<integer>((_bextr_u64(value, 0, unary - bits_remaining + 1)) << bits_remaining);
+				*decoded = static_cast<integer>((*decoded >> 1) | (1UL << unary));				// unzig-zag
 				bits_used = unary - bits_remaining + 1;
 				bits_remaining = 64 - bits_used;
 				value >>= bits_used;

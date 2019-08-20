@@ -75,7 +75,7 @@ void process_one_list(const JASS::slice &term, JASS::deserialised_jass_v1 &index
 	size_t largest = 0;
 	size_t sum = 0;
 	size_t exception = 0;
-	for (const auto value : local_frequencies)
+	for (const auto &value : local_frequencies)
 		{
 		sum += value.second;
 		if (value.second > local_frequencies[largest])
@@ -130,11 +130,11 @@ void dump_tables(void)
 //		std::cout << element.first << ":" << element.second << "\n";
 
 	std::cout << "\nMeans\n";
-	for (const auto element : mean_magnitude)
+	for (const auto &element : mean_magnitude)
 		std::cout << element.first << ":" << element.second << "\n";
 
 	std::cout << "\nMedians\n";
-	for (const auto element : median_magnitude)
+	for (const auto &element : median_magnitude)
 		std::cout << element.first << ":" << element.second << "\n";
 
 
