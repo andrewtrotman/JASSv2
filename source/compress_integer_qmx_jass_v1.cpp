@@ -1681,6 +1681,8 @@ return destination - (uint8_t *)into;	// return length in bytes
 	}
 #endif
 
+// LCOV_EXCL_START
+
 /*
 	COMPRESS_INTEGER_QMX_JASS_V1::DECODEARRAY()
 	-------------------------------------------
@@ -44077,4 +44079,6 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 		}
 	}
 }
+// LCOV_EXCL_STOP
+
 }
