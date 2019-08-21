@@ -15,7 +15,7 @@ make
 
 LLVM_PROFILE_FILE="coverage/unittest.profraw" ./unittest
 xcrun llvm-profdata merge -sparse coverage/unittest.profraw -o coverage/unittest.profdata
-xcrun llvm-cov show ./unittest -instr-profile=unittest.profdata > coverage.txt
+xcrun llvm-cov show ./unittest -instr-profile=coverage/unittest.profdata > coverage.txt
 
 export CODECOV_TOKEN="531ba3f8-2ebe-40a2-9f40-95ea61dc0186"
 export ci_env=$(bash <(curl -s https://codecov.io/env))
