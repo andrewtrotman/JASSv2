@@ -92,6 +92,16 @@ namespace JASS
 				------------------------------------------------
 			*/
 			/*!
+				@brief Copy constructor (not available).
+				@param previous [in] The instance to copy.
+			*/
+			instream_document_trec(const instream_document_trec &previous) = delete;
+
+			/*
+				INSTREAM_DOCUMENT_TREC::INSTREAM_DOCUMENT_TREC()
+				------------------------------------------------
+			*/
+			/*!
 				@brief Constructor
 				@param source [in] The instream responsible for providing data to this class.
 				@param document_tag [in] The name of the tag used to delineate docments (default = "DOC").
