@@ -16,11 +16,11 @@
 
 	@section copyright_section Details
 	Written by Andrew Trotman (University of Otago, Dunedin, New Zealand) \n
-	Copyright (c) 2016-2017 Andrew Trotman\n
+	Copyright (c) 2016-2019 Andrew Trotman\n
 	Released under the 2-clause BSD license (See https://en.wikipedia.org/wiki/BSD_licenses).
 
 	@section introduction_section Introduction
-	JASS is an experimental search engine written in C++14.  It is still in its early stages
+	JASS is an experimental search engine written in C++17.  It is still in its early stages
 	and it will be some months before it goes into alpha.  Please feel free to contribute.
 */
 
