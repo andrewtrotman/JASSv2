@@ -3,8 +3,8 @@ set -ev
 git clone https://github.com/andrewtrotman/JASSv2.git
 cd JASSv2
 cd build
-export CFLAGS="-g -O0 -fprofile-arcs -ftest-coverage"
-export CXXFLAGS="-g -O0 -fprofile-arcs -ftest-coverage"
+export CFLAGS="-g -O0 -fprofile-arcs -ftest-coverage -fno-inline -fno-elide-constructors"
+export CXXFLAGS="-g -O0 -fprofile-arcs -ftest-coverage -fno-inline -fno-elide-constructors"
 cmake -D FORCE_CMAKE_BUILD_TYPE=Debug .. 
 make
 ./unittest
