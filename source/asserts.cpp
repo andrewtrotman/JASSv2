@@ -9,15 +9,15 @@
 
 #include "asserts.h"
 
-/*
-	FAIL()
-	------
-*/
-// LCOV_EXCL_START			// something has gone wrong if this is called during unit testing
+namespace JASS
+	{
+	/*
+		FAIL()
+		------
+	*/
 	void fail(const char *function, const char *file, size_t line, const char *expression)
 		{
 		fprintf(stderr, "%s:%llu:%s: JASS_assertion \"%s\" failed", file, (unsigned long long)line, function, expression);
 		abort();
 		}
-// LCOV_EXCL_STOP
-
+	}

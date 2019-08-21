@@ -30,17 +30,20 @@
 	
 	@param expression [in] The expression to check.
 */
-#define JASS_assert(expression) ((expression) ? ((void)0) : fail(__func__, __FILE__, __LINE__, #expression))
+#define JASS_assert(expression) ((expression) ? ((void)0) : JASS::fail(__func__, __FILE__, __LINE__, #expression))
 
-/*
-	FAIL()
-	------
-*/
-/*!
-	@brief Helper function to JASS_assert().  Prints a message and calls abort().	
-	@param function [in] The name of the function in which the JASS assert triggered.
-	@param file [in] The name of the file in which the JASS assert triggered.
-	@param line [in] The line number of the file in which the JASS assert triggered.
-	@param expression [in] The expression that caused assert to trigger.
-*/
-void fail(const char *function, const char *file, size_t line, const char *expression);
+namespace JASS
+	{
+	/*
+		FAIL()
+		------
+	*/
+	/*!
+		@brief Helper function to JASS_assert().  Prints a message and calls abort().
+		@param function [in] The name of the function in which the JASS assert triggered.
+		@param file [in] The name of the file in which the JASS assert triggered.
+		@param line [in] The line number of the file in which the JASS assert triggered.
+		@param expression [in] The expression that caused assert to trigger.
+	*/
+	void fail(const char *function, const char *file, size_t line, const char *expression);
+	}

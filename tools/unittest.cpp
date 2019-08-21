@@ -103,7 +103,7 @@ int main(void)
 	try
 		{
 		JASS::hardware_support hardware;
-		if (hardware.AVX)
+		if (hardware.AVX2)
 			{
 			puts("compress_integer_bitpack_256");
 			JASS::compress_integer_bitpack_256::unittest();
