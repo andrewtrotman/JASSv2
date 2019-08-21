@@ -25,7 +25,7 @@ before_install:
       cd JASSv2;
       cd build;
       ../docker/mac_build.sh;
-      exit 0;
+      xcodebuild -version;
     fi
 
 install: true
