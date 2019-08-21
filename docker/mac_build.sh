@@ -19,6 +19,6 @@ xcrun llvm-cov show ./unittest -instr-profile=coverage/unittest.profdata > cover
 
 export CODECOV_TOKEN="531ba3f8-2ebe-40a2-9f40-95ea61dc0186"
 export ci_env=$(bash <(curl -s https://codecov.io/env))
-/bin/bash <(curl -s https://codecov.io/bash) > ers 2> ers2
+/bin/bash <(curl -s https://codecov.io/bash) 
 
 echo "Done"
