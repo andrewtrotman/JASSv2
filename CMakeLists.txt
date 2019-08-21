@@ -67,12 +67,19 @@ endif()
 #
 if(WIN32)
 	#
-	# At present (December 2018) appveyor builds do npt support AVX512
+	# At present (December 2018) appveyor builds do not support AVX512
 	#
 	if($ENV{APPVEYOR})
 		add_definitions("-D__AVX2__=1")
 	else()
-		add_definitions("-D__AVX512F__=1")
+		#
+		# At present (August 2019) this desktop doesn not support AVX512
+		#
+		if($ENV{PROCESSOR_IDENTIFIER} STREQUAL "Intel64 Family 6 Model 23 Stepping 6, GenuineIntel")
+			add_definitions("-D__AVX2__=1")
+		else()
+			add_definitions("-D__AVX512F__=1")
+		endif()
 	endif()
 else()
 	add_definitions("-march=native" -mbmi -mavx2)

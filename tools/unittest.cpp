@@ -127,11 +127,24 @@ int main(void)
 	// LCOV_EXCL_STOP
 			}
 
-		puts("compress_integer_elias_gamma");
-		JASS::compress_integer_elias_gamma::unittest();
+		if (hardware.BMI1)
+			{
+			puts("compress_integer_elias_gamma");
+			JASS::compress_integer_elias_gamma::unittest();
 
-		puts("compress_integer_elias_delta");
-		JASS::compress_integer_elias_delta::unittest();
+			puts("compress_integer_elias_delta");
+			JASS::compress_integer_elias_delta::unittest();
+			}
+		else
+			{
+	// LCOV_EXCL_START
+			puts("compress_integer_elias_gamma");
+			puts("Cannot test as no BMI1 instructions on this CPU");
+			puts("compress_integer_elias_delta");
+			puts("Cannot test as no BMI1 instructions on this CPU");
+	// LCOV_EXCL_STOP
+			}
+
 
 		puts("bitstream");
 		JASS::bitstream::unittest();

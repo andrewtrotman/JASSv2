@@ -6,8 +6,6 @@
 */
  #pragma once
 
-//#define DYNAMIC_ALLOCATION
-
 #include <new>
 #include <vector>
 #include <numeric>
@@ -54,13 +52,9 @@ namespace JASS
 			static constexpr size_t maximum_width = 1 << maximum_shift;																					///< Each clean flag represents this number of accumulators in a "row"
 			static constexpr size_t maximum_number_of_clean_flags = (NUMBER_OF_ACCUMULATORS + maximum_width - 1) / maximum_width;	///< The number of "rows" (i.e. clean flags).
 			static constexpr size_t maximum_number_of_accumulators_allocated = maximum_width * maximum_number_of_clean_flags;			///< The numner of accumulators that were actually allocated (recall that this is a 2D array)
-#ifdef DYNAMIC_ALLOCATION
-			uint8_t *clean_flag;
-			ELEMENT *accumulator;
-#else
 			uint8_t clean_flag[maximum_number_of_clean_flags];																								///< The clean flags are kept as bytes for faster lookup
 			ELEMENT accumulator[maximum_number_of_accumulators_allocated];																				///< The accumulators are kept in an array
-#endif
+
 			/*
 				At run-time we use these parameters
 			*/
@@ -110,14 +104,6 @@ namespace JASS
 				*/
 				if (number_of_clean_flags > maximum_number_of_clean_flags || number_of_accumulators_allocated > maximum_number_of_accumulators_allocated)
 					throw std::bad_array_new_length();
-
-#ifdef DYNAMIC_ALLOCATION
-				/*
-					Allocate the clean flags and the accumulators using new
-				*/
-				clean_flag = new uint8_t[number_of_clean_flags];
-				accumulator = new ELEMENT[number_of_accumulators_allocated];
-#endif
 
 				/*
 					Clear the clean flags ready for use.

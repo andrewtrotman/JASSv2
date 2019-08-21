@@ -17,6 +17,8 @@
 
 #include <vector>
 
+#include "asserts.h"
+
 namespace JASS
 	{
 	/*
@@ -31,6 +33,9 @@ namespace JASS
 	*/
 	class compress_integer
 		{
+		private:
+			static constexpr int MAX_D_GAP = 64;				///< this is the maximum D-ness that this code supports, it can be changes to anything that won't reuslt in stack overflow.  It is unlikely to exceed 16 for years (from 2019).
+
 		public:
 			typedef uint32_t integer;									///< This class and descendants will work on integers of this size.  Do not change without also changing JASS_COMPRESS_INTEGER_BITS_PER_INTEGER
 			#define JASS_COMPRESS_INTEGER_BITS_PER_INTEGER 32	///< The number of bits in compress_integer::integer (either 32 or 64). This must remain in sync with compress_integer::integer (and a hard coded value to be used in \#if statements)
@@ -108,6 +113,7 @@ namespace JASS
 					sum += *current;
 					*decoded++ = sum;
 					}
+
 				return source_integers;
 				}
 
@@ -120,12 +126,13 @@ namespace JASS
 				@param encoded [out] The Dn-encoded result (can be the same buffer as source).
 				@parm source [in] The integers to be Dn encoded.
 				@param source_integers [in] The number of integers in the list.
-				@param n [in] The encoding distance (normally 1, but can be any inteter up-to source_integers).
+				@param n [in] The encoding distance (normally 1, but can be any inteter up-to MAX_D_GAP).
 				@return The number of integers encoded.
 			*/
 			static size_t dn_encode(integer *encoded, const integer *source, size_t source_integers, size_t n = 1)
 				{
-				integer prior[n];	// temporary buffer of unencoded values stored so that source cab equal encoded (the pointes, that is)
+				JASS_assert(n < MAX_D_GAP);		// Verify that n isn't too large.
+				integer prior[MAX_D_GAP];	// temporary buffer of unencoded values stored so that source cab equal encoded (the pointers, that is)
 
 				/*
 					The first n are not encoded, so write then directly into the output buffer
