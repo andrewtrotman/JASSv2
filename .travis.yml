@@ -21,11 +21,10 @@ before_install:
       sysctl -n machdep.cpu.brand_string;
       system_profiler SPSoftwareDataType;
       xcodebuild -version;
-
-      git clone https://github.com/andrewtrotman/JASSv2.git
-      cd JASSv2
-      cd build
-      ../docker/mac_build.sh
+      git clone https://github.com/andrewtrotman/JASSv2.git;
+      cd JASSv2;
+      cd build;
+      ../docker/mac_build.sh;
       exit 0;
     fi
 
