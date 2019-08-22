@@ -1,10 +1,6 @@
 #!/bin/bash
 set -ev
 
-pip install --upgrade setuptools
-pip install wheel
-pip install cpp-coveralls
-
 git clone https://github.com/andrewtrotman/JASSv2.git
 cd JASSv2
 cd build
@@ -23,8 +19,13 @@ make
 #
 # Coverage using coveralls.io
 #
+pip install --upgrade setuptools
+pip install wheel
+pip install --user cpp-coveralls
+
 export COVERALLS_REPO_TOKEN=D5tNCS2tc1XK8guPC5ePloTuxr7ifkzlV
-coveralls --gcov-options '\-lp'
+# coveralls ---root . -gcov-options '\-lp' 
+coveralls
 
 valgrind -q --error-exitcode=42 ./unittest
 exit 0
