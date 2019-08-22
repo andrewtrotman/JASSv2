@@ -21,7 +21,7 @@ make
 #
 pip install --upgrade setuptools
 pip install wheel
-pip install --user cpp-coveralls
+pip install cpp-coveralls
 
 export COVERALLS_REPO_TOKEN=D5tNCS2tc1XK8guPC5ePloTuxr7ifkzlV
 # coveralls ---root . -gcov-options '\-lp' 
