@@ -21,11 +21,3 @@ add_executable(examine_index
 target_link_libraries(examine_index
 	JASSlib
 	)
-
-add_executable(parse_json
-	parse_json.cpp
-	)
-
-target_link_libraries(parse_json
-	JASSlib
-	)

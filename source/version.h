@@ -8,7 +8,7 @@
 	@file
 	@brief Details about the current executing version of JASS
 	@author Andrew Trotman
-	@copyright 2016-2017 Andrew Trotman
+	@copyright 2016-2019 Andrew Trotman
 */
 
 /*!
@@ -61,7 +61,7 @@ namespace JASS
 			*/
 			static std::string build(void)
 				{
-				return std::string("JASS Version ") + std::string(version_string) + std::string(" ") + std::to_string(bitness) + std::string("-bit ") + std::string(debugness) + std::string("Copyright (c) 2016-2017 Andrew Trotman, University of Otago");
+				return std::string("JASS Version ") + std::string(version_string) + std::string(" ") + std::to_string(bitness) + std::string("-bit ") + std::string(debugness) + std::string("Copyright (c) 2016-2019 Andrew Trotman, University of Otago");
 				}
 
 

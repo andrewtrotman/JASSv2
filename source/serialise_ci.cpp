@@ -109,7 +109,7 @@ namespace JASS
 		*/
 		postings_header_file.write("void T_");
 		postings_header_file.write(term.address(), term.size());
-		postings_header_file.write("(<uint16_t, 10'000'000, 10> &q);\n");
+		postings_header_file.write("(query<uint16_t, 10'000'000, 10>&);\n");
 
 		terms++;
 		}
@@ -148,24 +148,24 @@ namespace JASS
 		/*
 			Checksum the index to make sure its correct.
 		*/
-//		std::cout << "=====\n";
+		std::cout << "=====\n";
 		auto checksum = checksum::fletcher_16_file("JASS_postings.cpp");
-//		std::cout << "JASS_postings.c:" << checksum << '\n';
-		JASS_assert(checksum == 3754 || checksum == 53180);
+		std::cout << "JASS_postings.c:" << checksum << '\n';
+		JASS_assert(checksum == 11692 || checksum == 61118);
 
 		checksum = checksum::fletcher_16_file("JASS_postings.h");
-//		std::cout << "JASS_postings.h:" << checksum << '\n';
-		JASS_assert(checksum == 31941 || checksum == 61399);
+		std::cout << "JASS_postings.h:" << checksum << '\n';
+		JASS_assert(checksum == 52167 || checksum == 16345);
 
 		checksum = checksum::fletcher_16_file("JASS_vocabulary.cpp");
-//		std::cout << "JASS_vocabulary.cpp:" << checksum << '\n';
-		JASS_assert(checksum == 10029 || checksum == 32575);
+		std::cout << "JASS_vocabulary.cpp:" << checksum << '\n';
+		JASS_assert(checksum == 51247 || checksum == 8513);
 
 		checksum = checksum::fletcher_16_file("JASS_primary_keys.cpp");
-//		std::cout << "JASS_primary_keys.cpp:" << checksum << '\n';
-		JASS_assert(checksum == 18729 || checksum == 28987);
+		std::cout << "JASS_primary_keys.cpp:" << checksum << '\n';
+		JASS_assert(checksum == 44075 || checksum == 54333);
 
-//		std::cout << "=====\n";
+		std::cout << "=====\n";
 		puts("serialise_ci::PASSED");
 		}
 	}

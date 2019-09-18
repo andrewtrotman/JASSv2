@@ -8,7 +8,9 @@
 #include <exception>
 
 #include <stdint.h>
+#include <stdlib.h>
 
+#include "ascii.h"
 #include "query.h"
 #include "string_cpp.h"
 #include "channel_file.h"
@@ -16,6 +18,7 @@
 #include "allocator_pool.h"
 #include "accumulator_2d.h"
 #include "JASS_vocabulary.h"
+#include "run_export_trec.h"
 
 /*
 	If the line below is enabled then the global operator new and operator delete methods are overwridden
@@ -68,7 +71,9 @@ int main(int argc, char *argv[])
 			#endif
 			
 			JASS::string query(memory);					// allocate a string to read into
-			JASS::query<uint16_t, 10'000'000, 10> jass_query(primary_key, 1024, 10);	// allocate a JASS query object
+
+			auto jass_query_memory = std::make_shared<JASS::query<uint16_t, 10'000'000, 10>>(primary_key, 1024, 10);	// allocate a JASS query object
+			auto &jass_query = *jass_query_memory.get();		// pretend its an object
 
 			/*
 				Read a query from a user
@@ -82,17 +87,30 @@ int main(int argc, char *argv[])
 			if (query.compare(0, 5, ".quit") == 0)
 				break;
 
+#ifdef NEVER
 			/*
 				Echo the query
 			*/
 			output << query;
-
+#endif
 			/*
 				Parse the query then iterate over the terms
 			*/
 			jass_query.parse(query);
+			uint32_t term_number = 0;
+			uint64_t query_id = 0;
 			for (const auto &term : jass_query.terms())
 				{
+				/*
+					if the first term in the query is numeric then assume its a TREC style query number.
+				*/
+				if (term_number == 0 && JASS::ascii::isdigit(term.token()[0]))
+					{
+					query_id = atol(reinterpret_cast<const char *>(term.token().address()));
+					continue;
+					}
+				term_number++;
+
 				/*
 					Search the vocabulary for the query term and if we find it all the attached method to process the postings.
 				*/
@@ -102,13 +120,9 @@ int main(int argc, char *argv[])
 				}
 
 			/*
-				Dump the top-k to the output channel
+				Dump the top-k to the output in trec_eval format.
 			*/
-			for (const auto element : jass_query)
-				{
-				std::cout << element.document_id << ":" <<element.document_id << "::" << element.rsv << "\n";
-				//output << element.document_id << ":" << element.rsv << "\n";
-				}
+			JASS::run_export_trec(std::cout, query_id, jass_query, "JASSv2");
 			}
 		}
 	catch (std::exception &error)
@@ -117,7 +131,7 @@ int main(int argc, char *argv[])
 		}
 	catch (...)
 		{
-		printf("CAUGHT AN EXCEPTION OF UNKNOEN TYPE)\n");
+		printf("CAUGHT AN EXCEPTION OF UNKNOWN TYPE)\n");
 		}
 
 	#ifdef ENSURE_NO_ALLOCATIONS
