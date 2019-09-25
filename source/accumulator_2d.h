@@ -175,7 +175,8 @@ namespace JASS
 				*/
 				std::vector<size_t> sequence(instance.size());
 				std::iota(sequence.begin(), sequence.end(), 0);
-				std::random_shuffle(sequence.begin(), sequence.end());
+				std::random_device random_number_generator;
+				std::shuffle(sequence.begin(), sequence.end(), std::knuth_b(random_number_generator()));
 
 				/*
 					Set elemenets and make sure they're correct

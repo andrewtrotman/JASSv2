@@ -5,6 +5,7 @@
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 #include <vector>
+#include <random>
 #include <numeric>
 #include <iostream>
 #include <algorithm>
@@ -57,7 +58,8 @@ namespace JASS
 			size_t top_k = 10;
 			std::vector<size_t> sequence(length);
 			std::iota(sequence.begin(), sequence.end(), 0);
-			std::random_shuffle(sequence.begin(), sequence.end());
+			std::random_device random_number_generator;
+			std::shuffle(sequence.begin(), sequence.end(), std::knuth_b(random_number_generator()));
 
 			/*
 				Sort the top-k elements of the array
