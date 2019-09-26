@@ -106,6 +106,3 @@ namespace JASS
 				}
 		};
 	}
-
-
-

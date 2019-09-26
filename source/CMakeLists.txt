@@ -145,6 +145,8 @@ set(JASSlib_FILES
 	serialise_integers.h
 	serialise_jass_v1.cpp
 	serialise_jass_v1.h
+	serialise_forward_index.h
+	serialise_forward_index.cpp
 	slice.h
 	string_cpp.h
 	threads.h

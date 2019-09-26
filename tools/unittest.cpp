@@ -53,6 +53,7 @@
 #include "index_postings_impact.h"
 #include "compress_general_zlib.h"
 #include "instream_document_trec.h"
+#include "serialise_forward_index.h"
 #include "index_manager_sequential.h"
 #include "compress_integer_carry_8b.h"
 #include "compress_integer_simple_9.h"
@@ -279,6 +280,9 @@ int main(void)
 
 		puts("serialise_integers");
 		JASS::serialise_integers::unittest();
+
+		puts("serialise_forward_index");
+		JASS::serialise_forward_index::unittest();
 
 		puts("compress_integer_none");
 		JASS::compress_integer_none::unittest();
