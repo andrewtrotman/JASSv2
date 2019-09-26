@@ -26,6 +26,7 @@
 #include "serialise_jass_v1.h"
 #include "serialise_integers.h"
 #include "instream_document_trec.h"
+#include "serialise_forward_index.h"
 #include "index_manager_sequential.h"
 #include "ranking_function_atire_bm25.h"
 
@@ -35,6 +36,7 @@
 bool parameter_jass_v1_index = false;
 bool parameter_compiled_index = false;
 bool parameter_uint32_index = false;
+bool parameter_forward_index = false;
 std::string parameter_filename = "";
 bool parameter_quiet = false;
 bool parameter_help = false;
@@ -60,8 +62,9 @@ auto command_line_parameters = std::make_tuple
 
 	JASS::commandline::note("\nINDEX GENERATION\n----------------"),
 	JASS::commandline::parameter("-I1", "--index_jass_v1", "Generate a JASS version 1 index.", parameter_jass_v1_index),
+	JASS::commandline::parameter("-Ib", "--index_binary", "Generate a binary dump of just the postings segments.", parameter_uint32_index),
 	JASS::commandline::parameter("-Ic", "--index_compiled", "Generate a JASS compiled index.", parameter_compiled_index),
-	JASS::commandline::parameter("-Ib", "--index_binary", "Generate a binary dump of just the postings segments.", parameter_uint32_index)
+	JASS::commandline::parameter("-If", "--index_forward", "Generate a forward index.", parameter_forward_index)
 	);
 
 /*
@@ -217,6 +220,8 @@ int main(int argc, const char *argv[])
 		exporters.push_back(std::make_unique<JASS::serialise_jass_v1>(index.get_highest_document_id()));
 	if (parameter_uint32_index)
 		exporters.push_back(std::make_unique<JASS::serialise_integers>(index.get_highest_document_id()));
+	if (parameter_forward_index)
+		exporters.push_back(std::make_unique<JASS::serialise_forward_index>(index.get_highest_document_id()));
 
 	/*
 		Write out the index in the desired formats.

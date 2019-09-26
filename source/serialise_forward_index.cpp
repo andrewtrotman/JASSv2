@@ -20,8 +20,6 @@ namespace JASS
 		--------------------------------------------------
 	*/
 	serialise_forward_index::serialise_forward_index(size_t documents) :
-		documents(documents),
-		terms(0),
 		document(documents + 1)
 		{
 		}
@@ -32,13 +30,30 @@ namespace JASS
 	*/
 	serialise_forward_index::~serialise_forward_index()
 		{
-		file outfile("forward.xml", "w+b");
+		file outfile("JASS_forward.index", "w+b");
 
+		int64_t which_document_id = -1;			// start with -1 so that the first document id == 0
 		for (const auto &current : document)
 			{
+			which_document_id++;
+
+			/*
+				If the document is empty them move on to the next one
+			*/
 			const std::string &one = current.str();
+			if (one.size() == 0)
+				continue;
+
+			/*
+				Output the document
+			*/
+			char document_id[64];			// will be smaller than a 64 digit number (as must be a 64-bit  integer)
+			sprintf(document_id, "%lld", which_document_id);
+			outfile.write("<DOC><DOCNO>", 12);
+			outfile.write(document_id, strlen(document_id));
+			outfile.write("</DOCID>", 8);
 			outfile.write(one.c_str(), one.size());
-			outfile.write("\n", 1);
+			outfile.write("</DOC>\n", 7);
 			}
 		}
 
@@ -51,7 +66,7 @@ namespace JASS
 		auto end = document_ids + document_frequency;
 		auto current_tf = term_frequencies;
 		for (compress_integer::integer *current_id = document_ids; current_id < end; current_id++, current_tf++)
-			document[*current_id] << term << ":" << static_cast<int>(*current_tf) << "\n";
+			document[*current_id] << term << ":" << static_cast<int>(*current_tf) << " ";
 		}
 		
 	/*
@@ -85,9 +100,9 @@ namespace JASS
 		/*
 			Checksum the index to make sure its correct.
 		*/
-		auto checksum = checksum::fletcher_16_file("forward.xml");
-//		std::cout << "forward.xml" << checksum << '\n';
-		JASS_assert(checksum == 16005);
+		auto checksum = checksum::fletcher_16_file("JASS_forward.index");
+//		std::cout << "JASS_forward.index " << checksum << '\n';
+		JASS_assert(checksum == 24427);
 
 		puts("serialise_forward_index::PASSED");
 		}

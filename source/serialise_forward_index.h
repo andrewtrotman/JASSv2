@@ -27,8 +27,6 @@ namespace JASS
 	class serialise_forward_index : public index_manager::delegate
 		{
 		private:
-			size_t documents;										///< The number of documents in the collection.
-			uint64_t terms;										///< The number of terms in the vocabulary file.
 			std::vector<std::ostringstream> document;		///< Each document is represented as a string.
 
 		public:
