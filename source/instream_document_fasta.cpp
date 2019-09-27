@@ -12,7 +12,6 @@
 #include <algorithm>
 
 #include "assert.h"
-#include "unittest_data.h"
 #include "instream_memory.h"
 #include "instream_document_fasta.h"
 

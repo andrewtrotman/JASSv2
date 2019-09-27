@@ -14,8 +14,9 @@
 #pragma once
 
 #include <stdint.h>
-#include "document.h"
+
 #include "slice.h"
+#include "document.h"
 
 namespace JASS
 	{
@@ -142,9 +143,6 @@ namespace JASS
 			*/
 			parser()
 				{
-				/*
-					Nothing
-				*/
 				current = NULL;
 				the_document = NULL;
 				end_of_document = NULL;

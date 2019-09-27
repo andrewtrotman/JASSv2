@@ -32,6 +32,7 @@
 #include "serialise_ci.h"
 #include "hash_pearson.h"
 #include "parser_query.h"
+#include "parser_fasta.h"
 #include "channel_file.h"
 #include "dynamic_array.h"
 #include "allocator_cpp.h"
@@ -245,6 +246,9 @@ int main(void)
 
 		puts("parser");
 		JASS::parser::unittest();
+
+		puts("parser_fasta");
+		JASS::parser_fasta::unittest();
 
 		puts("query_term");
 		JASS::query_term::unittest();

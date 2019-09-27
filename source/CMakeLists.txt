@@ -129,6 +129,8 @@ set(JASSlib_FILES
 	maths.cpp
 	parser.h
 	parser.cpp
+	parser_fasta.h
+	parser_fasta.cpp
 	parser_query.h
 	parser_query.cpp
 	pointer_box.h

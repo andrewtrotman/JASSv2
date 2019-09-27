@@ -478,6 +478,7 @@ namespace JASS
 			"123"
 			};
 		(void)text_answer;				// Silence the  "Unused variable" message when in Release
+
 		/*
 			create a document object and give it a the document.
 		*/
@@ -498,9 +499,7 @@ namespace JASS
 			{
 			const auto &token = tokenizer.get_next_token();
 			if (token.type != token::eof)
-				{
 				JASS_assert(std::string((char *)token.lexeme.address(), token.lexeme.size()) == text_answer[count]);
-				}
 			count++;
 			type = token.type;
 			}
@@ -549,9 +548,7 @@ namespace JASS
 			{
 			const auto &token = tokenizer.get_next_token();
 			if (token.type != token::eof)
-				{
 				JASS_assert(std::string((char *)token.lexeme.address(), token.lexeme.size()) == xml_data_answer[count]);
-				}
 			count++;
 			type = token.type;
 			}
