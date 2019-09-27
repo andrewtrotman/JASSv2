@@ -28,7 +28,7 @@ namespace JASS
 	*/
 	/*!
 		@brief Child class of instream for creating documents from TREC pre-web (i.e. news articles) data.
-		@details Connect an object of this class to an input stream and it will return TREC new-arrticle formatted documents
+		@details Connect an object of this class to an input stream and it will return TREC new-article formatted documents
 		one per read.  This is done by looking for \<DOC> and \</DOC> tags in the source stream.  Document primary keys are
 		assumed to be between \<DOCNO> and \</DOCNO> tags.
 	*/
@@ -54,7 +54,7 @@ namespace JASS
 			*/
 			/*!
 				@brief Protected constructor used to set the size of the internal buffer in the unittest.
-				@param source [in] The innstream responsible for providing data to this class.
+				@param source [in] The instream responsible for providing data to this class.
 				@param buffer_size [in] The size of the internal buffer filled from source.
 				@param document_tag [in] The name of the tag used to delineate docments.
 				@param document_primary_key_tag [in] The name of the element that contans the document's primary key.

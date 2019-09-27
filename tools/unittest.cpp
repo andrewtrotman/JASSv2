@@ -53,6 +53,7 @@
 #include "index_postings_impact.h"
 #include "compress_general_zlib.h"
 #include "instream_document_trec.h"
+#include "instream_document_fasta.h"
 #include "serialise_forward_index.h"
 #include "index_manager_sequential.h"
 #include "compress_integer_carry_8b.h"
@@ -233,6 +234,9 @@ int main(void)
 
 		puts("instream_document_trec");
 		JASS::instream_document_trec::unittest();
+
+		puts("instream_document_fasta");
+		JASS::instream_document_fasta::unittest();
 
 		// JASS::channel does not have a unittest because it is a virtual base class
 

@@ -118,6 +118,8 @@ set(JASSlib_FILES
 	instream.h
 	instream_document_trec.h
 	instream_document_trec.cpp
+	instream_document_fasta.h
+	instream_document_fasta.cpp
 	instream_file.h
 	instream_file.cpp
 	instream_file_star.h
