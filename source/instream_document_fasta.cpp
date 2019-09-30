@@ -148,7 +148,7 @@ namespace JASS
 	void instream_document_fasta::unittest(void)
 		{
 		static const std::string example_1_key = ">NR_118889.1";
-		static const std::string example_1 = "GGTCTNATACCGGATATAACAACTCATGGCATGGTTGGTAGTGGAAAGCTCCGGCGGT\n";
+		static const std::string example_1 = "GG\nTCT NATA\nCCGGATATAACAAC TCATGGCATGGTTGGTAGTG GAAAGCTCCG GCGGT\n";
 		static const std::string example_2_key = ">NR_118899.1";
 		static const std::string example_2 = "GGGTGAGTAACACGTGAGTAACCTGCCCCNNACTTCTGGATAACCGCTTGAAGGGTNG\n";
 		static const std::string example_3_key = ">NR_074334.1 >NR_118873.1 >NR_119237.1";
