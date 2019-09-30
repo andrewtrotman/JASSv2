@@ -186,7 +186,7 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 		size_t postings_processed = 0;
 		for (uint64_t *current = segment_order; current < current_segment; current++)
 			{
-//	std::cout << "Process Segment->(" << ((JASS::deserialised_jass_v1::segment_header *)(index.postings() + *current))->impact << ":" << ((JASS::deserialised_jass_v1::segment_header *)(index.postings() + *current))->segment_frequency << ")\n";
+// std::cout << "Process Segment->(" << ((JASS::deserialised_jass_v1::segment_header *)(index.postings() + *current))->impact << ":" << ((JASS::deserialised_jass_v1::segment_header *)(index.postings() + *current))->segment_frequency << ")\n";
 			const JASS::deserialised_jass_v1::segment_header &header = *reinterpret_cast<const JASS::deserialised_jass_v1::segment_header *>(index.postings() + *current);
 
 			/*
@@ -219,7 +219,7 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 		/*
 			Serialise the results list (don't time this)
 		*/
-		JASS::run_export(JASS::run_export::TREC, output.results_list, query_id.c_str(), *jass_query, "COMPILED", false);
+		JASS::run_export(JASS::run_export::TREC, output.results_list, query_id.c_str(), *jass_query, "JASSv2", false);
 
 		/*
 			Re-start the timer
@@ -303,7 +303,7 @@ int main(int argc, const char *argv[])
 	if (rho != 100.0)
 		postings_to_process = static_cast<size_t>(static_cast<double>(index.document_count()) * rho / 100.0);
 
-std::cout << "Postings to process:" << postings_to_process << "\n";
+std::cout << "Maximum numnber of postings to process:" << postings_to_process << "\n";
 
 	/*
 		Read from the query file into a list of queries array.

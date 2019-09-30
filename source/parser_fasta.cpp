@@ -48,7 +48,7 @@ namespace JASS
 			{
 			if (!ascii::isspace(*from))
 				{
-				*buffer_pos++ = *from++;
+				*buffer_pos++ = ascii::tolower(*from++);
 				if (++byte >= kmer_length)
 					break;
 				}
@@ -85,11 +85,11 @@ namespace JASS
 
 		std::string text_answer[] =
 			{
-			"GGTCT",
-			"GTCTN",
-			"TCTNA",
-			"CTNAT",
-			"TNATA",
+			"ggtct",
+			"gtctn",
+			"tctna",
+			"ctnat",
+			"tnata",
 			};
 		(void)text_answer;				// Silence the  "Unused variable" message when in Release
 
