@@ -19,6 +19,7 @@
 #include "version.h"
 #include "quantize.h"
 #include "commandline.h"
+#include "parser_fasta.h"
 #include "serialise_ci.h"
 #include "instream_file.h"
 #include "instream_memory.h"
@@ -26,6 +27,7 @@
 #include "serialise_jass_v1.h"
 #include "serialise_integers.h"
 #include "instream_document_trec.h"
+#include "instream_document_fasta.h"
 #include "serialise_forward_index.h"
 #include "index_manager_sequential.h"
 #include "ranking_function_atire_bm25.h"
@@ -42,6 +44,7 @@ bool parameter_quiet = false;
 bool parameter_help = false;
 size_t parameter_report_every_n = (std::numeric_limits<size_t>::max)();
 bool parameter_atire_similar = false;
+size_t parameter_fasta_kmer_length = 0;
 
 auto command_line_parameters = std::make_tuple
 	(
@@ -64,7 +67,8 @@ auto command_line_parameters = std::make_tuple
 	JASS::commandline::parameter("-I1", "--index_jass_v1", "Generate a JASS version 1 index.", parameter_jass_v1_index),
 	JASS::commandline::parameter("-Ib", "--index_binary", "Generate a binary dump of just the postings segments.", parameter_uint32_index),
 	JASS::commandline::parameter("-Ic", "--index_compiled", "Generate a JASS compiled index.", parameter_compiled_index),
-	JASS::commandline::parameter("-If", "--index_forward", "Generate a forward index.", parameter_forward_index)
+	JASS::commandline::parameter("-If", "--index_forward", "Generate a forward index.", parameter_forward_index),
+	JASS::commandline::parameter("-IF", "--index_FASTA", "<k> Generate a k-mer index from FASTA documents.", parameter_fasta_kmer_length)
 	);
 
 /*
@@ -115,14 +119,31 @@ int main(int argc, const char *argv[])
 		exit(usage(argv[0]));
 
 	/*
+		Either we're a regular text parser of a FASTA k-mer parser
+	*/
+	std::shared_ptr<JASS::parser> parser_ptr(
+		parameter_fasta_kmer_length == 0 ?
+			(JASS::parser *)new JASS::parser()
+		:
+			(JASS::parser *)new JASS::parser_fasta(parameter_fasta_kmer_length));
+	JASS::parser &parser = *parser_ptr;
+
+	/*
+		Set up the input pipeline
+	*/
+	std::shared_ptr<JASS::instream> file(new JASS::instream_file(parameter_filename));
+	std::shared_ptr<JASS::instream> source(
+		parameter_fasta_kmer_length == 0 ?
+			(JASS::instream *)new JASS::instream_document_trec(file)
+		:
+			(JASS::instream *)new JASS::instream_document_fasta(file)
+			);
+
+	/*
 		Now call JASS
 	*/
-	JASS::parser parser;
-	JASS::document document;
-	std::shared_ptr<JASS::instream> file(new JASS::instream_file(parameter_filename));
-	std::shared_ptr<JASS::instream> source(new JASS::instream_document_trec(file));
 	JASS::index_manager_sequential index;
-
+	JASS::document document;
 	size_t total_documents = 0;
 
 	auto preamble_time = JASS::timer::stop(timer).nanoseconds();

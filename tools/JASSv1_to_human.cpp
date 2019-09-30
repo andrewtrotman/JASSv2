@@ -26,12 +26,14 @@
 */
 bool parameter_look_like_atire = false;
 bool parameter_help = false;
+bool parameter_dictionary_only = false;
 
 std::string parameters_errors;						///< Any errors as a result of command line parsing
 auto parameters = std::make_tuple					///< The  command line parameter block
 	(
 	JASS::commandline::parameter("-?", "--help", "Print this help.", parameter_help),
-	JASS::commandline::parameter("-A", "--ATIRE", "Make the output look as like 'atire_dictionary -p -q -e \"~\"')", parameter_look_like_atire)
+	JASS::commandline::parameter("-A", "--ATIRE", "Make the output look as like 'atire_dictionary -p -q -e \"~\"')", parameter_look_like_atire),
+	JASS::commandline::parameter("-d", "--dictionary", "Only print the dictionary, don't print the postings", parameter_dictionary_only)
 	);
 
 /*
@@ -114,16 +116,21 @@ void walk_index(JASS::deserialised_jass_v1 &index, JASS::compress_integer &decom
 	*/
 	for (const auto &term : index)
 		{
-		std::cout << term.term << ' ';
-		/*
-			Walk each segment
-		*/
-		for (uint64_t current_segment = 0; current_segment < term.impacts; current_segment++)
-			{
-			uint64_t *postings = (uint64_t *)term.offset + current_segment;
-			const JASS::deserialised_jass_v1::segment_header &header = *reinterpret_cast<const JASS::deserialised_jass_v1::segment_header *>(index.postings() + *postings);
+		std::cout << term.term;
 
-			decoder.decode_and_process(header.impact, out_stream, decompressor, header.segment_frequency, index.postings() + header.offset, header.end - header.offset);
+		if (!parameter_dictionary_only)
+			{
+			std::cout << ' ';
+			/*
+				Walk each segment
+			*/
+			for (uint64_t current_segment = 0; current_segment < term.impacts; current_segment++)
+				{
+				uint64_t *postings = (uint64_t *)term.offset + current_segment;
+				const JASS::deserialised_jass_v1::segment_header &header = *reinterpret_cast<const JASS::deserialised_jass_v1::segment_header *>(index.postings() + *postings);
+
+				decoder.decode_and_process(header.impact, out_stream, decompressor, header.segment_frequency, index.postings() + header.offset, header.end - header.offset);
+				}
 			}
 		std::cout << '\n';
 		}
@@ -177,7 +184,12 @@ int main(int argc, const char *argv[])
 	JASS::compress_integer &decompressor = index.codex(codex_name, d_ness);
 
 	if (!parameter_look_like_atire)
-		std::cout << "\nPOSTINGS LISTS\n-------------\n";
+		{
+		if (parameter_dictionary_only)
+			std::cout << "\nDICTIONARY\n----------\n";
+		else
+			std::cout << "\nPOSTINGS LISTS\n-------------\n";
+		}
 
 	/*
 		Print the postings lists
@@ -192,7 +204,7 @@ int main(int argc, const char *argv[])
 	/*
 		Print the primary key list
 	*/
-	if (!parameter_look_like_atire)
+	if (!parameter_look_like_atire && !parameter_dictionary_only)
 		{
 		std::cout << "\nPRIMARY KEY LIST\n----------------\n";
 		for (const auto &key : index.primary_keys())
