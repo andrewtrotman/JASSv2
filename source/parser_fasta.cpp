@@ -26,16 +26,46 @@ namespace JASS
 		/*
 			Make sure we don't read past end of document
 		*/
-		if (current > end_of_document - kmer_length)
+		if (current >= end_of_document)
 			return eof_token;
-			
-		uint8_t *buffer_pos = current_token.buffer;
 
+		/*
+			Skip over any leading spaces
+		*/
+		while (ascii::isspace(*current))
+			current++;
+		if (current >= end_of_document)
+			return eof_token;
+
+		/*
+			Find the next k-mre
+		*/
+		uint8_t *buffer_pos = current_token.buffer;
 		current_token.type = current_token.alpha;
 		uint8_t *from = current++;
-		for (size_t byte = 0; byte < kmer_length; byte++)
-			*buffer_pos++ = *from++;
+		size_t byte = 0;
+		while (from < end_of_document)
+			{
+			if (!ascii::isspace(*from))
+				{
+				*buffer_pos++ = *from++;
+				if (++byte >= kmer_length)
+					break;
+				}
+			else
+				from++;
 
+			}
+
+		/*
+			Do we have enough characters to for a k-mer (or are we at EOF)?
+		*/
+		if (current >= end_of_document || byte != kmer_length)
+			return eof_token;
+
+		/*
+			Return the k-mer as a token.
+		*/
 		current_token.lexeme = slice((void *)current_token.buffer, (void *)buffer_pos);
 		return current_token;
 		}
@@ -51,7 +81,7 @@ namespace JASS
 		/*
 			Test a set of Unicode and ASCII tokens all intermixed to make sure we get the right answer
 		*/
-		static const std::string text = ">NR_118889.1\nGGTCTNATA";
+		static const std::string text = ">NR_118889.1\nG GTC\nTNA TA";
 
 		std::string text_answer[] =
 			{
