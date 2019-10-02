@@ -23,7 +23,7 @@
 /*
 	List of characteristics about a character.
 */
-enum charaxter_type
+enum character_type
 	{ 
 	UPPER = 1,			///< character is uppercase
 	LOWER = 2, 			///< character is lowercase
@@ -32,6 +32,7 @@ enum charaxter_type
 	PUNC = 16, 			///< character is punctuation
 	SPACE = 32, 		///< character is a whitespace
 	HEX = 64, 			///< character is a hexadecimal digit
+	DNA = 128,			///< character is a DNA base (i.e in: {ACTGactg})
 	};
 
 /*
@@ -45,7 +46,8 @@ const char *names[] =
 	"CONTROL",
 	"PUNC",
 	"SPACE",
-	"HEX"
+	"HEX",
+	"DNA",
 	};
 
 /*
@@ -128,7 +130,9 @@ for (ch = 0; ch <= 0xFF; ch++)
 		bits |= SPACE;
 	if (isxdigit(ch))
 		bits |= HEX;
-	
+	if (tolower(ch) == 'a' || tolower(ch) == 't' || tolower(ch) == 'c' || tolower(ch) == 'g')
+		bits |= DNA;
+		
 	/*
 		newline every 16 characters
 	*/

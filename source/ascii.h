@@ -46,6 +46,7 @@ namespace JASS
 				PUNC = 16,											///< this characgter is punctuation.
 				SPACE = 32,											///< this character is whitespace.
 				HEX = 64,											///< this character is a hexadecimal digit.
+				DNA = 128,											///< this character is a DNA base (i.e in: {ATCGatcg}
 
 				ALPHA = UPPER | LOWER,							///< this character is alphabetic
 				ALNUM = ALPHA | DIGIT,							///< this character is alphanumeric
@@ -230,6 +231,21 @@ namespace JASS
 				{
 				return (ctype[c] & HEX);
 				}
+
+			/*
+				ASCII::ISDNABASE()
+				------------------
+			*/
+			/*!
+				@brief Is this character a DNA base (i.e. in {a,t,c,g,A,T,C,G}
+				@param c [in] The character to check
+				@return true if a DNA base, else false.
+			*/
+			inline static int isDNAbase(uint8_t c)
+				{
+				return (ctype[c] & DNA);
+				}
+
 
 			/*
 				ASCII::TOLOWER()

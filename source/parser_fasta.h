@@ -26,14 +26,38 @@ namespace JASS
 	*/
 	/*!
 		@brief Parser to turn DNA sequences in FASTA format into k-mers for indexing.
-		@details kmers are character n-grams.  This parser takes the input document, strips the header from the FASTA record (i.e. drops the first line)
-		then converts returns the remainder of the document as a set of character n-grams starting at the first DNA character.  It assumes the document
-		is syntactically correct.  If the document is not syntactically correct the n-grams are computed from the whole document.
+		@details k-mers are character n-grams.  This parser takes the input document, strips the header from the FASTA record (i.e. drops the first line)
+		then returns the remainder of the document as a set of character n-grams starting at the first DNA character.  It assumes the document
+		is syntactically correct.  If the document is not syntactically correct the n-grams are computed from the whole document.  If a non-base is seen the
+		the parser skips that token (its invalid) and finds the next valid token.
 	*/
 	class parser_fasta : public parser
 		{
 		private:
-			size_t kmer_length;
+			/*!
+				The first line of a document is text and should be indexed as such.  The remainder of the document is DNA and should be converted into k-mers
+			*/
+			enum parser_mode
+				{
+				TEXT,
+				DNA
+				};
+
+		private:
+			size_t kmer_length;					///< The length of the k-mers to compute from the DNA sequences
+			parser_mode mode;						///< The mode (TEXT or DNA) of the tokenizer;
+			uint8_t *end_of_fasta_document;		///< Pointer to the end of the FASTA document, end_of_document points to the end of the first line (the primary key) before the DNA starts.
+
+		protected:
+			/*
+				PARSER_FASTA::GET_NEXT_TOKEN_DNA()
+				----------------------------------
+			*/
+			/*!
+				@brief Continue parsing the input looking for the next DNA k-mer token.
+				@return A reference to a token object that is valid until either the next call to get_next_token() or the parser is destroyed.
+			*/
+			const class parser::token &get_next_token_dna(void);
 
 		public:
 			/*
@@ -47,8 +71,9 @@ namespace JASS
 				kmer_length(kmer_length)
 				{
 				/*
-					Nothing
+					We can only return alpha tokens or eof tokens so set the token type here to alpha
 				*/
+				current_token.type = current_token.alpha;
 				}
 			
 			/*
@@ -78,11 +103,14 @@ namespace JASS
 			virtual void set_document(const class document &document)
 				{
 				the_document = &document;
-				end_of_document = static_cast<uint8_t *>(document.contents.address()) + document.contents.size();
-				if ((current = static_cast<uint8_t *>(std::find(static_cast<uint8_t *>(document.contents.address()), end_of_document, '\n'))) == end_of_document)
-					current = (uint8_t *)document.contents.address();			// document is badly formed so use the while document
-				else
-					current++;			// skip over the '\n' character.
+				current = (uint8_t *)document.contents.address();
+				end_of_fasta_document = (uint8_t *)document.contents.address() + document.contents.size();
+
+				/*
+					Start in TEXT mode and "pretend" that the document stops at the start of the DNA (the end of the first line)
+				*/
+				mode = TEXT;
+				end_of_document = static_cast<uint8_t *>(std::find(static_cast<uint8_t *>(document.contents.address()), end_of_fasta_document, '\n'));
 				}
 
 			/*
@@ -93,7 +121,22 @@ namespace JASS
 				@brief Continue parsing the input looking for the next token.
 				@return A reference to a token object that is valid until either the next call to get_next_token() or the parser is destroyed.
 			*/
-			virtual const class parser::token &get_next_token(void);
+			virtual const class parser::token &get_next_token(void)
+				{
+				if (mode == DNA)
+					return get_next_token_dna();
+				else
+					{
+					const token &got = parser::get_next_token();
+					if (got.type == token::token_type::eof)
+						{
+						mode = DNA;
+						end_of_document = end_of_fasta_document;		// shift to the end of document being the end of the FASTA document not just the end of the text.
+						return get_next_token_dna();
+						}
+					return got;
+					}
+				}
 
 			/*
 				PARSER_FASTA::UNITTEST()

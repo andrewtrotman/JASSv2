@@ -18,11 +18,17 @@
 namespace JASS
 	{
 	/*
-		PARSER_FASTA::GET_NEXT_TOKEN()
-		------------------------------
+		PARSER_FASTA::GET_NEXT_TOKEN_DNA()
+		----------------------------------
 	*/
-	const class parser::token &parser_fasta::get_next_token(void)
+	const class parser::token &parser_fasta::get_next_token_dna(void)
 		{
+		/*
+			Skip over any leading spaces
+		*/
+		while (!ascii::isDNAbase(*current))
+			current++;
+
 		/*
 			Make sure we don't read past end of document
 		*/
@@ -30,31 +36,40 @@ namespace JASS
 			return eof_token;
 
 		/*
-			Skip over any leading spaces
-		*/
-		while (ascii::isspace(*current))
-			current++;
-		if (current >= end_of_document)
-			return eof_token;
-
-		/*
-			Find the next k-mre
+			Find the next k-mer.  If we encounter whitespace then we throw away the whitespace.
+			As a valid k-mer can only contain DNA bases, if we encounter a symbol that is invalid we skip that token and start at the next DNA base pair.
 		*/
 		uint8_t *buffer_pos = current_token.buffer;
-		current_token.type = current_token.alpha;
 		uint8_t *from = current++;
 		size_t byte = 0;
-		while (from < end_of_document)
+		while (byte < kmer_length && from < end_of_document)
 			{
-			if (!ascii::isspace(*from))
+			/*
+				Construct a single k-mer failing if we find a non-base character
+			*/
+			byte = 0;
+			buffer_pos = current_token.buffer;
+			while (byte < kmer_length && from < end_of_document)
 				{
-				*buffer_pos++ = ascii::tolower(*from++);
-				if (++byte >= kmer_length)
+				if (ascii::isspace(*from))
+					from++;								// skip over spaces
+				else if (ascii::isDNAbase(*from))
+					{
+					/*
+						Valid DNA bases get added to the token
+					*/
+					*buffer_pos++ = ascii::tolower(*from++);
+					byte++;
+					}
+				else
+					{
+					/*
+						Not a valid DNA base so start the token at the next chacter and the one after that (current) at the character after that.
+					*/
+					current = (++from) + 1;
 					break;
+					}
 				}
-			else
-				from++;
-
 			}
 
 		/*
@@ -81,15 +96,23 @@ namespace JASS
 		/*
 			Test a set of Unicode and ASCII tokens all intermixed to make sure we get the right answer
 		*/
-		static const std::string text = ">NR_118889.1\nG GTC\nTNA TA";
+		static const std::string text = ">NR_118889.1\nG GTC\nTTA TAxGxxGATTCAx";
 
 		std::string text_answer[] =
 			{
+			">",
+			"nr",
+			"_",
+			"118889",
+			".",
+			"1",
 			"ggtct",
-			"gtctn",
-			"tctna",
-			"ctnat",
-			"tnata",
+			"gtctt",
+			"tctta",
+			"cttat",
+			"ttata",
+			"gattc",
+			"attca",
 			};
 		(void)text_answer;				// Silence the  "Unused variable" message when in Release
 
@@ -113,7 +136,10 @@ namespace JASS
 			{
 			const auto &token = tokenizer.get_next_token();
 			if (token.type != token::eof)
+				{
+//				std::cout << token.get() << '\n';
 				JASS_assert(std::string((char *)token.lexeme.address(), token.lexeme.size()) == text_answer[count]);
+				}
 			count++;
 			type = token.type;
 			}
@@ -122,7 +148,7 @@ namespace JASS
 		/*
 			make sure we got the right number of tokens
 		*/
-		JASS_assert(count == 6);
+		JASS_assert(count == 14);
 
 
 		/*
