@@ -243,10 +243,10 @@ namespace JASS
 				/*
 					Iterate over the hash table calling the callback function with each term->postings pair.
 				*/
-				for (const auto listing : index)
+				for (const auto &[key, value] : index)
 					{
-					auto document_frequency = listing.second.linearize(temporary, temporary_size, document_ids, term_frequencies, get_highest_document_id());
-					callback(listing.first, listing.second, document_frequency, document_ids, term_frequencies);
+					auto document_frequency = value.linearize(temporary, temporary_size, document_ids, term_frequencies, get_highest_document_id());
+					callback(key, value, document_frequency, document_ids, term_frequencies);
 					}
 
 				/*
