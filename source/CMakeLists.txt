@@ -102,6 +102,10 @@ set(JASSlib_FILES
 	deserialised_jass_v1.cpp
 	document.h
 	dynamic_array.h
+	evaluate.h
+	evaluate.cpp
+	evaluate_precision.h
+	evaluate_precision.cpp
 	file.h
 	file.cpp
 	forceinline.h

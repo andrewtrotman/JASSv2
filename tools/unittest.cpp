@@ -16,6 +16,7 @@
 #include "version.h"
 #include "reverse.h"
 #include "threads.h"
+#include "evaluate.h"
 #include "checksum.h"
 #include "quantize.h"
 #include "bitstream.h"
@@ -48,6 +49,7 @@
 #include "ranking_function.h"
 #include "serialise_jass_v1.h"
 #include "serialise_integers.h"
+#include "evaluate_precision.h"
 #include "instream_file_star.h"
 #include "compress_integer_all.h"
 #include "compress_integer_none.h"
@@ -192,7 +194,13 @@ int main(void)
 
 		puts("file");
 		JASS::file::unittest();
-		
+
+		puts("evaluate");
+		JASS::evaluate::unittest();
+
+		puts("evaluate_precision");
+		JASS::evaluate_precision::unittest();
+
 		puts("bitstring");
 		JASS::bitstring::unittest();
 
