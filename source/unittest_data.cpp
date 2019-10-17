@@ -58,5 +58,36 @@ namespace JASS
 		"2  0 AP880212-0161 0\n"
 		"1 0 AP880216-0169  0\n"
 		"1 0 AP880217-0030 0\n";
-		
+
+	/*
+		UNITTEST_DATA::TEN_PRICE_ASSESSMENTS_PRICES
+		-------------------------------------------
+	*/
+	const std::string unittest_data::ten_price_assessments_prices =
+		"PRICE  0  one  1\n"
+		"PRICE 0  two 2\n"
+		"PRICE  0 three 3\n"
+		"PRICE 0 four  4\n"
+		"PRICE 0 five 5\n"
+		"PRICE  0  six  6\n"
+		"PRICE 0  seven 7\n"
+		"PRICE  0 eight 8\n"
+		"PRICE 0 nine  9\n"
+		"PRICE 0 ten 10\n";
+
+	/*
+		UNITTEST_DATA::TEN_PRICE_ASSESSMENTS
+		------------------------------------
+	*/
+	const std::string unittest_data::ten_price_assessments =
+		"1  0  one  0\n"
+		"1 0  two 1\n"
+		"1  0 three 0\n"
+		"1 0 four  0\n"
+		"1 0 five 0\n"
+		"2  0  six  0\n"
+		"2 0  seven 1\n"
+		"2  0 eight 1\n"
+		"2 0 nine  1\n"
+		"2 0 ten 0\n";
 }

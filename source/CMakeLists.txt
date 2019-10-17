@@ -104,6 +104,8 @@ set(JASSlib_FILES
 	dynamic_array.h
 	evaluate.h
 	evaluate.cpp
+	evaluate_buying_power.h
+	evaluate_buying_power.cpp
 	evaluate_precision.h
 	evaluate_precision.cpp
 	file.h

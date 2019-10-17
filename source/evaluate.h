@@ -93,7 +93,7 @@ namespace JASS
 						}
 				};
 
-		protected:
+		public:
 			std::vector<judgement> assessments;			///< The assessments once loaded from disk.
 			judgement judgement_not_found;				///< The judgement to return if a search fails.
 
@@ -155,12 +155,32 @@ namespace JASS
 			void decode_assessments_trec_qrels(std::string &data);
 
 			/*
+				EVALUATE::FIND_FIRST()
+				----------------------
+			*/
+			/*!
+			 @brief Find and return the first relevant assessment for the given query.
+			 @details This is used for eCommerce evaluation where the price of the k lowest priced items is needed
+			 @param query_id [in] The ID of the query.
+			 @param document_id [in] The ID of the document.
+			 @return A pointer to the first judgement for the given query (or the next query if none exist for the query)
+			*/
+			auto find_first(const std::string &query_id) const
+				{
+				judgement looking_for(query_id, "", 0);
+
+				return std::lower_bound(assessments.begin(), assessments.end(), looking_for);
+				}
+
+			/*
 				EVALUATE::FIND()
 				----------------
 			*/
 			/*!
 				@brief Find and return the assessment data for the given query/document pair
-				@param filename [in] The name of the file to load.
+				@param query_id [in] The ID of the query.
+				@param document_id [in] The ID of the document.
+				@return Either the judgement or a reference to a not-relevant (0) judgement if the pair has not been assessed.
 			*/
 			const judgement &find(const std::string &query_id, const std::string &document_id) const
 				{

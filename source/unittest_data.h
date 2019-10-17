@@ -47,6 +47,8 @@ namespace JASS
 			static std::string ten_document_13_broken;		///< a broken document that has a DOC and DOCNO but no close DOCNO tag
 			static std::string three_documents_asymetric;	///< Three documents with terms occuring an asymetric number of times
 
-			static const std::string five_trec_assessments; 		///< Five example TREC assessments.
+			static const std::string five_trec_assessments; 			///< Five example TREC assessments.
+			static const std::string ten_price_assessments_prices;	///< The prices of ten example items.
+			static const std::string ten_price_assessments;				///< The assessments of ten example items.
 		};
 	}

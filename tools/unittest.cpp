@@ -1,7 +1,7 @@
 /*
 	UNITTEST.CPP
 	------------
-	Copyright (c) 2016-2018 Andrew Trotman
+	Copyright (c) 2016-2019 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 #include "file.h"
@@ -52,6 +52,7 @@
 #include "evaluate_precision.h"
 #include "instream_file_star.h"
 #include "compress_integer_all.h"
+#include "evaluate_buying_power.h"
 #include "compress_integer_none.h"
 #include "index_postings_impact.h"
 #include "compress_general_zlib.h"
@@ -200,6 +201,9 @@ int main(void)
 
 		puts("evaluate_precision");
 		JASS::evaluate_precision::unittest();
+
+		puts("evaluate_buying_power");
+		JASS::evaluate_buying_power::unittest();
 
 		puts("bitstring");
 		JASS::bitstring::unittest();

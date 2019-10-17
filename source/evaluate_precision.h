@@ -56,8 +56,8 @@ namespace JASS
 			virtual double compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth = 1000);
 
 			/*
-				EVALUATE::UNITTEST()
-				--------------------
+				EVALUATE_PRECISION::UNITTEST()
+				------------------------------
 			*/
 			/*!
 				@brief Unit test this class
