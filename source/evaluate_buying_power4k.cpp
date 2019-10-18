@@ -1,6 +1,6 @@
 /*
-	EVALUATE_BUYING_POWER.CPP
-	-------------------------
+	EVALUATE_BUYING_POWER4K.CPP
+	---------------------------
 	Copyright (c) 2019 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
@@ -9,39 +9,48 @@
 #include "maths.h"
 #include "asserts.h"
 #include "unittest_data.h"
-#include "evaluate_buying_power.h"
+#include "evaluate_buying_power4k.h"
 
 namespace JASS
 	{
 	/*
-		EVALUATE_BUYING_POWER::COMPUTE()
-		--------------------------------
+		EVALUATE_BUYING_POWER4K::COMPUTE()
+		----------------------------------
 	*/
-	double evaluate_buying_power::compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth)
+	double evaluate_buying_power4k::compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth)
 		{
 		size_t which = 0;
 		double lowest_priced_item = std::numeric_limits<decltype(lowest_priced_item)>::max();
 		double total_spending = 0;
+		std::vector<double> query_prices;
 
 		/*
-			Get the lowest priced item's price though a linear seach for the assessments for this query
+			Get the lowest k priced item's price though a linear seach for the assessments for this query
 			since this is only going to happen once per run, it doesn't seem worthwhile trying to optimise this.
+			We can use a vector of doubles because we don't care which items they are, we only want the lowest prices.
 		*/
 		for (auto assessment = assessments.find_first(query_id); assessment != assessments.assessments.end(); assessment++)
 			if ((*assessment).query_id == query_id && (*assessment).score != 0)
 				{
 				auto price = prices.find("PRICE", (*assessment).document_id);
-				lowest_priced_item = maths::minimum(lowest_priced_item, price.score);
+				query_prices.push_back(price.score);
 				}
-				
+
 		/*
 			There is no lowest priced item as there are no relevant items.
 		*/
-		if (lowest_priced_item == std::numeric_limits<decltype(lowest_priced_item)>::max())
+		if (query_prices.size() == 0)
 			return 1;
 
+		sort(query_prices.begin(), query_prices.end());
+		size_t query_k = maths::minimum(query_prices.size(), top_k);		// if there are fewer then top_k relevant items then reduce k
+
+		double mimimum_cost = 0;
+		for (size_t item = 0; item < query_k; item++)
+			mimimum_cost += query_prices[item];
+
 		/*
-			Compute the buying power.
+			Compute the spending up to the k-th relevant item.
 		*/
 		for (const auto &result : results_list)
 			{
@@ -52,11 +61,12 @@ namespace JASS
 			total_spending += assessment.score;
 
 			/*
-				Do we have a relevant item?
+				Have we found k relevant items yet?
 			*/
 			assessment = assessments.find(query_id, result);
 			if (assessment.score != 0)
-				return lowest_priced_item / total_spending;
+				if (--query_k == 0)
+					break;
 
 			/*
 				Have we exceeded the search depth?
@@ -66,14 +76,14 @@ namespace JASS
 				break;
 			}
 
-		return 0;
+		return mimimum_cost / total_spending;
 		}
 
 	/*
-		EVALUATE_BUYING_POWER::UNITTEST()
-		---------------------------------
+		EVALUATE_BUYING_POWER4K::UNITTEST()
+		-----------------------------------
 	*/
-	void evaluate_buying_power::unittest(void)
+	void evaluate_buying_power4k::unittest(void)
 		{
 		/*
 			Example results list with one relevant document
@@ -116,7 +126,7 @@ namespace JASS
 		/*
 			Evaluate the first results list
 		*/
-		evaluate_buying_power calculator(prices, container);
+		evaluate_buying_power4k calculator(2, prices, container);
 		double calculated_precision = calculator.compute("1", results_list_one);
 
 		/*
@@ -129,10 +139,10 @@ namespace JASS
 			Evaluate the second results list and check the result to 5 decimal places
 		*/
 		calculated_precision = calculator.compute("2", results_list_two);
-		double true_precision_two = 7.0 / 19.0;
+		double true_precision_two = 15.0 / 27.0;
 		JASS_assert(std::round(calculated_precision * 10000) == std::round(true_precision_two * 10000));
 
 
-		puts("evaluate_buying_power::PASSED");
+		puts("evaluate_buying_power4k::PASSED");
 		}
 	}

@@ -57,6 +57,7 @@
 #include "index_postings_impact.h"
 #include "compress_general_zlib.h"
 #include "instream_document_trec.h"
+#include "evaluate_buying_power4k.h"
 #include "instream_document_fasta.h"
 #include "serialise_forward_index.h"
 #include "index_manager_sequential.h"
@@ -204,6 +205,9 @@ int main(void)
 
 		puts("evaluate_buying_power");
 		JASS::evaluate_buying_power::unittest();
+
+		puts("evaluate_buying_power4k");
+		JASS::evaluate_buying_power4k::unittest();
 
 		puts("bitstring");
 		JASS::bitstring::unittest();
