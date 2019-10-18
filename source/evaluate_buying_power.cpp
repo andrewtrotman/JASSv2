@@ -30,7 +30,6 @@ namespace JASS
 		for (auto assessment = assessments.find_first(query_id); assessment != assessments.assessments.end(); assessment++)
 			if ((*assessment).query_id == query_id && (*assessment).score != 0)
 				{
-				lowest_priced_item = assessment->score;
 				auto price = prices.find("PRICE", (*assessment).document_id);
 				lowest_priced_item = maths::minimum(lowest_priced_item, price.score);
 				}
@@ -128,8 +127,8 @@ namespace JASS
 		/*
 			Evaluate the second results list and check the result to 5 decimal places
 		*/
-		calculated_precision = calculator.compute("1", results_list_one);
-		double true_precision_two = 7 / 19;
+		calculated_precision = calculator.compute("2", results_list_two);
+		double true_precision_two = 7.0 / 19.0;
 		JASS_assert(std::round(calculated_precision * 10000) == std::round(true_precision_two * 10000));
 
 
