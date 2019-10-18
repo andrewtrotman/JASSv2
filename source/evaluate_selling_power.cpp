@@ -29,11 +29,16 @@ namespace JASS
 			We can use a vector of doubles because we don't care which items they are, we only want the lowest prices.
 		*/
 		for (auto assessment = assessments.find_first(query_id); assessment != assessments.assessments.end(); assessment++)
-			if ((*assessment).query_id == query_id && (*assessment).score != 0)
+			if ((*assessment).query_id == query_id)
 				{
-				auto price = prices.find("PRICE", (*assessment).document_id);
-				query_prices.push_back(price.score);
+				if ((*assessment).score != 0)
+					{
+					auto price = prices.find("PRICE", (*assessment).document_id);
+					query_prices.push_back(price.score);
+					}
 				}
+			else
+				break;
 
 		/*
 			There is no lowest priced items as there are no relevant items.
@@ -45,7 +50,7 @@ namespace JASS
 		size_t query_depth = maths::minimum(query_prices.size(), depth);		// if there are fewer then top_k relevant items then reduce k
 
 		/*
-			Compute the spending up to the k-th position in the results list (or n-th if there are n relevant items and n < k).
+			Compute the buying power of each "slot"
 		*/
 		size_t current_cheapest = 0;
 		for (const auto &result : results_list)

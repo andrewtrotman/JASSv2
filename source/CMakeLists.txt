@@ -108,6 +108,8 @@ set(JASSlib_FILES
 	evaluate_buying_power.cpp
 	evaluate_buying_power4k.h
 	evaluate_buying_power4k.cpp
+	evaluate_cheapest_precision.h
+	evaluate_cheapest_precision.cpp
 	evaluate_precision.h
 	evaluate_precision.cpp
 	evaluate_selling_power.h

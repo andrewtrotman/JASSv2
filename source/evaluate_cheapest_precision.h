@@ -1,12 +1,12 @@
 /*
-	EVALUATE_SELLING_POWER.H
-	------------------------
+	EVALUATE_CHEAPEST_PRECISION.H
+	-----------------------------
 	Copyright (c) 2019 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 /*!
 	@file
-	@brief Compute the sellng power of the results list
+	@brief Compute the precision against the k cheapest items
 	@author Andrew Trotman
 	@copyright 2019 Andrew Trotman
 */
@@ -17,16 +17,16 @@
 namespace JASS
 	{
 	/*
-		CLASS EVALUATE_SELLING_POWER
-		----------------------------
+		CLASS EVALUATE_CHEAPEST_PRECISION
+		---------------------------------
 	*/
 	/*!
-		@brief Compute the selling power for the results list.
-		@details The selling power of the top k items is computed by generating the ideal gain vector (price low to high)
-		for the top k items (cost_K) then computing cost_K/actual_k for each k in the results list.  That is, 0 for non-relevance
-		and for relevance it is the rtatio of idealprice to chargedprice.  This is then summed and divided by k.
+		@brief Compute the Cheapest Precison for the results list.
+		@details The cheapest precision of the top k items is computed by taking the k cheapest items in the assessments
+		and computing pfrecision against that.  This is useful for evaluating the quality of the results at the end ofthe
+		first stage in the ranking pipeline.
 	*/
-	class evaluate_selling_power : evaluate
+	class evaluate_cheapest_precision : evaluate
 		{
 		private:
 			evaluate &prices;						///< Each item has a price regardless of the query being processed
@@ -34,8 +34,8 @@ namespace JASS
 
 		public:
 			/*
-				EVALUATE_SELLING_POWER::EVALUATE_SELLING_POWER()
-				------------------------------------------------
+				EVALUATE_CHEAPEST_PRECISION::EVALUATE_CHEAPEST_PRECISION()
+				----------------------------------------------------------
 			*/
 			/*!
 				@brief Constructor.
@@ -52,24 +52,22 @@ namespace JASS
 				@param prices [in] An assessments object which holds the price of each item
 				@param assessments [in] A pre-constructed assessments object.
 			*/
-			evaluate_selling_power(evaluate &prices, evaluate &assessments) :
+			evaluate_cheapest_precision(evaluate &prices, evaluate &assessments) :
 				prices(prices),
 				assessments(assessments)
 				{
 				}
 
 			/*
-				EVALUATE_SELLING_POWER::COMPUTE()
-				---------------------------------
+				EVALUATE_CHEAPEST_PRECISION::COMPUTE()
+				--------------------------------------
 			*/
 			/*!
-				@brief Compute the selling power metric over the results list.
+				@brief Compute the Cheapest Precision metric over the results list.
 
-				@details The selling power of the top k items is computed by generating the ideal gain vector (price low to high)
-				for the top k items (cost_K) then computing cost_K/actual_k for each k in the results list.  That is, 0 for non-relevance
-				and for relevance it is the rtatio of idealprice to chargedprice.  This is then summed and divided by k.  We assume
-				a shop-front (or set-based) model in which we only increase K if we find a relevant document at k.  This guarantees
-				that the metric cannot fall outside the range [0..1].
+				@details The cheapest precision of the top k items is computed by taking the k cheapest items in the assessments
+				and computing pfrecision against that.  This is useful for evaluating the quality of the results at the end ofthe
+				first stage in the ranking pipeline.
 
 				Although prices are assumed to be in dollars and (2 is $2.00, 2.2 = $2.20), the implementation is unit agnostic
 				and therefore prices might be in cents (or pence, etc.) or even units other than financial (such as time).
@@ -82,8 +80,8 @@ namespace JASS
 			virtual double compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth = 1000);
 
 			/*
-				EVALUATE_SELLING_POWER::UNITTEST()
-				----------------------------------
+				EVALUATE_CHEAPEST_PRECISION::UNITTEST()
+				---------------------------------------
 			*/
 			/*!
 				@brief Unit test this class

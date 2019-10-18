@@ -28,12 +28,17 @@ namespace JASS
 			since this is only going to happen once per run, it doesn't seem worthwhile trying to optimise this.
 		*/
 		for (auto assessment = assessments.find_first(query_id); assessment != assessments.assessments.end(); assessment++)
-			if ((*assessment).query_id == query_id && (*assessment).score != 0)
+			if ((*assessment).query_id == query_id)
 				{
-				auto price = prices.find("PRICE", (*assessment).document_id);
-				lowest_priced_item = maths::minimum(lowest_priced_item, price.score);
+				if ((*assessment).score != 0)
+					{
+					auto price = prices.find("PRICE", (*assessment).document_id);
+					lowest_priced_item = maths::minimum(lowest_priced_item, price.score);
+					}
 				}
-				
+			else
+				break;
+
 		/*
 			There is no lowest priced item as there are no relevant items.
 		*/

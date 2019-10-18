@@ -66,6 +66,7 @@
 #include "compress_integer_simple_9.h"
 #include "compress_integer_simple_8b.h"
 #include "compress_integer_simple_16.h"
+#include "evaluate_cheapest_precision.h"
 #include "compress_integer_bitpack_64.h"
 #include "ranking_function_atire_bm25.h"
 #include "compress_integer_elias_gamma.h"
@@ -212,6 +213,9 @@ int main(void)
 
 		puts("evaluate_selling_power");
 		JASS::evaluate_selling_power::unittest();
+
+		puts("evaluate_cheapest_precision");
+		JASS::evaluate_cheapest_precision::unittest();
 
 		puts("bitstring");
 		JASS::bitstring::unittest();
