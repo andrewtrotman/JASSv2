@@ -110,6 +110,8 @@ set(JASSlib_FILES
 	evaluate_buying_power4k.cpp
 	evaluate_precision.h
 	evaluate_precision.cpp
+	evaluate_selling_power.h
+	evaluate_selling_power.cpp
 	file.h
 	file.cpp
 	forceinline.h
