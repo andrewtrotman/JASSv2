@@ -72,7 +72,7 @@ namespace JASS
 					bool operator<(const judgement &second) const
 						{
 						/*
-							sort of query id first
+							sort on query id first
 						*/
 						auto compare = query_id.compare(second.query_id);
 						if (compare < 0)

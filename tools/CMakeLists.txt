@@ -114,3 +114,18 @@ add_executable(dump_ciff_lin
 target_link_libraries(dump_ciff_lin
 	JASSlib
 	)
+
+
+
+#
+# JASS_eval: Just like trec_eval, but the JASS version that includes different metrics
+#
+
+add_executable(JASS_eval
+	JASS_eval.cpp
+	)
+
+target_link_libraries(JASS_eval
+	JASSlib
+	)
+
