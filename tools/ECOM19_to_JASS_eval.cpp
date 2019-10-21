@@ -50,6 +50,14 @@ int main(int argc, const char *argv[])
 		exit(printf("Cannot read documents from file:%s", argv[1]));
 
 	/*
+		Load the assessments
+	*/
+	std::string assessments;
+	JASS::file::read_entire_file(argv[2], assessments);
+		if (assessments == "")
+			exit(printf("Cannot read documents from file:%s", argv[1]));
+
+	/*
 		Break the documents file into individual documents
 	*/
 	std::vector<uint8_t *> document_lines;
@@ -69,14 +77,6 @@ int main(int argc, const char *argv[])
 		double price = atof(space);
 		printf("PRICE 0 %ld %2.2f\n", document_id, price);
 		}
-
-	/*
-		Load the assessments
-	*/
-	std::string assessments;
-	JASS::file::read_entire_file(argv[2], assessments);
-		if (assessments == "")
-			exit(printf("Cannot read documents from file:%s", argv[1]));
 
 	/*
 		Break the assessments file into individual assessments
