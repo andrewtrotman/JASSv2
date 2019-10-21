@@ -244,7 +244,20 @@ int main(int argc, const char *argv[])
 		parsed_run.push_back(run_result(line));
 
 	/*
-		If we're an eCommerce assessment file then break it into two parts
+		If we're an eCommerce assessment file then break it into two parts.  The first part is the
+		prices of the items, the second part is the regular TREC eval formatted assessments.  The
+		first part is needed so that we can determine the amount of spending before the first relevant
+		item is found.  For example, 
+
+		PRICE 0 AP1 2.34
+		PRICE 0 AP2 5.67
+		1 0 AP1 0
+	 	1 0 AP2 1
+
+		would indicate that item AP1 is worth $2.34 while item AP2 is worth $5.67.  Then item AP1 is know
+		not relevant to query 1, but AP2 is relevant to query 1.  The format is:  Q_ID IT DOC_ID REL
+		where Q_ID is the query id, it is ignored (should be 0), DOC_ID is the document id and rel is
+		the relevance of this document to this query (0 = not relevant and 1 = relevant).
 	*/
 	if (assessments.compare(0, 5, "PRICE") == 0)
 		{

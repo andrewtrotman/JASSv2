@@ -115,8 +115,6 @@ target_link_libraries(dump_ciff_lin
 	JASSlib
 	)
 
-
-
 #
 # JASS_eval: Just like trec_eval, but the JASS version that includes different metrics
 #
@@ -126,6 +124,18 @@ add_executable(JASS_eval
 	)
 
 target_link_libraries(JASS_eval
+	JASSlib
+	)
+
+#
+# ECOM19_to_JASS_eval: Convert the ECOM19 ebay data challenge data into JASS_eval format (TREC eval format with prices added)
+#
+
+add_executable(ECOM19_to_JASS_eval
+	ECOM19_to_JASS_eval.cpp
+	)
+
+target_link_libraries(ECOM19_to_JASS_eval
 	JASSlib
 	)
 
