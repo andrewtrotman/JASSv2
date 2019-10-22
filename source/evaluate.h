@@ -14,6 +14,7 @@
 
 #include <vector>
 #include <string>
+#include <iostream>
 
 namespace JASS
 	{
@@ -26,6 +27,9 @@ namespace JASS
 	*/
 	class evaluate
 		{
+		friend
+			std::ostream &operator<<(std::ostream &stream, const evaluate &object);
+
 		protected:
 			/*
 				CLASS EVALUATE::JUDGEMENT
@@ -203,4 +207,24 @@ namespace JASS
 			*/
 			static void unittest(void);
 		};
+
+	/*
+		OPERATOR<<()
+		------------
+	*/
+	/*!
+		@brief Dump the contents of an object down an output stream
+		@param stream [in] The stream to write to.
+		@param tree [in] The object to write.
+		@return The stream once the tree has been written.
+	*/
+inline std::ostream &operator<<(std::ostream &stream, const evaluate &set)
+		{
+		/*
+			Output in trec_eval format.
+		*/
+		for (const auto &[query_id, document_id, score] : set.assessments)
+			stream << query_id << " 0 " << document_id << " " << score << "\n";
+		return stream;
+		}
 	}

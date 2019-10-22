@@ -65,7 +65,7 @@ namespace JASS
 
 							char *query_id = column_1;
 							char *document_id = column_3;
-							double relevance = atol(column_4);
+							double relevance = atof(column_4);
 
 							assessments.push_back(judgement(query_id, document_id, relevance));
 							}
