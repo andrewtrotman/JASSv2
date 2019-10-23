@@ -52,20 +52,14 @@ add_custom_command(
 
 add_custom_target(generate_ascii_cpp DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/../source/ascii.cpp)
 
-add_executable(ascii_database_to_c
-	ascii_database_to_c.cpp
-	)
+add_executable(ascii_database_to_c ascii_database_to_c.cpp)
 
 #
 # JASSv1_to_human
 #
 
-add_executable(JASSv1_to_human
-	JASSv1_to_human.cpp
-)
-
+add_executable(JASSv1_to_human JASSv1_to_human.cpp)
 target_link_libraries(JASSv1_to_human JASSlib ${CMAKE_THREAD_LIBS_INIT})
-
 
 #
 # bin_to_human
@@ -80,25 +74,15 @@ add_executable(bin_to_human
 # test_integer_compress
 #
 
-add_executable(test_integer_compress
-	test_integer_compress.cpp
-	)
-
-target_link_libraries(test_integer_compress
-	JASSlib
-	)
+add_executable(test_integer_compress test_integer_compress.cpp)
+target_link_libraries(test_integer_compress JASSlib)
 
 #
 # test_integer_compress_average
 #
 
-add_executable(test_integer_compress_average
-	test_integer_compress_average.cpp
-	)
-
-target_link_libraries(test_integer_compress_average
-	JASSlib
-	)
+add_executable(test_integer_compress_average test_integer_compress_average.cpp)
+target_link_libraries(test_integer_compress_average JASSlib)
 
 
 #
@@ -111,31 +95,23 @@ add_executable(dump_ciff_lin
 	dump_ciff_lin.cpp
 	)
 
-target_link_libraries(dump_ciff_lin
-	JASSlib
-	)
+target_link_libraries(dump_ciff_lin JASSlib)
 
 #
 # JASS_eval: Just like trec_eval, but the JASS version that includes different metrics
 #
+add_executable(JASS_eval JASS_eval.cpp) 
+target_link_libraries(JASS_eval JASSlib)
 
-add_executable(JASS_eval
-	JASS_eval.cpp
-	)
-
-target_link_libraries(JASS_eval
-	JASSlib
-	)
+#
+# ECOM19_to_run: Convert the ECOM19 ebay data challenge run into a trec_eval compatible run
+#
+add_executable(ECOM19_to_run ECOM19_to_run.cpp)
+target_link_libraries(ECOM19_to_run JASSlib)
 
 #
 # ECOM19_to_JASS_eval: Convert the ECOM19 ebay data challenge data into JASS_eval format (TREC eval format with prices added)
 #
-
-add_executable(ECOM19_to_JASS_eval
-	ECOM19_to_JASS_eval.cpp
-	)
-
-target_link_libraries(ECOM19_to_JASS_eval
-	JASSlib
-	)
+add_executable(ECOM19_to_JASS_eval ECOM19_to_JASS_eval.cpp)
+target_link_libraries(ECOM19_to_JASS_eval JASSlib)
 

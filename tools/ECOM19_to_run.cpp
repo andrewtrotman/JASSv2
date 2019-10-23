@@ -117,8 +117,9 @@ void read_matrix(std::string &data, std::unordered_map<int, std::unordered_map<i
 			column_number++;
 			}
 		row_number++;
-if (row_number % 100000 == 0)
-	std::cout << row_number << "\n";
+		
+		if (row_number % 100000 == 0)
+			fprintf(stderr, "%d\n", (int)row_number);
 		}
 	}
 
@@ -144,7 +145,7 @@ int main(int argc, const char *argv[])
 	/*
 		Load the documents
 	*/
-puts("Load Documents");
+fprintf(stderr, "Load Documents\n");
 	std::string documents;
 	JASS::file::read_entire_file(argv[1], documents);
 	if (documents == "")
@@ -187,20 +188,20 @@ puts("Load Documents");
 	/*
 		Load the run
 	*/
-puts("Load Run");
+fprintf(stderr, "Load Run\n");
 	std::string run_text;
 	JASS::file::read_entire_file(argv[3], run_text);
 		if (run_text == "")
 			exit(printf("Cannot read documents from file:%s", argv[3]));
 
-puts("Matrix the Run");
+fprintf(stderr, "Matrix the Run\n");
 	std::unordered_map<int, std::unordered_map<int, int>> run;
 	read_matrix(run_text, run, false);
 
 	/*
 		Remove the training data from the run and convert the run into trec_eval format
 	*/
-puts("Dump the Run");
+fprintf(stderr, "Dump the Run\n");
 	std::cout << std::setprecision(2) << std::fixed;
 	for (size_t column = 1; column < run[0].size(); column++)
 		{
