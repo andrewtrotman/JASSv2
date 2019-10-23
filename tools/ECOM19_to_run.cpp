@@ -90,7 +90,8 @@ void read_matrix(std::string &data, std::unordered_map<int, std::unordered_map<i
 		{
 		size_t column_number = 0;
 		uint8_t *column = line;
-		while (1)
+		bool break_at_end = false;
+		while (!break_at_end)
 			{
 			while (isspace(*column))
 				column++;
@@ -98,7 +99,7 @@ void read_matrix(std::string &data, std::unordered_map<int, std::unordered_map<i
 			while (*column != '\0' && !isspace(*column))
 				column++;
 			if (*column == '\0')
-				break;
+				break_at_end = true;
 			*column++ = '\0';
 			if (row_number == 0 || column_number == 0)
 				{
