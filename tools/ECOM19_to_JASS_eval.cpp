@@ -7,10 +7,9 @@
 */
 /*!
 	@file
-	@brief Read the eBay released data and convert into JASS_eval format (a superset of trec_eval format)
+	@brief Read the eBay released assessments (which is a table) and convert into JASS_eval format (a superset of trec_eval format)
 	@author Andrew Trotman
 	@copyright 2019 Andrew Trotman
-
 */
 #include <stdio.h>
 #include <ctype.h>
