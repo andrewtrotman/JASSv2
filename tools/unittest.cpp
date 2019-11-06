@@ -58,6 +58,7 @@
 #include "index_postings_impact.h"
 #include "compress_general_zlib.h"
 #include "instream_document_trec.h"
+
 #include "evaluate_selling_power.h"
 #include "evaluate_buying_power4k.h"
 #include "instream_document_fasta.h"
@@ -77,6 +78,7 @@
 #include "compress_integer_bitpack_256.h"
 #include "compress_integer_relative_10.h"
 #include "compress_integer_qmx_jass_v1.h"
+#include "evaluate_mean_reciprocal_rank.h"
 #include "compress_integer_stream_vbyte.h"
 #include "compress_integer_qmx_original.h"
 #include "compress_integer_qmx_improved.h"
@@ -205,6 +207,9 @@ int main(void)
 
 		puts("evaluate_relevant_returned");
 		JASS::evaluate_relevant_returned::unittest();
+
+		puts("evaluate_mean_reciprocal_rank");
+		JASS::evaluate_mean_reciprocal_rank::unittest();
 
 		puts("evaluate_map");
 		JASS::evaluate_map::unittest();

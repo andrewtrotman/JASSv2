@@ -18,22 +18,22 @@ namespace JASS
 	*/
 	double evaluate_mean_reciprocal_rank::compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth)
 		{
-		double found_and_relevant = 0;
-		size_t which = 0;
+		size_t which = 1;
 
 		for (const auto &result : results_list)
 			{
 			auto assessment = assessments.find(query_id, result);
 
-			found_and_relevant += assessment.score;
+			if (assessment.score != 0)
+				return 1.0 / static_cast<double>(which);
 
 			which++;
 
-			if (which >= depth)
+			if (which > depth)
 				break;
 			}
 
-		return found_and_relevant / (depth == std::numeric_limits<size_t>::max() ? which : depth);
+		return 0;
 		}
 
 	/*
@@ -48,7 +48,7 @@ namespace JASS
 		std::vector<std::string> results_list =
 			{
 			"AP880217-0026",
-			"AP880216-0139",
+			"AP880216-0139",			// RELEVANT (all others are not).
 			"AP880212-0161",
 			"AP880216-0169",
 			"AP880217-0030",
@@ -57,7 +57,7 @@ namespace JASS
 		/*
 			One of the 5 documents is relevant
 		*/
-		double true_precision = 1.0 / results_list.size();
+		double true_precision = 1.0 / 2.0;
 
 		/*
 			Load the sample data
