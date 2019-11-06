@@ -177,7 +177,7 @@ fprintf(stderr, "Load Documents\n");
 	/*
 		Load the training data (which must be removed from a run)
 	*/
-	puts("Load training data");
+fprintf(stderr, "Load training data");
 	std::string training_data_text;
 	JASS::file::read_entire_file(argv[2], training_data_text);
 		if (training_data_text == "")
@@ -217,8 +217,12 @@ fprintf(stderr, "Dump the Run\n");
 			}
 		std::sort(answer.begin(), answer.end());
 		size_t rank = 0;
+		size_t results_list_length = answer.size();
 		for (const auto &[query, document, price] : answer)
-			std::cout << query << " Q0 " << document << ' ' << ++rank << ' ' << price << ' ' << argv[4] << '\n';
+			{
+			rank++;
+			std::cout << query << " Q0 " << document << ' ' << rank << ' ' << results_list_length - rank + 1 << ' ' << argv[4] << '\n';
+			}
 		}
 
 	return 0;
