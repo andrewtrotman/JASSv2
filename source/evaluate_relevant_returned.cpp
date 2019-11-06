@@ -1,6 +1,6 @@
 /*
-	EVALUATE_PRECISION.CPP
-	----------------------
+	EVALUATE_RELEVANT_RETURNED.CPP
+	------------------------------
 	Copyright (c) 2019 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
@@ -8,15 +8,15 @@
 
 #include "asserts.h"
 #include "unittest_data.h"
-#include "evaluate_precision.h"
+#include "evaluate_relevant_returned.h"
 
 namespace JASS
 	{
 	/*
-		EVALUATE_PRECISION::COMPUTE()
-		-----------------------------
+		EVALUATE_RELEVANT_RETURNED::COMPUTE()
+		-------------------------------------
 	*/
-	double evaluate_precision::compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth)
+	double evaluate_relevant_returned::compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth)
 		{
 		double found_and_relevant = 0;
 		size_t which = 0;
@@ -33,14 +33,14 @@ namespace JASS
 				break;
 			}
 
-		return found_and_relevant / (depth == std::numeric_limits<size_t>::max() ? which : depth);
+		return found_and_relevant;
 		}
 
 	/*
-		EVALUATE_PRECISION::UNITTEST()
-		------------------------------
+		EVALUATE_RELEVANT_RETURNED::UNITTEST()
+		--------------------------------------
 	*/
-	void evaluate_precision::unittest(void)
+	void evaluate_relevant_returned::unittest(void)
 		{
 		/*
 			Example results list with one relevant document
@@ -57,7 +57,7 @@ namespace JASS
 		/*
 			One of the 5 documents is relevant
 		*/
-		double true_precision = 1.0 / results_list.size();
+		double true_precision = 1.0;
 
 		/*
 			Load the sample data
@@ -69,7 +69,7 @@ namespace JASS
 		/*
 			Evaluate the results list
 		*/
-		evaluate_precision calculator(container);
+		evaluate_relevant_returned calculator(container);
 		double calculated_precision = calculator.compute("1", results_list);
 
 		/*
@@ -77,6 +77,6 @@ namespace JASS
 		*/
 		JASS_assert(std::round(calculated_precision * 10000) == std::round(true_precision * 10000));
 
-		puts("evaluate_precision::PASSED");
+		puts("evaluate_relevant_returned::PASSED");
 		}
 	}

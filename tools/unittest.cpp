@@ -30,6 +30,7 @@
 #include "binary_tree.h"
 #include "commandline.h"
 #include "pointer_box.h"
+#include "evaluate_map.h"
 #include "serialise_ci.h"
 #include "hash_pearson.h"
 #include "parser_query.h"
@@ -64,6 +65,7 @@
 #include "index_manager_sequential.h"
 #include "compress_integer_carry_8b.h"
 #include "compress_integer_simple_9.h"
+#include "evaluate_relevant_returned.h"
 #include "compress_integer_simple_8b.h"
 #include "compress_integer_simple_16.h"
 #include "evaluate_cheapest_precision.h"
@@ -89,7 +91,6 @@
 #include "compress_integer_elias_gamma_bitwise.h"
 #include "compress_integer_elias_delta_bitwise.h"
 #include "compress_integer_gather_elias_gamma_simd.h"
-
 /*
 	MAIN()
 	------
@@ -201,6 +202,12 @@ int main(void)
 
 		puts("evaluate");
 		JASS::evaluate::unittest();
+
+		puts("evaluate_relevant_returned");
+		JASS::evaluate_relevant_returned::unittest();
+
+		puts("evaluate_map");
+		JASS::evaluate_map::unittest();
 
 		puts("evaluate_precision");
 		JASS::evaluate_precision::unittest();

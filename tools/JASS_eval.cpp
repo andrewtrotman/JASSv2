@@ -4,13 +4,17 @@
 	Copyright (c) 2019 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
+#include <math.h>
 #include <string.h>
 
 #include <map>
 #include <string>
+#include <iomanip>
+#include <iostream>
 
 #include "file.h"
 #include "commandline.h"
+#include "evaluate_map.h"
 #include "evaluate_precision.h"
 #include "evaluate_buying_power.h"
 #include "evaluate_selling_power.h"
@@ -46,20 +50,24 @@ auto parameters = std::make_tuple						///< The  command line parameter block
 class metric_set
 	{
 	public:
-		double number_of_queries;		///< The number of queries that this object represets (the numner of += ops called).
-		double precision;					///< set wise precision of the results list.
-		double p_at_5;						///< set wise precision of the results list.
-		double p_at_10;					///< set wise precision of the results list.
-		double p_at_15;					///< set wise precision of the results list.
-		double p_at_20;					///< set wise precision of the results list.
-		double p_at_30;					///< set wise precision of the results list.
-		double p_at_100;					///< set wise precision of the results list.
-		double p_at_200;					///< set wise precision of the results list.
-		double p_at_500;					///< set wise precision of the results list.
-		double p_at_1000;					///< set wise precision of the results list.
-		double cheapest_precision;		///< set wise precision of the cheapest items (if we are an eCommerce metric)
-		double selling_power;			///< selling power (if we are an eCommerce metric)
-		double buying_power;				///< buying power (if we are an eCommerce metric)
+		size_t number_of_queries;						///< The number of queries that this object represets (the numner of += ops called).
+		size_t relevant_count;							///< The number of relevant assessments for this query (assessments with a non-zero score).
+		size_t relevant_returned;						///< The number of relevant results in the results list
+		double precision;									///< set wise precision of the results list.
+		double p_at_5;										///< set wise precision of the results list.
+		double p_at_10;									///< set wise precision of the results list.
+		double p_at_15;									///< set wise precision of the results list.
+		double p_at_20;									///< set wise precision of the results list.
+		double p_at_30;									///< set wise precision of the results list.
+		double p_at_100;									///< set wise precision of the results list.
+		double p_at_200;									///< set wise precision of the results list.
+		double p_at_500;									///< set wise precision of the results list.
+		double p_at_1000;									///< set wise precision of the results list.
+		double mean_average_precision;				///< mean average precision (MAP).
+		double geometric_mean_average_precision;	///< geometric_mean average precision (GMAP).
+		double cheapest_precision;						///< set wise precision of the cheapest items (if we are an eCommerce metric)
+		double selling_power;							///< selling power (if we are an eCommerce metric)
+		double buying_power;								///< buying power (if we are an eCommerce metric)
 
 	public:
 		/*
@@ -82,9 +90,10 @@ class metric_set
 			@param selling_power [in] The selling power of this query.
 			@param buying_power [in] The buying power of this query.
 		*/
-		metric_set(double precision, double p_at_5, double p_at_10, double p_at_15, double p_at_20, double p_at_30, double p_at_100, double p_at_200, double p_at_500, double p_at_1000,
-		double cheapest_precision, double selling_power, double buying_power) :
+		metric_set(size_t relevant_count, size_t relevant_returned, double precision, double p_at_5, double p_at_10, double p_at_15, double p_at_20, double p_at_30, double p_at_100, double p_at_200, double p_at_500, double p_at_1000, double mean_average_precision, double cheapest_precision, double selling_power, double buying_power) :
 			number_of_queries(1),
+			relevant_count(relevant_count),
+			relevant_returned(relevant_returned),
 			precision(precision),
 			p_at_5(p_at_5),
 			p_at_10(p_at_10),
@@ -95,6 +104,8 @@ class metric_set
 			p_at_200(p_at_200),
 			p_at_500(p_at_500),
 			p_at_1000(p_at_1000),
+			mean_average_precision(mean_average_precision),
+			geometric_mean_average_precision(mean_average_precision == 0 ? 0 : log(mean_average_precision)),
 			cheapest_precision(cheapest_precision),
 			selling_power(selling_power),
 			buying_power(buying_power)
@@ -110,7 +121,7 @@ class metric_set
 			@brief Constructor
 		*/
 		metric_set() :
-			metric_set(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+			metric_set(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 			{
 			number_of_queries = 0;
 			}
@@ -126,6 +137,8 @@ class metric_set
 		metric_set &operator+=(const metric_set &other)
 			{
 			number_of_queries += other.number_of_queries;
+			relevant_count += other.relevant_count;
+			relevant_returned += other.relevant_returned;
 			precision += other.precision;
 			p_at_5 += other.p_at_5;
 			p_at_10 += other.p_at_10;
@@ -136,6 +149,8 @@ class metric_set
 			p_at_200 += other.p_at_200;
 			p_at_500 += other.p_at_500;
 			p_at_1000 += other.p_at_1000;
+			mean_average_precision += other.mean_average_precision;
+			geometric_mean_average_precision += other.geometric_mean_average_precision;
 			cheapest_precision += other.cheapest_precision;
 			selling_power += other.selling_power;
 			buying_power += other.buying_power;
@@ -156,20 +171,24 @@ class metric_set
 */
 std::ostream &operator<<(std::ostream &stream, const metric_set &object)
 	{
-	std::cout << "Number of Queries:" << object.number_of_queries << '\n';
-	std::cout << "Precision at 5:" << object.p_at_5 / object.number_of_queries << '\n';
-	std::cout << "Precision at 10:" << object.p_at_10 / object.number_of_queries  << '\n';
-	std::cout << "Precision at 15:" << object.p_at_15 / object.number_of_queries  << '\n';
-	std::cout << "Precision at 20:" << object.p_at_20 / object.number_of_queries  << '\n';
-	std::cout << "Precision at 30:" << object.p_at_30 / object.number_of_queries  << '\n';
-	std::cout << "Precision at 100:" << object.p_at_100 / object.number_of_queries  << '\n';
-	std::cout << "Precision at 200:" << object.p_at_200 / object.number_of_queries  << '\n';
-	std::cout << "Precision at 500:" << object.p_at_500 / object.number_of_queries  << '\n';
-	std::cout << "Precision at 1000:" << object.p_at_1000 / object.number_of_queries  << '\n';
-	std::cout << "Precision:" << object.precision / object.number_of_queries  << '\n';
-	std::cout << "Cheapest Precision:" << object.cheapest_precision / object.number_of_queries  << '\n';
-	std::cout << "Selling Power:" << object.selling_power / object.number_of_queries  << '\n';
-	std::cout << "Buying Power:" << object.buying_power / object.number_of_queries  << '\n';
+	std::cout << "Number of Queries            : " << object.number_of_queries << '\n';
+	std::cout << "Number Relevant              : " << object.relevant_count << '\n';
+	std::cout << "Number Relevant Returned     : " << object.relevant_returned << '\n';
+	std::cout << "Precision at 5               : " << object.p_at_5 / object.number_of_queries << '\n';
+	std::cout << "Precision at 10              : " << object.p_at_10 / object.number_of_queries  << '\n';
+	std::cout << "Precision at 15              : " << object.p_at_15 / object.number_of_queries  << '\n';
+	std::cout << "Precision at 20              : " << object.p_at_20 / object.number_of_queries  << '\n';
+	std::cout << "Precision at 30              : " << object.p_at_30 / object.number_of_queries  << '\n';
+	std::cout << "Precision at 100             : " << object.p_at_100 / object.number_of_queries  << '\n';
+	std::cout << "Precision at 200             : " << object.p_at_200 / object.number_of_queries  << '\n';
+	std::cout << "Precision at 500             : " << object.p_at_500 / object.number_of_queries  << '\n';
+	std::cout << "Precision at 1000            : " << object.p_at_1000 / object.number_of_queries  << '\n';
+	std::cout << "Precision                    : " << object.precision / object.number_of_queries  << '\n';
+	std::cout << "Mean Average Precision (MAP) : " << object.mean_average_precision / object.number_of_queries  << '\n';
+	std::cout << "Geometric MAP (GMAP)         : " << exp(object.geometric_mean_average_precision / object.number_of_queries)  << '\n';
+	std::cout << "Cheapest Precision           : " << object.cheapest_precision / object.number_of_queries  << '\n';
+	std::cout << "Selling Power                : " << object.selling_power / object.number_of_queries  << '\n';
+	std::cout << "Buying Power                 : " << object.buying_power / object.number_of_queries  << '\n';
 
 	return stream;
 	}
@@ -420,6 +439,26 @@ void load_assessments(std::string &assessments_filename, JASS::evaluate &gold_st
 	}
 
 /*
+	RELEVANCE_COUNT()
+	-----------------
+*/
+/*!
+	@brief Count the numner of relevant results for this query
+	@param query_id [in] the ID of the query
+	@param gold_standard_assessments [in] the assessments
+*/
+size_t relevance_count(const std::string &query_id, JASS::evaluate &gold_standard_assessments)
+	{
+	size_t relevant = 0;
+
+	for (auto assessment = gold_standard_assessments.find_first(query_id); assessment < gold_standard_assessments.assessments.end(); assessment++)
+		if (query_id == assessment->query_id && assessment->score != 0)
+			relevant++;
+
+	return relevant;
+	}
+
+/*
 	EVALUATE_QUERY()
 	----------------
 */
@@ -433,8 +472,15 @@ void load_assessments(std::string &assessments_filename, JASS::evaluate &gold_st
 */
 metric_set evaluate_query(const std::string &query_id, std::vector<std::string> &results_list, JASS::evaluate &gold_standard_price, JASS::evaluate &gold_standard_assessments)
 	{
+	JASS::evaluate_map evaluate_map_computer(gold_standard_assessments);
+	double map = evaluate_map_computer.compute(query_id, results_list);
+	size_t number_of_relvant_assessments = evaluate_map_computer.relevance_count(query_id);
+
+	JASS::evaluate_relevant_returned evaluate_relevant_returned_computer(gold_standard_assessments);
+	size_t relevant_returned = static_cast<size_t>(evaluate_relevant_returned_computer.compute(query_id, results_list));
+
 	JASS::evaluate_precision precision_computer(gold_standard_assessments);
-	double precision = precision_computer.compute(query_id, results_list, 1000'000'000);
+	double precision = precision_computer.compute(query_id, results_list);
 
 	double p5 = precision_computer.compute(query_id, results_list, 5);
 	double p10 = precision_computer.compute(query_id, results_list, 10);
@@ -446,16 +492,23 @@ metric_set evaluate_query(const std::string &query_id, std::vector<std::string> 
 	double p500 = precision_computer.compute(query_id, results_list, 500);
 	double p1000 = precision_computer.compute(query_id, results_list, 1000);
 
-	JASS::evaluate_cheapest_precision cheapest_precision_computer(gold_standard_price, gold_standard_assessments);
-	double cheapest_precision = cheapest_precision_computer.compute(query_id, results_list);
+	double cheapest_precision = 0;
+	double buying_power = 0;
+	double selling_power = 0;
 
-	JASS::evaluate_buying_power buying_power_computer(gold_standard_price, gold_standard_assessments);
-	double buying_power = buying_power_computer.compute(query_id, results_list);
+	if (gold_standard_price.assessments.size() != 0)
+		{
+		JASS::evaluate_cheapest_precision cheapest_precision_computer(gold_standard_price, gold_standard_assessments);
+		cheapest_precision = cheapest_precision_computer.compute(query_id, results_list);
 
-	JASS::evaluate_selling_power selling_power_computer(gold_standard_price, gold_standard_assessments);
-	double selling_power = selling_power_computer.compute(query_id, results_list);
+		JASS::evaluate_buying_power buying_power_computer(gold_standard_price, gold_standard_assessments);
+		buying_power = buying_power_computer.compute(query_id, results_list);
 
-	return metric_set(precision, p5, p10, p15, p20, p30, p100, p200, p500, p1000, cheapest_precision, selling_power, buying_power);
+		JASS::evaluate_selling_power selling_power_computer(gold_standard_price, gold_standard_assessments);
+		selling_power = selling_power_computer.compute(query_id, results_list);
+		}
+
+	return metric_set(number_of_relvant_assessments, relevant_returned, precision, p5, p10, p15, p20, p30, p100, p200, p500, p1000, map, cheapest_precision, selling_power, buying_power);
 	}
 
 /*
@@ -509,6 +562,11 @@ uint8_t usage(const std::string &exename)
 int main(int argc, const char *argv[])
 	{
 	/*
+		Set up the number of decimal places to print
+	*/
+	std::cout << std::fixed << std::setprecision(4);
+
+	/*
 		Parse the commane line parameters
 	*/
 	auto success = JASS::commandline::parse(argc, argv, parameters, parameters_errors);
@@ -555,9 +613,8 @@ int main(int argc, const char *argv[])
 	/*
 		Output the average (mean) scores.
 	*/
-	std::cout << "Run ID:" << parsed_run[0].tag << '\n';
-	std::cout << "Number of Queries:" << per_query_scores.size() << '\n';
-	std::cout << "Number of Returned Results:" << parsed_run.size() << '\n';
+	std::cout << "Run ID                       : " << parsed_run[0].tag << '\n';
+	std::cout << "Number of Returned Results   : " << parsed_run.size() << '\n';
 	std::cout << averages << '\n';
 
 	return 0;

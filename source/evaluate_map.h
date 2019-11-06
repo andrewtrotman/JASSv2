@@ -1,58 +1,69 @@
 /*
-	EVALUATE_PRECISION.H
-	--------------------
+	EVALUATE_MAP.H
+	--------------
 	Copyright (c) 2019 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 /*!
 	@file
-	@brief Compute the precision of the results list
+	@brief Compute the mean average precision (MAP) of the results list
 	@author Andrew Trotman
 	@copyright 2019 Andrew Trotman
 */
 #pragma once
 
-#include "evaluate_relevant_returned.h"
+#include "evaluate.h"
 
 namespace JASS
 	{
 	/*
-		CLASS EVALUATE_PRECISION
-		------------------------
+		CLASS EVALUATE_MAP
+		------------------
 	*/
 	/*!
-		@brief Compute the precision given a results (where precision is found_and_relevant / found)
+		@brief Compute the mean average precision (MAP) given a results
 	*/
-	class evaluate_precision : evaluate
+	class evaluate_map : evaluate
 		{
 		private:
 			evaluate &assessments;				///< The assessments, can be shared with other evaluation metrics
-
+			
 		public:
 			/*
-				EVALUATE_PRECISION::EVALUATE_PRECISION()
-				----------------------------------------
+				EVALUATE_MAP::EVALUATE_MAP()
+				----------------------------
 			*/
 			/*!
 				@brief Constructor.
 				@param assessments [in] A pre-constructed assessments object.
 			*/
-			evaluate_precision(evaluate &assessments) :
+			evaluate_map(evaluate &assessments) :
 				assessments(assessments)
 				{
 				/* Nothing */
 				}
 
 			/*
-				EVALUATE_PRECISION::COMPUTE()
-				-----------------------------
+				EVALUATE_MAP::RELEVANCE_COUNT()
+				-------------------------------
 			*/
 			/*!
-				@brief Compute the precision as found_and_relevant / found.
+				@brief Count the number of relevant assessments for this query.
+				@param query_id [in] The ID of the query being evaluated.
+				@return the number of relevant assessments for this query.
+			*/
+			size_t relevance_count(const std::string &query_id) const;
+
+			/*
+				EVALUATE_MAP::COMPUTE()
+				-----------------------
+			*/
+			/*!
+				@brief Compute the Mean Average Precision (MAP).
 				@param query_id [in] The ID of the query being evaluated.
 				@param results_list [in] The results list to measure.
 				@param depth [in] How far down the results list to look.
-				@return the precison of this results list for this query.
+				@return the MAP of this results list for this query.
 			*/
 			virtual double compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth = std::numeric_limits<size_t>::max());
 

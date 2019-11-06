@@ -1,6 +1,6 @@
 /*
-	EVALUATE_PRECISION.CPP
-	----------------------
+	EVALUATE_MEAN_RECIPROCAL_RANK.CPP
+	---------------------------------
 	Copyright (c) 2019 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
@@ -8,15 +8,15 @@
 
 #include "asserts.h"
 #include "unittest_data.h"
-#include "evaluate_precision.h"
+#include "evaluate_mean_reciprocal_rank.h"
 
 namespace JASS
 	{
 	/*
-		EVALUATE_PRECISION::COMPUTE()
-		-----------------------------
+		EVALUATE_MEAN_RECIPROCAL_RANK::COMPUTE()
+		----------------------------------------
 	*/
-	double evaluate_precision::compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth)
+	double evaluate_mean_reciprocal_rank::compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth)
 		{
 		double found_and_relevant = 0;
 		size_t which = 0;
@@ -37,10 +37,10 @@ namespace JASS
 		}
 
 	/*
-		EVALUATE_PRECISION::UNITTEST()
-		------------------------------
+		EVALUATE_MEAN_RECIPROCAL_RANK::UNITTEST()
+		-----------------------------------------
 	*/
-	void evaluate_precision::unittest(void)
+	void evaluate_mean_reciprocal_rank::unittest(void)
 		{
 		/*
 			Example results list with one relevant document
@@ -69,7 +69,7 @@ namespace JASS
 		/*
 			Evaluate the results list
 		*/
-		evaluate_precision calculator(container);
+		evaluate_mean_reciprocal_rank calculator(container);
 		double calculated_precision = calculator.compute("1", results_list);
 
 		/*
@@ -77,6 +77,6 @@ namespace JASS
 		*/
 		JASS_assert(std::round(calculated_precision * 10000) == std::round(true_precision * 10000));
 
-		puts("evaluate_precision::PASSED");
+		puts("evaluate_mean_reciprocal_rank::PASSED");
 		}
 	}

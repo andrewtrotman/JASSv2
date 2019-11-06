@@ -56,6 +56,7 @@ namespace JASS
 				prices(prices),
 				assessments(assessments)
 				{
+				/* Nothing */
 				}
 
 			/*
@@ -74,7 +75,7 @@ namespace JASS
 				Although prices are assumed to be in dollars and (2 is $2.00, 2.2 = $2.20), the implementation is unit agnostic
 				and therefore prices might be in cents (or pence, etc.) or even units other than financial (such as time).
 
-				@pram query_id [in] The ID of the query being evaluated.
+				@param query_id [in] The ID of the query being evaluated.
 				@param results_list [in] The results list to measure.
 				@param depth [in] How far down the results list to look.
 				@return The selling power of this results list for this query.
@@ -89,6 +90,5 @@ namespace JASS
 				@brief Unit test this class
 			*/
 			static void unittest(void);
-
 		};
 	}
