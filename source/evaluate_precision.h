@@ -12,7 +12,7 @@
 */
 #pragma once
 
-#include "evaluate_relevant_returned.h"
+#include "evaluate.h"
 
 namespace JASS
 	{
@@ -23,38 +23,19 @@ namespace JASS
 	/*!
 		@brief Compute the precision given a results (where precision is found_and_relevant / found)
 	*/
-	class evaluate_precision : evaluate
+	class evaluate_precision : public evaluate
 		{
-		private:
-			evaluate &assessments;				///< The assessments, can be shared with other evaluation metrics
-
 		public:
-			/*
-				EVALUATE_PRECISION::EVALUATE_PRECISION()
-				----------------------------------------
-			*/
-			/*!
-				@brief Constructor.
-				@param assessments [in] A pre-constructed assessments object.
-			*/
-			evaluate_precision(evaluate &assessments) :
-				assessments(assessments)
-				{
-				/* Nothing */
-				}
-
+			using evaluate::evaluate;
 			/*
 				EVALUATE_PRECISION::COMPUTE()
 				-----------------------------
 			*/
 			/*!
 				@brief Compute the precision as found_and_relevant / found.
-				@param query_id [in] The ID of the query being evaluated.
-				@param results_list [in] The results list to measure.
-				@param depth [in] How far down the results list to look.
-				@return the precison of this results list for this query.
+				@copydoc evaluate::compute()
 			*/
-			virtual double compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth = std::numeric_limits<size_t>::max());
+			virtual double compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth = std::numeric_limits<size_t>::max()) const;
 
 			/*
 				EVALUATE_PRECISION::UNITTEST()
@@ -63,6 +44,10 @@ namespace JASS
 			/*!
 				@brief Unit test this class
 			*/
-			static void unittest(void);
+			static void unittest(void)
+				{
+				unittest_one<evaluate_precision>(1.0 / 5.0);
+				puts("evaluate_precision::PASSED");
+				}
 		};
 	}

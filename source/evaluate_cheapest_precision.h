@@ -26,38 +26,14 @@ namespace JASS
 		and computing pfrecision against that.  This is useful for evaluating the quality of the results at the end ofthe
 		first stage in the ranking pipeline.
 	*/
-	class evaluate_cheapest_precision : evaluate
+	class evaluate_cheapest_precision : public evaluate
 		{
 		private:
-			evaluate &prices;						///< Each item has a price regardless of the query being processed
-			evaluate &assessments;				///< The assessments, which items are relevant to which queries (and at what price)
+			evaluate_cheapest_precision() = delete;
+			evaluate_cheapest_precision(std::shared_ptr<evaluate>) = delete;
 
 		public:
-			/*
-				EVALUATE_CHEAPEST_PRECISION::EVALUATE_CHEAPEST_PRECISION()
-				----------------------------------------------------------
-			*/
-			/*!
-				@brief Constructor.
-				@details  As all possible prices are valid prices (0 == "free", -1 == "I'll pay for you to take it away), the
-				assessments are split into two seperate parts. Ther prices of the items and the relevance of the items.  Each
-				of these two are stored in trec_eval format:
-
-			 	1 0 AP880212-0161 1
-
-			 	where the first column is the query id, the second is ignored, the third is the document ID, and the fourth is the
-			 	relevance.  The prices use a query id of "PRICE" and the relevance coulmn is the price of the item.  The assessments
-			 	are the usual trec_eval format where a relevance of 1 means releance, but a relefvance of 0 is not-relevant.
-
-				@param prices [in] An assessments object which holds the price of each item
-				@param assessments [in] A pre-constructed assessments object.
-			*/
-			evaluate_cheapest_precision(evaluate &prices, evaluate &assessments) :
-				prices(prices),
-				assessments(assessments)
-				{
-				/* Nothing */
-				}
+			using evaluate::evaluate;
 
 			/*
 				EVALUATE_CHEAPEST_PRECISION::COMPUTE()
@@ -78,7 +54,7 @@ namespace JASS
 				@param depth [in] How far down the results list to look.
 				@return The selling power of this results list for this query.
 			*/
-			virtual double compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth = std::numeric_limits<size_t>::max());
+			virtual double compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth = std::numeric_limits<size_t>::max()) const;
 
 			/*
 				EVALUATE_CHEAPEST_PRECISION::UNITTEST()

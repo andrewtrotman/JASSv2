@@ -6,6 +6,7 @@
 */
 #include <string.h>
 
+#include <cmath>
 #include <string>
 #include <sstream>
 #include <iostream>
@@ -13,7 +14,6 @@
 #include "file.h"
 #include "asserts.h"
 #include "evaluate.h"
-#include "unittest_data.h"
 
 namespace JASS
 	{
@@ -79,7 +79,6 @@ namespace JASS
 		std::sort(assessments.begin(), assessments.end());
 		}
 
-
 	/*
 		EVALUATE::LOAD_ASSESSMENTS_TREC_QRELS()
 		---------------------------------------
@@ -97,7 +96,6 @@ namespace JASS
 		*/
 		decode_assessments_trec_qrels(assessment_file);
 		}
-
 
 	/*
 		EVALUATE::UNITTEST()
@@ -123,7 +121,7 @@ namespace JASS
 		container.decode_assessments_trec_qrels(copy);
 
 		/*
-			Construct the answer by concatinating the of parsing
+			Construct the answer by concatinating the results of parsing
 		*/
 		std::ostringstream constructed_answer;
 		for (const auto &judgement : container.assessments)

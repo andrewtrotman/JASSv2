@@ -17,7 +17,7 @@ namespace JASS
 		EVALUATE_BUYING_POWER::COMPUTE()
 		--------------------------------
 	*/
-	double evaluate_buying_power::compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth)
+	double evaluate_buying_power::compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth) const
 		{
 		size_t which = 0;
 		double lowest_priced_item = std::numeric_limits<decltype(lowest_priced_item)>::max();
@@ -27,12 +27,12 @@ namespace JASS
 			Get the lowest priced item's price though a linear seach for the assessments for this query
 			since this is only going to happen once per run, it doesn't seem worthwhile trying to optimise this.
 		*/
-		for (auto assessment = assessments.find_first(query_id); assessment != assessments.assessments.end(); assessment++)
+		for (auto assessment = find_first(query_id); assessment != assessments.end(); assessment++)
 			if ((*assessment).query_id == query_id)
 				{
 				if ((*assessment).score != 0)
 					{
-					auto price = prices.find("PRICE", (*assessment).document_id);
+					auto price = find_price((*assessment).document_id);
 					lowest_priced_item = maths::minimum(lowest_priced_item, price.score);
 					}
 				}
@@ -53,13 +53,13 @@ namespace JASS
 			/*
 				Sum the total spending so far.
 			*/
-			auto assessment = prices.find("PRICE", result);
+			auto assessment = find_price(result);
 			total_spending += assessment.score;
 
 			/*
 				Do we have a relevant item?
 			*/
-			assessment = assessments.find(query_id, result);
+			assessment = find(query_id, result);
 			if (assessment.score != 0)
 				return lowest_priced_item / total_spending;
 
@@ -107,16 +107,16 @@ namespace JASS
 		/*
 			Load the sample price list
 		*/
-		evaluate prices;
+		std::shared_ptr<evaluate> prices(new evaluate);
 		std::string copy = unittest_data::ten_price_assessments_prices;
-		prices.decode_assessments_trec_qrels(copy);
+		prices->decode_assessments_trec_qrels(copy);
 
 		/*
 			Load the sample assessments
 		*/
-		evaluate container;
+		std::shared_ptr<evaluate> container(new evaluate);
 		copy = unittest_data::ten_price_assessments;
-		container.decode_assessments_trec_qrels(copy);
+		container->decode_assessments_trec_qrels(copy);
 
 		/*
 			Evaluate the first results list

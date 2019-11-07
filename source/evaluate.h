@@ -6,15 +6,18 @@
 */
 /*!
 	@file
-	@brief Compute the precision of the results list
+	@brief Base class for metrics (precision, recall, MAP, etc).
 	@author Andrew Trotman
 	@copyright 2019 Andrew Trotman
 */
 #pragma once
 
+#include <cmath>
 #include <vector>
 #include <string>
 #include <iostream>
+
+#include "unittest_data.h"
 
 namespace JASS
 	{
@@ -97,17 +100,92 @@ namespace JASS
 						}
 				};
 
-		public:
-			std::vector<judgement> assessments;			///< The assessments once loaded from disk.
-			judgement judgement_not_found;				///< The judgement to return if a search fails.
+		protected:
+			std::vector<judgement> assessments_store;			///< The assessments once loaded from disk.
+			std::vector<judgement> prices_store;				///< The assessments once loaded from disk.
+			std::shared_ptr<evaluate> assessments_pointer;	///< The shared pointer used to create this object
+			std::shared_ptr<evaluate> prices_pointer;			///< The shared pointer used to create this object
 
 		public:
+			std::vector<judgement> &assessments;				///< The assessments.
+			std::vector<judgement> &prices;						///< The prices used for eCommerce metrics.
+			judgement judgement_not_found;						///< The judgement to return if a search fails.
 
+		public:
+			/*
+				EVALUATE::EVALUATE()
+				--------------------
+			*/
+			/*!
+				@brief Constructor.
+			*/
 			evaluate() :
+				assessments(assessments_store),
+				prices(prices_store),
 				judgement_not_found("", "", 0)
 				{
 				/* Nothing */
 				}
+
+			/*
+				EVALUATE::EVALUATE()
+				--------------------
+			*/
+			/*!
+				@brief Constructor.
+				@param store [in] an evaluation object with assessments already loaded.
+			*/
+			evaluate(std::shared_ptr<evaluate> store) :
+				assessments_pointer(store),
+				prices_pointer(store),
+				assessments(store->assessments),
+				prices(store->prices),
+				judgement_not_found("", "", 0)
+				{
+				/* Nothing */
+				}
+
+			/*
+				EVALUATE::EVALUATE()
+				--------------------
+			*/
+			/*!
+				@brief Constructor.
+				@details  As all possible prices are valid prices (0 == "free", -1 == "I'll pay for you to take it away), the
+				assessments are split into two seperate parts. Ther prices of the items and the relevance of the items.  Each
+				of these two are stored in trec_eval format:
+
+			 	1 0 AP880212-0161 1
+
+			 	where the first column is the query id, the second is ignored, the third is the document ID, and the fourth is the
+			 	relevance.  The prices use a query id of "PRICE" and the relevance coulmn is the price of the item.  The assessments
+			 	are the usual trec_eval format where a relevance of 1 means releance, but a relefvance of 0 is not-relevant.
+
+				@param prices [in] An assessments object which holds the price of each item
+				@param assessments [in] A pre-constructed assessments object.
+			*/
+			evaluate(std::shared_ptr<evaluate> prices, std::shared_ptr<evaluate> assessment_store) :
+				assessments_pointer(assessment_store),
+				prices_pointer(prices),
+				assessments(assessment_store->assessments_store),
+				prices(prices->assessments_store),
+				judgement_not_found("", "", 0)
+				{
+				/* Nothing */
+				}
+
+			/*
+				EVALUATE::~EVALUATE()
+				---------------------
+			*/
+			/*!
+				@brief Destructor.
+			*/
+			virtual ~evaluate()
+				{
+				/* Nothing */
+				}
+
 		/*
 			EVALUATE::LOAD_ASSESSMENTS_TREC_QRELS()
 			---------------------------------------
@@ -166,7 +244,6 @@ namespace JASS
 			 @brief Find and return the first relevant assessment for the given query.
 			 @details This is used for eCommerce evaluation where the price of the k lowest priced items is needed
 			 @param query_id [in] The ID of the query.
-			 @param document_id [in] The ID of the document.
 			 @return A pointer to the first judgement for the given query (or the next query if none exist for the query)
 			*/
 			auto find_first(const std::string &query_id) const
@@ -196,6 +273,106 @@ namespace JASS
 					return *found;
 				else
 					return judgement_not_found;
+				}
+
+			/*
+				EVALUATE::FIND_PRICE()
+				----------------------
+			*/
+			/*!
+				@brief Find and return the price of a document
+				@param document_id [in] The ID of the document.
+				@return Either the judgement or a reference to a not-relevant (0) judgement if the pair has not been assessed.
+			*/
+			const judgement &find_price(const std::string &document_id) const
+				{
+				judgement looking_for("PRICE", document_id, 0);
+
+				auto found = std::lower_bound(prices.begin(), prices.end(), looking_for);
+
+				if (found->document_id == document_id)
+					return *found;
+				else
+					return judgement_not_found;
+				}
+
+
+			/*
+				EVALUATE::COMPUTE()
+				-------------------
+			*/
+			/*!
+				@brief Compute the metric.
+				@param query_id [in] The ID of the query being evaluated.
+				@param results_list [in] The results list to measure.
+				@param depth [in] How far down the results list to look.
+				@return The score for this results list and for this query.
+			*/
+			virtual double compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth = std::numeric_limits<size_t>::max()) const
+				{
+				return 0;
+				}
+
+			/*
+				EVALUATE::RELEVANCE_COUNT()
+				---------------------------
+			*/
+			/*!
+				@brief Count the numner of relevant results for this query
+				@param query_id [in] the ID of the query
+			*/
+			size_t relevance_count(const std::string &query_id) const
+				{
+				size_t relevant = 0;
+
+				for (auto assessment = find_first(query_id); assessment < assessments.end(); assessment++)
+					if (query_id == assessment->query_id && assessment->score != 0)
+						relevant++;
+
+				return relevant;
+				}
+
+			/*
+				EVALUATE::UNITTEST_ONE()
+				------------------------
+			*/
+			/*!
+				@brief Run a unit test on a commmon set of data
+				@param true_score [in] the expected result for the standard test
+				@tparam TYPE [in] The type of evaluation to perform (the metric)
+			*/
+			template <typename TYPE>
+			static void unittest_one(double true_score)
+				{
+				/*
+					Example results list with one relevant document
+				*/
+				std::vector<std::string> results_list =
+					{
+					"AP880217-0026",
+					"AP880216-0139",			// RELEVANT (all others are non-relevant).
+					"AP880212-0161",
+					"AP880216-0169",
+					"AP880217-0030",
+					};
+
+				/*
+					Load the sample data
+				*/
+				std::shared_ptr<evaluate> container(new evaluate);
+				std::string copy = unittest_data::five_trec_assessments;
+				container->decode_assessments_trec_qrels(copy);
+
+				/*
+					Evaluate the results list
+				*/
+				TYPE calculator(container);
+				double calculated_score = calculator.compute("1", results_list);
+
+				/*
+					Compare to 5 decimal places
+				*/
+				JASS_assert(std::round(calculated_score * 10000) == std::round(true_score * 10000));
 				}
 
 			/*

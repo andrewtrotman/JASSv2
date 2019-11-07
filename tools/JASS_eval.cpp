@@ -14,8 +14,10 @@
 
 #include "file.h"
 #include "asserts.h"
+#include "evaluate_f.h"
 #include "commandline.h"
 #include "evaluate_map.h"
+#include "evaluate_recall.h"
 #include "evaluate_precision.h"
 #include "evaluate_buying_power.h"
 #include "evaluate_selling_power.h"
@@ -33,12 +35,14 @@ bool parameter_help = false;												///< Output the usage() help
 bool parameter_output_per_query_scores = false;						///< Shopuld we output per-query scores or not?
 size_t parameter_depth = std::numeric_limits<size_t>::max();	///< How far down the results list to look (i.e. n in precision@n)
 std::string parameters_errors;											///< Any errors as a result of command line parsing
+size_t parameter_k = 10;													///< The n parameter to a metric (for example k in buying_power_at_k).
 
 auto parameters = std::make_tuple										///< The  command line parameter block
 	(
 	JASS::commandline::parameter("-?", "--help",          "Print this help.", parameter_help),
-	JASS::commandline::parameter("-a", "--assesmentfile", "<filename> Name of the file containing the assessmengts", parameter_assessments_filename),
-	JASS::commandline::parameter("-n", "--number",        "How far down the resuls list to look (i.e. n in P@n)", parameter_depth),
+	JASS::commandline::parameter("-a", "--assesmentfile", "<filename> Name of the file containing the assessments", parameter_assessments_filename),
+	JASS::commandline::parameter("-k", "--k_equals",      "<n> the K parameter in any parmetric metric (e.g. k in buying_power4k) [default=10]", parameter_k),
+	JASS::commandline::parameter("-n", "--n_equals",      "<n> How far down the resuls list to look (i.e. n in P@n) [default=inf]", parameter_depth),
 	JASS::commandline::parameter("-p", "--perquery",      "Output per-query statistics", parameter_output_per_query_scores),
 	JASS::commandline::parameter("-r", "--runfile",       "<filename> Name of run file to evaluatge", parameter_run_filename)
 	);
@@ -60,6 +64,8 @@ class metric_set
 		size_t relevant_returned;						///< The number of relevant results in the results list.
 		double mean_reciprocal_rank;					///< The mean reciprocal rank.
 		double precision;									///< set wise precision of the results list.
+		double recall;										///< set wise recall.
+		double f1;											///< set wise F1 score.
 		double p_at_5;										///< set wise precision of the results list.
 		double p_at_10;									///< set wise precision of the results list.
 		double p_at_15;									///< set wise precision of the results list.
@@ -74,6 +80,7 @@ class metric_set
 		double cheapest_precision;						///< set wise precision of the cheapest items (if we are an eCommerce metric).
 		double selling_power;							///< selling power (if we are an eCommerce metric).
 		double buying_power;								///< buying power (if we are an eCommerce metric).
+		double buying_power4k;							///< buying power for K results (if we are an eCommerce metric).
 
 	public:
 		/*
@@ -97,6 +104,8 @@ class metric_set
 			@param relevant_returned [in] The number of relevant documents in the results list.
 			@param mean_reciprocal_rank [in] The mean reciprocal rank (MRR)
 			@param precision [in] The precision of this query.
+			@param recall [in] Setwise recall.
+			@param f1 [in] Setwise f1.
 			@param p_at_5 [in] Setwise precision at n
 			@param p_at_10 [in] Setwise precision at n
 			@param p_at_15 [in] Setwise precision at n
@@ -109,8 +118,9 @@ class metric_set
 			@param cheapest_precision [in] The cheapest precision of this query.
 			@param selling_power [in] The selling power of this query.
 			@param buying_power [in] The buying power of this query.
+			@param buying_power4k [in] The buying power for k relevant of this query.
 		*/
-		metric_set(std::string query_id, size_t relevant_count, size_t returned, size_t relevant_returned, double mean_reciprocal_rank, double precision, double p_at_5, double p_at_10, double p_at_15, double p_at_20, double p_at_30, double p_at_100, double p_at_200, double p_at_500, double p_at_1000, double mean_average_precision, double cheapest_precision, double selling_power, double buying_power) :
+		metric_set(std::string query_id, size_t relevant_count, size_t returned, size_t relevant_returned, double mean_reciprocal_rank, double precision, double recall, double f1, double p_at_5, double p_at_10, double p_at_15, double p_at_20, double p_at_30, double p_at_100, double p_at_200, double p_at_500, double p_at_1000, double mean_average_precision, double cheapest_precision, double selling_power, double buying_power, double buying_power4k) :
 			query_id(query_id),
 			number_of_queries(1),
 			relevant_count(relevant_count),
@@ -118,6 +128,8 @@ class metric_set
 			relevant_returned(relevant_returned),
 			mean_reciprocal_rank(mean_reciprocal_rank),
 			precision(precision),
+			recall(recall),
+			f1(f1),
 			p_at_5(p_at_5),
 			p_at_10(p_at_10),
 			p_at_15(p_at_15),
@@ -131,7 +143,8 @@ class metric_set
 			geometric_mean_average_precision(mean_average_precision == 0 ? 0 : log(mean_average_precision)),
 			cheapest_precision(cheapest_precision),
 			selling_power(selling_power),
-			buying_power(buying_power)
+			buying_power(buying_power),
+			buying_power4k(buying_power4k)
 			{
 			/* Nothing */
 			}
@@ -144,7 +157,7 @@ class metric_set
 			@brief Constructor
 		*/
 		metric_set(std::string query_id) :
-			metric_set(query_id, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+			metric_set(query_id, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 			{
 			number_of_queries = 0;
 			}
@@ -170,6 +183,8 @@ class metric_set
 			relevant_returned += other.relevant_returned;
 			mean_reciprocal_rank += other.mean_reciprocal_rank;
 			precision += other.precision;
+			recall += other.recall;
+			f1 += other.f1;
 			p_at_5 += other.p_at_5;
 			p_at_10 += other.p_at_10;
 			p_at_15 += other.p_at_15;
@@ -184,6 +199,7 @@ class metric_set
 			cheapest_precision += other.cheapest_precision;
 			selling_power += other.selling_power;
 			buying_power += other.buying_power;
+			buying_power4k += other.buying_power4k;
 
 			return *this;
 			}
@@ -217,11 +233,14 @@ std::ostream &operator<<(std::ostream &stream, const metric_set &object)
 	std::cout << "Precision at 500             : " << object.p_at_500 / object.number_of_queries  << '\n';
 	std::cout << "Precision at 1000            : " << object.p_at_1000 / object.number_of_queries  << '\n';
 	std::cout << "Precision                    : " << object.precision / object.number_of_queries  << '\n';
+	std::cout << "Recall                       : " << object.recall / object.number_of_queries  << '\n';
+	std::cout << "F1                           : " << object.f1 / object.number_of_queries  << '\n';
 	std::cout << "Mean Average Precision (MAP) : " << object.mean_average_precision / object.number_of_queries  << '\n';
 	std::cout << "Geometric MAP (GMAP)         : " << exp(object.geometric_mean_average_precision / object.number_of_queries)  << '\n';
 	std::cout << "Cheapest Precision           : " << object.cheapest_precision / object.number_of_queries  << '\n';
 	std::cout << "Selling Power                : " << object.selling_power / object.number_of_queries  << '\n';
 	std::cout << "Buying Power                 : " << object.buying_power / object.number_of_queries  << '\n';
+	std::cout << "Buying Power for k=" << std::setw(10)<< std::left << parameter_k << ": " << object.buying_power4k / object.number_of_queries  << '\n';
 
 	return stream;
 	}
@@ -504,7 +523,7 @@ size_t relevance_count(const std::string &query_id, JASS::evaluate &gold_standar
 	@param depth [in] The how far down the results list to measure (counting from 1)
 	@return A metric_set object with the score using several metrics
 */
-metric_set evaluate_query(const std::string &query_id, std::vector<std::string> &results_list, JASS::evaluate &gold_standard_price, JASS::evaluate &gold_standard_assessments, size_t depth)
+metric_set evaluate_query(const std::string &query_id, std::vector<std::string> &results_list, std::shared_ptr<JASS::evaluate> gold_standard_price, std::shared_ptr<JASS::evaluate>gold_standard_assessments, size_t depth)
 	{
 	size_t returned = results_list.size();
 
@@ -531,11 +550,18 @@ metric_set evaluate_query(const std::string &query_id, std::vector<std::string> 
 	double p500 = precision_computer.compute(query_id, results_list, 500);
 	double p1000 = precision_computer.compute(query_id, results_list, 1000);
 
+	JASS::evaluate_recall recall_computer(gold_standard_assessments);
+	double recall = recall_computer.compute(query_id, results_list);
+
+	JASS::evaluate_f f1_computer(gold_standard_assessments);
+	double f1 = f1_computer.compute(query_id, results_list);
+
 	double cheapest_precision = 0;
 	double buying_power = 0;
+	double buying_power4k = 0;
 	double selling_power = 0;
 
-	if (gold_standard_price.assessments.size() != 0)
+	if (gold_standard_price->assessments.size() != 0)
 		{
 		JASS::evaluate_cheapest_precision cheapest_precision_computer(gold_standard_price, gold_standard_assessments);
 		cheapest_precision = cheapest_precision_computer.compute(query_id, results_list, depth);
@@ -543,11 +569,14 @@ metric_set evaluate_query(const std::string &query_id, std::vector<std::string> 
 		JASS::evaluate_buying_power buying_power_computer(gold_standard_price, gold_standard_assessments);
 		buying_power = buying_power_computer.compute(query_id, results_list, depth);
 
+		JASS::evaluate_buying_power4k buying_power4k_computer(parameter_k, gold_standard_price, gold_standard_assessments);
+		buying_power4k = buying_power4k_computer.compute(query_id, results_list, depth);
+
 		JASS::evaluate_selling_power selling_power_computer(gold_standard_price, gold_standard_assessments);
 		selling_power = selling_power_computer.compute(query_id, results_list, depth);
 		}
 
-	return metric_set(query_id, number_of_relvant_assessments, returned, relevant_returned, mrr, precision, p5, p10, p15, p20, p30, p100, p200, p500, p1000, map, cheapest_precision, selling_power, buying_power);
+	return metric_set(query_id, number_of_relvant_assessments, returned, relevant_returned, mrr, precision, recall, f1, p5, p10, p15, p20, p30, p100, p200, p500, p1000, map, cheapest_precision, selling_power, buying_power, buying_power4k);
 	}
 
 /*
@@ -561,7 +590,7 @@ metric_set evaluate_query(const std::string &query_id, std::vector<std::string> 
 	@param gold_standard_price [in] the PRICEs of the documents, or empty if there are no prices
 	@param gold_standard_assessments [in] the assessments
 */
-void evaluate_run(std::map<std::string, metric_set> &per_query_scores, std::vector<run_result> &parsed_run, JASS::evaluate &gold_standard_price, JASS::evaluate &gold_standard_assessments, size_t depth)
+void evaluate_run(std::map<std::string, metric_set> &per_query_scores, std::vector<run_result> &parsed_run, std::shared_ptr<JASS::evaluate> gold_standard_price, std::shared_ptr<JASS::evaluate> gold_standard_assessments, size_t depth)
 	{
 	/*
 		Break the run into a set of queries and evaluate each query
@@ -628,9 +657,9 @@ int main(int argc, const char *argv[])
 	std::vector<run_result> parsed_run;
 	load_run(parameter_run_filename, parsed_run);
 
-	JASS::evaluate gold_standard_price;
-	JASS::evaluate gold_standard_assessments;
-	load_assessments(parameter_assessments_filename, gold_standard_price, gold_standard_assessments);
+	std::shared_ptr<JASS::evaluate> gold_standard_price(new JASS::evaluate);
+	std::shared_ptr<JASS::evaluate>  gold_standard_assessments(new JASS::evaluate);
+	load_assessments(parameter_assessments_filename, *gold_standard_price, *gold_standard_assessments);
 
 	/*
 		Evaluate the run
@@ -646,7 +675,7 @@ int main(int argc, const char *argv[])
 		averages += scores;
 
 		if (parameter_output_per_query_scores)
-			std::cout << scores;
+			std::cout << scores << '\n';
 		}
 
 	/*

@@ -23,38 +23,19 @@ namespace JASS
 	/*!
 		@brief CCompute the precision number of results in the results list that are relevant.
 	*/
-	class evaluate_relevant_returned : evaluate
+	class evaluate_relevant_returned : public evaluate
 		{
-		private:
-			evaluate &assessments;				///< The assessments, can be shared with other evaluation metrics
-			
 		public:
-			/*
-				EVALUATE_RELEVANT_RETURNED::EVALUATE_RELEVANT_RETURNED()
-				--------------------------------------------------------
-			*/
-			/*!
-				@brief Constructor.
-				@param assessments [in] A pre-constructed assessments object.
-			*/
-			evaluate_relevant_returned(evaluate &assessments) :
-				assessments(assessments)
-				{
-				/* Nothing */
-				}
-
+			using evaluate::evaluate;
 			/*
 				EVALUATE_RELEVANT_RETURNED::COMPUTE()
 				-------------------------------------
 			*/
 			/*!
 				@brief Compute the numner of found and relevant results.
-				@param query_id [in] The ID of the query being evaluated.
-				@param results_list [in] The results list to measure.
-				@param depth [in] How far down the results list to look.
-				@return the number of found and relevant results.
+				@copydoc evaluate::compute()
 			*/
-			virtual double compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth = std::numeric_limits<size_t>::max());
+			virtual double compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth = std::numeric_limits<size_t>::max()) const;
 
 			/*
 				EVALUATE_RELEVANT_RETURNED::UNITTEST()
@@ -63,6 +44,10 @@ namespace JASS
 			/*!
 				@brief Unit test this class
 			*/
-			static void unittest(void);
+			static void unittest(void)
+				{
+				unittest_one<evaluate_relevant_returned>(1.0);
+				puts("evaluate_relevant_returned::PASSED");
+				}
 		};
 	}

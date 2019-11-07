@@ -23,6 +23,7 @@
 #include "decode_d0.h"
 #include "decode_d1.h"
 #include "bitstring.h"
+#include "evaluate_f.h"
 #include "hash_table.h"
 #include "run_export.h"
 #include "top_k_heap.h"
@@ -45,6 +46,7 @@
 #include "accumulator_2d.h"
 #include "instream_memory.h"
 #include "run_export_trec.h"
+#include "evaluate_recall.h"
 #include "hardware_support.h"
 #include "allocator_memory.h"
 #include "ranking_function.h"
@@ -58,7 +60,6 @@
 #include "index_postings_impact.h"
 #include "compress_general_zlib.h"
 #include "instream_document_trec.h"
-
 #include "evaluate_selling_power.h"
 #include "evaluate_buying_power4k.h"
 #include "instream_document_fasta.h"
@@ -93,6 +94,7 @@
 #include "compress_integer_elias_gamma_bitwise.h"
 #include "compress_integer_elias_delta_bitwise.h"
 #include "compress_integer_gather_elias_gamma_simd.h"
+
 /*
 	MAIN()
 	------
@@ -216,6 +218,12 @@ int main(void)
 
 		puts("evaluate_precision");
 		JASS::evaluate_precision::unittest();
+
+		puts("evaluate_recall");
+		JASS::evaluate_recall::unittest();
+
+		puts("evaluate_f");
+		JASS::evaluate_f::unittest();
 
 		puts("evaluate_buying_power");
 		JASS::evaluate_buying_power::unittest();

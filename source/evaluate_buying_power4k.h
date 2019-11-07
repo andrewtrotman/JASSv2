@@ -25,12 +25,18 @@ namespace JASS
 		I is the lowest-priced relevant item and i is all items in the results list up to the cheapest relevant item). In bp4K
 		we look for the K lowest priced items and k relevant items in the results list.
 	*/
-	class evaluate_buying_power4k : evaluate
+	class evaluate_buying_power4k : public evaluate
 		{
 		private:
 			size_t top_k;							///< How many items we're looking for
-			evaluate &prices;						///< Each item has a price regardless of the query being processed
-			evaluate &assessments;				///< The assessments, which items are relevant to which queries (and at what price)
+
+		private:
+			evaluate_buying_power4k() = delete;
+			evaluate_buying_power4k(std::shared_ptr<evaluate>) = delete;
+			evaluate_buying_power4k(std::shared_ptr<evaluate>, std::shared_ptr<evaluate>) = delete;
+
+		public:
+			using evaluate::evaluate;
 
 		public:
 			/*
@@ -39,27 +45,11 @@ namespace JASS
 			*/
 			/*!
 				@brief Constructor.
-				@details  As all possible prices are valid prices (0 == "free", -1 == "I'll pay for you to take it away), the
-				assessments are split into two seperate parts. Ther prices of the items and the relevance of the items.  Each
-				of these two are stored in trec_eval format:
-
-			 	1 0 AP880212-0161 1
-
-			 	where the first column is the query id, the second is ignored, the third is the document ID, and the fourth is the
-			 	relevance.  The prices use a query id of "PRICE" and the relevance coulmn is the price of the item.  The assessments
-			 	are the usual trec_eval format where a relevance of 1 means releance, but a relefvance of 0 is not-relevant.
-
-			 	Search in the top "depth" items for k relevant items. So bp4K=5@1000 is look for k=5 relevant items in the top 1000
-			 	results in the results list.
-
 				@param top_k [in] The k relevant items to look for (which is not the depth to look).
-				@param prices [in] An assessments object which holds the price of each item.
-				@param assessments [in] A pre-constructed assessments object.
 			*/
-			evaluate_buying_power4k(size_t top_k, evaluate &prices, evaluate &assessments) :
-				top_k(top_k),
-				prices(prices),
-				assessments(assessments)
+			evaluate_buying_power4k(size_t top_k, std::shared_ptr<evaluate> prices, std::shared_ptr<evaluate> assessments) :
+				evaluate(prices, assessments),
+				top_k(top_k)
 				{
 				/* Nothing */
 				}
@@ -86,7 +76,7 @@ namespace JASS
 				@param depth [in] How far down the results list to look.
 				@return the bp4k of this results list for this query.
 			*/
-			virtual double compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth = std::numeric_limits<size_t>::max());
+			virtual double compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth = std::numeric_limits<size_t>::max()) const;
 
 			/*
 				EVALUATE_BUYING_POWER4K::UNITTEST()

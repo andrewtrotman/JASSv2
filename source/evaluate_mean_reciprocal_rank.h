@@ -23,38 +23,19 @@ namespace JASS
 	/*!
 		@brief Compute the mean reciprocal rank given a results list
 	*/
-	class evaluate_mean_reciprocal_rank : evaluate
+	class evaluate_mean_reciprocal_rank : public evaluate
 		{
-		private:
-			evaluate &assessments;				///< The assessments, can be shared with other evaluation metrics
-
 		public:
-			/*
-				EVALUATE_MEAN_RECIPROCAL_RANK::EVALUATE_MEAN_RECIPROCAL_RANK()
-				--------------------------------------------------------------
-			*/
-			/*!
-				@brief Constructor.
-				@param assessments [in] A pre-constructed assessments object.
-			*/
-			evaluate_mean_reciprocal_rank(evaluate &assessments) :
-				assessments(assessments)
-				{
-				/* Nothing */
-				}
-
+			using evaluate::evaluate;
 			/*
 				EVALUATE_MEAN_RECIPROCAL_RANK::COMPUTE()
 				----------------------------------------
 			*/
 			/*!
 				@brief Compute the mean reciprocal rank.
-				@param query_id [in] The ID of the query being evaluated.
-				@param results_list [in] The results list to measure.
-				@param depth [in] How far down the results list to look.
-				@return the MRR of this results list for this query.
+				@copydoc evaluate::compute()
 			*/
-			virtual double compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth = std::numeric_limits<size_t>::max());
+			virtual double compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth = std::numeric_limits<size_t>::max()) const;
 
 			/*
 				EVALUATE_MEAN_RECIPROCAL_RANK::UNITTEST()
@@ -63,6 +44,10 @@ namespace JASS
 			/*!
 				@brief Unit test this class
 			*/
-			static void unittest(void);
+			static void unittest(void)
+				{
+				unittest_one<evaluate_mean_reciprocal_rank>(0.5);
+				puts("evaluate_mean_reciprocal_rank::PASSED");
+				}
 		};
 	}
