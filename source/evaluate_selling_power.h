@@ -34,6 +34,7 @@ namespace JASS
 
 		public:
 			using evaluate::evaluate;
+			
 			/*
 				EVALUATE_SELLING_POWER::COMPUTE()
 				---------------------------------

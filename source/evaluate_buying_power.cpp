@@ -19,9 +19,13 @@ namespace JASS
 	*/
 	double evaluate_buying_power::compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth) const
 		{
-		size_t which = 0;
 		double lowest_priced_item = std::numeric_limits<decltype(lowest_priced_item)>::max();
-		double total_spending = 0;
+
+		/*
+			If we're not looking at any results then we have a perfect score.
+		*/
+		if (depth == 0)
+			return 1;
 
 		/*
 			Get the lowest priced item's price though a linear seach for the assessments for this query
@@ -48,6 +52,8 @@ namespace JASS
 		/*
 			Compute the buying power.
 		*/
+		size_t which = 0;
+		double total_spending = 0;
 		for (const auto &result : results_list)
 			{
 			/*
@@ -71,6 +77,9 @@ namespace JASS
 				break;
 			}
 
+		/*
+			If there are no relevant items in the results list then the score is 0.
+		*/
 		return 0;
 		}
 

@@ -20,11 +20,11 @@ namespace JASS
 	double evaluate_cheapest_precision::compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth) const
 		{
 		size_t which = 0;
-		size_t found_and_relevant = 0;
+		double found_and_relevant = 0;
 		std::vector<judgement> query_prices;
 
 		/*
-			Get the lowest k priced item's price though a linear seach for the assessments for this query
+			Get the cheapest k item's prices though a linear seach for the assessments for this query
 			since this is only going to happen once per run, it doesn't seem worthwhile trying to optimise this.
 		*/
 		for (auto assessment = find_first(query_id); assessment != assessments.end(); assessment++)
@@ -42,11 +42,10 @@ namespace JASS
 		/*
 			If there are no relevant items then we get a perfect score.
 		*/
-		if (query_prices.size() == 0)
+		if (query_prices.size() == 0 || depth == 0)
 			return 1;
 
 		sort(query_prices.begin(), query_prices.end());
-		size_t query_depth = maths::minimum(query_prices.size(), depth);		// if there are fewer then top_k relevant items then reduce k
 
 		/*
 			Compute the precision
@@ -69,7 +68,10 @@ namespace JASS
 				break;
 			}
 
-		return static_cast<double>(found_and_relevant) / static_cast<double>(query_depth);
+		/*
+			Even if there are fewer than k items in the assessments, we are computing precision against the (depth limited) entire results list.
+		*/
+		return found_and_relevant / (depth == std::numeric_limits<size_t>::max() ? which : depth);
 		}
 
 	/*

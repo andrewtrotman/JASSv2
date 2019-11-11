@@ -21,6 +21,9 @@ namespace JASS
 		double found_and_relevant = 0;
 		size_t which = 0;
 
+		if (depth == 0)
+			return 1;
+			
 		for (const auto &result : results_list)
 			{
 			auto assessment = find(query_id, result);

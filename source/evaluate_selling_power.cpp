@@ -19,15 +19,18 @@ namespace JASS
 	*/
 	double evaluate_selling_power::compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth) const
 		{
-		size_t which = 0;
-		double sum_of_selling_powers = 0;
-		std::vector<double> query_prices;
+		/*
+			If we're not looking at any results then we have a perfect score.
+		*/
+		if (depth == 0)
+			return 1;
 
 		/*
 			Get the lowest k priced item's price though a linear seach for the assessments for this query
 			since this is only going to happen once per run, it doesn't seem worthwhile trying to optimise this.
 			We can use a vector of doubles because we don't care which items they are, we only want the lowest prices.
 		*/
+		std::vector<double> query_prices;
 		for (auto assessment = find_first(query_id); assessment != assessments.end(); assessment++)
 			if ((*assessment).query_id == query_id)
 				{
@@ -47,12 +50,18 @@ namespace JASS
 			return 1;
 
 		sort(query_prices.begin(), query_prices.end());
-		size_t query_depth = maths::minimum(query_prices.size(), depth);		// if there are fewer then top_k relevant items then reduce k
 
 		/*
-			Compute the buying power of each "slot"
+			If there are fewer then top_k relevant items then reduce k
+		*/
+		size_t query_depth = maths::minimum(query_prices.size(), depth);
+
+		/*
+			Compute the selling power of each "slot"
 		*/
 		size_t current_cheapest = 0;
+		size_t which = 0;
+		double sum_of_selling_powers = 0;
 		for (const auto &result : results_list)
 			{
 			/*
@@ -61,7 +70,7 @@ namespace JASS
 			if (find(query_id, result).score != 0)
 				{
 				/*
-					get the price of the item and compute the selling power at this "slot"
+					Get the price of the item and compute the selling power at this "slot"
 				*/
 				auto item_price = find_price(result);
 				double selling_power = query_prices[current_cheapest] / item_price.score;			// lowest it can be divided by price it is

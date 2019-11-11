@@ -52,7 +52,7 @@ namespace JASS
 				@param query_id [in] The ID of the query being evaluated.
 				@param results_list [in] The results list to measure.
 				@param depth [in] How far down the results list to look.
-				@return The selling power of this results list for this query.
+				@return The Cheapest Precision of this results list for this query.
 			*/
 			virtual double compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth = std::numeric_limits<size_t>::max()) const;
 

@@ -23,6 +23,7 @@
 #include "decode_d0.h"
 #include "decode_d1.h"
 #include "bitstring.h"
+#include "statistics.h"
 #include "evaluate_f.h"
 #include "hash_table.h"
 #include "run_export.h"
@@ -159,7 +160,9 @@ int main(void)
 	// LCOV_EXCL_STOP
 			}
 
-
+		puts("statistics");
+		JASS::statistics::unittest();
+		
 		puts("bitstream");
 		JASS::bitstream::unittest();
 

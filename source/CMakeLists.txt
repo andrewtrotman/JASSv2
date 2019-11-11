@@ -174,6 +174,8 @@ set(JASSlib_FILES
 	serialise_forward_index.h
 	serialise_forward_index.cpp
 	slice.h
+	statistics.h
+	statistics.cpp
 	string_cpp.h
 	threads.h
 	threads.cpp

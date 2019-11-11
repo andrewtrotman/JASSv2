@@ -19,16 +19,18 @@ namespace JASS
 	*/
 	double evaluate_buying_power4k::compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth) const
 		{
-		size_t which = 0;
-		double lowest_priced_item = std::numeric_limits<decltype(lowest_priced_item)>::max();
-		double total_spending = 0;
-		std::vector<double> query_prices;
+		/*
+			If we're not looking at any results then we have a perfect score.
+		*/
+		if (depth == 0)
+			return 1;
 
 		/*
 			Get the lowest k priced item's price though a linear seach for the assessments for this query
 			since this is only going to happen once per run, it doesn't seem worthwhile trying to optimise this.
 			We can use a vector of doubles because we don't care which items they are, we only want the lowest prices.
 		*/
+		std::vector<double> query_prices;
 		for (auto assessment = find_first(query_id); assessment != assessments.end(); assessment++)
 			if ((*assessment).query_id == query_id)
 				{
@@ -46,10 +48,16 @@ namespace JASS
 		*/
 		if (query_prices.size() == 0)
 			return 1;
-
 		sort(query_prices.begin(), query_prices.end());
-		size_t query_k = maths::minimum(query_prices.size(), top_k);		// if there are fewer then top_k relevant items then reduce k
 
+		/*
+			If there are fewer then k relevant items then reduce k as this equates to buying power "for your entire stock".
+		*/
+		size_t query_k = maths::minimum(query_prices.size(), top_k);
+
+		/*
+			Work out what the minimum price for the top k items.
+		*/
 		double mimimum_cost = 0;
 		for (size_t item = 0; item < query_k; item++)
 			mimimum_cost += query_prices[item];
@@ -57,6 +65,8 @@ namespace JASS
 		/*
 			Compute the spending up to the k-th relevant item.
 		*/
+		size_t which = 0;
+		double total_spending = 0;
 		for (const auto &result : results_list)
 			{
 			/*
