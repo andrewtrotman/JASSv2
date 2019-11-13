@@ -12,6 +12,7 @@
 */
 #pragma once
 
+#include <math.h>
 #include <stdint.h>
 
 #include <vector>
@@ -21,10 +22,53 @@ namespace JASS
 	class statistics
 		{
 		public:
+			/*
+				NORMAL_CUMULATIVE_DISTRIBUTION_FUNCTION()
+				-----------------------------------------
+			*/
+			/*!
+				@brief This subroutine computes the cumulative distribution function value for the normal (gaussian) distribution with mean = 0 and standard deviation = 1.
+				@details This distribution is defined for all x and has the probability density function f(x) = (1/sqrt(2*pi))*exp(-x*x/2).
+				Converted from the fortan at: https://www.nist.gov/sites/default/files/documents/itl/sed/NORCDF.f
+
+				References--National Nureau of Standards Applied Mathematics Series 55, 1964, page 932, formula 26.2.17.
+							 --Johnson and Kotz, Continuous Univariate Distributions--1, 1970, pages 40-111.
+				Written by--James J. Filliben
+								Statistical Engineering Laboratory (205.03)
+								National Bureau of Standards
+								Washington, D. C. 20234
+								Phone:  301-921-2315
+				Original version--June      1972.
+				Updated         --September 1975.
+				Updated         --November  1975.
+				C/C++ version   --November 2019 (by Andrew Trotman).
+
+				@param x [in] The single precision value at which the cumulative distribution function is to be evaluated.
+				@return The cumulative distribution function value.
+			*/
+			static double normal_cumulative_distribution_function(double x)
+				{
+				double b1 = .319381530;
+				double b2 = -0.356563782;
+				double b3 = 1.781477937;
+				double b4 = -1.8212515978;
+				double b5 = 1.330274429;
+				double p = .2316419;
+
+				double z = x;
+
+				if (x < 0.0)
+					z = -z;
+				double t = 1.0 / (1.0 + p * z);
+				double cdf = 1.0 - ((0.39894228040143) * exp(-0.5 * z * z)) * (b1 * t + b2 * pow(t, 2) + b3 * pow(t, 3) + b4 * pow(t, 4) + b5 * pow(t, 5));
+				if (x < 0.0)
+					cdf = 1.0 - cdf;
+				return cdf;
+				}
 
 /*
 C     FROM: https://www.nist.gov/sites/default/files/documents/itl/sed/TCDF.f
-
+C
       SUBROUTINE TCDF(X,NU,CDF)
 C
 C     PURPOSE--THIS SUBROUTINE COMPUTES THE CUMULATIVE DISTRIBUTION
@@ -213,10 +257,172 @@ C
       END
 */
 
-			static double student_p_value(double t_value, double degrees_of_freedom)
-				{
-				return 0;
+/*
+			C     INPUT  ARGUMENTS--X      = THE SINGLE PRECISION VALUE AT
+			C                                WHICH THE CUMULATIVE DISTRIBUTION
+			C                                FUNCTION IS TO BE EVALUATED.
+			C                                X SHOULD BE NON-NEGATIVE.
+			C                     --NU     = THE INTEGER NUMBER OF DEGREES
+			C                                OF FREEDOM.
+			C                                NU SHOULD BE POSITIVE.
+			C     OUTPUT ARGUMENTS--CDF    = THE SINGLE PRECISION CUMULATIVE
+			C                                DISTRIBUTION FUNCTION VALUE.
+*/
+static double TCDF(double X, int NU)
+	{
+	double  DX,DNU,C,CSQ,S,SUM,TERM,AI;
+	double  TERM1,TERM2,TERM3;
+	double  DCDFN;
+	double  DCDF;
+	double  D1,D3,D5,D7,D9,D11;
+
+int NUCUT = 1000;
+double PI = 3.14159265358979;
+double DCONST = 0.3989422804;
+double B11 = 0.25;
+double B21 = 0.01041666666667;
+double B22 = 3.0;
+double B23 = -7.0;
+double B24 = -5.0;
+double B25 = -3.0;
+double B31 = 0.00260416666667;
+double B32 = 1.0;
+double B33 = -11.0;
+double B34 = 14.0;
+double B35 = 6.0;
+double B36 = -3.0;
+double B37 = -15.0;
+
+
+/*
+			C
+			C     CHECK THE INPUT ARGUMENTS FOR ERRORS
+			C
+*/
+					if (NU <= 0)
+						return -1;
+
+/*
+			C
+			C-----START POINT-----------------------------------------------------
+			C
+*/
+					DX = X;
+					double ANU = NU;
+					DNU = NU;
+/*
+			C
+			C     IF NU IS 3 THROUGH 9 AND X IS MORE THAN 3000
+			C     STANDARD DEVIATIONS BELOW THE MEAN,
+			C     SET CDF = 0.0 AND RETURN.
+			C     IF NU IS 10 OR LARGER AND X IS MORE THAN 150
+			C     STANDARD DEVIATIONS BELOW THE MEAN,
+			C     SET CDF = 0.0 AND RETURN.
+			C     IF NU IS 3 THROUGH 9 AND X IS MORE THAN 3000
+			C     STANDARD DEVIATIONS ABOVE THE MEAN,
+			C     SET CDF = 1.0 AND RETURN.
+			C     IF NU IS 10 OR LARGER AND X IS MORE THAN 150
+			C     STANDARD DEVIATIONS ABOVE THE MEAN,
+			C     SET CDF = 1.0 AND RETURN.
+			C
+*/
+
+					if (NU > 2)
+						{
+						double SD = sqrt(ANU / (ANU - 2.0));
+						double Z = X / SD;
+
+						if (NU < 10 && Z < -3000.0)
+							return 0;
+						if (NU >= 10 && Z < -150.0)
+							return 0;
+						if (NU < 10 && Z > 3000.0)
+							return 1;
+						if (NU >= 10 && Z > 150.0)
+							return 1;
+						}
+/*
+			C
+			C     DISTINGUISH BETWEEN THE SMALL AND MODERATE
+			C     DEGREES OF FREEDOM CASE VERSUS THE
+			C     LARGE DEGREES OF FREEDOM CASE
+			C
+*/
+					if (NU < NUCUT)
+						{
+/*
+			C
+			C     TREAT THE SMALL AND MODERATE DEGREES OF FREEDOM CASE
+			C     METHOD UTILIZED--EXACT FINITE SUM
+			C     (SEE AMS 55, PAGE 948, FORMULAE 26.7.3 AND 26.7.4).
+			C
+*/
+					C = sqrt(DNU / (DX * DX + DNU));
+					CSQ = DNU / (DX * DX + DNU);
+					S = DX / sqrt(DX * DX + DNU);
+					int IMAX = NU - 2;
+					int IEVODD = NU - 2 * (NU / 2);
+
+					int IMIN;
+
+					if (IEVODD == 0)
+						{
+						SUM = 1.0;
+						TERM = 1.0;
+						IMIN = 2;
+						}
+					else
+						{
+						SUM = C;
+						if (NU == 1)
+							SUM = 0.0;
+						TERM = C;
+						IMIN = 3;
+						}
+
+			      if (IMIN <= IMAX)
+						for (int I = IMIN; I <= IMAX; I += 2)
+							{
+							AI = I;
+							TERM = TERM * ((AI - 1.0) / AI) * CSQ;
+							SUM = SUM + TERM;
+							}
+
+
+
+			      SUM = SUM * S;
+					if (IEVODD != 0)
+						SUM = (2.0 / PI) * (atan(DX / sqrt(DNU)) + SUM);
+			      double CDF = 0.5 + SUM / 2.0;
+					return CDF;
+			}
+			else
+			{
+			/*
+			C
+			C     TREAT THE LARGE DEGREES OF FREEDOM CASE.
+			C     METHOD UTILIZED--TRUNCATED ASYMPTOTIC EXPANSION
+			C     (SEE JOHNSON AND KOTZ, VOLUME 2, PAGE 102, FORMULA 10;
+			C     SEE FEDERIGHI, PAGE 687).
+			C
+			*/
+					double CDFN = normal_cumulative_distribution_function(X);
+					DCDFN = CDFN;
+					D1 = DX;
+					D3 = pow(DX, 3);
+					D5 = pow(DX, 5);
+					D7 = pow(DX, 7);
+					D9 = pow(DX, 9);
+					D11 = pow(DX, 11);
+					TERM1 = B11 * (D3 + D1) / DNU;
+					TERM2 = B21 * (B22 * D7 + B23 * D5 + B24 * D3 + B25 * D1) / pow(DNU, 2);
+					TERM3 = B31 * (B32 * D11 + B33 * D9 + B34 * D7 + B35 * D5 + B36 * D3 + B37 * D1) / pow(DNU, 3);
+					DCDF = TERM1 + TERM2 + TERM3;
+					DCDF = DCDFN - (DCONST * (exp(-DX * DX / 2.0))) * DCDF;
+					double CDF = DCDF;
+					return CDF;
 				}
+}
 
 
 			static double ttest_paired(std::vector<double> &one, std::vector<double> &two, uint8_t tails)
@@ -265,10 +471,10 @@ C
 				/*
 					Compute the p value of freedom
 				*/
-				return student_p_value(t_value, number_of_samples - 1);
+
+				return 1 - TCDF(t_value, number_of_samples - 1);
 
 				/*
-
 				degrees of freedom = number_of_samples - 1
 				From Boost, but we need to compute it without Boost.
 
