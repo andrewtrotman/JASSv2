@@ -127,14 +127,14 @@ namespace JASS
 		/*
 			Compare to 5 decimal places
 		*/
-		double true_precision_one = 1.0;		// 0 because there is 1 relecant item so the effective depth is 1 and result[1] is not relevant
+		double true_precision_one = 1.0 / 5.0;		// 1/5 because there is 1 relevant item in a results list of length 5.
 		JASS_assert(std::round(calculated_precision * 10000) == std::round(true_precision_one * 10000));
 
 		/*
 			Evaluate the second results list and check the result to 5 decimal places
 		*/
 		calculated_precision = calculator.compute("2", results_list_two, 5);
-		double true_precision_two = 2.0 / 3.0;
+		double true_precision_two = 2.0 / 5.0;
 		JASS_assert(std::round(calculated_precision * 10000) == std::round(true_precision_two * 10000));
 
 		puts("evaluate_cheapest_precision::PASSED");

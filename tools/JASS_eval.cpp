@@ -47,6 +47,66 @@ auto parameters = std::make_tuple										///< The  command line parameter bloc
 	JASS::commandline::parameter("-r", "--runfile",       "<filename> Name of run file to evaluatge", parameter_run_filename)
 	);
 
+
+enum
+	{
+	NUMBER_OF_QUERIES,						///< the number of queries that this object represets (the numner of += ops called).
+	RELEVANT_COUNT,							///< the number of relevant assessments for this query (assessments with a non-zero score).
+	RETURNED,									///< the number of RESULTS IN the rsults list.
+	RELEVANT_RETURNED,						///< the number of relevant results in the results list.
+	METRICS_SENTINAL_ORDINALS,	// ALL INTEGER NON-AVERAGES METRICS ARE ABOVE THIS, REAL AND AVERAGED METRICS ARE BELOW.  DO NOT MOVE
+	MEAN_RECIPROCAL_RANK,					///< the mean reciprocal rank.
+	PRECISION,									///< set wise precision OF THE results list.
+	RECALL,										///< set wise recall.
+	F1,											///< set wise f1 score.
+	P_AT_5,										///< set wise precision of the results list.
+	P_AT_10,										///< set wise precision of the results list.
+	P_AT_15,										///< set wise precision of the results list.
+	P_AT_20,										///< set wise precision of the results list.
+	P_AT_30,										///< set wise precision of the results list.
+	P_AT_100,									///< set wise precision of the results list.
+	P_AT_200,									///< set wise precision of the results list.
+	P_AT_500,									///< set wise precision of the results list.
+	P_AT_1000,									///< set wise precision of the results list.
+	MEAN_AVERAGE_PRECISION,					///< mean average precision (MAP).
+	GEOMETRIC_MEAN_AVERAGE_PRECISION,	///< geometric_mean average precision (GMAP).
+	CHEAPEST_PRECISION,						///< set wise precision of the cheapest items (if we are an eCommerce metric).
+	SELLING_POWER,								///< selling power (if we are an eCommerce metric).
+	BUYING_POWER,								///< buying power (if we are an eCommerce metric).
+	BUYING_POWER4K,							///< buying power for K results (if we are an eCommerce metric).
+	METRICS_SENTINAL 		// MUST BE LAST. DO NOT MOVE
+	};
+
+
+const std::string metric_name[] =
+	{
+	"Number of Queries",
+	"Number Relevant",
+	"Number of Results Returned",
+	"Number Relevant Returned",
+	"SENTINAL",
+	"Mean Reciprocal Rank (MRR)",
+	"Precision",
+	"Recall",
+	"F1",
+	"Precision at 5",
+	"Precision at 10",
+	"Precision at 15",
+	"Precision at 20",
+	"Precision at 30",
+	"Precision at 100",
+	"Precision at 200",
+	"Precision at 500",
+	"Precision at 1000",
+	"Mean Average Precision (MAP)",
+	"Geometric MAP (GMAP)",
+	"Cheapest Precision",
+	"Selling Power",
+	"Buying Power",
+	"Buying Power for k",
+	"SENTINAL"
+	};
+
 /*
 	CLASS METRIC_SET
 	----------------
@@ -57,30 +117,9 @@ auto parameters = std::make_tuple										///< The  command line parameter bloc
 class metric_set
 	{
 	public:
-		std::string query_id;							///< The ID of the query this result set represents
-		size_t number_of_queries;						///< The number of queries that this object represets (the numner of += ops called).
-		size_t relevant_count;							///< The number of relevant assessments for this query (assessments with a non-zero score).
-		size_t returned;									///< The number of results in the rsults list.
-		size_t relevant_returned;						///< The number of relevant results in the results list.
-		double mean_reciprocal_rank;					///< The mean reciprocal rank.
-		double precision;									///< set wise precision of the results list.
-		double recall;										///< set wise recall.
-		double f1;											///< set wise F1 score.
-		double p_at_5;										///< set wise precision of the results list.
-		double p_at_10;									///< set wise precision of the results list.
-		double p_at_15;									///< set wise precision of the results list.
-		double p_at_20;									///< set wise precision of the results list.
-		double p_at_30;									///< set wise precision of the results list.
-		double p_at_100;									///< set wise precision of the results list.
-		double p_at_200;									///< set wise precision of the results list.
-		double p_at_500;									///< set wise precision of the results list.
-		double p_at_1000;									///< set wise precision of the results list.
-		double mean_average_precision;				///< mean average precision (MAP).
-		double geometric_mean_average_precision;	///< geometric_mean average precision (GMAP).
-		double cheapest_precision;						///< set wise precision of the cheapest items (if we are an eCommerce metric).
-		double selling_power;							///< selling power (if we are an eCommerce metric).
-		double buying_power;								///< buying power (if we are an eCommerce metric).
-		double buying_power4k;							///< buying power for K results (if we are an eCommerce metric).
+		std::string run_id;								///< the ID of the run (comes from the first result in the file)
+		std::string query_id;							///< the ID of the query this result set represents
+		double metric[METRICS_SENTINAL];				///< the set of metrics, indexes using the enum
 
 	public:
 		/*
@@ -120,33 +159,33 @@ class metric_set
 			@param buying_power [in] The buying power of this query.
 			@param buying_power4k [in] The buying power for k relevant of this query.
 		*/
-		metric_set(std::string query_id, size_t relevant_count, size_t returned, size_t relevant_returned, double mean_reciprocal_rank, double precision, double recall, double f1, double p_at_5, double p_at_10, double p_at_15, double p_at_20, double p_at_30, double p_at_100, double p_at_200, double p_at_500, double p_at_1000, double mean_average_precision, double cheapest_precision, double selling_power, double buying_power, double buying_power4k) :
-			query_id(query_id),
-			number_of_queries(1),
-			relevant_count(relevant_count),
-			returned(returned),
-			relevant_returned(relevant_returned),
-			mean_reciprocal_rank(mean_reciprocal_rank),
-			precision(precision),
-			recall(recall),
-			f1(f1),
-			p_at_5(p_at_5),
-			p_at_10(p_at_10),
-			p_at_15(p_at_15),
-			p_at_20(p_at_20),
-			p_at_30(p_at_30),
-			p_at_100(p_at_100),
-			p_at_200(p_at_200),
-			p_at_500(p_at_500),
-			p_at_1000(p_at_1000),
-			mean_average_precision(mean_average_precision),
-			geometric_mean_average_precision(mean_average_precision == 0 ? 0 : log(mean_average_precision)),
-			cheapest_precision(cheapest_precision),
-			selling_power(selling_power),
-			buying_power(buying_power),
-			buying_power4k(buying_power4k)
+		metric_set(const std::string &run_id, const std::string &query_id, size_t relevant_count, size_t returned, size_t relevant_returned, double mean_reciprocal_rank, double precision, double recall, double f1, double p_at_5, double p_at_10, double p_at_15, double p_at_20, double p_at_30, double p_at_100, double p_at_200, double p_at_500, double p_at_1000, double mean_average_precision, double cheapest_precision, double selling_power, double buying_power, double buying_power4k) :
+			run_id(run_id),
+			query_id(query_id)
 			{
-			/* Nothing */
+			metric[NUMBER_OF_QUERIES] = 1;
+			metric[RELEVANT_COUNT] = relevant_count;
+			metric[RETURNED] = returned;
+			metric[RELEVANT_RETURNED] = relevant_returned;
+			metric[MEAN_RECIPROCAL_RANK] = mean_reciprocal_rank;
+			metric[PRECISION] = precision;
+			metric[RECALL] = recall;
+			metric[F1] = f1;
+			metric[P_AT_5] = p_at_5;
+			metric[P_AT_10] = p_at_10;
+			metric[P_AT_15] = p_at_15;
+			metric[P_AT_20] = p_at_20;
+			metric[P_AT_30] = p_at_30;
+			metric[P_AT_100] = p_at_100;
+			metric[P_AT_200] = p_at_200;
+			metric[P_AT_500] = p_at_500;
+			metric[P_AT_1000] = p_at_1000;
+			metric[MEAN_AVERAGE_PRECISION] = mean_average_precision;
+			metric[GEOMETRIC_MEAN_AVERAGE_PRECISION] = mean_average_precision == 0 ? 0 : log(mean_average_precision);
+			metric[CHEAPEST_PRECISION] = cheapest_precision;
+			metric[SELLING_POWER] = selling_power;
+			metric[BUYING_POWER] = buying_power;
+			metric[BUYING_POWER4K] = buying_power4k;
 			}
 
 		/*
@@ -157,9 +196,9 @@ class metric_set
 			@brief Constructor
 		*/
 		metric_set(std::string query_id) :
-			metric_set(query_id, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+			query_id(query_id)
 			{
-			number_of_queries = 0;
+			memset(metric, 0, sizeof(metric));
 			}
 
 		 /*
@@ -175,34 +214,44 @@ class metric_set
 			/*
 				Make sure we are only adding the results from one other query, otherwise the results for GMAP will be wrong.
 			*/
-			JASS_assert(other.number_of_queries <= 1);
+			JASS_assert(other.metric[NUMBER_OF_QUERIES] <= 1);
 
-			number_of_queries += other.number_of_queries;
-			relevant_count += other.relevant_count;
-			returned += other.returned;
-			relevant_returned += other.relevant_returned;
-			mean_reciprocal_rank += other.mean_reciprocal_rank;
-			precision += other.precision;
-			recall += other.recall;
-			f1 += other.f1;
-			p_at_5 += other.p_at_5;
-			p_at_10 += other.p_at_10;
-			p_at_15 += other.p_at_15;
-			p_at_20 += other.p_at_20;
-			p_at_30 += other.p_at_30;
-			p_at_100 += other.p_at_100;
-			p_at_200 += other.p_at_200;
-			p_at_500 += other.p_at_500;
-			p_at_1000 += other.p_at_1000;
-			mean_average_precision += other.mean_average_precision;
-			geometric_mean_average_precision += other.geometric_mean_average_precision;
-			cheapest_precision += other.cheapest_precision;
-			selling_power += other.selling_power;
-			buying_power += other.buying_power;
-			buying_power4k += other.buying_power4k;
+			for (size_t which = 0; which < METRICS_SENTINAL; which++)
+				metric[which] += other.metric[which];
 
 			return *this;
 			}
+
+	/*
+		METRIC_SET::BAKE()
+		------------------
+	*/
+	/*!
+		@brief Finalise any metrics by, for example, averaging over the number of queries
+	*/
+	void bake(void)
+		{
+		/*
+			save the number of queries to put back later
+		*/
+		size_t nummber_of_queries = metric[NUMBER_OF_QUERIES];
+
+		/*
+			do the averaging
+		*/
+		for (size_t which = METRICS_SENTINAL_ORDINALS + 1; which < METRICS_SENTINAL; which++)
+			metric[which] /= nummber_of_queries;
+
+		/*
+			GMAP is a geometric mean not a "regular" mean.
+		*/
+		metric[GEOMETRIC_MEAN_AVERAGE_PRECISION] = exp(metric[GEOMETRIC_MEAN_AVERAGE_PRECISION] );
+
+		/*
+			put the number of queries back
+		*/
+		metric[NUMBER_OF_QUERIES] = nummber_of_queries;
+		}
 	};
 
 /*
@@ -217,30 +266,15 @@ class metric_set
 */
 std::ostream &operator<<(std::ostream &stream, const metric_set &object)
 	{
+	int width = 29;
 	std::cout << "QUERY ID                     : " << object.query_id << '\n';
-	std::cout << "Number of Queries            : " << object.number_of_queries << '\n';
-	std::cout << "Number Relevant              : " << object.relevant_count << '\n';
-	std::cout << "Number of Results Returned   : " << object.returned << '\n';
-	std::cout << "Number Relevant Returned     : " << object.relevant_returned << '\n';
-	std::cout << "Mean Reciprocal Rank (MRR)   : " << object.mean_reciprocal_rank / object.number_of_queries << '\n';
-	std::cout << "Precision at 5               : " << object.p_at_5 / object.number_of_queries << '\n';
-	std::cout << "Precision at 10              : " << object.p_at_10 / object.number_of_queries  << '\n';
-	std::cout << "Precision at 15              : " << object.p_at_15 / object.number_of_queries  << '\n';
-	std::cout << "Precision at 20              : " << object.p_at_20 / object.number_of_queries  << '\n';
-	std::cout << "Precision at 30              : " << object.p_at_30 / object.number_of_queries  << '\n';
-	std::cout << "Precision at 100             : " << object.p_at_100 / object.number_of_queries  << '\n';
-	std::cout << "Precision at 200             : " << object.p_at_200 / object.number_of_queries  << '\n';
-	std::cout << "Precision at 500             : " << object.p_at_500 / object.number_of_queries  << '\n';
-	std::cout << "Precision at 1000            : " << object.p_at_1000 / object.number_of_queries  << '\n';
-	std::cout << "Precision                    : " << object.precision / object.number_of_queries  << '\n';
-	std::cout << "Recall                       : " << object.recall / object.number_of_queries  << '\n';
-	std::cout << "F1                           : " << object.f1 / object.number_of_queries  << '\n';
-	std::cout << "Mean Average Precision (MAP) : " << object.mean_average_precision / object.number_of_queries  << '\n';
-	std::cout << "Geometric MAP (GMAP)         : " << exp(object.geometric_mean_average_precision / object.number_of_queries)  << '\n';
-	std::cout << "Cheapest Precision           : " << object.cheapest_precision / object.number_of_queries  << '\n';
-	std::cout << "Selling Power                : " << object.selling_power / object.number_of_queries  << '\n';
-	std::cout << "Buying Power                 : " << object.buying_power / object.number_of_queries  << '\n';
-	std::cout << "Buying Power for k=" << std::setw(10)<< std::left << parameter_k << ": " << object.buying_power4k / object.number_of_queries  << '\n';
+	std::cout << "RUN ID                       : " << object.run_id << '\n';
+
+	for (size_t which = 0; which < METRICS_SENTINAL_ORDINALS; which++)
+		std::cout << std::setw(width) << std::left << metric_name[which] << ": " << (int)(object.metric[which]) << '\n';
+
+	for (size_t which = METRICS_SENTINAL_ORDINALS + 1; which < METRICS_SENTINAL; which++)
+		std::cout << std::setw(width) << std::left << metric_name[which] << ": " << object.metric[which] << '\n';
 
 	return stream;
 	}
@@ -523,7 +557,7 @@ size_t relevance_count(const std::string &query_id, JASS::evaluate &gold_standar
 	@param depth [in] The how far down the results list to measure (counting from 1)
 	@return A metric_set object with the score using several metrics
 */
-metric_set evaluate_query(const std::string &query_id, std::vector<std::string> &results_list, std::shared_ptr<JASS::evaluate> gold_standard_price, std::shared_ptr<JASS::evaluate>gold_standard_assessments, size_t depth)
+metric_set evaluate_query(const std::string &run_id, const std::string &query_id, std::vector<std::string> &results_list, std::shared_ptr<JASS::evaluate> gold_standard_price, std::shared_ptr<JASS::evaluate>gold_standard_assessments, size_t depth)
 	{
 	size_t returned = results_list.size();
 
@@ -576,7 +610,7 @@ metric_set evaluate_query(const std::string &query_id, std::vector<std::string> 
 		selling_power = selling_power_computer.compute(query_id, results_list, depth);
 		}
 
-	return metric_set(query_id, number_of_relvant_assessments, returned, relevant_returned, mrr, precision, recall, f1, p5, p10, p15, p20, p30, p100, p200, p500, p1000, map, cheapest_precision, selling_power, buying_power, buying_power4k);
+	return metric_set(run_id, query_id, number_of_relvant_assessments, returned, relevant_returned, mrr, precision, recall, f1, p5, p10, p15, p20, p30, p100, p200, p500, p1000, map, cheapest_precision, selling_power, buying_power, buying_power4k);
 	}
 
 /*
@@ -597,6 +631,7 @@ void evaluate_run(std::map<std::string, metric_set> &per_query_scores, std::vect
 	*/
 	std::vector<std::string> query_result;
 	std::string current_query_id = parsed_run.begin()->query_id;
+	std::string run_id = parsed_run.begin()->tag;
 
 	for (const auto &one : parsed_run)
 		{
@@ -604,13 +639,13 @@ void evaluate_run(std::map<std::string, metric_set> &per_query_scores, std::vect
 			query_result.push_back(one.document_id);
 		else
 			{
-			per_query_scores.emplace(current_query_id, evaluate_query(current_query_id, query_result, gold_standard_price, gold_standard_assessments, depth));
+			per_query_scores.emplace(current_query_id, evaluate_query(run_id, current_query_id, query_result, gold_standard_price, gold_standard_assessments, depth));
 			query_result.clear();
 			query_result.push_back(one.document_id);
 			current_query_id = one.query_id;
 			}
 		}
-	per_query_scores.emplace(current_query_id, evaluate_query(current_query_id, query_result, gold_standard_price, gold_standard_assessments, depth));
+	per_query_scores.emplace(current_query_id, evaluate_query(run_id, current_query_id, query_result, gold_standard_price, gold_standard_assessments, depth));
 	}
 
 /*
@@ -679,9 +714,9 @@ int main(int argc, const char *argv[])
 		}
 
 	/*
-		Output the average (mean) scores.
+		Generate the averages including geometric means, then output the average scores.
 	*/
-	std::cout << "Run ID                       : " << parsed_run[0].tag << '\n';
+	averages.bake();
 	std::cout << averages << '\n';
 
 	return 0;
