@@ -30,7 +30,7 @@
 	----------
 */
 std::string parameter_assessments_filename;							///< Name of file assessment file
-std::string parameter_run_filename;										///< Name of the run file to evaluate
+std::string parameter_run_filenames;										///< Name of the run file to evaluate
 bool parameter_help = false;												///< Output the usage() help
 bool parameter_output_per_query_scores = false;						///< Shopuld we output per-query scores or not?
 size_t parameter_depth = std::numeric_limits<size_t>::max();	///< How far down the results list to look (i.e. n in precision@n)
@@ -44,7 +44,7 @@ auto parameters = std::make_tuple										///< The  command line parameter bloc
 	JASS::commandline::parameter("-k", "--k_equals",      "<n> the K parameter in any parmetric metric (e.g. k in buying_power4k) [default=10]", parameter_k),
 	JASS::commandline::parameter("-n", "--n_equals",      "<n> How far down the resuls list to look (i.e. n in P@n) [default=inf]", parameter_depth),
 	JASS::commandline::parameter("-p", "--perquery",      "Output per-query statistics", parameter_output_per_query_scores),
-	JASS::commandline::parameter("-r", "--runfile",       "<filename> Name of run file to evaluatge", parameter_run_filename)
+	JASS::commandline::parameter("-r", "--runfile",       "<filename[,filename[,...]]> Names of run files to evaluate", parameter_run_filenames)
 	);
 
 
@@ -195,7 +195,8 @@ class metric_set
 		/*!
 			@brief Constructor
 		*/
-		metric_set(std::string query_id) :
+		metric_set(const std::string run_id, const std::string query_id) :
+			run_id(run_id),
 			query_id(query_id)
 			{
 			memset(metric, 0, sizeof(metric));
@@ -251,6 +252,19 @@ class metric_set
 			put the number of queries back
 		*/
 		metric[NUMBER_OF_QUERIES] = nummber_of_queries;
+		}
+
+	/*
+		METRIC_SET::T_TEST()
+		--------------------
+	*/
+	static void t_test(std::map<std::string, std::map<std::string, metric_set>> &run_set)
+		{
+		for (auto &[first_name, first_set] : run_set)
+			for (auto &[first_query, first_data] : first_set)
+					{
+					std::cout << first_name << "->" << first_query << "\n";
+					}
 		}
 	};
 
@@ -436,7 +450,7 @@ std::ostream &operator<<(std::ostream &stream, const run_result &object)
 	@param run_filename [in] the name of the run file to load
 	@param parsed_run [out] the run once parsed
 */
-void load_run(std::string &run_filename, std::vector<run_result> &parsed_run)
+void load_run(const std::string &run_filename, std::vector<run_result> &parsed_run)
 	{
 	/*
 		Load the run
@@ -648,6 +662,41 @@ void evaluate_run(std::map<std::string, metric_set> &per_query_scores, std::vect
 	per_query_scores.emplace(current_query_id, evaluate_query(run_id, current_query_id, query_result, gold_standard_price, gold_standard_assessments, depth));
 	}
 
+
+/*
+	LOAD_AND_EVALUATE_RUN()
+	-----------------------
+*/
+void load_and_evaluate_run(const std::string &filename, std::map<std::string, metric_set> &per_query_scores, metric_set &averages, std::shared_ptr<JASS::evaluate> gold_standard_price, std::shared_ptr<JASS::evaluate> gold_standard_assessments, size_t depth)
+	{
+	/*
+		Load the run.
+	*/
+	std::vector<run_result> parsed_run;
+	load_run(filename, parsed_run);
+
+	/*
+		Evaluate the run.
+	*/
+	evaluate_run(per_query_scores, parsed_run, gold_standard_price, gold_standard_assessments, depth);
+
+	/*
+		Set up the averages
+	*/
+	averages.run_id = per_query_scores.begin()->second.run_id;
+	double query_count = 0;
+	for (const auto &[query_id, scores] : per_query_scores)
+		{
+		query_count++;
+		averages += scores;
+		}
+
+	/*
+		Generate the averages including geometric means.
+	*/
+	averages.bake();
+	}
+
 /*
 	USAGE()
 	-------
@@ -670,7 +719,7 @@ int main(int argc, const char *argv[])
 	std::cout << std::fixed << std::setprecision(4);
 
 	/*
-		Parse the commane line parameters
+		Parse the command line parameters
 	*/
 	auto success = JASS::commandline::parse(argc, argv, parameters, parameters_errors);
 	if (!success)
@@ -678,46 +727,56 @@ int main(int argc, const char *argv[])
 		std::cout << parameters_errors;
 		exit(1);
 		}
+
 	/*
 		Make sure we have a run filename and an assessment filename
 	*/
 	if (parameter_help)
 		exit(usage(argv[0]));
-	if (parameter_run_filename == "" || parameter_assessments_filename == "")
+	if (parameter_run_filenames == "" || parameter_assessments_filename == "")
 		exit(usage(argv[0]));
 
 	/*
-		Load the run and the assessments
+		Load the assessments
 	*/
-	std::vector<run_result> parsed_run;
-	load_run(parameter_run_filename, parsed_run);
-
 	std::shared_ptr<JASS::evaluate> gold_standard_price(new JASS::evaluate);
 	std::shared_ptr<JASS::evaluate>  gold_standard_assessments(new JASS::evaluate);
 	load_assessments(parameter_assessments_filename, *gold_standard_price, *gold_standard_assessments);
 
 	/*
-		Evaluate the run
+		Load and evaluate each run.
 	*/
-	std::map<std::string, metric_set> per_query_scores;
-	evaluate_run(per_query_scores, parsed_run, gold_standard_price, gold_standard_assessments, parameter_depth);
-
-	metric_set averages("Averages");
-	double query_count = 0;
-	for (const auto &[query_id, scores] : per_query_scores)
+	std::map<std::string, std::map<std::string, metric_set>> all_the_runs;
+	std::map<std::string, metric_set> all_the_averages;
+	char *filenames = strdup(parameter_run_filenames.c_str());
+	char *save_pointer;
+	for (char *name = strtok_r(filenames, ",", &save_pointer); name != NULL; name = strtok_r(NULL, ",", &save_pointer))
 		{
-		query_count++;
-		averages += scores;
-
-		if (parameter_output_per_query_scores)
-			std::cout << scores << '\n';
+		metric_set averages(name, "Averages");
+		std::map<std::string, metric_set> per_query_scores;
+		load_and_evaluate_run(name, per_query_scores, averages, gold_standard_price, gold_standard_assessments, parameter_depth);
+		all_the_averages.emplace(name, averages);
+		all_the_runs.emplace(name, per_query_scores);
 		}
 
 	/*
-		Generate the averages including geometric means, then output the average scores.
+		Output the per query scores and the averages.
 	*/
-	averages.bake();
-	std::cout << averages << '\n';
+	if (parameter_output_per_query_scores)
+		for (const auto &[run_name, per_query_scores] : all_the_runs)
+			for (const auto &[query_id, scores] : per_query_scores)
+				std::cout << scores << '\n';
 
+	for (const auto &[run_name, averages] : all_the_averages)
+		std::cout << averages << '\n';
+
+	/*
+		For each metric, conduct the t-test
+	*/
+	metric_set::t_test(all_the_runs);
+
+	/*
+		Done.
+	*/
 	return 0;
 	}
