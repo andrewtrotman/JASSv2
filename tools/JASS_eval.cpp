@@ -260,10 +260,16 @@ class metric_set
 	*/
 	static void t_test(std::map<std::string, std::map<std::string, metric_set>> &run_set)
 		{
+		/*
+			Forward declare the method that outputs to a stream
+		*/
+		std::ostream &operator<<(std::ostream &stream, const metric_set &object);
+
 		for (auto &[first_name, first_set] : run_set)
 			for (auto &[first_query, first_data] : first_set)
 					{
 					std::cout << first_name << "->" << first_query << "\n";
+					std::cout << first_data;
 					}
 		}
 	};
