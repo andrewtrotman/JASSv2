@@ -338,8 +338,7 @@ namespace JASS
 		JASS_assert((int)(q * 10000) == 3961);
 
 		/*
-			Then the Pearson Correlation
-			The Spearman value is 0.144155844
+			Then the Pearson Correlation and Spearman correlation
 		*/
 		double r = pearson_correlation(distribution_one, distribution_two);
 		JASS_assert((int)(r * 10000) == 1289);

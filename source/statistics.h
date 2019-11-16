@@ -16,6 +16,7 @@
 #include <stdint.h>
 
 #include <vector>
+#include <numeric>
 
 namespace JASS
 	{
@@ -136,28 +137,26 @@ namespace JASS
 				is templeted, the ordinal type of the ranks can be any integer or float type.  The source type is anything
 				that can be sorted with sort().  The source type must be copyable.
 				This method is used by spearman_correlation() turn scores into ranks before pearson_correlation() is called.
+				sources from: https://stackoverflow.com/questions/41184561/how-to-sort-and-rank-a-vector-in-c-without-using-c11
 				@param destination [out] the rank orders
 				@param source [in] the original distribution
 			*/
 			template <typename ORDINAL_TYPE, typename TYPE>
 			static void value_to_rank(std::vector<ORDINAL_TYPE> &destination, const std::vector<TYPE> &source)
 				{
-				std::vector<std::pair<TYPE, ORDINAL_TYPE>> unordered(source.size());
+				/*
+					Number each element and sort the data
+				*/
+				std::vector<size_t> index(source.size());
+				std::iota(index.begin(), index.end(), 0);
+				std::sort(index.begin(), index.end(), [&source](size_t i1, size_t i2){return source[i1] < source[i2];});
 
-				for (ORDINAL_TYPE which = 0; which < source.size(); which++)
-					unordered[which] = std::make_pair(source[which], which);
-
-				std::sort(unordered.begin(), unordered.end());
-
-				std::pair<TYPE, ORDINAL_TYPE> rank;
+				/*
+					Return the ranking
+				*/
 				destination.resize(source.size());
-
 				for (ORDINAL_TYPE which = 0; which < source.size(); which++)
-					{
-					if (unordered[which].first != rank.first)
-						rank = std::make_pair(unordered[which].first, which);
-					destination[unordered[which].second] = rank.second;
-					}
+					destination[index[which]] = which;
 				}
 
 			/*
