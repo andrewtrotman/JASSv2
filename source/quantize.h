@@ -76,8 +76,8 @@ namespace JASS
 			*/
 			~quantize()
 				{
-				std::cout << "RSVmin:" << smallest_rsv << '\n';
-				std::cout << "RSVmax:" << largest_rsv << '\n';
+//				std::cout << "RSVmin:" << smallest_rsv << '\n';
+//				std::cout << "RSVmax:" << largest_rsv << '\n';
 				}
 
 			/*

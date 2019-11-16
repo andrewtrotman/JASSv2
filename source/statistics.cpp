@@ -258,6 +258,21 @@ namespace JASS
 		}
 
 	/*
+		STATISTICS::SPEARMAN_CORRELATION
+		--------------------------------
+	*/
+	double statistics::spearman_correlation(const std::vector<double> &one, const std::vector<double> &two)
+		{
+		std::vector<double> ordinal_one;
+		std::vector<double> ordinal_two;
+
+		value_to_rank(ordinal_one, one);
+		value_to_rank(ordinal_two, two);
+
+		return pearson_correlation(ordinal_one, ordinal_two);
+		}
+
+	/*
 		STATISTICS::UNITTEST
 		--------------------
 	*/
@@ -324,9 +339,14 @@ namespace JASS
 
 		/*
 			Then the Pearson Correlation
+			The Spearman value is 0.144155844
 		*/
 		double r = pearson_correlation(distribution_one, distribution_two);
 		JASS_assert((int)(r * 10000) == 1289);
+
+		double rho = spearman_correlation(distribution_one, distribution_two);
+		JASS_assert((int)(rho * 10000) == 1441);
+
 		puts("statistics::PASSED");
 		}
 	}

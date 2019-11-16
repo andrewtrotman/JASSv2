@@ -117,7 +117,7 @@ namespace JASS
 			*/
 			/*!
 				@brief Compute the Pearson correlation of the two distributions.
-				@detailsm Also known as the Pearson correlation coefficient, PCC, Pearson's r, the
+				@details Also known as the Pearson correlation coefficient, PCC, Pearson's r, the
 				Pearson product-moment correlation coefficient (PPMCC) or the bivariate correlation.
 				For details see: https://en.wikipedia.org/wiki/Pearson_correlation_coefficient
 				@param one [in] the first distribution
@@ -125,6 +125,54 @@ namespace JASS
 				@return the Perarson r value.
 			*/
 			static double pearson_correlation(const std::vector<double> &one, const std::vector<double> &two);
+
+			/*
+				STATISTICS::VALUE_TO_RANK()
+				---------------------------
+			*/
+			/*!
+				@brief Turn an unordered vector into a vector of ranks.
+				@details given a sequence (such as [4.5, 3.2, 9.5]) turn this into a list or ranks (such as [2,1,3]).  As this
+				is templeted, the ordinal type of the ranks can be any integer or float type.  The source type is anything
+				that can be sorted with sort().  The source type must be copyable.
+				This method is used by spearman_correlation() turn scores into ranks before pearson_correlation() is called.
+				@param destination [out] the rank orders
+				@param source [in] the original distribution
+			*/
+			template <typename ORDINAL_TYPE, typename TYPE>
+			static void value_to_rank(std::vector<ORDINAL_TYPE> &destination, const std::vector<TYPE> &source)
+				{
+				std::vector<std::pair<TYPE, ORDINAL_TYPE>> unordered(source.size());
+
+				for (ORDINAL_TYPE which = 0; which < source.size(); which++)
+					unordered[which] = std::make_pair(source[which], which);
+
+				std::sort(unordered.begin(), unordered.end());
+
+				std::pair<TYPE, ORDINAL_TYPE> rank;
+				destination.resize(source.size());
+
+				for (ORDINAL_TYPE which = 0; which < source.size(); which++)
+					{
+					if (unordered[which].first != rank.first)
+						rank = std::make_pair(unordered[which].first, which);
+					destination[unordered[which].second] = rank.second;
+					}
+				}
+
+			/*
+				STATISTICS::SPEARMAN_CORRELATION
+				--------------------------------
+			*/
+			/*!
+				@brief Compute the Spearmam correlation of the two distributions
+				@details Compute Spearman's rank correlation coefficient, also known as Spearman's rho
+				For details see: https://en.wikipedia.org/wiki/Spearman%27s_rank_correlation_coefficient
+				@param one [in] the first distribution
+				@param two [in] the second distribution
+				@return the Spearman rho value
+			*/
+			static double spearman_correlation(const std::vector<double> &one, const std::vector<double> &two);
 
 			/*
 				STATISTICS::UNITTEST
