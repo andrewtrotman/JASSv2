@@ -230,6 +230,34 @@ namespace JASS
 		}
 
 	/*
+		STATISTICS::PEARSON_CORRELATION
+		-------------------------------
+	*/
+	double statistics::pearson_correlation(const std::vector<double> &one, const std::vector<double> &two)
+		{
+		double sum_x;
+		double sum_xx;
+		double sum_y;
+		double sum_yy;
+		double sum_xy;
+
+		sum_x = sum_xx = sum_y = sum_yy = sum_xy = 0;
+		size_t n = one.size();
+		for (size_t which = 0; which < n; which++)
+			{
+			sum_x += one[which];
+			sum_xx += one[which] * one[which];
+			sum_y += two[which];
+			sum_yy += two[which] * two[which];
+			sum_xy += one[which] * two[which];
+			}
+
+		double r = (n * sum_xy  - sum_x * sum_y) / sqrt((n * sum_xx - sum_x * sum_x) * (n * sum_yy - sum_y * sum_y));
+
+		return r;
+		}
+
+	/*
 		STATISTICS::UNITTEST
 		--------------------
 	*/
@@ -286,13 +314,19 @@ namespace JASS
 			};
 
 		/*
-			check that the values we see are those given by Excel
+			Check that the values we see are those given by Excel
+			First the t-test.
 		*/
 		double p = ttest_paired(distribution_one, distribution_two, ONE_TAILED);
 		JASS_assert((int)(p * 10000) == 1980);
 		double q = ttest_paired(distribution_one, distribution_two, TWO_TAILED);
 		JASS_assert((int)(q * 10000) == 3961);
 
+		/*
+			Then the Pearson Correlation
+		*/
+		double r = pearson_correlation(distribution_one, distribution_two);
+		JASS_assert((int)(r * 10000) == 1289);
 		puts("statistics::PASSED");
 		}
 	}

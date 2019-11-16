@@ -106,8 +106,25 @@ namespace JASS
 				@brief Compute the p value of the paired Student's t-test
 				@param one [in] the first distribution
 				@param two [in] the second distribution
+				@return the t-test p value.
 			*/
 			static double ttest_paired(const std::vector<double> &one, const std::vector<double> &two, statistics::tails tails);
+
+
+			/*
+				STATISTICS::PEARSON_CORRELATION
+				-------------------------------
+			*/
+			/*!
+				@brief Compute the Pearson correlation of the two distributions.
+				@detailsm Also known as the Pearson correlation coefficient, PCC, Pearson's r, the
+				Pearson product-moment correlation coefficient (PPMCC) or the bivariate correlation.
+				For details see: https://en.wikipedia.org/wiki/Pearson_correlation_coefficient
+				@param one [in] the first distribution
+				@param two [in] the second distribution
+				@return the Perarson r value.
+			*/
+			static double pearson_correlation(const std::vector<double> &one, const std::vector<double> &two);
 
 			/*
 				STATISTICS::UNITTEST
