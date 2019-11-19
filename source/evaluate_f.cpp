@@ -25,6 +25,6 @@ namespace JASS
 		double precision = precision_computer.compute(query_id, results_list, depth);
 		double recall = recall_computer.compute(query_id, results_list, depth);
 
-		return 2 * ((precision * recall) / (precision + recall));
+		return precision + recall == 0 ? 0 : 2 * ((precision * recall) / (precision + recall));
 		}
 	}

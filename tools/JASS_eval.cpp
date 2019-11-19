@@ -13,7 +13,9 @@
 #include <iostream>
 
 #include "file.h"
+#include "maths.h"
 #include "asserts.h"
+#include "statistics.h"
 #include "evaluate_f.h"
 #include "commandline.h"
 #include "evaluate_map.h"
@@ -48,7 +50,7 @@ auto parameters = std::make_tuple										///< The  command line parameter bloc
 	);
 
 
-enum
+enum metric_index
 	{
 	NUMBER_OF_QUERIES,						///< the number of queries that this object represets (the numner of += ops called).
 	RELEVANT_COUNT,							///< the number of relevant assessments for this query (assessments with a non-zero score).
@@ -78,7 +80,7 @@ enum
 	};
 
 
-const std::string metric_name[] =
+const std::vector<std::string> metric_name =
 	{
 	"Number of Queries",
 	"Number Relevant",
@@ -258,19 +260,136 @@ class metric_set
 		METRIC_SET::T_TEST()
 		--------------------
 	*/
-	static void t_test(std::map<std::string, std::map<std::string, metric_set>> &run_set)
+	/*!
+		@brief Compute the one tailed paired t-test between each run and for one metric.
+		@details Only computed over the queries (topics) that are in both runs.  Topics in only one run are ignored.
+		@param metric [in] Which metric (must be a member of enum metric_index).
+		@param run_set [in] The set of runs.
+	*/
+	static void t_test(metric_index metric, std::map<std::string, std::map<std::string, metric_set>> &run_set)
 		{
 		/*
-			Forward declare the method that outputs to a stream
+			Output the metric name
 		*/
-		std::ostream &operator<<(std::ostream &stream, const metric_set &object);
+		std::cout << "t-test (1-tail, paired) matrix of p values for " << metric_name[metric] << '\n';
+		/*
+			Get the width of the widest column (the length of the longest run name
+		*/
+		size_t width = 0;
+		for (const auto &[first_name, first_set] : run_set)
+			width = JASS::maths::maximum(width, first_set.begin()->second.run_id.size());
 
-		for (auto &[first_name, first_set] : run_set)
-			for (auto &[first_query, first_data] : first_set)
+		width = JASS::maths::maximum(width + 1, static_cast<size_t>(7));			// account for a space and account for the size of a p value.
+		std::cout.width(width);
+
+		/*
+			Output the column names
+		*/
+		std::cout << std::setw(width) << " ";
+		for (const auto &[first_name, first_set] : run_set)
+			std::cout << std::right << std::setw(width) << first_set.begin()->second.run_id;
+		std::cout << '\n';
+
+		for (const auto &[first_name, first_set] : run_set)
+			{
+			/*
+				Output the row name
+			*/
+			std::cout << std::setw(width) << first_set.begin()->second.run_id;
+
+			/*
+				Output the p-value
+			*/
+			for (const auto &[second_name, second_set] : run_set)
 					{
-					std::cout << first_name << "->" << first_query << "\n";
-					std::cout << first_data;
+					std::vector<double> first_scores;
+					std::vector<double> second_scores;
+					for (const auto &[first_query, first_metric_set] : first_set)
+						{
+						auto second_metric_set = second_set.find(first_query);
+						if (second_metric_set != second_set.end())
+							{
+							first_scores.push_back(first_metric_set.metric[metric]);
+							second_scores.push_back(second_metric_set->second.metric[metric]);
+							}
+						}
+					double p = JASS::statistics::ttest_paired(first_scores, second_scores, JASS::statistics::ONE_TAILED);
+					if (isnan(p))
+						{
+						if (first_scores == second_scores)
+							std::cout << std::setw(width) << '-';
+						else
+							std::cout << std::setw(width) << '!';
+						}
+					else
+						std::cout << std::setw(width) << p;
 					}
+				std::cout << '\n';
+				}
+		}
+
+	/*
+		METRIC_SET::SPEARMAN_CORRELATE()
+		--------------------------------
+	*/
+	/*!
+		@brief Compute Spearman Correlation between sets of metrics.
+		@brief over [in] The set of metrics to correlate over.
+		@param average_set [in] The set of averages for all the runs.
+	*/
+	static void spearman_correlate(std::vector<metric_index> over, std::map<std::string, metric_set> &average_set)
+		{
+		/*
+			Output the metric name
+		*/
+		std::cout << "Spearman Correlation across metrics\n";
+
+		/*
+			Get the width of the widest column (the length of the longest run name
+		*/
+		size_t width = 0;
+		for (const auto metric : over)
+			width = JASS::maths::maximum(width, metric_name[metric].size());
+
+		width = JASS::maths::maximum(width + 1, static_cast<size_t>(7));			// account for a space and account for the size of a p value.
+		std::cout.width(width);
+
+		/*
+			Output the column names
+		*/
+		std::cout << std::setw(width) << " ";
+		for (const auto metric : over)
+			std::cout << std::right << std::setw(width) << metric_name[metric];
+		std::cout << '\n';
+
+		for (const auto metric_one : over)
+			{
+			/*
+				Output the row name
+			*/
+			std::cout << std::setw(width) << metric_name[metric_one];
+
+			/*
+				Compute the first set of scores
+			*/
+			std::vector<double> scores_one;
+			for (const auto &[name, values] : average_set)
+				scores_one.push_back(values.metric[metric_one]);
+
+			/*
+				Compute the second set of scores and the Spearman Correlation
+			*/
+			for (const auto metric_two : over)
+				{
+				std::vector<double> scores_two;
+				for (const auto &[name, values] : average_set)
+					scores_two.push_back(values.metric[metric_two]);
+
+				double rho = JASS::statistics::spearman_correlation(scores_one, scores_two);
+				std::cout << std::setw(width) << rho;
+				}
+			std::cout << '\n';
+			}
 		}
 	};
 
@@ -779,7 +898,43 @@ int main(int argc, const char *argv[])
 	/*
 		For each metric, conduct the t-test
 	*/
-	metric_set::t_test(all_the_runs);
+	if (all_the_averages.size() >= 2)
+		{
+		metric_set::t_test(MEAN_RECIPROCAL_RANK, all_the_runs);
+		std::cout << '\n';
+		metric_set::t_test(F1, all_the_runs);
+		std::cout << '\n';
+		metric_set::t_test(MEAN_AVERAGE_PRECISION, all_the_runs);
+		std::cout << '\n';
+
+		if (gold_standard_price->assessments.size() != 0)
+			{
+			metric_set::t_test(CHEAPEST_PRECISION, all_the_runs);
+			std::cout << '\n';
+			metric_set::t_test(SELLING_POWER, all_the_runs);
+			std::cout << '\n';
+			metric_set::t_test(BUYING_POWER, all_the_runs);
+			std::cout << '\n';
+			metric_set::t_test(BUYING_POWER4K, all_the_runs);
+			std::cout << '\n';
+			}
+		}
+	/*
+		Conduct the spearman's correlation over the (useful) metrics
+	*/
+	if (all_the_averages.size() >= 2)
+		{
+		std::vector<metric_index> spearman_set = {F1, MEAN_AVERAGE_PRECISION};
+		if (gold_standard_price->assessments.size() != 0)
+			{
+			spearman_set.push_back(CHEAPEST_PRECISION);
+			spearman_set.push_back(SELLING_POWER);
+			spearman_set.push_back(BUYING_POWER);
+			spearman_set.push_back(BUYING_POWER4K);
+			}
+
+		metric_set::spearman_correlate(spearman_set, all_the_averages);
+		}
 
 	/*
 		Done.
