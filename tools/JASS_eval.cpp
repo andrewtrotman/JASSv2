@@ -32,12 +32,14 @@
 	----------
 */
 std::string parameter_assessments_filename;							///< Name of file assessment file
-std::string parameter_run_filenames;										///< Name of the run file to evaluate
+std::string parameter_run_filenames;									///< Name of the run file to evaluate
 bool parameter_help = false;												///< Output the usage() help
 bool parameter_output_per_query_scores = false;						///< Shopuld we output per-query scores or not?
 size_t parameter_depth = std::numeric_limits<size_t>::max();	///< How far down the results list to look (i.e. n in precision@n)
 std::string parameters_errors;											///< Any errors as a result of command line parsing
 size_t parameter_k = 10;													///< The n parameter to a metric (for example k in buying_power_at_k).
+bool parameter_ttest = false;												///< Conduct t-tests over multiple runs.
+bool parameter_spearman = false;											///< Conduct Spearman's Correlation over multiple metrics (requires multiple runs).
 
 auto parameters = std::make_tuple										///< The  command line parameter block
 	(
@@ -46,9 +48,10 @@ auto parameters = std::make_tuple										///< The  command line parameter bloc
 	JASS::commandline::parameter("-k", "--k_equals",      "<n> the K parameter in any parmetric metric (e.g. k in buying_power4k) [default=10]", parameter_k),
 	JASS::commandline::parameter("-n", "--n_equals",      "<n> How far down the resuls list to look (i.e. n in P@n) [default=inf]", parameter_depth),
 	JASS::commandline::parameter("-p", "--perquery",      "Output per-query statistics", parameter_output_per_query_scores),
-	JASS::commandline::parameter("-r", "--runfile",       "<filename[,filename[,...]]> Names of run files to evaluate", parameter_run_filenames)
+	JASS::commandline::parameter("-r", "--runfile",       "<filename[,filename[,...]]> Names of run files to evaluate", parameter_run_filenames),
+	JASS::commandline::parameter("-s", "--spearman",      "Conduct Spearman's Correlation over multple metrics (required multiple runs)", parameter_spearman),
+	JASS::commandline::parameter("-t", "--ttest",         "Conduct t-test (required multiple runs)", parameter_ttest)
 	);
-
 
 enum metric_index
 	{
@@ -78,7 +81,6 @@ enum metric_index
 	BUYING_POWER4K,							///< buying power for K results (if we are an eCommerce metric).
 	METRICS_SENTINAL 		// MUST BE LAST. DO NOT MOVE
 	};
-
 
 const std::vector<std::string> metric_name =
 	{
@@ -898,7 +900,7 @@ int main(int argc, const char *argv[])
 	/*
 		For each metric, conduct the t-test
 	*/
-	if (all_the_averages.size() >= 2)
+	if (parameter_ttest && all_the_averages.size() >= 2)
 		{
 		metric_set::t_test(MEAN_RECIPROCAL_RANK, all_the_runs);
 		std::cout << '\n';
@@ -922,7 +924,7 @@ int main(int argc, const char *argv[])
 	/*
 		Conduct the spearman's correlation over the (useful) metrics
 	*/
-	if (all_the_averages.size() >= 2)
+	if (parameter_spearman && all_the_averages.size() >= 2)
 		{
 		std::vector<metric_index> spearman_set = {F1, MEAN_AVERAGE_PRECISION};
 		if (gold_standard_price->assessments.size() != 0)
