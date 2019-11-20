@@ -43,6 +43,16 @@ std::vector<uint64_t> compressed_count;				//< Buffer holding the number of post
 bool data_counts_from_zero = false;						///< If the postings count from 0 then add 1 to each document ID to avoid compressing 0s (because Elias gamma and Elias delta cannot encode 0s)
 
 /*
+	CLASS POSTINGS_LIST
+	-------------------
+*/
+class postings_list
+	{
+	uint32_t size;
+	uint32_t *data;
+	};
+
+/*
 	DRAW_HISTOGRAM()
 	----------------
 	Write out the number-of-integers, time-to-decompress and the compressed-size averaged over the input data.
@@ -193,33 +203,31 @@ int main(int argc, const char *argv[])
 	compressed_count.resize(NUMBER_OF_DOCUMENTS);
 
 	/*
-		Open the postings list file
+		Read the postings list file
 	*/
-	FILE *fp = fopen(filename.c_str(), "rb");
-	if (fp == nullptr)
+	std::string entire_file;
+	JASS::file::read_entire_file(filename, entire_file);
+	if (entire_file.size() == 0)
 		exit(printf("cannot open %s\n", filename.c_str()));
 
 	/*
-		Iterate through each postings list in the file
+		Iterate through each postings list in the file and create a vector pointing to each list
 	*/
 	uint32_t length;
 	uint32_t term_count = 0;
-	while (fread(&length, sizeof(length), 1, fp)  == 1)
+	uint32_t *file_pointer = reinterpret_cast<uint32_t *>(entire_file.data());
+	uint32_t *end_of_file = file_pointer + entire_file.size() / sizeof(uint32_t);
+
+	while (file_pointer < end_of_file)
 		{
+		length = *file_pointer++;
 		term_count++;
 		
 		/*
-			Coverity points out that length is "tainted" and that bad input can, therefore, be used to attack this program.
-			So we make sure length is not too large.
-		*/
-		if (length > postings_list.size())
-			exit(printf("fatal error: NUMBER_OF_DOCUMENTS is smaller than the length of this postings list (%lld vs %lld)", (long long)NUMBER_OF_DOCUMENTS, (long long)length));
-			
-		/*
 			Read one postings list (and make sure we did so successfully)
 		*/
-		if (fread(&postings_list[0], sizeof(postings_list[0]), length, fp) != length)
-			exit(printf("i/o error\n"));
+		std::copy(file_pointer, file_pointer + length, &postings_list[0]);
+		file_pointer += length;
 
 //printf("Length:%u\n", (unsigned)length);
 //fflush(stdout);
@@ -227,6 +235,7 @@ int main(int argc, const char *argv[])
 		/*
 			convert into d1-gaps
 		*/
+		postings_list.resize(length);
 		generate_differences(postings_list);
 
 		/*
@@ -234,7 +243,6 @@ int main(int argc, const char *argv[])
 		*/
 		uint64_t size_in_bytes_once_compressed;
 		size_in_bytes_once_compressed = shrinkerator.encode(&compressed_postings_list[0], compressed_postings_list.size() * sizeof(compressed_postings_list[0]), &postings_list[0], length);
-
 
 		compressed_size[length] += size_in_bytes_once_compressed;
 		compressed_count[length]++;
@@ -268,7 +276,7 @@ int main(int argc, const char *argv[])
 
 				exit(0);
 				}
-			
+
 		/*
 			Notify
 		*/
@@ -277,7 +285,6 @@ int main(int argc, const char *argv[])
 		}
 
 	std::cout << "Total terms:" << term_count << "\n";
-	fclose(fp);
 	draw_histogram();
 
 	return 0;
