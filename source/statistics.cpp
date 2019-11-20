@@ -222,7 +222,7 @@ namespace JASS
 			Compute the p value of freedom
 		*/
 
-		double p = (1 - t_cumulative_distribution_function(t_value, degrees_of_freedom));
+		double p = (1 - t_cumulative_distribution_function(fabs(t_value), degrees_of_freedom));
 		if (tails == ONE_TAILED)
 			return p;
 		else
