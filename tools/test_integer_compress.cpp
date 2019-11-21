@@ -23,6 +23,7 @@
 #include <string.h>
 
 #include "file.h"
+#include "maths.h"
 #include "timer.h"
 #include "commandline.h"
 #include "compress_integer_all.h"
@@ -32,9 +33,6 @@
 */
 #define NUMBER_OF_DOCUMENTS (1024 * 1024 * 20)
 
-std::vector<uint32_t> postings_list;					//< Buffer to hold the contents of the current postings list.  This is way too large, but only allocated once.
-std::vector<uint32_t> compressed_postings_list;		//< Buffer to hold the compressed postings list
-std::vector<uint32_t> decompressed_postings_list;	//< Buffer to hold the decompressed postings list - after compression then decompression this should equal postings_list[]
 std::vector<uint64_t> decompress_time;					//< Buffer holding the sum of times to decompress postings lists of this length
 std::vector<uint64_t> decompress_count;				//< Buffer holding the number of postings list of this length
 std::vector<uint64_t> compressed_size;					//< Buffer holding the size (in bytes) of each compressed string
@@ -42,14 +40,45 @@ std::vector<uint64_t> compressed_count;				//< Buffer holding the number of post
 
 bool data_counts_from_zero = false;						///< If the postings count from 0 then add 1 to each document ID to avoid compressing 0s (because Elias gamma and Elias delta cannot encode 0s)
 
+uint64_t report_every = (std::numeric_limits<uint64_t>::max)();							// print a message every this number of postings lists
+bool verify = false;
+
 /*
-	CLASS POSTINGS_LIST
-	-------------------
+	CLASS POSTINGS_LIST_OBJECT
+	--------------------------
 */
-class postings_list
+class postings_list_object
 	{
-	uint32_t size;
-	uint32_t *data;
+	public:
+		enum
+			{
+			RAW,
+			COMPRESSED,
+			DECOMPRESSED
+			};
+
+	public:
+		std::atomic<uint8_t> status;			// 0 = not compressed, 1 = compressed, 2 = decompressed
+		uint32_t length;
+		uint32_t *raw;
+		uint64_t size_in_bytes_once_compressed;
+		std::vector<uint32_t> compressed_postings_list;
+		size_t decompress_time;
+
+	public:
+		/*
+			POSTINGS_LIST_OBJECT::POSTINGS_LIST_OBJECT()
+			--------------------------------------------
+		*/
+		postings_list_object() :
+			status(RAW),
+			length(0),
+			raw(nullptr),
+			size_in_bytes_once_compressed(0),
+			decompress_time(0)
+			{
+			/* Nothing */
+			}
 	};
 
 /*
@@ -131,6 +160,93 @@ void usage(const char *exename, TYPE &command_line_parameters)
 	}
 
 /*
+	COMPRESS_ALL_LISTS()
+	--------------------
+*/
+void compress_all_lists(uint32_t longest_list, JASS::compress_integer &shrinkerator, std::vector<postings_list_object>  &entire_index)
+	{
+	uint8_t should_be = postings_list_object::RAW;
+	std::vector<uint32_t> postings_list(longest_list);
+
+	for (auto &list : entire_index)
+		{
+		/*
+			Find a list that hasn't yet been compressed and mark it as done.
+		*/
+		if (list.status == postings_list_object::RAW)
+			if (list.status.compare_exchange_strong(should_be, postings_list_object::COMPRESSED))
+				{
+				//std::cout << "Length:" << list.length << std::endl;
+
+				std::copy(list.raw, list.raw + list.length, postings_list.begin());
+
+				/*
+					convert into d1-gaps
+				*/
+				postings_list.resize(list.length);
+				generate_differences(postings_list);
+
+				/*
+					Compress
+				*/
+				list.compressed_postings_list.resize(list.length + 1024);	// to allow space for bad cases where it becomes (a bit) longer.
+				list.size_in_bytes_once_compressed = shrinkerator.encode(list.compressed_postings_list.data(), list.compressed_postings_list.size() * sizeof(list.compressed_postings_list[0]), &postings_list[0], list.length);
+				}
+		}
+	}
+
+/*
+
+	DECOMPRESS_ALL_LISTS()
+	----------------------
+*/
+void decompress_all_lists(uint32_t longest_list, JASS::compress_integer &shrinkerator, std::vector<postings_list_object>  &entire_index, size_t *total_decopress_time)
+	{
+	uint8_t should_be = postings_list_object::COMPRESSED;
+	std::vector<uint32_t> decompressed_postings_list(longest_list);
+	size_t term_count = 0;
+	for (auto &list : entire_index)
+		{
+		term_count++;
+		/*
+			Find a list that hasn't yet been compressed and mark it as done.
+		*/
+		if (list.status == postings_list_object::COMPRESSED)
+			if (list.status.compare_exchange_strong(should_be, postings_list_object::DECOMPRESSED))
+				{
+				auto timer = JASS::timer::start();
+				shrinkerator.decode(decompressed_postings_list.data(), list.length, list.compressed_postings_list.data(), list.size_in_bytes_once_compressed);
+				auto took = JASS::timer::stop(timer).nanoseconds();
+
+				list.decompress_time = took;
+				*total_decopress_time += took;
+
+		//std::cout << list.length << " integers -> " << list.decompress_time << "ns" << std::endl;
+
+				/*
+					Verify
+				*/
+				if (verify)
+					if (memcmp(list.raw, decompressed_postings_list.data(), list.length * sizeof(list.raw)) != 0)
+						{
+						std::cout << "Fail on list " << term_count << "\n";
+						for (uint32_t pos = 0; pos < list.length; pos++)
+							if (list.raw[pos] != decompressed_postings_list[pos])
+								std::cout << "Fail at pos:" << pos << "[" <<  decompressed_postings_list[pos] << "!=" << list.raw[pos] << "]\n";
+
+						exit(0);
+						}
+
+				/*
+					Notify
+				*/
+				if (term_count % report_every == 0)
+					std::cout << "Terms processed:" << term_count << std::endl;
+				}
+			}
+	}
+
+/*
 	MAIN()
 	------
 */
@@ -139,8 +255,7 @@ int main(int argc, const char *argv[])
 	/*
 		Set up for parsing the command line
 	*/
-	uint64_t report_every = (std::numeric_limits<uint64_t>::max)();							// print a message every this number of postings lists
-	bool verify = false;
+	uint32_t thread_count = 1;
 	bool generate = false;																// should we generate a sample file (usually false)
 	std::string filename = "";															// the name of the postings list file to check with
 	std::array<bool, JASS::compress_integer_all::compressors_size> selectors = {};		// which compressor does the user select
@@ -162,7 +277,9 @@ int main(int argc, const char *argv[])
 			JASS::commandline::note("\nGENERATE\n--------"),
 			JASS::commandline::parameter("-G", "--Generate", "generate a sample file for checking (you are unlikely to want to do this)", generate),
 			JASS::commandline::note("\nREPORTING\n---------"),
-			JASS::commandline::parameter("-N", "--report-every", "<n> Report time and memory every <n> documents.", report_every)
+			JASS::commandline::parameter("-N", "--report-every", "<n> Report time and memory every <n> documents.", report_every),
+			JASS::commandline::note("\nTHREADS\n-------"),
+			JASS::commandline::parameter("-t", "--threads", "<n> The number of concurrent threads doing the compression and decompression", thread_count)
 			)
 		);
 
@@ -176,7 +293,7 @@ int main(int argc, const char *argv[])
 	/*
 		Check parameters
 	*/
-	if (filename == "")
+	if (filename == "" || thread_count < 1)
 		usage(argv[0], all_parameters);
 
 	/*
@@ -194,9 +311,6 @@ int main(int argc, const char *argv[])
 	/*
 		Initialise by setting the count buffers to 0
 	*/
-	postings_list.resize(NUMBER_OF_DOCUMENTS);
-	compressed_postings_list.resize(NUMBER_OF_DOCUMENTS);
-	decompressed_postings_list.resize(NUMBER_OF_DOCUMENTS);
 	decompress_time.resize(NUMBER_OF_DOCUMENTS);
 	decompress_count.resize(NUMBER_OF_DOCUMENTS);
 	compressed_size.resize(NUMBER_OF_DOCUMENTS);
@@ -211,80 +325,88 @@ int main(int argc, const char *argv[])
 		exit(printf("cannot open %s\n", filename.c_str()));
 
 	/*
-		Iterate through each postings list in the file and create a vector pointing to each list
+		Block read the input file
 	*/
-	uint32_t length;
-	uint32_t term_count = 0;
 	uint32_t *file_pointer = reinterpret_cast<uint32_t *>(entire_file.data());
 	uint32_t *end_of_file = file_pointer + entire_file.size() / sizeof(uint32_t);
 
+	/*
+		Iterate through each postings list and create a vector pointing to each list - so that we can compress and decompress in parallel
+	*/
+	/*
+		Count the number of terms
+	*/
+	uint32_t term_count = 0;
+	uint32_t longest_list = 0;
 	while (file_pointer < end_of_file)
 		{
-		length = *file_pointer++;
+		longest_list = JASS::maths::maximum(longest_list, *file_pointer);
+		file_pointer += 1 + *file_pointer;
 		term_count++;
-		
-		/*
-			Read one postings list (and make sure we did so successfully)
-		*/
-		std::copy(file_pointer, file_pointer + length, &postings_list[0]);
-		file_pointer += length;
+		}
 
-//printf("Length:%u\n", (unsigned)length);
-//fflush(stdout);
+	/*
+		Allocate space for the postings lists and extract each from the file
+	*/
+	file_pointer = reinterpret_cast<uint32_t *>(entire_file.data());
+	std::vector<postings_list_object> entire_index(term_count);
+	term_count = 0;
+	while (file_pointer < end_of_file)
+		{
+		entire_index[term_count].length = *file_pointer;
+		entire_index[term_count].raw = file_pointer + 1;
+		file_pointer += 1 + *file_pointer;
+		term_count++;
+		}
 
-		/*
-			convert into d1-gaps
-		*/
-		postings_list.resize(length);
-		generate_differences(postings_list);
+	/*
+		Compress the lists
+	*/
+	std::vector<std::thread> thread_pool;
+	for (size_t which = 0; which < thread_count; which++)
+		thread_pool.push_back(std::thread(compress_all_lists, longest_list, std::ref(shrinkerator), std::ref(entire_index)));
 
-		/*
-			Compress
-		*/
-		uint64_t size_in_bytes_once_compressed;
-		size_in_bytes_once_compressed = shrinkerator.encode(&compressed_postings_list[0], compressed_postings_list.size() * sizeof(compressed_postings_list[0]), &postings_list[0], length);
+	/*
+		Wait until we're done
+	*/
+	for (auto &thread : thread_pool)
+		thread.join();
 
-		compressed_size[length] += size_in_bytes_once_compressed;
-		compressed_count[length]++;
+	/*
+		Decompress
+	*/
+	thread_pool.clear();
+	std::vector<size_t> the_thread_time(thread_count);
+	for (size_t which = 0; which < thread_count; which++)
+		thread_pool.push_back(std::thread(decompress_all_lists, longest_list, std::ref(shrinkerator), std::ref(entire_index), &the_thread_time[which]));
 
-		/*
-			Decompress
-		*/
-		auto timer = JASS::timer::start();
-		shrinkerator.decode(&decompressed_postings_list[0], length, &compressed_postings_list[0], size_in_bytes_once_compressed);
-		auto took = JASS::timer::stop(timer).nanoseconds();
+	/*
+		Wait until we're done
+	*/
+	for (auto &thread : thread_pool)
+		thread.join();
 
-		decompress_time[length] += took;
-		decompress_count[length]++;
 
-//printf("%u integers -> %uns\n", (unsigned)length, (unsigned)took);
-//fflush(stdout);
+	/*
+		Compute the longest thread decompression execution time
+	*/
+	size_t the_longest_time;
+	for (size_t which = 0; which < thread_count; which++)
+		the_longest_time = JASS::maths::maximum(the_longest_time, the_thread_time[which]);
 
-		/*
-			Verify
-		*/
-		if (verify)
-			if (memcmp(&postings_list[0], &decompressed_postings_list[0], length * sizeof(postings_list[0])) != 0)
-				{
-				std::cout << "Fail on list " << term_count << "\n";
-				for (uint32_t pos = 0; pos < length; pos++)
-					if (postings_list[pos] != decompressed_postings_list[pos])
-						std::cout << "Fail at pos:" << pos << "[" <<  decompressed_postings_list[pos] << "!=" << postings_list[pos] << "]\n";
-
-				for (uint32_t pos = 10789632; pos < length; pos++)
-					std::cout << postings_list[pos] << ", ";
-
-				exit(0);
-				}
-
-		/*
-			Notify
-		*/
-		if (term_count % report_every == 0)
-			std::cout << "Terms processed:" << term_count << std::endl;
+	/*
+		Generate the stats
+	*/
+	for (auto &list : entire_index)
+		{
+		compressed_size[list.length] += list.size_in_bytes_once_compressed;
+		compressed_count[list.length]++;
+		decompress_time[list.length] = list.decompress_time;
+		decompress_count[list.length]++;
 		}
 
 	std::cout << "Total terms:" << term_count << "\n";
+	std::cout << "Wall clock decompression time (smaller for more threads):" << the_longest_time << "\n";
 	draw_histogram();
 
 	return 0;
