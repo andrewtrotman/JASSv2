@@ -378,7 +378,10 @@ int main(int argc, const char *argv[])
 	thread_pool.clear();
 	std::vector<size_t> the_thread_time(thread_count);
 	for (size_t which = 0; which < thread_count; which++)
+		{
+		the_thread_time[which] = 0;
 		thread_pool.push_back(std::thread(decompress_all_lists, longest_list, std::ref(shrinkerator), std::ref(entire_index), &the_thread_time[which]));
+		}
 
 	/*
 		Wait until we're done
@@ -390,7 +393,7 @@ int main(int argc, const char *argv[])
 	/*
 		Compute the longest thread decompression execution time
 	*/
-	size_t the_longest_time;
+	size_t the_longest_time = 0;
 	for (size_t which = 0; which < thread_count; which++)
 		the_longest_time = JASS::maths::maximum(the_longest_time, the_thread_time[which]);
 
