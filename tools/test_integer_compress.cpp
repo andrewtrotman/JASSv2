@@ -16,6 +16,7 @@
 */
 #include <limits>
 #include <iostream>
+#include <algorithm>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -178,6 +179,7 @@ void compress_all_lists(uint32_t longest_list, JASS::compress_integer &shrinkera
 				{
 				//std::cout << "Length:" << list.length << std::endl;
 
+				postings_list.resize(longest_list);
 				std::copy(list.raw, list.raw + list.length, postings_list.begin());
 
 				/*
@@ -202,8 +204,8 @@ void compress_all_lists(uint32_t longest_list, JASS::compress_integer &shrinkera
 */
 void decompress_all_lists(uint32_t longest_list, JASS::compress_integer &shrinkerator, std::vector<postings_list_object>  &entire_index, size_t *total_decopress_time)
 	{
-	uint8_t should_be = postings_list_object::COMPRESSED;
 	std::vector<uint32_t> decompressed_postings_list(longest_list);
+	uint8_t should_be = postings_list_object::COMPRESSED;
 	size_t term_count = 0;
 	for (auto &list : entire_index)
 		{
@@ -214,6 +216,7 @@ void decompress_all_lists(uint32_t longest_list, JASS::compress_integer &shrinke
 		if (list.status == postings_list_object::COMPRESSED)
 			if (list.status.compare_exchange_strong(should_be, postings_list_object::DECOMPRESSED))
 				{
+				decompressed_postings_list.resize(longest_list);
 				auto timer = JASS::timer::start();
 				shrinkerator.decode(decompressed_postings_list.data(), list.length, list.compressed_postings_list.data(), list.size_in_bytes_once_compressed);
 				auto took = JASS::timer::stop(timer).nanoseconds();
@@ -362,9 +365,10 @@ int main(int argc, const char *argv[])
 	/*
 		Compress the lists
 	*/
+	static constexpr size_t OVERFLOW = 1024;
 	std::vector<std::thread> thread_pool;
 	for (size_t which = 0; which < thread_count; which++)
-		thread_pool.push_back(std::thread(compress_all_lists, longest_list, std::ref(shrinkerator), std::ref(entire_index)));
+		thread_pool.push_back(std::thread(compress_all_lists, longest_list + OVERFLOW, std::ref(shrinkerator), std::ref(entire_index)));
 
 	/*
 		Wait until we're done
@@ -380,7 +384,7 @@ int main(int argc, const char *argv[])
 	for (size_t which = 0; which < thread_count; which++)
 		{
 		the_thread_time[which] = 0;
-		thread_pool.push_back(std::thread(decompress_all_lists, longest_list, std::ref(shrinkerator), std::ref(entire_index), &the_thread_time[which]));
+		thread_pool.push_back(std::thread(decompress_all_lists, longest_list + OVERFLOW, std::ref(shrinkerator), std::ref(entire_index), &the_thread_time[which]));
 		}
 
 	/*
