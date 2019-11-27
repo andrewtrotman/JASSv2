@@ -75,7 +75,7 @@ add_executable(bin_to_human
 #
 
 add_executable(test_integer_compress test_integer_compress.cpp)
-target_link_libraries(test_integer_compress JASSlib)
+target_link_libraries(test_integer_compress JASSlib ${CMAKE_THREAD_LIBS_INIT})
 
 #
 # test_integer_compress_average
