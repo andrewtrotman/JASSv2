@@ -27,6 +27,9 @@
 #include "evaluate_cheapest_precision.h"
 #include "evaluate_mean_reciprocal_rank.h"
 
+#ifdef _MSC_VER
+	#define strtok_r strtok_s
+#endif
 /*
 	PARAMETERS
 	----------
