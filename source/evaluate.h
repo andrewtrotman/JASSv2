@@ -431,6 +431,21 @@ namespace JASS
 		};
 
 	/*
+		OPERATOR<()
+		-----------
+	*/
+	/*!
+		@brief comparison operator
+		@param left [in] left hand side
+		@param right [in] right hand side
+		@return true if left < right, else false
+	*/
+	inline bool operator<(evaluate::judgement &left, evaluate::judgement &right)
+		{
+		return left.operator<(right);
+		}
+
+	/*
 		OPERATOR<<()
 		------------
 	*/
