@@ -15,6 +15,7 @@
 #include <cmath>
 #include <vector>
 #include <string>
+#include <memory>
 #include <iostream>
 
 #include "unittest_data.h"
