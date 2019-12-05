@@ -14,9 +14,11 @@
 
 #include <math.h>
 #include <stdint.h>
+#include <algorithm>
 
 #include <vector>
 #include <numeric>
+#include <algorithm>
 
 namespace JASS
 	{

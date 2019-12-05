@@ -5,6 +5,7 @@
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 #include <cmath>
+#include <algorithm>
 
 #include "maths.h"
 #include "asserts.h"
@@ -45,7 +46,7 @@ namespace JASS
 		if (query_prices.size() == 0 || depth == 0)
 			return 1;
 
-		sort(query_prices.begin(), query_prices.end());
+		std::sort(query_prices.begin(), query_prices.end());
 
 		/*
 			Slice the relevant item list for this query at either depth or the number of items in the results list

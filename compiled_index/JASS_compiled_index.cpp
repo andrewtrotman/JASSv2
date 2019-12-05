@@ -4,11 +4,11 @@
 	Copyright (c) 2017 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
-#include <algorithm>
-#include <exception>
-
 #include <stdint.h>
 #include <stdlib.h>
+
+#include <algorithm>
+#include <exception>
 
 #include "ascii.h"
 #include "query.h"

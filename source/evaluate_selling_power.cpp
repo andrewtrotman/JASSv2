@@ -5,6 +5,7 @@
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 #include <cmath>
+#include <algorithm>
 
 #include "maths.h"
 #include "asserts.h"
@@ -49,7 +50,7 @@ namespace JASS
 		if (query_prices.size() == 0)
 			return 1;
 
-		sort(query_prices.begin(), query_prices.end());
+		std::sort(query_prices.begin(), query_prices.end());
 
 		/*
 			If there are fewer then top_k relevant items then reduce k
