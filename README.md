@@ -7,6 +7,9 @@ Travis (Linux / Mac build): [![Build Status](https://travis-ci.org/andrewtrotman
 
 Appveyor (Windows build): [![Build status](https://ci.appveyor.com/api/projects/status/sbrjp3l39qf16h2x?svg=true)](https://ci.appveyor.com/project/andrewtrotman/jassv2-rjk8n)
 
+Git Actions (Linux build): [![Build status](https://github.com/andrewtrotman/JASSv2/workflows/Build/badge.svg)]
+(https://github.com/andrewtrotman/JASSv2/workflows/Build/badge.svg)
+
 Coverity Scan (static analysis): [![Coverity Scan Build Status](https://scan.coverity.com/projects/11022/badge.svg)](https://scan.coverity.com/projects/jassv2)
 
 Codacy (static analysis): [![Codacy Badge](https://api.codacy.com/project/badge/Grade/01c46a3d10e440f9b54a237889f8326b)](https://www.codacy.com/app/andrewtrotman/JASSv2?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=andrewtrotman/JASSv2&amp;utm_campaign=Badge_Grade)
