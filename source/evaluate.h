@@ -261,7 +261,10 @@ namespace JASS
 				{
 				judgement looking_for(query_id, "", 0);
 
-				return std::lower_bound(assessments.begin(), assessments.end(), looking_for);
+				auto b = assessments.begin();
+				auto e = assessments.end();
+				
+				return std::lower_bound(b, e, looking_for);
 				}
 
 			/*
