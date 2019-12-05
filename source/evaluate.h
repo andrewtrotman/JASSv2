@@ -31,8 +31,11 @@ namespace JASS
 	*/
 	class evaluate
 		{
-		friend
-			std::ostream &operator<<(std::ostream &stream, const evaluate &object);
+		protected:
+			class judgement;
+		public:
+			friend std::ostream &operator<<(std::ostream &stream, const evaluate &object);
+			friend bool operator<(evaluate::judgement &a, evaluate::judgement &b);
 
 		protected:
 			/*
@@ -44,6 +47,8 @@ namespace JASS
 			*/
 			class judgement
 				{
+				friend bool operator<(evaluate::judgement &a, evaluate::judgement &b);
+
 				public:
 					std::string query_id;					///< the query id is NOT assumed to be an integer.
 					std::string document_id;				///< the document id is assumed to be a string.
@@ -261,10 +266,7 @@ namespace JASS
 				{
 				judgement looking_for(query_id, "", 0);
 
-				auto b = assessments.begin();
-				auto e = assessments.end();
-				
-				return std::lower_bound(b, e, looking_for);
+				return std::lower_bound(assessments.begin(), assessments.end(), looking_for);
 				}
 
 			/*
@@ -404,6 +406,15 @@ namespace JASS
 		};
 
 	/*
+		OPERATOR<()
+		-----------
+	*/
+	inline bool operator<(evaluate::judgement &a, evaluate::judgement &b)
+		{
+		return a.operator<(b);
+		}
+
+	/*
 		OPERATOR<<()
 		------------
 	*/
@@ -413,7 +424,7 @@ namespace JASS
 		@param tree [in] The object to write.
 		@return The stream once the tree has been written.
 	*/
-inline std::ostream &operator<<(std::ostream &stream, const evaluate &set)
+	inline std::ostream &operator<<(std::ostream &stream, const evaluate &set)
 		{
 		/*
 			Output in trec_eval format.
