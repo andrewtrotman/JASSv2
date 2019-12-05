@@ -291,7 +291,11 @@ namespace JASS
 				{
 				judgement looking_for(query_id, "", 0);
 
-				return std::lower_bound(assessments.begin(), assessments.end(), looking_for, judgement_less_than_comparator);
+				#ifdef _MSC_VER
+					return std::lower_bound(assessments.begin(), assessments.end(), looking_for, judgement_less_than_comparator);
+				#else
+					return std::lower_bound(assessments.begin(), assessments.end(), looking_for);
+				#endif
 				}
 
 			/*
@@ -308,7 +312,11 @@ namespace JASS
 				{
 				judgement looking_for(query_id, document_id, 0);
 
-				auto found = std::lower_bound(assessments.begin(), assessments.end(), looking_for, judgement_less_than_comparator);
+				#ifdef _MSC_VER
+					auto found = std::lower_bound(assessments.begin(), assessments.end(), looking_for, judgement_less_than_comparator);
+				#else
+					auto found = std::lower_bound(assessments.begin(), assessments.end(), looking_for);
+				#endif
 
 				if (found == assessments.end())
 					return judgement_not_found;
@@ -331,7 +339,11 @@ namespace JASS
 				{
 				judgement looking_for("PRICE", document_id, 0);
 
-				auto found = std::lower_bound(prices.begin(), prices.end(), looking_for, judgement_less_than_comparator);
+				#ifdef _MSC_VER
+					auto found = std::lower_bound(prices.begin(), prices.end(), looking_for, judgement_less_than_comparator);
+				#else
+					auto found = std::lower_bound(prices.begin(), prices.end(), looking_for);
+				#endif
 
 				if (found == prices.end())
 					return judgement_not_found;
