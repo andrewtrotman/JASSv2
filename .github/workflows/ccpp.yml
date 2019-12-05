@@ -12,6 +12,6 @@ jobs:
     - name: configure
       run: cd build; cmake ..
     - name: make
-      run: make
+      run: cd build; make
     - name: make check
-      run: unittest
+      run: build/unittest

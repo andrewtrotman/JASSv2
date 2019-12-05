@@ -14,14 +14,15 @@
 
 	An example file is Lemire's dump of .gov2 which can be found here: https://lemire.me/data/integercompression2014.html
 */
-#include <limits>
-#include <iostream>
-#include <algorithm>
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+
+#include <atomic>
+#include <limits>
+#include <iostream>
+#include <algorithm>
 
 #include "file.h"
 #include "maths.h"
