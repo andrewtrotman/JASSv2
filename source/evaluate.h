@@ -112,6 +112,23 @@ namespace JASS
 						}
 				};
 
+			/*
+				CLASS JUDGEMENT_LESS_THAN
+				-------------------------
+			*/
+			static class judgement_less_than
+				{
+				public:
+					/*
+						JUDGEMENT_LESS_THAN::OPERATOR()
+						-------------------------------
+					*/
+					bool operator() (const judgement &left, const judgement &right)
+						{
+						return left.operator<(right);
+						}
+				} judgement_less_than_comparator;
+
 		protected:
 			std::vector<judgement> assessments_store;			///< The assessments once loaded from disk.
 			std::vector<judgement> prices_store;				///< The assessments once loaded from disk.
@@ -262,7 +279,7 @@ namespace JASS
 				{
 				judgement looking_for(query_id, "", 0);
 
-				return std::lower_bound(assessments.begin(), assessments.end(), looking_for);
+				return std::lower_bound(assessments.begin(), assessments.end(), looking_for, judgement_less_than_comparator);
 				}
 
 			/*
