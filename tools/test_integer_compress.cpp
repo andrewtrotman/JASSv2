@@ -371,10 +371,10 @@ int main(int argc, const char *argv[])
 	/*
 		Compress the lists
 	*/
-	size_t OVERFLOW = 1024;
+	const size_t OVERFLOW_AMOUNT = 1024;
 	std::vector<std::thread> thread_pool;
 	for (size_t which = 0; which < thread_count; which++)
-		thread_pool.push_back(std::thread(compress_all_lists, longest_list + OVERFLOW, std::ref(shrinkerator), std::ref(entire_index)));
+		thread_pool.push_back(std::thread(compress_all_lists, longest_list + OVERFLOW_AMOUNT, std::ref(shrinkerator), std::ref(entire_index)));
 
 	/*
 		Wait until we're done
@@ -397,7 +397,7 @@ std::cout << "Compressed\n";
 	for (size_t which = 0; which < thread_count; which++)
 		{
 		the_thread_time[which] = 0;
-		thread_pool.push_back(std::thread(decompress_all_lists, longest_list + OVERFLOW, std::ref(shrinkerator), std::ref(entire_index), &the_thread_time[which]));
+		thread_pool.push_back(std::thread(decompress_all_lists, longest_list + OVERFLOW_AMOUNT, std::ref(shrinkerator), std::ref(entire_index), &the_thread_time[which]));
 		}
 
 	/*
