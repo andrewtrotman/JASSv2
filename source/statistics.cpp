@@ -5,6 +5,7 @@
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 #include <math.h>
+#include <stdio.h>
 #include <stdint.h>
 
 #include <vector>
@@ -176,7 +177,7 @@ namespace JASS
 			Validate that the two samples are the same size
 		*/
 		int32_t number_of_samples = one.size();
-		if (two.size() != number_of_samples || number_of_samples <= 1)
+		if (two.size() != one.size() || number_of_samples <= 1)
 			return 1;
 
 		/*

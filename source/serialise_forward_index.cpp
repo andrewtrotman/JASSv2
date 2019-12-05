@@ -48,7 +48,7 @@ namespace JASS
 				Output the document
 			*/
 			char document_id[64];			// will be smaller than a 64 digit number (as must be a 64-bit  integer)
-			sprintf(document_id, "%lld", which_document_id);
+			sprintf(document_id, "%lld", static_cast<long long>(which_document_id));
 			outfile.write("<DOC><DOCNO>", 12);
 			outfile.write(document_id, strlen(document_id));
 			outfile.write("</DOCID>", 8);
