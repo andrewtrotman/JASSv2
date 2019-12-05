@@ -31,13 +31,9 @@ namespace JASS
 	*/
 	class evaluate
 		{
-		protected:
-			class judgement;
-		public:
-			friend std::ostream &operator<<(std::ostream &stream, const evaluate &object);
-			friend bool operator<(evaluate::judgement &a, evaluate::judgement &b);
+		friend std::ostream &operator<<(std::ostream &stream, const evaluate &object);
 
-		protected:
+		public:
 			/*
 				CLASS EVALUATE::JUDGEMENT
 				-------------------------
@@ -404,15 +400,6 @@ namespace JASS
 			*/
 			static void unittest(void);
 		};
-
-	/*
-		OPERATOR<()
-		-----------
-	*/
-	inline bool operator<(evaluate::judgement &a, evaluate::judgement &b)
-		{
-		return a.operator<(b);
-		}
 
 	/*
 		OPERATOR<<()
