@@ -59,7 +59,7 @@ message("Build Type:" ${CMAKE_BUILD_TYPE})
 if(WIN32)
  	add_definitions("/W3 /wd4005 /wd4996 /wd4514 /wd4996 /wd4820 /nologo")
 else()
-	add_definitions("-Wall -D_GLIBCXX_USE_CXX11_ABI=1")
+	add_definitions("-Wall -D_GLIBCXX_USE_CXX11_ABI=1 -Wignored-attributes")
 endif()
 
 #
