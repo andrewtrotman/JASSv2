@@ -18,6 +18,8 @@
 
 namespace JASS
 	{
+	const evaluate::judgement_less_than evaluate::judgement_less_than_comparator;
+
 	/*
 		EVALUATE::DECODE_ASSESSMENTS_TREC_QRELS()
 		-----------------------------------------

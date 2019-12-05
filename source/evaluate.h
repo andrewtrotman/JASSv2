@@ -116,18 +116,30 @@ namespace JASS
 				CLASS JUDGEMENT_LESS_THAN
 				-------------------------
 			*/
-			static class judgement_less_than
+			/*!
+				@brief Comparison object for lower_bound() calls
+				@details Visual Studio 2019 appears to need this, g++ and clang can use judgement::operator<()
+			*/
+			class judgement_less_than
 				{
 				public:
 					/*
 						JUDGEMENT_LESS_THAN::OPERATOR()
 						-------------------------------
 					*/
+					/*!
+						@brief Compare two objects for less than.
+						@param left [in] the left hand side.
+						@param right [in] the right hand side.
+						@return true if left < right, else false.
+					*/
 					bool operator() (const judgement &left, const judgement &right)
 						{
 						return left.operator<(right);
 						}
-				} judgement_less_than_comparator;
+				};
+				
+			static const judgement_less_than judgement_less_than_comparator;				///< the object used for comparison
 
 		protected:
 			std::vector<judgement> assessments_store;			///< The assessments once loaded from disk.
