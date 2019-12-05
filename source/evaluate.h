@@ -280,7 +280,9 @@ namespace JASS
 
 				auto found = std::lower_bound(assessments.begin(), assessments.end(), looking_for);
 
-				if (found->document_id == document_id && found->query_id == query_id)
+				if (found == assessments.end())
+					return judgement_not_found;
+				else if (found->document_id == document_id && found->query_id == query_id)
 					return *found;
 				else
 					return judgement_not_found;
@@ -301,7 +303,9 @@ namespace JASS
 
 				auto found = std::lower_bound(prices.begin(), prices.end(), looking_for);
 
-				if (found->document_id == document_id)
+				if (found == prices.end())
+					return judgement_not_found;
+				else if (found->document_id == document_id)
 					return *found;
 				else
 					return judgement_not_found;
@@ -336,7 +340,7 @@ namespace JASS
 				{
 				size_t relevant = 0;
 
-				for (auto assessment = find_first(query_id); assessment < assessments.end(); assessment++)
+				for (auto assessment = find_first(query_id); assessment != assessments.end(); assessment++)
 					if (query_id == assessment->query_id && assessment->score != 0)
 						relevant++;
 

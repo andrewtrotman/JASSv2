@@ -146,7 +146,7 @@ namespace JASS
 		}
 
 		/*
-			Checksum the index to make sure its correct.
+			Checksum the index to make sure its correct (debug on the left, release on the right)
 		*/
 //		std::cout << "=====\n";
 
@@ -156,7 +156,7 @@ namespace JASS
 
 		checksum = checksum::fletcher_16_file("JASS_postings.h");
 //		std::cout << "JASS_postings.h:" << checksum << '\n';
-		JASS_assert(checksum == 52167 || checksum == 49868);
+		JASS_assert(checksum == 49868 || checksum == 29406);
 
 		checksum = checksum::fletcher_16_file("JASS_vocabulary.cpp");
 //		std::cout << "JASS_vocabulary.cpp:" << checksum << '\n';

@@ -73,8 +73,9 @@ namespace JASS
 			*/
 			judgement looking_for(query_id, result, 0);
 			auto found = std::lower_bound(query_prices.begin(), query_prices.end(), looking_for);
-			if (found->document_id == result && found->query_id == query_id)
-				found_and_relevant++;
+			if (found != query_prices.end())
+				if (found->document_id == result && found->query_id == query_id)
+					found_and_relevant++;
 
 			/*
 				Have we exceeded the search depth?

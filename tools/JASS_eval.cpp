@@ -678,7 +678,7 @@ size_t relevance_count(const std::string &query_id, JASS::evaluate &gold_standar
 	{
 	size_t relevant = 0;
 
-	for (auto assessment = gold_standard_assessments.find_first(query_id); assessment < gold_standard_assessments.assessments.end(); assessment++)
+	for (auto assessment = gold_standard_assessments.find_first(query_id); assessment != gold_standard_assessments.assessments.end(); assessment++)
 		if (query_id == assessment->query_id && assessment->score != 0)
 			relevant++;
 
