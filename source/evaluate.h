@@ -53,6 +53,16 @@ namespace JASS
 						EVALUATE::JUDGEMENT::JUDGEMENT()
 						--------------------------------
 					*/
+					judgement() :
+						score(0)
+						{
+						/* Nothing */
+						}
+						
+					/*
+						EVALUATE::JUDGEMENT::JUDGEMENT()
+						--------------------------------
+					*/
 					/*!
 						@brief Constructor.
 						@param query_id [in] The id of the query.

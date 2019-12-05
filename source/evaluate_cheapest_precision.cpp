@@ -48,6 +48,21 @@ namespace JASS
 		sort(query_prices.begin(), query_prices.end());
 
 		/*
+			Slice the relevant item list for this query at either depth or the number of items in the results list
+			being careful to account for ties.
+		*/
+		size_t slice_point = JASS::maths::minimum(depth, results_list.size());
+		if (slice_point < query_prices.size())
+			{
+			auto price = find_price(query_prices[slice_point].document_id).score;
+			while (slice_point < query_prices.size() && find_price(query_prices[slice_point].document_id).score == price)
+					slice_point++;
+					
+			query_prices.resize(slice_point);
+			}
+
+
+		/*
 			Compute the precision
 		*/
 		for (const auto &result : results_list)
