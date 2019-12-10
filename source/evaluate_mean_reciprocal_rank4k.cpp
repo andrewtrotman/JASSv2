@@ -1,0 +1,45 @@
+/*
+	EVALUATE_MEAN_RECIPROCAL_RANK4K.CPP
+	-----------------------------------
+	Copyright (c) 2019 Andrew Trotman
+	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
+*/
+#include <cmath>
+
+#include "asserts.h"
+#include "unittest_data.h"
+#include "evaluate_mean_reciprocal_rank4k.h"
+
+namespace JASS
+	{
+	/*
+		EVALUATE_MEAN_RECIPROCAL_RANK4K::COMPUTE()
+		------------------------------------------
+	*/
+	double evaluate_mean_reciprocal_rank4k::compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth) const
+		{
+		double rr = 0;
+		size_t which = 1;
+		size_t found = 0;
+
+		for (const auto &result : results_list)
+			{
+			auto assessment = find(query_id, result);
+
+			if (assessment.score != 0)
+				{
+				rr += 1.0 / static_cast<double>(which);
+				found++;
+				if (found > top_k)
+					break;
+				}
+
+			which++;
+
+			if (which > depth)
+				break;
+			}
+
+		return rr / static_cast<double>(top_k);
+		}
+	}
