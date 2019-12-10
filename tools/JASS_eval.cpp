@@ -26,10 +26,13 @@
 #include "evaluate_buying_power4k.h"
 #include "evaluate_cheapest_precision.h"
 #include "evaluate_mean_reciprocal_rank.h"
+#include "evaluate_mean_reciprocal_rank4k.h"
+#include "evaluate_expected_search_length.h"
 
 #ifdef _MSC_VER
 	#define strtok_r strtok_s
 #endif
+
 /*
 	PARAMETERS
 	----------
@@ -64,8 +67,10 @@ enum metric_index
 	RELEVANT_RETURNED,						///< the number of relevant results in the results list.
 	METRICS_SENTINAL_ORDINALS,	// ALL INTEGER NON-AVERAGES METRICS ARE ABOVE THIS, REAL AND AVERAGED METRICS ARE BELOW.  DO NOT MOVE
 	MEAN_RECIPROCAL_RANK,					///< the mean reciprocal rank.
+	MEAN_RECIPROCAL_RANK_4K,				///< the mean reciprocal rank for k items.
 	PRECISION,									///< set wise precision OF THE results list.
 	RECALL,										///< set wise recall.
+	ESL,											///< Expected search length.
 	F1,											///< set wise f1 score.
 	P_AT_5,										///< set wise precision of the results list.
 	P_AT_10,										///< set wise precision of the results list.
@@ -93,8 +98,10 @@ const std::vector<std::string> metric_name =
 	"Number Relevant Returned",
 	"SENTINAL",
 	"Mean Reciprocal Rank (MRR)",
+	"Mean Reciprocal Rank for k(MRR4K)",
 	"Precision",
 	"Recall",
+	"Expected Search Length",
 	"F1",
 	"Precision at 5",
 	"Precision at 10",
@@ -149,8 +156,10 @@ class metric_set
 			@param returned [in] The length of the results list.
 			@param relevant_returned [in] The number of relevant documents in the results list.
 			@param mean_reciprocal_rank [in] The mean reciprocal rank (MRR)
+			@param mean_reciprocal_rank4k [in] The mean reciprocal rank (MRR)
 			@param precision [in] The precision of this query.
 			@param recall [in] Setwise recall.
+			@param expected_search_length [in] Cooper's expected search length (ESL)
 			@param f1 [in] Setwise f1.
 			@param p_at_5 [in] Setwise precision at n
 			@param p_at_10 [in] Setwise precision at n
@@ -166,7 +175,7 @@ class metric_set
 			@param buying_power [in] The buying power of this query.
 			@param buying_power4k [in] The buying power for k relevant of this query.
 		*/
-		metric_set(const std::string &run_id, const std::string &query_id, size_t relevant_count, size_t returned, size_t relevant_returned, double mean_reciprocal_rank, double precision, double recall, double f1, double p_at_5, double p_at_10, double p_at_15, double p_at_20, double p_at_30, double p_at_100, double p_at_200, double p_at_500, double p_at_1000, double mean_average_precision, double cheapest_precision, double selling_power, double buying_power, double buying_power4k) :
+		metric_set(const std::string &run_id, const std::string &query_id, size_t relevant_count, size_t returned, size_t relevant_returned, double mean_reciprocal_rank, double mean_reciprocal_rank_4k, double precision, double recall, double expected_search_length, double f1, double p_at_5, double p_at_10, double p_at_15, double p_at_20, double p_at_30, double p_at_100, double p_at_200, double p_at_500, double p_at_1000, double mean_average_precision, double cheapest_precision, double selling_power, double buying_power, double buying_power4k) :
 			run_id(run_id),
 			query_id(query_id)
 			{
@@ -175,8 +184,10 @@ class metric_set
 			metric[RETURNED] = returned;
 			metric[RELEVANT_RETURNED] = relevant_returned;
 			metric[MEAN_RECIPROCAL_RANK] = mean_reciprocal_rank;
+			metric[MEAN_RECIPROCAL_RANK_4K] = mean_reciprocal_rank_4k;
 			metric[PRECISION] = precision;
 			metric[RECALL] = recall;
+			metric[ESL] = expected_search_length;
 			metric[F1] = f1;
 			metric[P_AT_5] = p_at_5;
 			metric[P_AT_10] = p_at_10;
@@ -410,7 +421,7 @@ class metric_set
 */
 std::ostream &operator<<(std::ostream &stream, const metric_set &object)
 	{
-	int width = 29;
+	int width = 35;
 	std::cout << "QUERY ID                     : " << object.query_id << '\n';
 	std::cout << "RUN ID                       : " << object.run_id << '\n';
 
@@ -715,6 +726,9 @@ metric_set evaluate_query(const std::string &run_id, const std::string &query_id
 	JASS::evaluate_mean_reciprocal_rank evaluate_mean_reciprocal_rank_computer(gold_standard_assessments);
 	double mrr = evaluate_mean_reciprocal_rank_computer.compute(query_id, results_list, depth);
 
+	JASS::evaluate_mean_reciprocal_rank4k evaluate_mean_reciprocal_rank_computer_4k(parameter_k, gold_standard_assessments);
+	double mrr4k = evaluate_mean_reciprocal_rank_computer_4k.compute(query_id, results_list, depth);
+
 	JASS::evaluate_precision precision_computer(gold_standard_assessments);
 	double precision = precision_computer.compute(query_id, results_list);
 
@@ -730,6 +744,9 @@ metric_set evaluate_query(const std::string &run_id, const std::string &query_id
 
 	JASS::evaluate_recall recall_computer(gold_standard_assessments);
 	double recall = recall_computer.compute(query_id, results_list);
+
+	JASS::evaluate_expected_search_length esl_computer(gold_standard_assessments);
+	double esl = esl_computer.compute(query_id, results_list);
 
 	JASS::evaluate_f f1_computer(gold_standard_assessments);
 	double f1 = f1_computer.compute(query_id, results_list);
@@ -754,7 +771,7 @@ metric_set evaluate_query(const std::string &run_id, const std::string &query_id
 		selling_power = selling_power_computer.compute(query_id, results_list, depth);
 		}
 
-	return metric_set(run_id, query_id, number_of_relvant_assessments, returned, relevant_returned, mrr, precision, recall, f1, p5, p10, p15, p20, p30, p100, p200, p500, p1000, map, cheapest_precision, selling_power, buying_power, buying_power4k);
+	return metric_set(run_id, query_id, number_of_relvant_assessments, returned, relevant_returned, mrr, mrr4k, precision, recall, esl, f1, p5, p10, p15, p20, p30, p100, p200, p500, p1000, map, cheapest_precision, selling_power, buying_power, buying_power4k);
 	}
 
 /*

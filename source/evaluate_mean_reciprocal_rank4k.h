@@ -36,9 +36,10 @@ namespace JASS
 			/*!
 				@brief Constructor.
 				@param top_k [in] The k relevant items to look for (which is not the depth to look).
+				@param assessments [in] The assessments to use.
 			*/
-			evaluate_mean_reciprocal_rank4k(size_t top_k, std::shared_ptr<evaluate> prices, std::shared_ptr<evaluate> assessments) :
-				evaluate(prices, assessments),
+			evaluate_mean_reciprocal_rank4k(size_t top_k, std::shared_ptr<evaluate> assessments) :
+				evaluate(assessments),
 				top_k(top_k)
 				{
 				/* Nothing */
@@ -83,7 +84,7 @@ namespace JASS
 				/*
 					Evaluate the results list
 				*/
-				evaluate_mean_reciprocal_rank4k calculator(2, nullptr, container);
+				evaluate_mean_reciprocal_rank4k calculator(2, container);
 				double calculated_score = calculator.compute("1", results_list);
 
 				/*
