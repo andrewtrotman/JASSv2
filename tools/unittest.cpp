@@ -86,6 +86,8 @@
 #include "compress_integer_qmx_improved.h"
 #include "compress_integer_carryover_12.h"
 #include "compress_integer_variable_byte.h"
+#include "evaluate_mean_reciprocal_rank4k.h"
+#include "evaluate_expected_search_length.h"
 #include "compress_integer_simple_9_packed.h"
 #include "compress_integer_elias_delta_simd.h"
 #include "compress_integer_simple_8b_packed.h"
@@ -95,6 +97,7 @@
 #include "compress_integer_elias_gamma_bitwise.h"
 #include "compress_integer_elias_delta_bitwise.h"
 #include "compress_integer_gather_elias_gamma_simd.h"
+
 
 /*
 	MAIN()
@@ -215,6 +218,12 @@ int main(void)
 
 		puts("evaluate_mean_reciprocal_rank");
 		JASS::evaluate_mean_reciprocal_rank::unittest();
+
+		puts("evaluate_mean_reciprocal_rank4k");
+		JASS::evaluate_mean_reciprocal_rank4k::unittest();
+
+		puts("evaluate_expected_search_length");
+		JASS::evaluate_expected_search_length::unittest();
 
 		puts("evaluate_map");
 		JASS::evaluate_map::unittest();

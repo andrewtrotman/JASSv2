@@ -124,6 +124,7 @@ int main(int argc, const char *argv[])
 			column_number++;
 			}
 		}
+		
 	/*
 		Output the sorted assessments
 	*/

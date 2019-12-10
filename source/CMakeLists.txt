@@ -110,12 +110,16 @@ set(JASSlib_FILES
 	evaluate_buying_power4k.cpp
 	evaluate_cheapest_precision.h
 	evaluate_cheapest_precision.cpp
+	evaluate_expected_search_length.h
+	evaluate_expected_search_length.cpp
 	evaluate_f.h
 	evaluate_f.cpp
 	evaluate_map.h
 	evaluate_map.cpp
 	evaluate_mean_reciprocal_rank.h
 	evaluate_mean_reciprocal_rank.cpp
+	evaluate_mean_reciprocal_rank4k.h
+	evaluate_mean_reciprocal_rank4k.cpp
 	evaluate_precision.h
 	evaluate_precision.cpp
 	evaluate_recall.h
