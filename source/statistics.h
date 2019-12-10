@@ -130,35 +130,59 @@ namespace JASS
 			static double pearson_correlation(const std::vector<double> &one, const std::vector<double> &two);
 
 			/*
-				STATISTICS::VALUE_TO_RANK()
-				---------------------------
+				STATISTICS::VALUE_TO_FRACTIONAL_RANK()
+				--------------------------------------
 			*/
 			/*!
-				@brief Turn an unordered vector into a vector of ranks.
+				@brief Turn an unordered vector into a vector of fractional ranks (ties are given average positions).
 				@details given a sequence (such as [4.5, 3.2, 9.5]) turn this into a list or ranks (such as [2,1,3]).  As this
 				is templeted, the ordinal type of the ranks can be any integer or float type.  The source type is anything
 				that can be sorted with sort().  The source type must be copyable.
 				This method is used by spearman_correlation() turn scores into ranks before pearson_correlation() is called.
-				sources from: https://stackoverflow.com/questions/41184561/how-to-sort-and-rank-a-vector-in-c-without-using-c11
+				sources from: https://rosettacode.org/wiki/Ranking_methods#C.2B.2B
+
+				Fractional ranks are defined as follows (see Wikipedia: https://en.wikipedia.org/wiki/Ranking#Fractional_ranking_.28.221_2.5_2.5_4.22_ranking.29)
+				for (1.0, 1.0, 2.0, 3.0, 3.0, 4.0, 5.0, 5.0, 5.0), the fractional ranks are: (1.5, 1.5, 3.0, 4.5, 4.5, 6.0, 8.0, 8.0, 8.0)
+				as for value = 1.0, the fractional rank is the average of the ordinal ranks: (1 + 2) / 2 = 1.5.
+				In a similar manner, for value = 5.0, the fractional rank is (7 + 8 + 9) / 3 = 8.0.
+
 				@param destination [out] the rank orders
 				@param source [in] the original distribution
 			*/
 			template <typename ORDINAL_TYPE, typename TYPE>
-			static void value_to_rank(std::vector<ORDINAL_TYPE> &destination, const std::vector<TYPE> &source)
+			static void value_to_fractional_rank(std::vector<ORDINAL_TYPE> &destination, const std::vector<TYPE> &source)
 				{
-				/*
-					Number each element and sort the data
-				*/
-				std::vector<size_t> index(source.size());
-				std::iota(index.begin(), index.end(), 0);
-				std::sort(index.begin(), index.end(), [&source](size_t i1, size_t i2){return source[i1] < source[i2];});
-
-				/*
-					Return the ranking
-				*/
 				destination.resize(source.size());
-				for (ORDINAL_TYPE which = 0; which < source.size(); which++)
-					destination[index[which]] = which;
+				std::vector<TYPE> list = source;
+
+				std::sort(list.begin(), list.end());
+				list.erase(std::unique(list.begin(), list.end()), list.end());
+
+				int rank = 0;
+				for (auto &value : list)
+					{
+					double average = 0.0;
+					int count = 0;
+
+					for (auto &element : source)
+						{
+						if (element == value)
+							{
+							rank++;
+							count++;
+							average += rank;
+							}
+						}
+					average /= count;
+
+					size_t which = 0;
+					for (auto &element : source)
+						{
+						if (element == value)
+							destination[which] = average;
+						which++;
+						}
+					}
 				}
 
 			/*

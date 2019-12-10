@@ -267,8 +267,8 @@ namespace JASS
 		std::vector<double> ordinal_one;
 		std::vector<double> ordinal_two;
 
-		value_to_rank(ordinal_one, one);
-		value_to_rank(ordinal_two, two);
+		value_to_fractional_rank(ordinal_one, one);
+		value_to_fractional_rank(ordinal_two, two);
 
 		return pearson_correlation(ordinal_one, ordinal_two);
 		}
@@ -279,10 +279,20 @@ namespace JASS
 	*/
 	void statistics::unittest(void)
 		{
+		/*
+			Check the fractional ranks code
+		*/
+		std::vector<double> duplicate_ranks = {1.0, 1.0, 2.0, 3.0, 3.0, 4.0, 5.0, 5.0, 5.0};
+		std::vector<double> ranks;
+		value_to_fractional_rank(ranks, duplicate_ranks);
+
+		std::vector<double> correct_ranks = {1.5, 1.5, 3.0, 4.5, 4.5, 6.0, 8.0, 8.0, 8.0};
+		JASS_assert(ranks == correct_ranks);
+
 		std::vector<double> distribution_one =
 			{
 			0.683005338,
-			0.691112732,
+			0.691112732, 
 			0.007038754,
 			0.374320082,
 			0.873312345,

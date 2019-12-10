@@ -746,7 +746,7 @@ metric_set evaluate_query(const std::string &run_id, const std::string &query_id
 	double recall = recall_computer.compute(query_id, results_list);
 
 	JASS::evaluate_expected_search_length esl_computer(gold_standard_assessments);
-	double esl = esl_computer.compute(query_id, results_list);
+	double esl = esl_computer.compute(query_id, results_list, depth);
 
 	JASS::evaluate_f f1_computer(gold_standard_assessments);
 	double f1 = f1_computer.compute(query_id, results_list);
@@ -953,6 +953,13 @@ int main(int argc, const char *argv[])
 			spearman_set.push_back(SELLING_POWER);
 			spearman_set.push_back(BUYING_POWER);
 			spearman_set.push_back(BUYING_POWER4K);
+
+			/*
+				For metrics paper
+			*/
+			spearman_set.push_back(MEAN_RECIPROCAL_RANK);
+			spearman_set.push_back(MEAN_RECIPROCAL_RANK_4K);
+			spearman_set.push_back(ESL);
 			}
 
 		metric_set::spearman_correlate(spearman_set, all_the_averages);
