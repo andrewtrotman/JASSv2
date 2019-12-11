@@ -82,8 +82,8 @@ namespace JASS
 			assessment = find(query_id, result);
 			if (assessment.score != 0)
 				if (--query_k == 0)
-					break;
-
+					return mimimum_cost / total_spending;
+;
 			/*
 				Have we exceeded the search depth?
 			*/
@@ -91,8 +91,11 @@ namespace JASS
 			if (which >= depth)
 				break;
 			}
-
-		return mimimum_cost / total_spending;
+			
+		/*
+			At the end of the results list or exceeded the depth to check.
+		*/
+		return 0;
 		}
 
 	/*
