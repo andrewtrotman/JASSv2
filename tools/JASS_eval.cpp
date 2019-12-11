@@ -46,17 +46,19 @@ std::string parameters_errors;											///< Any errors as a result of command 
 size_t parameter_k = 10;													///< The n parameter to a metric (for example k in buying_power_at_k).
 bool parameter_ttest = false;												///< Conduct t-tests over multiple runs.
 bool parameter_spearman = false;											///< Conduct Spearman's Correlation over multiple metrics (requires multiple runs).
+bool parameter_zeroless_averaging = false;							///< if true then conduct averaging over the number of queries in the run. If false the the numner of queries in the assessments.
 
 auto parameters = std::make_tuple										///< The  command line parameter block
 	(
-	JASS::commandline::parameter("-?", "--help",          "Print this help.", parameter_help),
-	JASS::commandline::parameter("-a", "--assesmentfile", "<filename> Name of the file containing the assessments", parameter_assessments_filename),
-	JASS::commandline::parameter("-k", "--k_equals",      "<n> the K parameter in any parmetric metric (e.g. k in buying_power4k) [default=10]", parameter_k),
-	JASS::commandline::parameter("-n", "--n_equals",      "<n> How far down the resuls list to look (i.e. n in P@n) [default=inf]", parameter_depth),
-	JASS::commandline::parameter("-p", "--perquery",      "Output per-query statistics", parameter_output_per_query_scores),
-	JASS::commandline::parameter("-r", "--runfile",       "<filename[,filename[,...]]> Names of run files to evaluate", parameter_run_filenames),
-	JASS::commandline::parameter("-s", "--spearman",      "Conduct Spearman's Correlation over multple metrics (required multiple runs)", parameter_spearman),
-	JASS::commandline::parameter("-t", "--ttest",         "Conduct t-test (required multiple runs)", parameter_ttest)
+	JASS::commandline::parameter("-?", "--help",               "Print this help.", parameter_help),
+	JASS::commandline::parameter("-a", "--assesmentfile",      "<filename> Name of the file containing the assessments", parameter_assessments_filename),
+	JASS::commandline::parameter("-k", "--k_equals",           "<n> the K parameter in any parmetric metric (e.g. k in buying_power4k) [default=10]", parameter_k),
+	JASS::commandline::parameter("-n", "--n_equals",           "<n> How far down the resuls list to look (i.e. n in P@n) [default=inf]", parameter_depth),
+	JASS::commandline::parameter("-p", "--perquery",           "Output per-query statistics", parameter_output_per_query_scores),
+	JASS::commandline::parameter("-r", "--runfile",            "<filename[,filename[,...]]> Names of run files to evaluate", parameter_run_filenames),
+	JASS::commandline::parameter("-s", "--spearman",           "Conduct Spearman's Correlation over multple metrics (required multiple runs)", parameter_spearman),
+	JASS::commandline::parameter("-t", "--ttest",              "Conduct t-test (required multiple runs)", parameter_ttest),
+	JASS::commandline::parameter("-Z", "--Zeroless-averaging", "Average over the number of queries in the run [default: number of queries in assessments]", parameter_zeroless_averaging)
 	);
 
 enum metric_index
@@ -248,18 +250,21 @@ class metric_set
 	/*!
 		@brief Finalise any metrics by, for example, averaging over the number of queries
 	*/
-	void bake(void)
+	void bake(size_t queres_in_assessments)
 		{
+		size_t number_of_queries = queres_in_assessments;
+
 		/*
 			save the number of queries to put back later
 		*/
-		size_t nummber_of_queries = metric[NUMBER_OF_QUERIES];
+		if (parameter_zeroless_averaging)
+			number_of_queries = metric[NUMBER_OF_QUERIES];
 
 		/*
 			do the averaging
 		*/
 		for (size_t which = METRICS_SENTINAL_ORDINALS + 1; which < METRICS_SENTINAL; which++)
-			metric[which] /= nummber_of_queries;
+			metric[which] /= number_of_queries;
 
 		/*
 			GMAP is a geometric mean not a "regular" mean.
@@ -269,7 +274,8 @@ class metric_set
 		/*
 			put the number of queries back
 		*/
-		metric[NUMBER_OF_QUERIES] = nummber_of_queries;
+		if (parameter_zeroless_averaging)
+			metric[NUMBER_OF_QUERIES] = number_of_queries;
 		}
 
 	/*
@@ -841,7 +847,7 @@ void load_and_evaluate_run(const std::string &filename, std::map<std::string, me
 	/*
 		Generate the averages including geometric means.
 	*/
-	averages.bake();
+	averages.bake(gold_standard_assessments->query_count());
 	}
 
 /*
@@ -946,7 +952,7 @@ int main(int argc, const char *argv[])
 	*/
 	if (parameter_spearman && all_the_averages.size() >= 2)
 		{
-		std::vector<metric_index> spearman_set = {F1, MEAN_AVERAGE_PRECISION};
+		std::vector<metric_index> spearman_set = {F1, MEAN_AVERAGE_PRECISION, PRECISION, RECALL};
 		if (gold_standard_price->assessments.size() != 0)
 			{
 			spearman_set.push_back(CHEAPEST_PRECISION);

@@ -45,16 +45,13 @@ namespace JASS
 				break;
 
 		/*
-			There is no lowest priced item as there are no relevant items.
+			There are fewer than k relevant items then we cannot fulfill the query - so we get a 0.
 		*/
-		if (query_prices.size() == 0)
-			return 1;
+		if (query_prices.size() < top_k)
+			return 0;
 		std::sort(query_prices.begin(), query_prices.end());
 
-		/*
-			If there are fewer then k relevant items then reduce k as this equates to buying power "for your entire stock".
-		*/
-		size_t query_k = maths::minimum(query_prices.size(), top_k);
+		size_t query_k = top_k;
 
 		/*
 			Work out what the minimum price for the top k items.
@@ -151,7 +148,7 @@ namespace JASS
 		/*
 			Compare to 5 decimal places
 		*/
-		double true_precision_one = 2.0 / 6.0;
+		double true_precision_one = 0;		// fails because there aren't 2 relevant items in the results list.
 		JASS_assert(std::round(calculated_precision * 10000) == std::round(true_precision_one * 10000));
 
 		/*

@@ -390,6 +390,28 @@ namespace JASS
 				}
 
 			/*
+				EVALUATE::QUERY_COUNT()
+				-----------------------
+			*/
+			/*!
+				@brief Count the number of queries in the assessments
+			*/
+			size_t query_count() const
+				{
+				std::string previous_query_id;
+				size_t queries = 0;
+
+				for (const auto &assessment : assessments)
+					if (assessment.query_id != previous_query_id)
+						{
+						queries++;
+						previous_query_id = assessment.query_id;
+						}
+
+				return queries;
+				}
+
+			/*
 				EVALUATE::UNITTEST_ONE()
 				------------------------
 			*/

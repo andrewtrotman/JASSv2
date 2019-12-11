@@ -30,8 +30,8 @@ namespace JASS
 				{
 				rr += 1.0 / static_cast<double>(which);
 				found++;
-				if (found > top_k)
-					break;
+				if (found >= top_k)
+					return rr / static_cast<double>(top_k);
 				}
 
 			which++;
@@ -40,6 +40,6 @@ namespace JASS
 				break;
 			}
 
-		return rr / static_cast<double>(top_k);
+		return 0;
 		}
 	}
