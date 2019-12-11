@@ -27,7 +27,8 @@ namespace JASS
 			{
 			auto assessment = find(query_id, result);
 
-			found_and_relevant += assessment.score;
+			if (assessment.score != 0)
+				found_and_relevant++;
 
 			which++;
 
