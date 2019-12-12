@@ -83,6 +83,24 @@ enum metric_index
 	P_AT_200,									///< set wise precision of the results list.
 	P_AT_500,									///< set wise precision of the results list.
 	P_AT_1000,									///< set wise precision of the results list.
+	R_AT_5,										///< set wise recall of the results list.
+	R_AT_10,										///< set wise recall of the results list.
+	R_AT_15,										///< set wise recall of the results list.
+	R_AT_20,										///< set wise recall of the results list.
+	R_AT_30,										///< set wise recall of the results list.
+	R_AT_100,									///< set wise recall of the results list.
+	R_AT_200,									///< set wise recall of the results list.
+	R_AT_500,									///< set wise recall of the results list.
+	R_AT_1000,									///< set wise recall of the results list.
+	F1_AT_5,										///< set wise f1 of the results list.
+	F1_AT_10,									///< set wise f1 of the results list.
+	F1_AT_15,									///< set wise f1 of the results list.
+	F1_AT_20,									///< set wise f1 of the results list.
+	F1_AT_30,									///< set wise f1 of the results list.
+	F1_AT_100,									///< set wise f1 of the results list.
+	F1_AT_200,									///< set wise f1 of the results list.
+	F1_AT_500,									///< set wise f1 of the results list.
+	F1_AT_1000,									///< set wise f1 of the results list.
 	MEAN_AVERAGE_PRECISION,					///< mean average precision (MAP).
 	GEOMETRIC_MEAN_AVERAGE_PRECISION,	///< geometric_mean average precision (GMAP).
 	CHEAPEST_PRECISION,						///< set wise precision of the cheapest items (if we are an eCommerce metric).
@@ -114,6 +132,24 @@ const std::vector<std::string> metric_name =
 	"Precision at 200",
 	"Precision at 500",
 	"Precision at 1000",
+	"Recall at 5",
+	"Recall at 10",
+	"Recall at 15",
+	"Recall at 20",
+	"Recall at 30",
+	"Recall at 100",
+	"Recall at 200",
+	"Recall at 500",
+	"Recall at 1000",
+	"F1 at 5",
+	"F1 at 10",
+	"F1 at 15",
+	"F1 at 20",
+	"F1 at 30",
+	"F1 at 100",
+	"F1 at 200",
+	"F1 at 500",
+	"F1 at 1000",
 	"Mean Average Precision (MAP)",
 	"Geometric MAP (GMAP)",
 	"Cheapest Precision",
@@ -172,12 +208,34 @@ class metric_set
 			@param p_at_200 [in] Setwise precision at n
 			@param p_at_500 [in] Setwise precision at n
 			@param p_at_1000 [in] Setwise precision at n
+			@param r_at_5 [in] Setwise recall at n
+			@param r_at_10 [in] Setwise recall at n
+			@param r_at_15 [in] Setwise recall at n
+			@param r_at_20 [in] Setwise recall at n
+			@param r_at_30 [in] Setwise recall at n
+			@param r_at_100 [in] Setwise recall at n
+			@param r_at_200 [in] Setwise recall at n
+			@param r_at_500 [in] Setwise recall at n
+			@param r_at_1000 [in] Setwise recall at n
+			@param f1_at_5 [in] Setwise f1 at n
+			@param f1_at_10 [in] Setwise f1 at n
+			@param f1_at_15 [in] Setwise f1 at n
+			@param f1_at_20 [in] Setwise f1 at n
+			@param f1_at_30 [in] Setwise f1 at n
+			@param f1_at_100 [in] Setwise f1 at n
+			@param f1_at_200 [in] Setwise f1 at n
+			@param f1_at_500 [in] Setwise f1 at n
+			@param f1_at_1000 [in] Setwise f1 at n
 			@param cheapest_precision [in] The cheapest precision of this query.
 			@param selling_power [in] The selling power of this query.
 			@param buying_power [in] The buying power of this query.
 			@param buying_power4k [in] The buying power for k relevant of this query.
 		*/
-		metric_set(const std::string &run_id, const std::string &query_id, size_t relevant_count, size_t returned, size_t relevant_returned, double mean_reciprocal_rank, double mean_reciprocal_rank_4k, double precision, double recall, double expected_search_length, double f1, double p_at_5, double p_at_10, double p_at_15, double p_at_20, double p_at_30, double p_at_100, double p_at_200, double p_at_500, double p_at_1000, double mean_average_precision, double cheapest_precision, double selling_power, double buying_power, double buying_power4k) :
+		metric_set(const std::string &run_id, const std::string &query_id, size_t relevant_count, size_t returned, size_t relevant_returned, double mean_reciprocal_rank, double mean_reciprocal_rank_4k, double precision, double recall, double expected_search_length, double f1,
+			double p_at_5, double p_at_10, double p_at_15, double p_at_20, double p_at_30, double p_at_100, double p_at_200, double p_at_500, double p_at_1000,
+			double r_at_5, double r_at_10, double r_at_15, double r_at_20, double r_at_30, double r_at_100, double r_at_200, double r_at_500, double r_at_1000,
+			double f1_at_5, double f1_at_10, double f1_at_15, double f1_at_20, double f1_at_30, double f1_at_100, double f1_at_200, double f1_at_500, double f1_at_1000,
+			double mean_average_precision, double cheapest_precision, double selling_power, double buying_power, double buying_power4k) :
 			run_id(run_id),
 			query_id(query_id)
 			{
@@ -200,6 +258,24 @@ class metric_set
 			metric[P_AT_200] = p_at_200;
 			metric[P_AT_500] = p_at_500;
 			metric[P_AT_1000] = p_at_1000;
+			metric[R_AT_5] = r_at_5;
+			metric[R_AT_10] = r_at_10;
+			metric[R_AT_15] = r_at_15;
+			metric[R_AT_20] = r_at_20;
+			metric[R_AT_30] = r_at_30;
+			metric[R_AT_100] = r_at_100;
+			metric[R_AT_200] = r_at_200;
+			metric[R_AT_500] = r_at_500;
+			metric[R_AT_1000] = r_at_1000;
+			metric[F1_AT_5] = f1_at_5;
+			metric[F1_AT_10] = f1_at_10;
+			metric[F1_AT_15] = f1_at_15;
+			metric[F1_AT_20] = f1_at_20;
+			metric[F1_AT_30] = f1_at_30;
+			metric[F1_AT_100] = f1_at_100;
+			metric[F1_AT_200] = f1_at_200;
+			metric[F1_AT_500] = f1_at_500;
+			metric[F1_AT_1000] = f1_at_1000;
 			metric[MEAN_AVERAGE_PRECISION] = mean_average_precision;
 			metric[GEOMETRIC_MEAN_AVERAGE_PRECISION] = mean_average_precision == 0 ? 0 : log(mean_average_precision);
 			metric[CHEAPEST_PRECISION] = cheapest_precision;
@@ -751,11 +827,31 @@ metric_set evaluate_query(const std::string &run_id, const std::string &query_id
 	JASS::evaluate_recall recall_computer(gold_standard_assessments);
 	double recall = recall_computer.compute(query_id, results_list);
 
+	double r5 = recall_computer.compute(query_id, results_list, 5);
+	double r10 = recall_computer.compute(query_id, results_list, 10);
+	double r15 = recall_computer.compute(query_id, results_list, 15);
+	double r20 = recall_computer.compute(query_id, results_list, 20);
+	double r30 = recall_computer.compute(query_id, results_list, 30);
+	double r100 = recall_computer.compute(query_id, results_list, 100);
+	double r200 = recall_computer.compute(query_id, results_list, 200);
+	double r500 = recall_computer.compute(query_id, results_list, 500);
+	double r1000 = recall_computer.compute(query_id, results_list, 1000);
+
 	JASS::evaluate_expected_search_length esl_computer(gold_standard_assessments);
 	double esl = esl_computer.compute(query_id, results_list, depth);
 
 	JASS::evaluate_f f1_computer(gold_standard_assessments);
 	double f1 = f1_computer.compute(query_id, results_list);
+
+	double f1_5 = f1_computer.compute(query_id, results_list, 5);
+	double f1_10 = f1_computer.compute(query_id, results_list, 10);
+	double f1_15 = f1_computer.compute(query_id, results_list, 15);
+	double f1_20 = f1_computer.compute(query_id, results_list, 20);
+	double f1_30 = f1_computer.compute(query_id, results_list, 30);
+	double f1_100 = f1_computer.compute(query_id, results_list, 100);
+	double f1_200 = f1_computer.compute(query_id, results_list, 200);
+	double f1_500 = f1_computer.compute(query_id, results_list, 500);
+	double f1_1000 = f1_computer.compute(query_id, results_list, 1000);
 
 	double cheapest_precision = 0;
 	double buying_power = 0;
@@ -777,7 +873,11 @@ metric_set evaluate_query(const std::string &run_id, const std::string &query_id
 		selling_power = selling_power_computer.compute(query_id, results_list, depth);
 		}
 
-	return metric_set(run_id, query_id, number_of_relvant_assessments, returned, relevant_returned, mrr, mrr4k, precision, recall, esl, f1, p5, p10, p15, p20, p30, p100, p200, p500, p1000, map, cheapest_precision, selling_power, buying_power, buying_power4k);
+	return metric_set(run_id, query_id, number_of_relvant_assessments, returned, relevant_returned, mrr, mrr4k, precision, recall, esl, f1,
+		p5, p10, p15, p20, p30, p100, p200, p500, p1000,
+		r5, r10, r15, r20, r30, r100, r200, r500, r1000,
+		f1_5, f1_10, f1_15, f1_20, f1_30, f1_100, f1_200, f1_500, f1_1000,
+		map, cheapest_precision, selling_power, buying_power, buying_power4k);
 	}
 
 /*
@@ -952,7 +1052,60 @@ int main(int argc, const char *argv[])
 	*/
 	if (parameter_spearman && all_the_averages.size() >= 2)
 		{
-		std::vector<metric_index> spearman_set = {F1, MEAN_AVERAGE_PRECISION, PRECISION, RECALL};
+		std::vector<metric_index> spearman_set = {F1, MEAN_AVERAGE_PRECISION};
+		switch (parameter_depth)
+			{
+			case 5:
+				spearman_set.push_back(P_AT_5);
+				spearman_set.push_back(R_AT_5);
+				spearman_set.push_back(F1_AT_5);
+				break;
+			case 10:
+				spearman_set.push_back(P_AT_10);
+				spearman_set.push_back(R_AT_10);
+				spearman_set.push_back(F1_AT_10);
+				break;
+			case 15:
+				spearman_set.push_back(P_AT_15);
+				spearman_set.push_back(R_AT_15);
+				spearman_set.push_back(F1_AT_15);
+				break;
+			case 20:
+				spearman_set.push_back(P_AT_20);
+				spearman_set.push_back(R_AT_20);
+				spearman_set.push_back(F1_AT_20);
+				break;
+			case 30:
+				spearman_set.push_back(P_AT_30);
+				spearman_set.push_back(R_AT_30);
+				spearman_set.push_back(F1_AT_30);
+				break;
+			case 100:
+				spearman_set.push_back(P_AT_100);
+				spearman_set.push_back(R_AT_100);
+				spearman_set.push_back(F1_AT_100);
+				break;
+			case 200:
+				spearman_set.push_back(P_AT_200);
+				spearman_set.push_back(R_AT_200);
+				spearman_set.push_back(F1_AT_200);
+				break;
+			case 500:
+				spearman_set.push_back(P_AT_500);
+				spearman_set.push_back(R_AT_500);
+				spearman_set.push_back(F1_AT_500);
+				break;
+			case 1000:
+				spearman_set.push_back(P_AT_1000);
+				spearman_set.push_back(R_AT_1000);
+				spearman_set.push_back(F1_AT_1000);
+				break;
+			default:
+				spearman_set.push_back(PRECISION);
+				spearman_set.push_back(RECALL);
+				spearman_set.push_back(F1);
+			}
+
 		if (gold_standard_price->assessments.size() != 0)
 			{
 			spearman_set.push_back(CHEAPEST_PRECISION);
