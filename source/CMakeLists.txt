@@ -122,6 +122,8 @@ set(JASSlib_FILES
 	evaluate_mean_reciprocal_rank4k.cpp
 	evaluate_precision.h
 	evaluate_precision.cpp
+	evaluate_rank_biased_precision.h
+	evaluate_rank_biased_precision.cpp
 	evaluate_recall.h
 	evaluate_recall.cpp
 	evaluate_relevant_returned.h

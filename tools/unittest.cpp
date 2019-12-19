@@ -85,6 +85,7 @@
 #include "compress_integer_qmx_original.h"
 #include "compress_integer_qmx_improved.h"
 #include "compress_integer_carryover_12.h"
+#include "evaluate_rank_biased_precision.h"
 #include "compress_integer_variable_byte.h"
 #include "evaluate_mean_reciprocal_rank4k.h"
 #include "evaluate_expected_search_length.h"
@@ -97,7 +98,6 @@
 #include "compress_integer_elias_gamma_bitwise.h"
 #include "compress_integer_elias_delta_bitwise.h"
 #include "compress_integer_gather_elias_gamma_simd.h"
-
 
 /*
 	MAIN()
@@ -248,6 +248,9 @@ int main(void)
 
 		puts("evaluate_cheapest_precision");
 		JASS::evaluate_cheapest_precision::unittest();
+
+		puts("evaluate_rank_biased_precision");
+		JASS::evaluate_rank_biased_precision::unittest();
 
 		puts("bitstring");
 		JASS::bitstring::unittest();

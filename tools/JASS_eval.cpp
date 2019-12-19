@@ -26,6 +26,7 @@
 #include "evaluate_buying_power4k.h"
 #include "evaluate_cheapest_precision.h"
 #include "evaluate_mean_reciprocal_rank.h"
+#include "evaluate_rank_biased_precision.h"
 #include "evaluate_mean_reciprocal_rank4k.h"
 #include "evaluate_expected_search_length.h"
 
@@ -47,6 +48,7 @@ size_t parameter_k = 10;													///< The n parameter to a metric (for examp
 bool parameter_ttest = false;												///< Conduct t-tests over multiple runs.
 bool parameter_spearman = false;											///< Conduct Spearman's Correlation over multiple metrics (requires multiple runs).
 bool parameter_zeroless_averaging = false;							///< if true then conduct averaging over the number of queries in the run. If false the the numner of queries in the assessments.
+double parameter_probability = 0.95;										///< used in metrics like rbp.
 
 auto parameters = std::make_tuple										///< The  command line parameter block
 	(
@@ -55,6 +57,7 @@ auto parameters = std::make_tuple										///< The  command line parameter bloc
 	JASS::commandline::parameter("-k", "--k_equals",           "<n> the K parameter in any parmetric metric (e.g. k in buying_power4k) [default=10]", parameter_k),
 	JASS::commandline::parameter("-n", "--n_equals",           "<n> How far down the resuls list to look (i.e. n in P@n) [default=inf]", parameter_depth),
 	JASS::commandline::parameter("-p", "--perquery",           "Output per-query statistics", parameter_output_per_query_scores),
+	JASS::commandline::parameter("-P", "--probability",        "Probability of looking to the next result in metric such as RBP [default=0.95]", parameter_probability),
 	JASS::commandline::parameter("-r", "--runfile",            "<filename[,filename[,...]]> Names of run files to evaluate", parameter_run_filenames),
 	JASS::commandline::parameter("-s", "--spearman",           "Conduct Spearman's Correlation over multple metrics (required multiple runs)", parameter_spearman),
 	JASS::commandline::parameter("-t", "--ttest",              "Conduct t-test (required multiple runs)", parameter_ttest),
@@ -102,6 +105,7 @@ enum metric_index
 	F1_AT_500,									///< set wise f1 of the results list.
 	F1_AT_1000,									///< set wise f1 of the results list.
 	MEAN_AVERAGE_PRECISION,					///< mean average precision (MAP).
+	RANK_BIASED_PRECISION,					///< Rank Biased Precision (RBP).
 	GEOMETRIC_MEAN_AVERAGE_PRECISION,	///< geometric_mean average precision (GMAP).
 	CHEAPEST_PRECISION,						///< set wise precision of the cheapest items (if we are an eCommerce metric).
 	SELLING_POWER,								///< selling power (if we are an eCommerce metric).
@@ -119,43 +123,44 @@ const std::vector<std::string> metric_name =
 	"SENTINAL",
 	"Mean Reciprocal Rank (MRR)",
 	"Mean Reciprocal Rank for k(MRR4K)",
-	"Precision",
-	"Recall",
-	"Expected Search Length",
-	"F1",
-	"Precision at 5",
-	"Precision at 10",
-	"Precision at 15",
-	"Precision at 20",
-	"Precision at 30",
-	"Precision at 100",
-	"Precision at 200",
-	"Precision at 500",
-	"Precision at 1000",
-	"Recall at 5",
-	"Recall at 10",
-	"Recall at 15",
-	"Recall at 20",
-	"Recall at 30",
-	"Recall at 100",
-	"Recall at 200",
-	"Recall at 500",
-	"Recall at 1000",
-	"F1 at 5",
-	"F1 at 10",
-	"F1 at 15",
-	"F1 at 20",
-	"F1 at 30",
-	"F1 at 100",
-	"F1 at 200",
-	"F1 at 500",
-	"F1 at 1000",
+	"Precision (P)",
+	"Recall (R)",
+	"Expected Search Length (ESL)",
+	"F1 (F1)",
+	"Precision at 5 (P@5)",
+	"Precision at 10 (P@10)",
+	"Precision at 15 (P@15)",
+	"Precision at 20 (P@20)",
+	"Precision at 30 (P@30)",
+	"Precision at 100 (P@100)",
+	"Precision at 200 (P@200)",
+	"Precision at 500 (P@500)",
+	"Precision at 1000 (P@1000)",
+	"Recall at 5 (R@5)",
+	"Recall at 10 (R@10)",
+	"Recall at 15 (R@15)",
+	"Recall at 20 (R@20)",
+	"Recall at 30 (R@30)",
+	"Recall at 100 (R@100)",
+	"Recall at 200 (R@200)",
+	"Recall at 500 (R@500)",
+	"Recall at 1000 (R@1000)",
+	"F1 at 5 (F1@5)",
+	"F1 at 10 (F1@10)",
+	"F1 at 15 (F1@15)",
+	"F1 at 20 (F1@20)",
+	"F1 at 30 (F1@30)",
+	"F1 at 100 (F1@100)",
+	"F1 at 200 (F1@200)",
+	"F1 at 500 (F1@500)",
+	"F1 at 1000 (F1@1000)",
 	"Mean Average Precision (MAP)",
+	"Rank Biased Precision (RBP)",
 	"Geometric MAP (GMAP)",
-	"Cheapest Precision",
-	"Selling Power",
-	"Buying Power",
-	"Buying Power for k",
+	"Cheapest Precision (PC)",
+	"Selling Power (SP)",
+	"Buying Power (BP)",
+	"Buying Power for k (BP4K)",
 	"SENTINAL"
 	};
 
@@ -235,7 +240,7 @@ class metric_set
 			double p_at_5, double p_at_10, double p_at_15, double p_at_20, double p_at_30, double p_at_100, double p_at_200, double p_at_500, double p_at_1000,
 			double r_at_5, double r_at_10, double r_at_15, double r_at_20, double r_at_30, double r_at_100, double r_at_200, double r_at_500, double r_at_1000,
 			double f1_at_5, double f1_at_10, double f1_at_15, double f1_at_20, double f1_at_30, double f1_at_100, double f1_at_200, double f1_at_500, double f1_at_1000,
-			double mean_average_precision, double cheapest_precision, double selling_power, double buying_power, double buying_power4k) :
+			double mean_average_precision, double rank_biased_precision, double cheapest_precision, double selling_power, double buying_power, double buying_power4k) :
 			run_id(run_id),
 			query_id(query_id)
 			{
@@ -277,6 +282,7 @@ class metric_set
 			metric[F1_AT_500] = f1_at_500;
 			metric[F1_AT_1000] = f1_at_1000;
 			metric[MEAN_AVERAGE_PRECISION] = mean_average_precision;
+			metric[RANK_BIASED_PRECISION] = rank_biased_precision;
 			metric[GEOMETRIC_MEAN_AVERAGE_PRECISION] = mean_average_precision == 0 ? 0 : log(mean_average_precision);
 			metric[CHEAPEST_PRECISION] = cheapest_precision;
 			metric[SELLING_POWER] = selling_power;
@@ -800,6 +806,10 @@ metric_set evaluate_query(const std::string &run_id, const std::string &query_id
 
 	JASS::evaluate_map evaluate_map_computer(gold_standard_assessments);
 	double map = evaluate_map_computer.compute(query_id, results_list, depth);
+
+	JASS::evaluate_rank_biased_precision evaluate_rbp_computer(parameter_probability, gold_standard_assessments);
+	double rbp = evaluate_map_computer.compute(query_id, results_list, depth);
+
 	size_t number_of_relvant_assessments = evaluate_map_computer.relevance_count(query_id);
 
 	JASS::evaluate_relevant_returned evaluate_relevant_returned_computer(gold_standard_assessments);
@@ -877,7 +887,7 @@ metric_set evaluate_query(const std::string &run_id, const std::string &query_id
 		p5, p10, p15, p20, p30, p100, p200, p500, p1000,
 		r5, r10, r15, r20, r30, r100, r200, r500, r1000,
 		f1_5, f1_10, f1_15, f1_20, f1_30, f1_100, f1_200, f1_500, f1_1000,
-		map, cheapest_precision, selling_power, buying_power, buying_power4k);
+		map, rbp, cheapest_precision, selling_power, buying_power, buying_power4k);
 	}
 
 /*
@@ -1119,6 +1129,7 @@ int main(int argc, const char *argv[])
 			spearman_set.push_back(MEAN_RECIPROCAL_RANK);
 			spearman_set.push_back(MEAN_RECIPROCAL_RANK_4K);
 			spearman_set.push_back(ESL);
+			spearman_set.push_back(RANK_BIASED_PRECISION);
 			}
 
 		metric_set::spearman_correlate(spearman_set, all_the_averages);
