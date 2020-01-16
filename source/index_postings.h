@@ -17,6 +17,8 @@
 #include <sstream>
 #include <iostream>
 
+#include "maths.h"
+#include "posting.h"
 #include "dynamic_array.h"
 #include "compress_integer.h"
 #include "allocator_pool.h"
@@ -30,7 +32,7 @@ namespace JASS
 		--------------------
 	*/
 	/*!
-		@brief Non-thread-Safe object that accumulates a single postings list during indexing.
+		@brief Non-thread-safe object that accumulates a single postings list during indexing.
 	*/
 	class index_postings
 		{
@@ -71,7 +73,7 @@ namespace JASS
 				};
 
 		private:
-			compress_integer::integer highest_document;															///< The higest document number seen in this postings list (counting from 1)
+			compress_integer::integer highest_document;									///< The higest document number seen in this postings list (counting from 1)
 			dynamic_array<uint8_t> document_ids;											///< Array holding the docids (variable byte encoded)
 			dynamic_array<index_postings_impact::impact_type> term_frequencies;	///< Array holding the term frequencies (as integers)
 
@@ -117,7 +119,7 @@ namespace JASS
 					/*
 						First time we've seen this term in this document so add a new document ID and set the term frequency to 1.
 					*/
-					uint8_t space[10];				// worst case for a 64-bit integer (70 bits  / 7 bits per byte = 10 bytes)
+					uint8_t space[10];				// worst case for a 64-bit integer (70 bits / 7 bits per byte = 10 bytes)
 					uint8_t *ending = space;		// write into here;
 
 					/*
@@ -130,6 +132,46 @@ namespace JASS
 					term_frequencies.push_back(1);
 
 					highest_document = document_id;
+					}
+				}
+
+			/*
+				INDEX_POSTINGS::PUSH_BACK()
+				---------------------------
+			*/
+			/*!
+				@brief Add a set of postings to the end of the postings list (warning)
+				@details This method assumes the caller is either adding postings to an index one at a time or
+				is adding postings to an index block at a time.  WARNING: it with JASS_assert() if there are
+				already postings in the index from the document-at-a-time adding approach.
+
+				@param data [in] The postings list to use.  Document ids are assumed to be D1-encoded.
+			*/
+			virtual void push_back(const std::vector<JASS::posting> &data)
+				{
+				/*
+					Make sure the user isn't mixing push_back(docid) and push_back(postings_lists) calls.
+				*/
+				JASS_assert(highest_document == 0);
+
+				size_t postings_list_length = data.size();
+				for (size_t current = 0; current < postings_list_length; current++)
+					{
+					uint8_t space[10];					// worst case for a 64-bit integer (70 bits / 7 bits per byte = 10 bytes)
+					uint8_t *ending = space;			// write into here;
+					
+					/*
+						Compress into the temporary buffer then copy into the postings
+					*/
+					compress_integer_variable_byte::compress_into(ending, data[current].docid);
+					for (uint8_t *byte = space; byte < ending; byte++)
+						document_ids.push_back(*byte);
+
+					/*
+						Set the term frequency
+					*/
+					decltype(index_postings_impact::largest_impact) frequency = data[current].term_frequency;
+					term_frequencies.push_back(JASS::maths::minimum(frequency, index_postings_impact::largest_impact));
 					}
 				}
 

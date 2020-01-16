@@ -78,7 +78,7 @@ namespace JASS
 						};
 				public:
 					static constexpr size_t max_token_length = 1024;		///< Any token longer that this will be truncated at this length
-					
+
 				public:
 					uint8_t buffer[max_token_length];	///< The token manages its memory through this buffer
 					slice lexeme;								///< The token itself, stored as a slice (pointer / length pair)
@@ -97,13 +97,30 @@ namespace JASS
 						{
 						return lexeme;
 						}
+
+					/*
+						PARSER::TOKEN::SET()
+						--------------------
+					*/
+					/*!
+						@brief create a token from a slice without copying it and without looking to see what kind of token it is.
+					*/
+					void set(slice term)
+						{
+						*buffer = '\0';
+						lexeme = term;
+						type = other;
+						}
 				};
-			
+
+		private:
+			document build_document;			///< A document used when a string is passed into this object.
+
 		protected:
 			token eof_token;						///< Sentinal returned when reading past end of document.
 			const document *the_document;		///< The document that is currently being parsed.
-			uint8_t *current;						///< The current location within the document.
-			uint8_t *end_of_document;			///< Pointer to the end of the document, used to avoid read past end of buffer.
+			const uint8_t *current;				///< The current location within the document.
+			const uint8_t *end_of_document;	///< Pointer to the end of the document, used to avoid read past end of buffer.
 			token current_token;					///< The token that is currently being build.  A reference to this is returned when the token is complete.
 			
 		protected:
@@ -178,7 +195,21 @@ namespace JASS
 				current = (uint8_t *)document.contents.address();
 				end_of_document = (uint8_t *)document.contents.address() + document.contents.size();
 				}
-			
+
+			/*
+				PARSER::SET_DOCUMENT()
+				----------------------
+			*/
+			/*!
+				@brief Parse a string (rather than a document).
+				@param document [in] The document to parse.  Must remain in scope for the entire parsing process (a copy is not taken).
+			*/
+			virtual void set_document(const std::string &document)
+				{
+				current = reinterpret_cast<const uint8_t *>(document.c_str());
+				end_of_document = current + document.size();
+				}
+
 			/*
 				PARSER::GET_NEXT_TOKEN()
 				------------------------

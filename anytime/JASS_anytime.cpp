@@ -309,7 +309,7 @@ std::cout << "Maximum numnber of postings to process:" << postings_to_process <<
 		Read from the query file into a list of queries array.
 	*/
 	JASS::channel_file input(parameter_queryfilename);		// read from here
-	std::string query;												// the channel read goes into here
+	std::string query;												// the channel read goes into memory managed by this object
 
 	/*
 		Read the query set and bung it into a vector

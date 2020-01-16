@@ -15,6 +15,7 @@
 #pragma once
 
 #include <stdint.h>
+#include "slice.h"
 
 namespace JASS
 	{
@@ -30,49 +31,6 @@ namespace JASS
 	class protobuf
 		{
 		public:
-			/*
-				CLASS PROTOBUF::SLICE
-				---------------------
-			*/
-			/*!
-				@brief A <pointer, length> tupple used to point into a buffer without copying part of it.
-			*/
-			class slice
-				{
-				public:
-					const uint8_t *start;			///< Pointer to data
-					size_t length;				///< Length of the data being pointed to
-
-				public:
-					/*
-						PROTOBUF::SLICE::SLICE()
-						------------------------
-					*/
-					/*!
-						@brief Constructor
-						@param start [in] pointer to data
-						@param length [in] the length of that data
-					*/
-					slice(const uint8_t *start, size_t length) :
-						start(start),
-						length(length)
-						{
-						/* Nothing */
-						}
-
-					/*
-						PROTOBUF::SLICE::SLICE()
-						------------------------
-					*/
-					/*!
-						@brief Constructor
-					*/
-					slice() : slice(0,0)
-						{
-						/* Nothing */
-						}
-				} ;
-
 			/*
 				ENUM PROTOBUF::WIRE_TYPE
 				------------------------
@@ -144,7 +102,7 @@ namespace JASS
 					got |= (next & 0x7F) << shift;
 					}
 
-				return 0;
+				return got;
 				}
 
 			/*
@@ -206,7 +164,7 @@ namespace JASS
 				const uint8_t *at = &stream[0];
 				stream += length;
 
-				return slice(at, length);
+				return slice(const_cast<uint8_t *>(at), length);
 				}
 
 			/*

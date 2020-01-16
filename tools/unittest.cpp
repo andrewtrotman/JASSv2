@@ -38,6 +38,7 @@
 #include "parser_query.h"
 #include "parser_fasta.h"
 #include "channel_file.h"
+#include "channel_trec.h"
 #include "dynamic_array.h"
 #include "allocator_cpp.h"
 #include "instream_file.h"
@@ -302,6 +303,9 @@ int main(void)
 
 		puts("channel_file");
 		JASS::channel_file::unittest();
+
+		puts("channel_trec");
+		JASS::channel_trec::unittest();
 
 		puts("parser");
 		JASS::parser::unittest();

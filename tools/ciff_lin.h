@@ -42,6 +42,7 @@
 
 #include <vector>
 
+#include "posting.h"
 #include "protobuf.h"
 
 namespace JASS
@@ -101,22 +102,7 @@ namespace JASS
 			class postings_list
 				{
 				public:
-					/*
-						CLASS CIFF_LIN::POSTING
-						-----------------------
-					*/
-					/*!
-						@brief A <docid,tf> tuple.
-					*/
-					class posting
-						{
-						public:
-							uint32_t docid;					///< The Document identifier (probably d-gap encoded).
-							uint32_t term_frequency;		///< The number of time the term occurs in document with id docid.
-						} ;
-
-				public:
-					protobuf::slice term;					///< The term as a <pointer,length> tuple.
+					slice term;					///< The term as a <pointer,length> tuple.
 					uint64_t document_frequency;			///< The number of documents containing the term.
 					uint64_t collection_frequency;		///< The number of times the term occurs in the collection.
 					std::vector<posting> postings;		///< The postings list, a vector of <d,tf> tuples
@@ -133,7 +119,7 @@ namespace JASS
 						@param stream_end [in] A pointer to the byte after the last byte in the stream.
 						@return OK on success, FAIL on error (unknown field number)
 					*/
-					static error_code get_next_postings_pair(postings_list::posting &into, const uint8_t *&stream, const uint8_t *stream_end)
+					static error_code get_next_postings_pair(posting &into, const uint8_t *&stream, const uint8_t *stream_end)
 						{
 						while (stream < stream_end)
 							{
@@ -188,15 +174,15 @@ namespace JASS
 								}
 							else if (type == protobuf::BLOB)
 								{
-								protobuf::slice term = protobuf::get_blob(stream);
+								slice term = protobuf::get_blob(stream);
 
 								if (field == 1)
 									into.term = term;
 								else if (field == 4)
 									{
-									const uint8_t *here = term.start;
-									postings_list::posting d_tf_pair;
-									if (get_next_postings_pair(d_tf_pair, here, here + term.length) == FAIL)
+									const uint8_t *here = reinterpret_cast<const uint8_t *> (term.address());
+									posting d_tf_pair;
+									if (get_next_postings_pair(d_tf_pair, here, here + term.size()) == FAIL)
 										return FAIL;
 									into.postings.push_back(d_tf_pair);
 									}
@@ -206,6 +192,21 @@ namespace JASS
 							}
 						return OK;
 						}
+
+				/*
+					CIFF_LIN::POSTINGS_LIST::CLEAR()
+					--------------------------------
+				*/
+				/*!
+					@brief removes all content from the postings list
+				*/
+				void clear(void)
+					{
+					term.clear();
+					document_frequency = 0;
+					collection_frequency = 0;
+					postings.clear();
+					}
 				} ;
 				
 		private:
@@ -254,6 +255,7 @@ namespace JASS
 						{
 						int64_t postings_list_length = protobuf::get_uint64_t(stream);
 
+						postings.clear();
 						if (postings_list::get_next_postings(postings, stream, stream + postings_list_length) == FAIL)
 							{
 							/*

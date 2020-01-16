@@ -1,7 +1,7 @@
 /*
 	EXAMINE_INDEX.CPP
 	-----------------
-	Written bu Andrew Trotman.
+	Written by Andrew Trotman.
 
 	Pass over an index and compute statistis for it.
 */

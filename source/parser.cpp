@@ -216,7 +216,7 @@ namespace JASS
 					/*
 						Get the name of the tag (without the '<' or '>')
 					*/
-					uint8_t *start = current;
+					const uint8_t *start = current;
 
 					current += bytes;
 					codepoint = unicode::utf8_to_codepoint(current, end_of_document, bytes);
@@ -225,7 +225,7 @@ namespace JASS
 						current += bytes;
 						codepoint = unicode::utf8_to_codepoint(current, end_of_document, bytes);
 						}
-					uint8_t *end = current;
+					const uint8_t *end = current;
 
 					/*
 						Attributes are ignored at the moment (Last time I needed to index attributes was in the 1990s!)
@@ -272,7 +272,7 @@ namespace JASS
 	 				if (unicode::isxmlnamestartchar(codepoint))
 						{
 						current++;
-						uint8_t *found = std::find(current, end_of_document, '>');
+						const uint8_t *found = std::find(current, end_of_document, '>');
 						size_t bytes = maths::minimum((size_t)(found - current), sizeof(current_token.buffer));
 						memcpy(current_token.buffer, current, bytes);
 						buffer_pos = current_token.buffer + bytes;
@@ -292,7 +292,7 @@ namespace JASS
 					*/
 					static uint8_t close_pi[] = "?>";
 					current++;
-					uint8_t *found = std::search(current, end_of_document, close_pi, close_pi + sizeof(close_pi) - 1);
+					const uint8_t *found = std::search(current, end_of_document, close_pi, close_pi + sizeof(close_pi) - 1);
 					size_t bytes = maths::minimum((size_t)(found - current), sizeof(current_token.buffer));
 					memcpy(current_token.buffer, current, bytes);
 					buffer_pos = current_token.buffer + bytes;
@@ -309,7 +309,7 @@ namespace JASS
 						*/
 						static uint8_t close_comment[] = "-->";
 						current += 2;
-						uint8_t *found = std::search(current, end_of_document, close_comment, close_comment + sizeof(close_comment) - 1);
+						const uint8_t *found = std::search(current, end_of_document, close_comment, close_comment + sizeof(close_comment) - 1);
 						size_t bytes = maths::minimum((size_t)(found - current), sizeof(current_token.buffer));
 						memcpy(current_token.buffer, current, bytes);
 						buffer_pos = current_token.buffer + bytes;
@@ -326,7 +326,7 @@ namespace JASS
 							[72]     PEDecl      ::= '<!ENTITY' S '%' S Name S PEDef S? '>'
 							[82]     NotationDecl::= '<!NOTATION' S Name S (ExternalID | PublicID) S? '>'
 						*/
-						uint8_t *found = std::find(current, end_of_document, '>');
+						const uint8_t *found = std::find(current, end_of_document, '>');
 						size_t bytes = maths::minimum((size_t)(found - current), sizeof(current_token.buffer));
 						memcpy(current_token.buffer, current, bytes);
 						buffer_pos = current_token.buffer + bytes;
@@ -343,7 +343,7 @@ namespace JASS
 						*/
 						static uint8_t close_block[] = "]]>";
 						current += 7;
-						uint8_t *found = std::search(current, end_of_document, close_block, close_block + sizeof(close_block) - 1);
+						const uint8_t *found = std::search(current, end_of_document, close_block, close_block + sizeof(close_block) - 1);
 						size_t bytes = maths::minimum((size_t)(found - current), sizeof(current_token.buffer));
 						memcpy(current_token.buffer, current, bytes);
 						buffer_pos = current_token.buffer + bytes;
@@ -364,7 +364,7 @@ namespace JASS
 							So what we'll return is the tokens between the "<![" and the "[".  Its the caller's problem to deal with the close square brackets.
 						*/
 						current++;
-						uint8_t *found = std::find(current, end_of_document, '[');
+						const uint8_t *found = std::find(current, end_of_document, '[');
 						size_t bytes = maths::minimum((size_t)(found - current), sizeof(current_token.buffer));
 						memcpy(current_token.buffer, current, bytes);
 						buffer_pos = current_token.buffer + bytes;

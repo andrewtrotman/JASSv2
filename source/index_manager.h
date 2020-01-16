@@ -163,16 +163,35 @@ namespace JASS
 					Nothing
 				*/
 				}
-			
+
+			/*
+				INDEX_MANAGER::SET_PRIMARY_KEYS()
+				---------------------------------
+			*/
+			/*!
+				@brief Add a list of primary keys to the current list.  Normally used to set it without actually indexing (warning)
+				@details Normally this method would only be called when an index is being "pushed" into an object
+				rather than indexing document at a time.  This method actually adds to the end of the primary key list which
+				is assumed to be empty before the method is called, but might not be if some indexing has already happened.
+				@param keys [in] The vector of primary keys.
+			*/
+			virtual void set_primary_keys(const std::vector<slice> &keys)
+				{
+				/*
+					Nothing
+				*/
+				}
+
+
 			/*
 				INDEX_MANAGER::BEGIN_DOCUMENT()
 				-------------------------------
 			*/
 			/*!
 				@brief Tell this object that you're about to start indexing a new object.
-				@param external_id [in] The primary key (i.e. external dociment identifier) of this document.
+				@param primary_key [in] The primary key (i.e. external dociment identifier) of this document.
 			*/
-			virtual void begin_document(const slice &external_id)
+			virtual void begin_document(const slice &primary_key)
 				{
 				highest_document_id++;
 				}
@@ -189,7 +208,21 @@ namespace JASS
 				{
 				/* Nothing */
 				}
-			
+
+			/*
+				INDEX_MANAGER::TERM()
+				---------------------
+			*/
+			/*!
+				@brief Hand a new term with a pre-computed postings list to this object.
+				@param term [in] The term from the token stream.
+				@param postings_list [in] The pre-computed D1-encoded postings list
+			*/
+			virtual void term(const parser::token &term, const std::vector<posting> &postings_list)
+				{
+				/* Nothing */
+				}
+
 			/*
 				INDEX_MANAGER::END_DOCUMENT()
 				-----------------------------
@@ -213,6 +246,23 @@ namespace JASS
 			virtual std::vector<compress_integer::integer> &get_document_length_vector(void)
 				{
 				return document_length_vector;
+				}
+
+			/*
+				INDEX_MANAGER::SET_DOCUMENT_LENGTH_VECTOR()
+				-------------------------------------------
+			*/
+			/*!
+				@brief Replace the document length vector with the one passed to this function (warning).
+				@param new_lengths [in] The new document length vectror
+				@details It is possble that new_length.size() is different to the current largest document number.  If this is the
+				case then the largest document number is set to the number of documents in new_lengths, and future calls to index
+				a single document will fail (the alternative is that documents in the middle get lengths of 0).
+			*/
+			virtual void set_document_length_vector(std::vector<compress_integer::integer> &new_lengths)
+				{
+				document_length_vector = new_lengths;
+				highest_document_id = document_length_vector.size() - 1;		// if size() == 10 then the highest_document_id is 9 (documents have ids 0..9)
 				}
 
 			/*
@@ -247,8 +297,8 @@ namespace JASS
 				callback(0, slice());
 				}
 			/*
-				INDEX_MANAGER_SEQUENTIAL::ITERATE()
-				-----------------------------------
+				INDEX_MANAGER::ITERATE()
+				------------------------
 			*/
 			/*!
 				@brief Iterate over the index calling callback.operator() with each postings list.

@@ -40,7 +40,7 @@ namespace JASS
 			As a valid k-mer can only contain DNA bases, if we encounter a symbol that is invalid we skip that token and start at the next DNA base pair.
 		*/
 		uint8_t *buffer_pos = current_token.buffer;
-		uint8_t *from = current++;
+		const uint8_t *from = current++;
 		size_t byte = 0;
 		while (byte < kmer_length && from < end_of_document)
 			{

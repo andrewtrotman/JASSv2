@@ -16,6 +16,7 @@
 #include <sstream>
 
 #include "parser.h"
+#include "posting.h"
 #include "hash_table.h"
 #include "index_manager.h"
 #include "unittest_data.h"
@@ -129,7 +130,7 @@ namespace JASS
 				--------------------------------------
 			*/
 			/*!
-				@brief make sure all the internal buffers needed for iteration habe been allocated
+				@brief make sure all the internal buffers needed for iteration have been allocated
 			*/
 			void make_space(void)
 				{
@@ -188,17 +189,35 @@ namespace JASS
 			*/
 			/*!
 				@brief Tell this object that you're about to start indexing a new object.
-				@param external_id [in] The document's primary key (or external document identifier).
+				@param document_primary_key [in] The document's primary key (or external document identifier).
 			*/
-			virtual void begin_document(const slice &external_id)
+			virtual void begin_document(const slice &document_primary_key)
 				{
 				/*
 					Tell index_manager that we have started a new document
 				*/
-				index_manager::begin_document(external_id);
-				primary_key.push_back(slice(memory, external_id));
+				index_manager::begin_document(document_primary_key);
+				primary_key.push_back(slice(memory, document_primary_key));
 				}
-			
+
+
+			/*
+				INDEX_MANAGER_SEQUENTIAL::SET_PRIMARY_KEYS()
+				--------------------------------------------
+			*/
+			/*!
+				@brief Add a list of primary keys to the current list.  Normally used to set it without actually indexing (warning)
+				@details Normally this method would only be called when an index is being "pushed" into an object
+				rather than indexing document at a time.  This method actually adds to the end of the primary key list which
+				is assumed to be empty before the method is called, but might not be if some indexing has already happened.
+				@param keys [in] The vector of primary keys.
+			*/
+			virtual void set_primary_keys(const std::vector<slice> &keys)
+				{
+				for (auto key : keys)
+					primary_key.push_back(key);
+				}
+
 			/*
 				INDEX_MANAGER_SEQUENTIAL::TERM()
 				--------------------------------
@@ -211,7 +230,21 @@ namespace JASS
 				{
 				index[term.lexeme].push_back(get_highest_document_id());
 				}
-			
+
+			/*
+				INDEX_MANAGER_SEQUENTIAL::TERM()
+				--------------------------------
+			*/
+			/*!
+				@brief Hand a new term with a pre-computed postings list to this object.
+				@param term [in] The term from the token stream.
+				@param postings_list [in] The pre-computed D1-encoded postings list
+			*/
+			virtual void term(const parser::token &term, const std::vector<posting> &postings_list)
+				{
+				index[term.lexeme].push_back(postings_list);
+				}
+
 			/*
 				INDEX_MANAGER_SEQUENTIAL::TEXT_RENDER()
 				---------------------------------------
@@ -278,10 +311,10 @@ namespace JASS
 				/*
 					Iterate over the hash table calling the callback function with each term->postings pair.
 				*/
-				for (const auto listing : index)
+				for (const auto &[term, postings] : index)
 					{
-					auto document_frequency = listing.second.linearize(temporary, temporary_size, document_ids, term_frequencies, get_highest_document_id());
-					quantizer(callback, listing.first, listing.second, document_frequency, document_ids, term_frequencies);
+					auto document_frequency = postings.linearize(temporary, temporary_size, document_ids, term_frequencies, get_highest_document_id());
+					quantizer(callback, term, postings, document_frequency, document_ids, term_frequencies);
 					}
 					
 				/*

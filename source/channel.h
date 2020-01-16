@@ -167,7 +167,7 @@ namespace JASS
 				@brief Read a '\n' terminated string from the channel into the parameter.
 				@param into [out] Read into this string.
 			*/
-			void gets(std::string &into)
+			virtual void gets(std::string &into)
 				{
 				getsz<std::string>(into, '\n');
 				}
@@ -180,7 +180,7 @@ namespace JASS
 				@brief Read a '\n' terminated string from the channel into the parameter.
 				@param into [out] Read into this string.
 			*/
-			void gets(JASS::string &into)
+			virtual void gets(JASS::string &into)
 				{
 				getsz<JASS::string>(into, '\n');
 				}
@@ -193,7 +193,7 @@ namespace JASS
 				@brief write buffer to the channel followed by a '\n' character.
 				@param buffer [in] Byte sequence to write.
 			*/
-			void puts(const std::string &buffer)
+			virtual void puts(const std::string &buffer)
 				{
 				block_write(buffer.c_str(), buffer.size());
 				block_write("\n", 1);

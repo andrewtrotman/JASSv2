@@ -89,13 +89,16 @@ target_link_libraries(test_integer_compress_average JASSlib)
 # dump_ciff_lin: read Jimmy Lin's shared index format protobuf formatted index
 #
 
-add_executable(dump_ciff_lin
-	protobuf.h
-	ciff_lin.h
-	dump_ciff_lin.cpp
-	)
+set(CIFF_LIN_FILES
+protobuf.h
+ciff_lin.h
+dump_ciff_lin.cpp
+)
+
+add_executable(dump_ciff_lin ${CIFF_LIN_FILES})
 
 target_link_libraries(dump_ciff_lin JASSlib)
+source_group ("Source Files" FILES ${CIFF_LIN_FILES})
 
 #
 # JASS_eval: Just like trec_eval, but the JASS version that includes different metrics

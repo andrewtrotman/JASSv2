@@ -25,6 +25,8 @@ set(JASSlib_FILES
 	bitstring.h
 	bitstring.cpp
 	channel.h
+	channel_trec.h
+	channel_trec.cpp
 	channel_file.h
 	channel_file.cpp
 	checksum.h
@@ -162,6 +164,7 @@ set(JASSlib_FILES
 	parser_query.h
 	parser_query.cpp
 	pointer_box.h
+	posting.h
 	quantize.h
 	query.h
 	query_term.h

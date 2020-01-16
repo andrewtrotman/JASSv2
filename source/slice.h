@@ -28,7 +28,7 @@ namespace JASS
 		{
 		protected:
 			void *pointer;			///< The start of the data.
-			size_t length;			///< The length of the data (in bytes).
+			size_t length;					///< The length of the data (in bytes).
 			
 		public:
 			/*
@@ -40,13 +40,13 @@ namespace JASS
 				@param pointer [in] The start address of the memory this slice represents.
 				@param length [in] The length (in bytes) of this slice.
 			*/
-			slice(void *pointer = NULL, size_t length = 0) :
+			slice(void *pointer = nullptr, size_t length = 0) :
 				pointer(pointer),
 				length(length)
 				{
 				/* Nothing */
 				}
-			
+
 			/*
 				SLICE::SLICE()
 				--------------
@@ -190,10 +190,11 @@ namespace JASS
 				@param pool [in] An allocator to allocate from.
 				@param bytes [in] The number of bytes of memory to allocate from the pool.
 			*/
-			slice(allocator &pool, size_t bytes)
+			slice(allocator &pool, size_t bytes) :
+				pointer((void *)pool.malloc(bytes)),
+				length(bytes)
 				{
-				length = bytes;
-				pointer = (void *)pool.malloc(bytes);
+				/* Nothing */
 				}
 
 			/*
@@ -204,11 +205,28 @@ namespace JASS
 				@brief Construct an empty slice with a pool allocator
 				@param pool [in] An allocator to allocate from.
 			*/
-			slice(allocator &pool)
+			slice(allocator &pool):
+				pointer(nullptr),
+				length(0)
+				{
+				/* Nothing */
+				}
+
+			/*
+				SLICE::CLEAR()
+				--------------
+			*/
+			/*!
+				@brief Construct an empty slice with a pool allocator
+				@param pool [in] An allocator to allocate from.
+			*/
+			void clear(void)
 				{
 				length = 0;
 				pointer = nullptr;
 				}
+
+
 
 			/*
 				SLICE::OPERATOR=()
@@ -227,7 +245,6 @@ namespace JASS
 				return *this;
 				}
 
-			
 			/*
 				SLICE::SIZE()
 				-------------

@@ -108,27 +108,14 @@ namespace JASS
 				ALLOCATOR_POOL::ALLOCATOR_POOL()
 				--------------------------------
 			*/
-			/*!
-				@brief Private copy constructor prevents object copying
-			*/
-			allocator_pool(allocator_pool &)
-				{
-				assert(0);
-				}
+			allocator_pool(allocator_pool &) = delete;
 
 			/*
 				ALLOCATOR_POOL::OPERATOR=()
 				---------------------------
 			*/
-			/*!
-				@brief Private assignment operator prevents assigning to this object
-			*/
-			allocator_pool &operator=(const allocator_pool &)
-				{
-				assert(0);
-				return *this;
-				}
-			
+			allocator_pool &operator=(const allocator_pool &) = delete;
+
 		protected:
 			/*
 				ALLOCATOR_POOL::ALLOC()
