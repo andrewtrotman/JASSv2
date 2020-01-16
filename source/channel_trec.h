@@ -25,23 +25,23 @@ namespace JASS
 		private:
 			channel &in_channel;				///< The channel this channel reads from
 			std::string buffer;				///< Storage of date read from the in_channel
-			long read;
-			long at_eof;
-			long number;
+			bool read;							///< Do we need to read from the input channel
+			bool at_eof;						///< Are we at end of input?
+			int64_t number;					///< The topic number of the topic being constructed
 			std::string tag;					///< The tag set to use
 
 		private:
 			/*
-				CHANNEL_TREC::CLEAN()
-				---------------------
+				CHANNEL_TREC::CONSTRUCT()
+				-------------------------
 			*/
 			/*!
-				@brief Parse the query using the document parser and turn into searchable tokens.
-				@param clean_query[out] The query once cleaned.
-				@param number [in] The query number (is put at the head of the clean query)
-				@param raw_query [in] The query that should be cleaned.
+				@brief Piece to geether the parts of the query to make the whole.
+				@param query[out] The query once constructed.
+				@param number [in] The query number (is put at the head of the query)
+				@param text [in] The text of the query.
 			*/
-			void clean(std::string &clean_query, size_t number, const std::string &&raw_query);
+			void construct(std::string &query, size_t number, const std::string &&text);
 
 		protected:
 		
