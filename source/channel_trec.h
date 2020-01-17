@@ -29,12 +29,12 @@ namespace JASS
 	class channel_trec : public channel
 		{
 		private:
-			channel &in_channel;				///< The channel this channel reads from
-			std::string buffer;				///< Storage of date read from the in_channel
-			bool read;							///< Do we need to read from the input channel
-			bool at_eof;						///< Are we at end of input?
-			int64_t number;					///< The topic number of the topic being constructed
-			std::string tag;					///< The tag set to use
+			std::unique_ptr<channel> in_channel;	///< The channel this channel reads from
+			std::string buffer;							///< Storage of date read from the in_channel
+			bool read;										///< Do we need to read from the input channel
+			bool at_eof;									///< Are we at end of input?
+			int64_t number;								///< The topic number of the topic being constructed
+			std::string tag;								///< The tag set to use
 
 		private:
 			/*
@@ -59,7 +59,7 @@ namespace JASS
 			*/
 			virtual size_t block_write(const void *buffer, size_t length)
 				{
-				exit(printf("channel_trec::block_read not implemented (class only supports gets())"));
+				exit(printf("channel_trec::block_write not implemented (class only supports gets())"));
 				}
 				
 			/*
@@ -71,7 +71,7 @@ namespace JASS
 			*/
 			virtual size_t block_read(void *into, size_t length)
 				{
-				exit(printf("channel_trec::block_write not implemented (class only supports gets())"));
+				exit(printf("channel_trec::block_read not implemented (class only supports gets())"));
 				}
 
 		public:
@@ -84,8 +84,8 @@ namespace JASS
 				@param in [in] the channel that this channel reads from (normally a file)
 				@param tagset [in] a set combination of 't','d','n' (for title, desc, narr).
 			*/
-			channel_trec(channel &in, std::string tagset) :
-				in_channel(in),
+			channel_trec(std::unique_ptr<channel> &in, std::string tagset) :
+				in_channel(std::move(in)),
 				tag(tagset)
 				{
 				read = true;

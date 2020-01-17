@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
 	if (argc != 2)
 		exit(usage(argv[0]));
 
-	JASS::channel_file source(argv[1]);
+	std::unique_ptr<JASS::channel> source(new JASS::channel_file(argv[1]));
 	JASS::channel_trec infile(source, "d");
 
 	std::string query;

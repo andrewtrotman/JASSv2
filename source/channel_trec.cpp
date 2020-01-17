@@ -14,7 +14,7 @@
 #include "file.h"
 #include "parser.h"
 #include "channel_trec.h"
-#include "channel_file.h"
+#include "channel_buffer.h"
 
 namespace JASS
 	{
@@ -49,7 +49,7 @@ namespace JASS
 			{
 			if (read)
 				{
-				in_channel.gets(buffer);
+				in_channel->gets(buffer);
 				if (buffer.size() == 0)
 					break;		// at end of input
 				}
@@ -129,101 +129,96 @@ namespace JASS
 		return construct(into, number, answer.str());
 		}
 
+	/*
+		CHANNEL_TREC::UNITTEST()
+		------------------------
+	*/
+	void channel_trec::unittest(void)
+		{
 		/*
-			CHANNEL_TREC::UNITTEST()
-			------------------------
+			Use genuine TREC Robust04 topics as a test case.
 		*/
-		void channel_trec::unittest(void)
+		static const char *example_file =
+			"\n\
+			<top>\n\
+			<num> Number: 698\n\
+			\n\
+			<title>\n\
+			literacy rates Africa\n\
+			\n\
+			<desc>\n\
+			What are literacy rates in African countries?\n\
+			\n\
+			<narr>\n\
+			A relevant document will contain information about the\n\
+			literacy rate in an African country.\n\
+			General education levels that do not specifically include literacy rates\n\
+			are not relevant.\n\
+			</top>\n\
+			\n\
+			\n\
+			<top>\n\
+			<num> Number: 699\n\
+			\n\
+			<title>\n\
+			term limits\n\
+			\n\
+			<desc>\n\
+			What are the pros and cons of term limits?\n\
+			\n\
+			<narr>\n\
+			Relevant documents reflect an opinion on the value of term limits\n\
+			with accompanying reason(s).  Documents that cite the status of term\n\
+			limit legislation or opinions on the issue sans reasons for the opinion\n\
+			are not relevant.\n\
+			</top>\n\
+			\n\
+			\n\
+			<top>\n\
+			<num> Number: 700\n\
+			\n\
+			<title>\n\
+			gasoline tax U.S.\n\
+			\n\
+			<desc>\n\
+			What are the arguments for and against an increase in gasoline\n\
+			taxes in the U.S.?\n\
+			\n\
+			<narr>\n\
+			Relevant documents present reasons for or against raising gasoline taxes\n\
+			in the U.S.  Documents discussing rises or decreases in the price of\n\
+			gasoline are not relevant.\n\
+			</top>\n\
+			";
+
+		std::string correct_answer = "698 literacy rates africa \n699 term limits \n700 gasoline tax u s \n";
+
+		std::shared_ptr<char> data(new char [strlen(example_file) + 1]);
+		std::unique_ptr<channel>infile(new channel_buffer(data));
+		channel_trec query_reader(infile, "t");
+
+		/*
+			Extract the queries one at a time.
+		*/
+		std::string into;
+		std::ostringstream answer;
+		do
 			{
-			/*
-				Use genuine TREC Robust04 topics as a test case.
-			*/
-			std::string example_file =
-				"\n\
-				<top>\n\
-				<num> Number: 698\n\
-				\n\
-				<title>\n\
-				literacy rates Africa\n\
-				\n\
-				<desc>\n\
-				What are literacy rates in African countries?\n\
-				\n\
-				<narr>\n\
-				A relevant document will contain information about the\n\
-				literacy rate in an African country.\n\
-				General education levels that do not specifically include literacy rates\n\
-				are not relevant.\n\
-				</top>\n\
-				\n\
-				\n\
-				<top>\n\
-				<num> Number: 699\n\
-				\n\
-				<title>\n\
-				term limits\n\
-				\n\
-				<desc>\n\
-				What are the pros and cons of term limits?\n\
-				\n\
-				<narr>\n\
-				Relevant documents reflect an opinion on the value of term limits\n\
-				with accompanying reason(s).  Documents that cite the status of term\n\
-				limit legislation or opinions on the issue sans reasons for the opinion\n\
-				are not relevant.\n\
-				</top>\n\
-				\n\
-				\n\
-				<top>\n\
-				<num> Number: 700\n\
-				\n\
-				<title>\n\
-				gasoline tax U.S.\n\
-				\n\
-				<desc>\n\
-				What are the arguments for and against an increase in gasoline\n\
-				taxes in the U.S.?\n\
-				\n\
-				<narr>\n\
-				Relevant documents present reasons for or against raising gasoline taxes\n\
-				in the U.S.  Documents discussing rises or decreases in the price of\n\
-				gasoline are not relevant.\n\
-				</top>\n\
-				";
-
-			std::string correct_answer = "698 literacy rates africa \n699 term limits \n700 gasoline tax u s \n";
-
-			/*
-				Generate a file with the data in it.
-			*/
-			auto filename = file::mkstemp("jass");
-			file::write_entire_file(filename, example_file);
-
-			channel_file infile(filename);
-			channel_trec query_reader(infile, "t");
-
-			/*
-				Extract the queries one at a time.
-			*/
-			std::string into;
-			std::ostringstream answer;
-			do
-				{
-				query_reader.gets(into);
-				if (into.size() != 0)
-					answer << into << "\n";
-				}
-			while (into.size() != 0);
-
-			/*
-				Compare to the known correct answer.
-			*/
-
-			JASS_assert(answer.str() == correct_answer);
-
-			/*
-				We passed!
-			*/
-			::puts("channel_trec::PASSED");
+			query_reader.gets(into);
+			if (into.size() != 0)
+				answer << into << "\n";
 			}
+		while (into.size() != 0);
+
+		/*
+			Compare to the known correct answer.
+		*/
+
+		JASS_assert(answer.str() == correct_answer);
+
+		/*
+			We passed!
+		*/
+		::puts("channel_trec::PASSED");
+		}
 	}

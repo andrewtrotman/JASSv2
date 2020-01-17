@@ -21,6 +21,7 @@
 #include "decode_none.h"
 #include "commandline.h"
 #include "channel_file.h"
+#include "channel_trec.h"
 #include "compress_integer.h"
 #include "JASS_anytime_stats.h"
 #include "JASS_anytime_query.h"
@@ -202,10 +203,6 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 				Process the postings
 			*/
 			uint16_t impact = header.impact;
-/*
-			decoder->decode(decompressor, header.segment_frequency, index.postings() + header.offset, header.end - header.offset);
-			decoder->process(impact, *jass_query);
-*/
 			decoder->decode_and_process(impact, *jass_query, decompressor, header.segment_frequency, index.postings() + header.offset, header.end - header.offset);
 			}
 
@@ -238,6 +235,27 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 	delete jass_query;
 	delete [] segment_order;
 	delete decoder;
+	}
+
+/*
+	MAKE_INPUT_CHANNEL()
+	--------------------
+*/
+std::unique_ptr<JASS::channel> make_input_channel(std::string filename)
+	{
+	std::string file;
+	JASS::file::read_entire_file(filename, file);
+	/*
+		If the start of the file is a digit then we think we have a JASS topic file.
+		If the start is not a digit then we're expecting to see a TREC topic file.
+	*/
+	if (::isdigit(file[0]))
+		return std::unique_ptr<JASS::channel_file>(new JASS::channel_file(filename));				// JASS topic file
+	else
+		{
+		std::unique_ptr<JASS::channel> source(new JASS::channel_file(filename));
+		return std::unique_ptr<JASS::channel_trec>(new JASS::channel_trec(source, "tq"));		// TREC topic file
+		}
 	}
 
 /*
@@ -308,18 +326,18 @@ std::cout << "Maximum numnber of postings to process:" << postings_to_process <<
 	/*
 		Read from the query file into a list of queries array.
 	*/
-	JASS::channel_file input(parameter_queryfilename);		// read from here
+	std::unique_ptr<JASS::channel> input = make_input_channel(parameter_queryfilename);		// read from here
 	std::string query;												// the channel read goes into memory managed by this object
 
 	/*
 		Read the query set and bung it into a vector
 	*/
 	std::vector<JASS_anytime_query> query_list;
-	input.gets(query);
+	input->gets(query);
 	while (query.size() != 0)
 		{
 		query_list.push_back(query);
-		input.gets(query);
+		input->gets(query);
 		stats.number_of_queries++;
 		}
 

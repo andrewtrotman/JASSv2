@@ -61,6 +61,7 @@ int main(int argc, const char *argv[])
 	std::vector<uint8_t *> line_list;
 	JASS::file::buffer_to_list(line_list, primary_keys);
 	std::vector<JASS::slice> key_vector;
+	key_vector.push_back("JASS DocID=0: Invalid");		// because we count from 1 but CIFF counts from 0, so we create a fake primary key for docid=0.
 	for (auto &line : line_list)
 		key_vector.push_back(JASS::slice((const char *)line));
 	index.set_primary_keys(key_vector);
@@ -84,7 +85,7 @@ int main(int argc, const char *argv[])
 		std::cout.write((char *)posting.term.address(), posting.term.size());
 		std::cout << " " << posting.document_frequency << " " << posting.collection_frequency << ":";
 
-		uint64_t cumulative_total = 0;
+		uint64_t cumulative_total = 1;		// CIFF counts from documentID = 0, but JASS indexing counts from documentID = 1, so we start at 1.
 		for (const auto &pair : posting.postings)
 			{
 			cumulative_total += pair.docid;

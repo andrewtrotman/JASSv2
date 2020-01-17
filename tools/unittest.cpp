@@ -46,6 +46,7 @@
 #include "allocator_pool.h"
 #include "index_postings.h"
 #include "accumulator_2d.h"
+#include "channel_buffer.h"
 #include "instream_memory.h"
 #include "run_export_trec.h"
 #include "evaluate_recall.h"
@@ -300,6 +301,9 @@ int main(void)
 		JASS::instream_document_fasta::unittest();
 
 		// JASS::channel does not have a unittest because it is a virtual base class
+
+		puts("channel_buffer");
+		JASS::channel_buffer::unittest();
 
 		puts("channel_file");
 		JASS::channel_file::unittest();

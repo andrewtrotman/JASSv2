@@ -54,8 +54,8 @@ namespace JASS
 			*/
 			/*!
 				@brief All input happens via the block_read method.
-				@param into [out] length number of bytes are written into here
-				@param length [in] The number of bytes go write.
+				@param into [out] length number of bytes are written into into
+				@param length [in] The number of bytes to read.
 				@return The number of buyes read (usually equal to length).
 			*/
 			virtual size_t block_read(void *into, size_t length) = 0;

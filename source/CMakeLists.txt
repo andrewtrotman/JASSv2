@@ -25,10 +25,12 @@ set(JASSlib_FILES
 	bitstring.h
 	bitstring.cpp
 	channel.h
-	channel_trec.h
-	channel_trec.cpp
+	channel_buffer.h
+	channel_buffer.cpp
 	channel_file.h
 	channel_file.cpp
+	channel_trec.h
+	channel_trec.cpp
 	checksum.h
 	checksum.cpp
 	commandline.h
