@@ -1,13 +1,21 @@
 /*
 	CHANNEL_TREC.H
 	--------------
+	Copyright (c) 2020 Andrew Trotman
+	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
+/*!
+	@file
+	@brief Input (not output) channel for turning TREC fopic files into JASS queries.
+	@author Andrew Trotman
+	@copyright 2020 Andrew Trotman
+*/
+
 #pragma once
 
 #include <sstream>
 
 #include "channel.h"
-//#include "stop_word.h"
 
 namespace JASS
 	{
@@ -17,8 +25,6 @@ namespace JASS
 		This channel reads from another channel assuming that that channel
 		is a TREC topic file.  This allows the search engine to directly
 		read TREC topic files without pre-processing.
-
-		The out channel is what-ever is passed to the constructor of this object
 	*/
 	class channel_trec : public channel
 		{
@@ -44,7 +50,6 @@ namespace JASS
 			void construct(std::string &query, size_t number, const std::string &&text);
 
 		protected:
-		
 			/*
 				CHANNEL_TREC::BLOCK_WRITE()
 				---------------------------

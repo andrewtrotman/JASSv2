@@ -1,6 +1,8 @@
 /*
 	CHANNEL_TREC.CPP
 	----------------
+	Copyright (c) 2020 Andrew Trotman
+	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 #include <stdio.h>
 #include <ctype.h>
@@ -75,7 +77,7 @@ namespace JASS
 					case JASS::parser::token::xml_start_tag:
 						match = false;
 						token_start = reinterpret_cast<const char *>(token.get().address());
-						if (strncmp(token_start, "num", 3) == 0)
+						if (token.get().size() == 3 && strncmp(token_start, "num", 3) == 0)
 							{
 							/*
 								Pre-ClueWeb
@@ -90,29 +92,30 @@ namespace JASS
 							if (old_number >= 0)
 								return construct(into, old_number, answer.str());
 							}
-						else if (strncmp(token_start, "topic number=", 13) == 0)
+						else if (token.get().size() == 5 && strncmp(token_start, "topic", 5) == 0)
 							{
 							/*
-								ClueWeb
+								ClueWeb:  The format is <topic numner="251" type="single">.  We've got a <topic> element so we can now look for the number in what we read (buffer).
 							*/
-							parser::token digits;
-							do
-								digits = parser.get_next_token();
-							while (digits.type != JASS::parser::token::numeric && digits.type != JASS::parser::token::eof);
-
 							old_number = number;
-							number = atol(reinterpret_cast<char *>(digits.get().address()));
+							number = 0;
+							for (const char *character = buffer.c_str(); *character != '\0'; character++)
+								if (isdigit(*character))
+									{
+									number = atol(character);
+									break;
+									}
 
 							if (old_number >= 0)
-								return construct(into, old_number, raw_query.str());
+								return construct(into, old_number, answer.str());
 							}
-						else if ((strncmp(token_start, "query", 5) == 0) && (tag.find('q') != std::string::npos))
+						else if (token.get().size() == 5 && (strncmp(token_start, "query", 5) == 0) && (tag.find('q') != std::string::npos))
 								match = true;			// ClueWeb
-						else if ((strncmp(token_start, "title", 5) == 0) && (tag.find('t') != std::string::npos))
+						else if (token.get().size() == 5 && (strncmp(token_start, "title", 5) == 0) && (tag.find('t') != std::string::npos))
 								match = true;
-						else if ((strncmp(token_start, "desc",  4) == 0) && (tag.find('d') != std::string::npos))
+						else if (token.get().size() >= 4 && (strncmp(token_start, "desc",  4) == 0) && (tag.find('d') != std::string::npos))
 								match = true;
-						else if ((strncmp(token_start, "narr",  4) == 0) && (tag.find('n') != std::string::npos))
+						else if (token.get().size() == 4 && (strncmp(token_start, "narr",  4) == 0) && (tag.find('n') != std::string::npos))
 								match = true;
 						break;
 					default:
@@ -132,6 +135,9 @@ namespace JASS
 		*/
 		void channel_trec::unittest(void)
 			{
+			/*
+				Use genuine TREC Robust04 topics as a test case.
+			*/
 			std::string example_file =
 				"\n\
 				<top>\n\
@@ -196,6 +202,9 @@ namespace JASS
 			channel_file infile(filename);
 			channel_trec query_reader(infile, "t");
 
+			/*
+				Extract the queries one at a time.
+			*/
 			std::string into;
 			std::ostringstream answer;
 			do
@@ -206,6 +215,15 @@ namespace JASS
 				}
 			while (into.size() != 0);
 
+			/*
+				Compare to the known correct answer.
+			*/
+
 			JASS_assert(answer.str() == correct_answer);
+
+			/*
+				We passed!
+			*/
+			::puts("channel_trec::PASSED");
 			}
 	}

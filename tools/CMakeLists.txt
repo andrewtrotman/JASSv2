@@ -118,3 +118,8 @@ target_link_libraries(ECOM19_to_run JASSlib)
 add_executable(ECOM19_to_JASS_eval ECOM19_to_JASS_eval.cpp)
 target_link_libraries(ECOM19_to_JASS_eval JASSlib)
 
+#
+# trec_to_query: Covert a TREC topic file into a JASS query file
+#
+add_executable(trec_to_query trec_to_query.cpp)
+target_link_libraries(trec_to_query JASSlib)
