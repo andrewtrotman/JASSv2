@@ -97,7 +97,7 @@ dump_ciff_lin.cpp
 
 add_executable(dump_ciff_lin ${CIFF_LIN_FILES})
 
-target_link_libraries(dump_ciff_lin JASSlib)
+target_link_libraries(dump_ciff_lin JASSlib ${ZLIB_STATIC_LIB} ${ZSTD_STATIC_LIB} ${CMAKE_THREAD_LIBS_INIT})
 source_group ("Source Files" FILES ${CIFF_LIN_FILES})
 
 #
@@ -122,4 +122,4 @@ target_link_libraries(ECOM19_to_JASS_eval JASSlib)
 # trec_to_query: Covert a TREC topic file into a JASS query file
 #
 add_executable(trec_to_query trec_to_query.cpp)
-target_link_libraries(trec_to_query JASSlib)
+target_link_libraries(trec_to_query JASSlib ${ZLIB_STATIC_LIB} ${ZSTD_STATIC_LIB} ${CMAKE_THREAD_LIBS_INIT})

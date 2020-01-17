@@ -76,8 +76,8 @@ namespace JASS
 		/*
 			Generate a file with the data in it.
 		*/
-		std::shared_ptr<char> source(new char[::strlen(example_file) + 1]);
-		::memcpy(source.get(), example_file, strlen(example_file));
+		std::shared_ptr<char []> source(new char[::strlen(example_file) + 1]);
+		strcpy(source.get(), example_file);
 
 		channel_buffer reader(source);
 

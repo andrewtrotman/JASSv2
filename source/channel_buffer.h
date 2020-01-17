@@ -27,7 +27,7 @@ namespace JASS
 	class channel_buffer : public channel
 		{
 		private:
-			std::shared_ptr<char> source;		///< The block of memory this object is reading from
+			std::shared_ptr<char []> source;		///< The block of memory this object is reading from
 			char *current;							///< Where we are in that block of memory
 			size_t remaining;						///< How many bytes are remaining to the read from the channel
 
@@ -82,7 +82,7 @@ namespace JASS
 				@brief Constructor
 				@param source [in] a pointer to the data to read from
 			*/
-			channel_buffer(std::shared_ptr<char> source) :
+			channel_buffer(std::shared_ptr<char []> source) :
 				source(std::move(source))
 				{
 				current = this->source.get();
