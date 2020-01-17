@@ -6,6 +6,7 @@
 */
 #include <string.h>
 
+#include <memory>
 #include <iostream>
 
 #include "channel_buffer.h"
@@ -76,7 +77,7 @@ namespace JASS
 		/*
 			Generate a file with the data in it.
 		*/
-		std::shared_ptr<char []> source(new char[::strlen(example_file) + 1]);
+		std::shared_ptr<char> source(new char[::strlen(example_file) + 1], [](char *pointer) { delete [] pointer; });
 		strcpy(source.get(), example_file);
 
 		channel_buffer reader(source);

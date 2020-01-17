@@ -191,9 +191,11 @@ namespace JASS
 			</top>\n\
 			";
 
-		std::string correct_answer = "698 literacy rates africa \n699 term limits \n700 gasoline tax u s \n";
+		std::string correct_answer = "698 literacy rates africa 699 term limits 700 gasoline tax u s ";
 
-		std::shared_ptr<char []> data(new char [strlen(example_file) + 1]);
+		std::shared_ptr<char> data(new char [strlen(example_file) + 1], [](char *pointer) {delete [] pointer;});
+		strcpy(data.get(), example_file);
+
 		std::unique_ptr<channel>infile(new channel_buffer(data));
 		channel_trec query_reader(infile, "t");
 
@@ -205,8 +207,7 @@ namespace JASS
 		do
 			{
 			query_reader.gets(into);
-			if (into.size() != 0)
-				answer << into << "\n";
+			answer << into;
 			}
 		while (into.size() != 0);
 
