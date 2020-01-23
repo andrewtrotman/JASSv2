@@ -21,7 +21,11 @@
 #include <sstream>
 #include <iostream>
 
-#include "../external/valgrind/valgrind.h"
+#ifdef _MSC_VER
+	#define RUNNING_ON_VALGRIND (0)
+#else
+	#include "../external/valgrind/valgrind.h"
+#endif
 
 namespace JASS
 	{
@@ -171,8 +175,6 @@ namespace JASS
 				if (nIds >= 0x00000007)
 					{
 					cpuid(info,0x00000007);
-					AVX2   = (info[1] & ((int)1 <<  5)) != 0;
-
 					BMI1        = (info[1] & ((int)1 <<  3)) != 0;
 					BMI2        = (info[1] & ((int)1 <<  8)) != 0;
 					ADX         = (info[1] & ((int)1 << 19)) != 0;
@@ -180,10 +182,12 @@ namespace JASS
 					PREFETCHWT1 = (info[2] & ((int)1 <<  0)) != 0;
 
 					/*
-						At present AVX512 is not on vlagrind.
+						At present AVX2 and above is not supported on vlagrind.
 					*/
 					if (!RUNNING_ON_VALGRIND)
 						{
+						AVX2   = (info[1] & ((int)1 <<  5)) != 0;
+
 						AVX512F     = (info[1] & ((int)1 << 16)) != 0;
 						AVX512CD    = (info[1] & ((int)1 << 28)) != 0;
 						AVX512PF    = (info[1] & ((int)1 << 26)) != 0;
