@@ -21,6 +21,7 @@
 #include <sstream>
 #include <iostream>
 
+#include "../external/valgrind/valgrind.h"
 
 namespace JASS
 	{
@@ -178,15 +179,21 @@ namespace JASS
 					SHA         = (info[1] & ((int)1 << 29)) != 0;
 					PREFETCHWT1 = (info[2] & ((int)1 <<  0)) != 0;
 
-					AVX512F     = (info[1] & ((int)1 << 16)) != 0;
-					AVX512CD    = (info[1] & ((int)1 << 28)) != 0;
-					AVX512PF    = (info[1] & ((int)1 << 26)) != 0;
-					AVX512ER    = (info[1] & ((int)1 << 27)) != 0;
-					AVX512VL    = (info[1] & ((int)1 << 31)) != 0;
-					AVX512BW    = (info[1] & ((int)1 << 30)) != 0;
-					AVX512DQ    = (info[1] & ((int)1 << 17)) != 0;
-					AVX512IFMA  = (info[1] & ((int)1 << 21)) != 0;
-					AVX512VBMI  = (info[2] & ((int)1 <<  1)) != 0;
+					/*
+						At present AVX512 is not on vlagrind.
+					*/
+					if (!RUNNING_ON_VALGRIND)
+						{
+						AVX512F     = (info[1] & ((int)1 << 16)) != 0;
+						AVX512CD    = (info[1] & ((int)1 << 28)) != 0;
+						AVX512PF    = (info[1] & ((int)1 << 26)) != 0;
+						AVX512ER    = (info[1] & ((int)1 << 27)) != 0;
+						AVX512VL    = (info[1] & ((int)1 << 31)) != 0;
+						AVX512BW    = (info[1] & ((int)1 << 30)) != 0;
+						AVX512DQ    = (info[1] & ((int)1 << 17)) != 0;
+						AVX512IFMA  = (info[1] & ((int)1 << 21)) != 0;
+						AVX512VBMI  = (info[2] & ((int)1 <<  1)) != 0;
+						}
 					}
 				if (nExIds >= 0x80000001)
 					{
