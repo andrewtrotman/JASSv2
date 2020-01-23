@@ -221,7 +221,7 @@ namespace JASS
 				{
 				private:
 					ciff_lin &source;					///< The ciff_lin being iterated over
-					const uint8_t *stream;					///< Where in the source stream we are reading from
+					const uint8_t *stream;			///< Where in the source stream we are reading from
 					size_t where;						///< Are we the start or end of the data
 					postings_list postings;			///< The postings list we just made
 
@@ -251,7 +251,7 @@ namespace JASS
 						@brief Move on to the next postings list by constructing and storing the current one.  On error move to the end of the stream and mark it as bad
 						@return A reference to this iterator
 					*/
-					const iterator &operator++()
+					iterator &operator++()
 						{
 						int64_t postings_list_length = protobuf::get_uint64_t(stream);
 
@@ -276,7 +276,7 @@ namespace JASS
 						@brief Return the most recently constructed postings list
 						@return A reference to the current postings list
 					*/
-					const postings_list &operator*() const
+					postings_list &operator*()
 						{
 						return postings;
 						}
@@ -289,7 +289,7 @@ namespace JASS
 						@brief Compare two iterators.
 						@return True if the iterators are different
 					*/
-					bool operator!=(const iterator &with) const
+					bool operator!=(iterator &with)
 						{
 						return stream + where != with.stream + with.where;
 						}
@@ -327,7 +327,7 @@ namespace JASS
 			/*!
 				@brief Return and iterator to the start of this object
 			*/
-			const iterator begin()
+			iterator begin()
 				{
 				return ++iterator(*this, 0);
 				}
@@ -339,7 +339,7 @@ namespace JASS
 			/*!
 				@brief Return and iterator to the end of this object
 			*/
-			const iterator end()
+			iterator end()
 				{
 				return iterator(*this, source_file_length);
 				}
