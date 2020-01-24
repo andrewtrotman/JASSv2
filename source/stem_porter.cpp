@@ -1,18 +1,19 @@
 /*
-	STEM_PORTER.C
-	-------------
-	Generate the stem of a word using Porter's algorythm
-	M.F. Porter, An algoritm for suffix stripping, Program, Vol 14, No 3, pp 130-137, July 1980
+	STEM_PORTER.CPP
+	---------------
 */
+#include <vector>
+#include <iostream>
 
+#include "asserts.h"
 #include "ascii.h"
 #include "stem_porter.h"
 
 namespace JASS
 	{
 	/*
-		ANT_STEM_PORTER::LENGTH()
-		-------------------------
+		STEM_PORTER::LENGTH()
+		---------------------
 	*/
 	size_t stem_porter::length(const char *reversed)
 		{
@@ -48,8 +49,8 @@ namespace JASS
 		}
 
 	/*
-		ANT_STEM_PORTER::HAS_VOWEL()
-		----------------------------
+		STEM_PORTER::HAS_VOWEL()
+		------------------------
 	*/
 	bool stem_porter::has_vowel(const char *what)
 		{
@@ -66,20 +67,20 @@ namespace JASS
 		}
 
 	/*
-		ANT_STEM_PORTER::TOSTEM()
-		-------------------------
-		Generate the stem of a word using Porter's algorythm
-		M.F. Porter, An algoritm for suffix stripping, Program, Vol 14, No 3, pp 130-137, July 1980
-
-		parameter "destination" must not overlap parameter "what"
+		STEM_PORTER::TOSTEM()
+		---------------------
 	*/
-	size_t stem_porter::tostem(char *destination, const char *what)
+	size_t stem_porter::tostem(char *destination, const char *source, size_t source_length)
 		{
 		long kill_dups = 0;
 
-		workspace.resize(strlen(what + 1));
-		std::reverse_copy(what, what + strlen(what) - 1, workspace.c_str());
+		/*
+			Reverse the string.
+		*/
+		workspace.resize(source_length + 1);
 		char *at = const_cast<char *>(workspace.c_str());
+		std::reverse_copy(source, source + source_length, at);
+		workspace[source_length] = '\0';
 
 		/*
 			Step 1a.
@@ -101,17 +102,26 @@ namespace JASS
 		*/
 		if (*at == 'd' || *at == 'g')
 			{
-			if (strncmp(at, "dee", 3) == 0 && length(at + 3) > 0)
-				at++;
-			else if (strncmp(at, "de", 2) == 0 && has_vowel(at + 2))
+			if (strncmp(at, "dee", 3) == 0)
 				{
-				kill_dups = 1;
-				at += 2;
+				if (length(at + 3) > 0)
+					at++;
 				}
-			else if (strncmp(at, "gni", 3) == 0 && has_vowel(at + 3))
+			else if (strncmp(at, "de", 2) == 0)
 				{
-				kill_dups = 1;
-				at += 3;
+				if (has_vowel(at + 2))
+					{
+					kill_dups = 1;
+					at += 2;
+					}
+				}
+			else if (strncmp(at, "gni", 3) == 0)
+				{
+				if (has_vowel(at + 3))
+					{
+					kill_dups = 1;
+					at += 3;
+					}
 				}
 
 			if (kill_dups)
@@ -167,10 +177,13 @@ namespace JASS
 				at += 2;
 			else if (strncmp(at, "ilsuo", 5) == 0 && length(at + 5) > 0)
 				at += 2;
-			else if (strncmp(at, "noitazi", 7) == 0 && length(at + 7) > 0)
+			else if (strncmp(at, "noitazi", 7) == 0)
 				{
-				at += 4;
-				*at = 'e';
+				if (length(at + 7) > 0)
+					{
+					at += 4;
+					*at = 'e';
+					}
 				}
 			else if (strncmp(at, "noita", 5) == 0 && length(at + 5) > 0)
 				{
@@ -247,12 +260,21 @@ namespace JASS
 				at += 4;
 			else if (strncmp(at, "tna", 3) == 0 && length(at + 3) > 1)
 				at += 3;
-			else if (strncmp(at, "tneme", 5) == 0 && length(at + 5) > 1)
-				at += 5;
-			else if (strncmp(at, "tnem", 4) == 0 && length(at + 4) > 1)
-				at += 4;
-			else if (strncmp(at, "tne", 3) == 0 && length(at + 3) > 1)
-				at += 3;
+			else if (strncmp(at, "tneme", 5) == 0)
+				{
+				if (length(at + 5) > 1)
+					at += 5;
+				}
+			else if (strncmp(at, "tnem", 4) == 0)
+				{
+				if (length(at + 4) > 1)
+					at += 4;
+				}
+			else if (strncmp(at, "tne", 3) == 0)
+				{
+				if (length(at + 3) > 1)
+					at += 3;
+				}
 			else if (strncmp(at, "uo", 2) == 0 && length(at + 2) > 1)
 				at += 2;
 			else if (strncmp(at, "msi", 3) == 0 && length(at + 3) > 1)
@@ -278,26 +300,119 @@ namespace JASS
 		*/
 		if (*at == 'e')
 			{
-			if (length(at + 1) == 1 && !cvc(at + 1))
+			if (length(at + 1) > 1)
 				at++;
-			else if (length(at + 1) > 1)
+			else if (length(at + 1) == 1 && !cvc(at + 1))
 				at++;
 			}
+
 		/*
 			Step 5b.
 		*/
 		if (*at == 'l' && *(at + 1) == 'l' && length(at + 1) > 1)
 			at++;
 
-		strrev(destination, at);
-		/*
-			The Porter algorithms is only guaranteed not to change the first character of the word, but
-			Porter's web site says that you can trim this to two because that will catch all cases except
-			pathalogically stupid cases such as 'is' and 'as'.  As the length return value is only used
-			by the search engine (because the stem is '\0' terminated), it is OK to return 2 here in order
-			to make the search engine start at the first two characters, but it is not OK to use it for
-			anything else.
-		*/
-		return 2;
+		size_t stem_length = strlen(at);
+		std::reverse_copy(at, at + stem_length, destination);
+		destination[stem_length] = '\0';
+
+		return stem_length;
+		}
+
+	/*
+		STEM_PORTER::UNITTEST()
+		-----------------------
+	*/
+	void stem_porter::unittest(void)
+		{
+		std::vector<std::pair<std::string, std::string>> test_data =
+			{
+			{"caresses", "caress"},
+			{"ponies", "poni"},
+			{"ties", "ti"},
+			{"caress", "caress"},
+			{"cats", "cat"},
+			{"feed", "feed"},
+			{"agreed", "agre"},
+			{"plastered", "plaster"},
+			{"bled", "bled"},
+			{"motoring", "motor"},
+			{"sing", "sing"},
+			{"conflated", "conflat"},
+			{"troubled", "troubl"},
+			{"sized", "size"},
+			{"hopping", "hop"},
+			{"tanned", "tan"},
+			{"falling", "fall"},
+			{"hissing", "hiss"},
+			{"fizzed", "fizz"},
+			{"failing", "fail"},
+			{"filing", "file"},
+			{"happy", "happi"},
+			{"sky", "sky"},
+			{"relational", "relat"},
+			{"conditional", "condit"},
+			{"rational", "ration"},
+			{"valenci", "valenc"},
+			{"hesitanci", "hesit"},
+			{"digitizer", "digit"},
+			{"conformabli", "conform"},
+			{"radicalli", "radic"},
+			{"differentli", "differ"},
+			{"vileli", "vile"},
+			{"analogousli", "analog"},
+			{"vietnamization", "vietnam"},
+			{"predication", "predic"},
+			{"operator", "oper"},
+			{"feudalism", "feudal"},
+			{"decisiveness", "decis"},
+			{"hopefulness", "hope"},
+			{"callousness", "callous"},
+			{"formaliti", "formal"},
+			{"sensitiviti", "sensit"},
+			{"sensibiliti", "sensibl"},
+			{"triplicate", "triplic"},
+			{"formative", "form"},
+			{"formalize", "formal"},
+			{"electriciti", "electr"},
+			{"electrical", "electr"},
+			{"hopeful", "hope"},
+			{"goodness", "good"},
+			{"revival", "reviv"},
+			{"allowance", "allow"},
+			{"inference", "infer"},
+			{"airliner", "airlin"},
+			{"gyroscopic", "gyroscop"},
+			{"adjustable", "adjust"},
+			{"defensible", "defens"},
+			{"irritant", "irrit"},
+			{"replacement", "replac"},
+			{"adjustment", "adjust"},
+			{"dependent", "depend"},
+			{"adoption", "adopt"},
+			{"homologou", "homolog"},
+			{"communism", "commun"},
+			{"activate", "activ"},
+			{"angulariti", "angular"},
+			{"homologous", "homolog"},
+			{"effective", "effect"},
+			{"bowdlerize", "bowdler"},
+			{"probate", "probat"},
+			{"rate", "rate"},
+			{"cease", "ceas"},
+			{"controll", "control"},
+			{"roll", "roll"}
+		};
+
+		stem_porter stemmer;
+		char result[1024];
+
+		for (const auto example : test_data)
+			{
+			stemmer.tostem(result, example.first.c_str(), example.first.size());
+			JASS_assert(result == example.second);
+			}
+
+		puts("stem_porter::PASSED");
 		}
 	}

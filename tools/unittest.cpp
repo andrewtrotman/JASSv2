@@ -28,6 +28,7 @@
 #include "hash_table.h"
 #include "run_export.h"
 #include "top_k_heap.h"
+#include "stem_porter.h"
 #include "top_k_qsort.h"
 #include "binary_tree.h"
 #include "commandline.h"
@@ -164,6 +165,9 @@ int main(void)
 			puts("Cannot test as no BMI1 instructions on this CPU");
 	// LCOV_EXCL_STOP
 			}
+
+		puts("stem_porter");
+		JASS::stem_porter::unittest();
 
 		puts("statistics");
 		JASS::statistics::unittest();
