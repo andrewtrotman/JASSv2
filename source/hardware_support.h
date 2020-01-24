@@ -21,6 +21,11 @@
 #include <sstream>
 #include <iostream>
 
+#ifdef _MSC_VER
+	#define RUNNING_ON_VALGRIND (0)
+#else
+	#include "../external/valgrind/valgrind.h"
+#endif
 
 namespace JASS
 	{
@@ -170,23 +175,29 @@ namespace JASS
 				if (nIds >= 0x00000007)
 					{
 					cpuid(info,0x00000007);
-					AVX2   = (info[1] & ((int)1 <<  5)) != 0;
-
 					BMI1        = (info[1] & ((int)1 <<  3)) != 0;
 					BMI2        = (info[1] & ((int)1 <<  8)) != 0;
 					ADX         = (info[1] & ((int)1 << 19)) != 0;
 					SHA         = (info[1] & ((int)1 << 29)) != 0;
 					PREFETCHWT1 = (info[2] & ((int)1 <<  0)) != 0;
 
-					AVX512F     = (info[1] & ((int)1 << 16)) != 0;
-					AVX512CD    = (info[1] & ((int)1 << 28)) != 0;
-					AVX512PF    = (info[1] & ((int)1 << 26)) != 0;
-					AVX512ER    = (info[1] & ((int)1 << 27)) != 0;
-					AVX512VL    = (info[1] & ((int)1 << 31)) != 0;
-					AVX512BW    = (info[1] & ((int)1 << 30)) != 0;
-					AVX512DQ    = (info[1] & ((int)1 << 17)) != 0;
-					AVX512IFMA  = (info[1] & ((int)1 << 21)) != 0;
-					AVX512VBMI  = (info[2] & ((int)1 <<  1)) != 0;
+					/*
+						At present AVX2 and above is not supported on vlagrind.
+					*/
+					if (!RUNNING_ON_VALGRIND)
+						{
+						AVX2   = (info[1] & ((int)1 <<  5)) != 0;
+
+						AVX512F     = (info[1] & ((int)1 << 16)) != 0;
+						AVX512CD    = (info[1] & ((int)1 << 28)) != 0;
+						AVX512PF    = (info[1] & ((int)1 << 26)) != 0;
+						AVX512ER    = (info[1] & ((int)1 << 27)) != 0;
+						AVX512VL    = (info[1] & ((int)1 << 31)) != 0;
+						AVX512BW    = (info[1] & ((int)1 << 30)) != 0;
+						AVX512DQ    = (info[1] & ((int)1 << 17)) != 0;
+						AVX512IFMA  = (info[1] & ((int)1 << 21)) != 0;
+						AVX512VBMI  = (info[2] & ((int)1 <<  1)) != 0;
+						}
 					}
 				if (nExIds >= 0x80000001)
 					{
