@@ -187,6 +187,9 @@ set(JASSlib_FILES
 	slice.h
 	statistics.h
 	statistics.cpp
+	stem.h
+	stem_porter.h
+	stem_porter.cpp
 	string_cpp.h
 	threads.h
 	threads.cpp

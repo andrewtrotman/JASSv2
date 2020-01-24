@@ -33,6 +33,8 @@ enum character_type
 	SPACE = 32, 		///< character is a whitespace
 	HEX = 64, 			///< character is a hexadecimal digit
 	DNA = 128,			///< character is a DNA base (i.e in: {ACTGactg})
+	VOWEL = 256,		///< character is a vowel (i.e. {AEIOUaeiou})
+	VOWELY = 512,		///< character is a vowel or Y (i.e. {AEIOUYaeiouy})
 	};
 
 /*
@@ -48,6 +50,8 @@ const char *names[] =
 	"SPACE",
 	"HEX",
 	"DNA",
+	"VOWEL",
+	"VOWELY",
 	};
 
 /*
@@ -132,7 +136,11 @@ for (ch = 0; ch <= 0xFF; ch++)
 		bits |= HEX;
 	if (tolower(ch) == 'a' || tolower(ch) == 't' || tolower(ch) == 'c' || tolower(ch) == 'g')
 		bits |= DNA;
-		
+	if (tolower(ch) == 'a' || tolower(ch) == 'e' || tolower(ch) == 'i' || tolower(ch) == 'o' || tolower(ch) == 'u')
+		bits |= VOWEL;
+	if (tolower(ch) == 'a' || tolower(ch) == 'e' || tolower(ch) == 'i' || tolower(ch) == 'o' || tolower(ch) == 'u' || tolower(ch) == 'y')
+		bits |= VOWELY;
+
 	/*
 		newline every 16 characters
 	*/

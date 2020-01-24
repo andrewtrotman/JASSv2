@@ -46,7 +46,9 @@ namespace JASS
 				PUNC = 16,											///< this characgter is punctuation.
 				SPACE = 32,											///< this character is whitespace.
 				HEX = 64,											///< this character is a hexadecimal digit.
-				DNA = 128,											///< this character is a DNA base (i.e in: {ATCGatcg}
+				DNA = 128,											///< this character is a DNA base (i.e in: {ATCGatcg})
+				VOWEL = 256,										///< this character is a vowel (i.e in: {aeiouAEIOU})
+				VOWELY = 512,										///< this character is a vowel or Y (i.e in: {aeiouyAEIOUY})
 
 				ALPHA = UPPER | LOWER,							///< this character is alphabetic
 				ALNUM = ALPHA | DIGIT,							///< this character is alphanumeric
@@ -237,7 +239,7 @@ namespace JASS
 				------------------
 			*/
 			/*!
-				@brief Is this character a DNA base (i.e. in {a,t,c,g,A,T,C,G}
+				@brief Is this character a DNA base (i.e. in {a,t,c,g,A,T,C,G})
 				@param c [in] The character to check
 				@return true if a DNA base, else false.
 			*/
@@ -246,6 +248,33 @@ namespace JASS
 				return (ctype[c] & DNA);
 				}
 
+			/*
+				ASCII::ISVOWEL()
+				----------------
+			*/
+			/*!
+				@brief Is this character a vowel (i.e. in {aeiouAEIOU})
+				@param c [in] The character to check
+				@return true if a vowel base, else false.
+			*/
+			inline static int isvowel(uint8_t c)
+				{
+				return (ctype[c] & VOWEL);
+				}
+
+			/*
+				ASCII::ISVOWELY()
+				----------------
+			*/
+			/*!
+				@brief Is this character a vowel or Y (i.e. in {aeiouyAEIOUY})
+				@param c [in] The character to check
+				@return true if a vowel base, else false.
+			*/
+			inline static int isvowely(uint8_t c)
+				{
+				return (ctype[c] & VOWELY);
+				}
 
 			/*
 				ASCII::TOLOWER()
