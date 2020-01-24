@@ -155,6 +155,17 @@ int main(int argc, const char *argv[])
 	index.set_document_length_vector(document_length_vector);
 
 	/*
+		free up memory
+	*/
+	primary_keys = "";
+	line_list.clear();
+	key_vector.clear();
+	document_length_vector.clear();
+	length_line_list.clear();
+	lengths = "";
+	file = "";
+
+	/*
 		quantize the index
 	*/
 	std::shared_ptr<JASS::ranking_function_atire_bm25> ranker(new JASS::ranking_function_atire_bm25(0.9, 0.4, index.get_document_length_vector()));
