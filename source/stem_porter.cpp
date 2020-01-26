@@ -4,6 +4,7 @@
 */
 #include <vector>
 #include <iostream>
+#include <algorithm>
 
 #include "asserts.h"
 #include "ascii.h"

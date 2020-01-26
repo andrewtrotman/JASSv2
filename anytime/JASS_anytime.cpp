@@ -31,7 +31,7 @@
 constexpr size_t MAX_QUANTUM = 0x0FFF;
 constexpr size_t MAX_TERMS_PER_QUERY = 1024;
 
-constexpr size_t MAX_DOCUMENTS = 50'000'000;
+constexpr size_t MAX_DOCUMENTS = 55'000'000;
 constexpr size_t MAX_TOP_K = 1'000;
 
 /*
