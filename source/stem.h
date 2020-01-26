@@ -79,8 +79,9 @@ namespace JASS
 			*/
 			/*!
 				@brief Stem from term into destination
-				@param destination [out] the result of the steming process (the stem)
+				@param destination [out] the result of the steming process (the stem).
 				@param source [in] the term to stem
+				@details source and destination can be the same.
 				@return the length of the stem
 			*/
 			virtual size_t tostem(parser::token &destination, const parser::token &source)

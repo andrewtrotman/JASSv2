@@ -11,7 +11,9 @@
 #pragma once
 
 #include <stdio.h>
+
 #include "stem.h"
+#include "ascii.h"
 
 #define MAX_TERM_LENGTH 1024
 
@@ -125,6 +127,7 @@ namespace JASS
 				@param destination [out] the result of the steming process (the stem)
 				@param source [in] the term to stem
 				@param source_length [in] the length of the string to stem
+				@details source and destination can be the same.
 				@return the length of the stem
 			*/
 			using stem::tostem;

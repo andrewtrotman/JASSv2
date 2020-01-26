@@ -19,6 +19,7 @@
 #include "version.h"
 #include "quantize.h"
 #include "commandline.h"
+#include "stem_porter.h"
 #include "parser_fasta.h"
 #include "serialise_ci.h"
 #include "instream_file.h"
@@ -46,6 +47,8 @@ size_t parameter_report_every_n = (std::numeric_limits<size_t>::max)();
 bool parameter_atire_similar = false;
 size_t parameter_fasta_kmer_length = 0;
 
+bool parameter_stem_porter = false;
+
 auto command_line_parameters = std::make_tuple
 	(
 	JASS::commandline::note("\nMISCELLANEOUS\n-------------"),
@@ -62,6 +65,10 @@ auto command_line_parameters = std::make_tuple
 
 	JASS::commandline::note("\nCOMPATIBILITY\n-------------"),
 	JASS::commandline::parameter("-A", "--atire", "ATIRE-like parsing (errors and all)", parameter_atire_similar),
+
+	JASS::commandline::note("\nTERM PROCESSING\n---------------"),
+	JASS::commandline::parameter("-tp", "--term_steming_porter", "Term stemming with Porter v1 (JASS implementation)", parameter_stem_porter),
+
 
 	JASS::commandline::note("\nINDEX GENERATION\n----------------"),
 	JASS::commandline::parameter("-I1", "--index_jass_v1", "Generate a JASS version 1 index.", parameter_jass_v1_index),
@@ -106,6 +113,16 @@ int main(int argc, const char *argv[])
 	if (!parameter_quiet)
 		std::cout << JASS::version::build() << "\n";
 
+
+	/*
+		Check to make sure we'll actually be exporting the index
+	*/
+	if (!(parameter_jass_v1_index | parameter_uint32_index | parameter_compiled_index | parameter_forward_index | parameter_fasta_kmer_length))
+		{
+		std::cout << "You must specify an index file format or else no index will be generated\n";
+		return 1;
+		}
+
 	/*
 		Decode the input filename
 	*/
@@ -138,6 +155,13 @@ int main(int argc, const char *argv[])
 		:
 			(JASS::instream *)new JASS::instream_document_fasta(file)
 			);
+
+	/*
+		set up the stemmer
+	*/
+	JASS::stem *stem = nullptr;
+	if (parameter_stem_porter)
+		stem = new JASS::stem_porter;
 
 	/*
 		Now call JASS
@@ -185,7 +209,7 @@ int main(int argc, const char *argv[])
 		JASS::compress_integer::integer document_length = 0;				// measured in terms
 		do
 			{
-			const auto &token = parser.get_next_token();
+			auto &token = const_cast<JASS::parser::token &>(parser.get_next_token());
 			
 			switch (token.type)
 				{
@@ -194,6 +218,8 @@ int main(int argc, const char *argv[])
 					break;
 				case JASS::parser::token::alpha:
 					document_length++;
+					if (stem != nullptr && token.lexeme.size() > 2)
+						stem->tostem(token, token);
 					index.term(token);
 					break;
 				case JASS::parser::token::numeric:
