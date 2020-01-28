@@ -64,6 +64,7 @@
 #include "index_postings_impact.h"
 #include "compress_general_zlib.h"
 #include "instream_document_trec.h"
+#include "instream_document_warc.h"
 #include "evaluate_selling_power.h"
 #include "evaluate_buying_power4k.h"
 #include "instream_document_fasta.h"
@@ -300,6 +301,9 @@ int main(void)
 
 		puts("instream_document_trec");
 		JASS::instream_document_trec::unittest();
+
+		puts("instream_document_warc");
+		JASS::instream_document_warc::unittest();
 
 		puts("instream_document_fasta");
 		JASS::instream_document_fasta::unittest();
