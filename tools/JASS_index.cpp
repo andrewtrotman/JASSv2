@@ -108,6 +108,12 @@ int main(int argc, const char *argv[])
 		}
 
 	/*
+		Provide help if needed.
+	*/
+	if (parameter_filename == "" || parameter_help)
+		exit(usage(argv[0]));
+
+	/*
 		If we're not in quiet mode then dump the copyright message
 	*/
 	if (!parameter_quiet)
@@ -128,12 +134,6 @@ int main(int argc, const char *argv[])
 	*/
 	if (parameter_filename == "")
 		std::cout << "filename needed";
-
-	/*
-		Provide help if needed.
-	*/
-	if (parameter_filename == "" || parameter_help)
-		exit(usage(argv[0]));
 
 	/*
 		Either we're a regular text parser of a FASTA k-mer parser

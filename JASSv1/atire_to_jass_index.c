@@ -143,7 +143,7 @@ puts("-D compress the postings using Group Elias Delta SIMD (D1 gaps)");
 return 1;
 }
 
-#define MAX_DOCIDS_PER_IMPACT (1024 * 1024 * 50)
+#define MAX_DOCIDS_PER_IMPACT (1024 * 1024 * 60)
 
 uint32_t remember_should_compress = true;
 uint64_t remember_buffer_size, remember_compressed_buffer_size;
@@ -661,6 +661,7 @@ raw = (ANT_compressable_integer *)malloc((size_t)raw_list_size);
 for (term = iterator.first(NULL); term != NULL; term = iterator.next())
 	{
 	iterator.get_postings_details(&leaf);
+// puts(term);
 	if (*term == '~')
 		break;
 	else

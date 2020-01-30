@@ -61,7 +61,7 @@ int main(int argc, const char *argv[])
 	std::vector<uint8_t *> line_list;
 	JASS::file::buffer_to_list(line_list, primary_keys);
 	std::vector<JASS::slice> key_vector;
-//	key_vector.push_back("JASS DocID=0: Invalid");		// Postings count from 1, but primary keys count from 0 (so DO NOT EXECUTE THIS LINE).
+//	key_vector.push_back("JASS DocID=0: Invalid");		// Postings count from 1, but primary keys count from 0 because one is shoved at the start later (so DO NOT EXECUTE THIS LINE).
 	for (auto &line : line_list)
 		key_vector.push_back(JASS::slice((const char *)line));
 	index.set_primary_keys(key_vector);
@@ -120,7 +120,7 @@ int main(int argc, const char *argv[])
 	size_t term_count = 0;
 	for (auto &posting : source)
 		{
-		if ((++term_count % 1024) == 0)
+		if ((++term_count % (10 * 1024)) == 0)
 			{
 			std::cout.write((char *)posting.term.address(), posting.term.size());
 			std::cout << " " << posting.document_frequency << " " << posting.collection_frequency << ":\n";
@@ -153,17 +153,6 @@ int main(int argc, const char *argv[])
 		set the length vector
 	*/
 	index.set_document_length_vector(document_length_vector);
-
-	/*
-		free up memory
-	*/
-	primary_keys = "";
-	line_list.clear();
-	key_vector.clear();
-	document_length_vector.clear();
-	length_line_list.clear();
-	lengths = "";
-	file = "";
 
 	/*
 		quantize the index

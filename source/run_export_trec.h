@@ -55,10 +55,10 @@ namespace JASS
 					stream << topic_id << " Q0 "<< document.primary_key << ' ' << current << ' ' << document.rsv << ' ' << run_name;
 
 					/*
-						Optionally include the internal document id for debugging purposes.
+						Optionally include the internal document id and rsv for debugging purposes.
 					*/
 					if (include_internal_ids)
-						stream << " (ID:" << document.document_id << ")";
+						stream << " (ID:" << document.document_id << "->" << document.rsv << ")";
 
 					stream << '\n';
 					}
