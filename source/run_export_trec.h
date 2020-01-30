@@ -58,7 +58,7 @@ namespace JASS
 						Optionally include the internal document id and rsv for debugging purposes.
 					*/
 					if (include_internal_ids)
-						stream << " (ID:" << document.document_id << "->" << document.rsv << ")";
+						stream << "(ID:" << document.document_id << "->" << document.rsv << ")";
 
 					stream << '\n';
 					}

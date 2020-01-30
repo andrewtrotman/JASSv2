@@ -216,7 +216,7 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 		/*
 			Serialise the results list (don't time this)
 		*/
-		JASS::run_export(JASS::run_export::TREC, output.results_list, query_id.c_str(), *jass_query, "JASSv2", true);
+		JASS::run_export(JASS::run_export::TREC, output.results_list, query_id.c_str(), *jass_query, "JASSv2", false);
 
 		/*
 			Re-start the timer
