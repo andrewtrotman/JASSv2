@@ -85,11 +85,11 @@ namespace JASS
 				run_export_trec(result, "qid", query, "unittest", true);
 
 				std::string correct_answer =
-					"qid Q0 six 1 1 unittest (ID:6)\n"
-					"qid Q0 five 2 1 unittest (ID:5)\n"
-					"qid Q0 four 3 1 unittest (ID:4)\n"
-					"qid Q0 three 4 1 unittest (ID:3)\n"
-					"qid Q0 two 5 1 unittest (ID:2)\n";
+					"qid Q0 six 1 1 unittest(ID:6->1)\n"
+					"qid Q0 five 2 1 unittest(ID:5->1)\n"
+					"qid Q0 four 3 1 unittest(ID:4->1)\n"
+					"qid Q0 three 4 1 unittest(ID:3->1)\n"
+					"qid Q0 two 5 1 unittest(ID:2->1)\n";
 
 				JASS_assert(result.str() == correct_answer);
 				puts("run_export_trec::PASSED");
