@@ -321,7 +321,7 @@ int main(int argc, const char *argv[])
 	if (rho != 100.0)
 		postings_to_process = static_cast<size_t>(static_cast<double>(index.document_count()) * rho / 100.0);
 
-std::cout << "Maximum numnber of postings to process:" << postings_to_process << "\n";
+std::cout << "Maximum number of postings to process:" << postings_to_process << "\n";
 
 	/*
 		Read from the query file into a list of queries array.
