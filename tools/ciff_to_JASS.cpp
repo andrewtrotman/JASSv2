@@ -44,8 +44,8 @@ int main(int argc, const char *argv[])
 	std::string file;
 	size_t file_size;
 
-	if (argc != 4)
-		exit(printf("Usage:%s <index.pb> <docids.txt> <doclengths.txt>\n", argv[0]));
+	if (argc != 2)
+		exit(printf("Usage:%s <index.ciff>\n", argv[0]));
 
 	/*
 		set up the indexer
@@ -54,74 +54,30 @@ int main(int argc, const char *argv[])
 	size_t total_documents = 0;
 
 	/*
-		read the primary keys from a text file
-	*/
-	std::string primary_keys;
-	JASS::file::read_entire_file(argv[2], primary_keys);
-	std::vector<uint8_t *> line_list;
-	JASS::file::buffer_to_list(line_list, primary_keys);
-	std::vector<JASS::slice> key_vector;
-//	key_vector.push_back("JASS DocID=0: Invalid");		// Postings count from 1, but primary keys count from 0 because one is shoved at the start later (so DO NOT EXECUTE THIS LINE).
-	for (auto &line : line_list)
-		key_vector.push_back(JASS::slice((const char *)line));
-	index.set_primary_keys(key_vector);
-
-	/*
-		read the document length vector
-		the document lengths are <docid>\t<length> formated, counting from 0.  For example:
-		0 504
-		1 168
-		2 600
-	*/
-	std::vector<JASS::compress_integer::integer> document_length_vector;
-	std::string lengths;
-	JASS::file::read_entire_file(argv[3], lengths);
-	std::vector<uint8_t *> length_line_list;
-	JASS::file::buffer_to_list(length_line_list, lengths);
-	JASS::compress_integer::integer last_docid = 0;
-	document_length_vector.push_back(0);			// docid=0 does not exist in JASSv2.
-	for (const auto &line : length_line_list)
-		{
-		char *line_as_char_star = reinterpret_cast<char *>(line);
-		JASS::compress_integer::integer docid = atoll(line_as_char_star);
-		docid++;
-		if (docid != last_docid + 1)
-			{
-			std::cout << "Document ID missing where " << docid << " was found.\n";
-			exit(1);
-			}
-		char *length_field = strchr(line_as_char_star, '\t');
-		if (length_field == nullptr)
-			{
-			std::cout << "Broken length file for docid=" << docid << ".\n";
-			exit(1);
-			}
-		while (isspace(*length_field))
-			length_field++;
-		JASS::compress_integer::integer document_length = atoll(length_field);
-		document_length_vector.push_back(document_length);
-		last_docid = docid;
-		}
-
-	/*
 		read the postings lists
 	*/
+	std::cout << "READ THE CIFF INTO MEMORY\n";
 	if ((file_size = JASS::file::read_entire_file(argv[1], file)) == 0)
 		exit(printf("Can't read file:%s\n", argv[1]));
 
 	/*
 		set up the protobuf reader
 	*/
-	JASS::ciff_lin source((uint8_t *)&file[0], file_size);
+	JASS::ciff_lin source((uint8_t *)&file[0]);
 
 	/*
 		go list at a time, adding each one to the index
 	*/
+	std::cout << "PROCESS THE POSTINGS LISTS\n";
 	size_t term_count = 0;
-	for (auto &posting : source)
+	size_t total_terms = source.get_header().num_postings_lists;
+	size_t percent_threshold = total_terms / 100;
+	for (auto &posting : source.postings())
 		{
-		if ((++term_count % (10 * 1024)) == 0)
+		++term_count;
+		if (((term_count % (percent_threshold * 5)) == 0) || (term_count == total_terms - 1))
 			{
+			std::cout << term_count << "/" << total_terms << " " << (term_count * 100) / total_terms << "% : ";
 			std::cout.write((char *)posting.term.address(), posting.term.size());
 			std::cout << " " << posting.document_frequency << " " << posting.collection_frequency << ":\n";
 			}
@@ -150,13 +106,35 @@ int main(int argc, const char *argv[])
 		exit(printf("File is not in the correct format\n"));
 
 	/*
-		set the length vector
+		Generate the length vector and the public key vector
 	*/
+	std::cout << "READ THE DOCUMENT DETAILS\n";
+	std::vector<JASS::slice> key_vector;
+	std::vector<JASS::compress_integer::integer> document_length_vector;
+	document_length_vector.push_back(0);			// docid=0 does not exist in JASSv2.
+	JASS::compress_integer::integer last_docid = 0;
+	for (auto &docid : source.docrecords())
+		{
+		document_length_vector.push_back(docid.doclength);
+		key_vector.push_back(docid.collection_docid);
+		if (last_docid != docid.docid)
+			{
+			std::cout << "Document IDs must be ordered\n";
+			exit(0);
+			}
+		last_docid = docid.docid + 1;
+		}
+
+	/*
+		set the length vector and the primary key vector
+	*/
+	index.set_primary_keys(key_vector);
 	index.set_document_length_vector(document_length_vector);
 
 	/*
 		quantize the index
 	*/
+	std::cout << "QUANTIZE THE INDEX\n";
 	std::shared_ptr<JASS::ranking_function_atire_bm25> ranker(new JASS::ranking_function_atire_bm25(0.9, 0.4, index.get_document_length_vector()));
 	JASS::quantize<JASS::ranking_function_atire_bm25> quantizer(total_documents, ranker);
 	index.iterate(quantizer);
@@ -164,9 +142,11 @@ int main(int argc, const char *argv[])
 	/*
 		Decode the export formats and encode into a vector before writing the index
 	*/
+	std::cout << "WRITE THE INDEX TO DISK\n";
 	std::vector<std::unique_ptr<JASS::index_manager::delegate>> exporters;
 	exporters.push_back(std::make_unique<JASS::serialise_jass_v1>(total_documents));
 	quantizer.serialise_index(index, exporters);
 
+	std::cout << "DONE\n";
 	return 0;
 	}

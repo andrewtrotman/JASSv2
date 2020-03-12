@@ -184,13 +184,13 @@ namespace JASS
 			uint64_t answer;
 
 			answer = static_cast<uint64_t>(*stream++) << 0;
-			answer = static_cast<uint64_t>(*stream++) << 8;
-			answer = static_cast<uint64_t>(*stream++) << 16;
-			answer = static_cast<uint64_t>(*stream++) << 24;
-			answer = static_cast<uint64_t>(*stream++) << 32;
-			answer = static_cast<uint64_t>(*stream++) << 40;
-			answer = static_cast<uint64_t>(*stream++) << 48;
-			answer = static_cast<uint64_t>(*stream++) << 56;
+			answer |= static_cast<uint64_t>(*stream++) << 8;
+			answer |= static_cast<uint64_t>(*stream++) << 16;
+			answer |= static_cast<uint64_t>(*stream++) << 24;
+			answer |= static_cast<uint64_t>(*stream++) << 32;
+			answer |= static_cast<uint64_t>(*stream++) << 40;
+			answer |= static_cast<uint64_t>(*stream++) << 48;
+			answer |= static_cast<uint64_t>(*stream++) << 56;
 
 			return answer;
 			}
@@ -212,11 +212,35 @@ namespace JASS
 			uint32_t answer;
 
 			answer = static_cast<uint32_t>(*stream++) << 0;
-			answer = static_cast<uint32_t>(*stream++) << 8;
-			answer = static_cast<uint32_t>(*stream++) << 16;
-			answer = static_cast<uint32_t>(*stream++) << 24;
+			answer |= static_cast<uint32_t>(*stream++) << 8;
+			answer |= static_cast<uint32_t>(*stream++) << 16;
+			answer |= static_cast<uint32_t>(*stream++) << 24;
 
 			return answer;
+			}
+
+			/*
+				PROTOBUF::GET_DOUBLE()
+				----------------------
+			*/
+			/*
+				@brief Read and decode a double .
+				@details The spec (https://developers.google.com/protocol-buffers/docs/encoding) states:
+				"Non-varint numeric types are simple – double and fixed64 have wire type 1, which tells the parser to expect a fixed 64-bit lump of data"
+				and "the values are stored in little-endian byte order."
+				@param stream [in, out] A reference to a pointer to the start of the value, points to the next byte on return.
+				@return The decoded integer
+			*/
+			inline static double get_double(const uint8_t *&stream)
+			{
+			union
+				{
+				uint64_t byte_sequence;
+				double number;
+				} answer;
+
+			answer.byte_sequence = get_64_t(stream);
+			return answer.number;
 			}
 
 			/*
