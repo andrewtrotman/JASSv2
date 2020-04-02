@@ -28,6 +28,7 @@ namespace JASS
 		@details Keep the accumulagor scores in an array, and use a second array as a set of dirty flags.  That second array
 		simply stores the ID of the query that last used the accumulator. By incrementing the query_id on each rewind its possible to
 		avoid initilising the acumulator array most of the time, at the cost of NUMBER_OF_ACCUMULATORS units of storage.
+		Thanks go to Antonio Mallia for inveting this method.
 		@tparam ELEMENT The type of accumulator being used (default is uint16_t)
 	*/
 	template <typename ELEMENT, size_t NUMBER_OF_ACCUMULATORS, typename = typename std::enable_if<std::is_arithmetic<ELEMENT>::value, ELEMENT>::type>
