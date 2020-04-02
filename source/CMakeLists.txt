@@ -10,6 +10,7 @@
 
 set(JASSlib_FILES
 	accumulator_2d.h
+	accumulator_counter.h
 	allocator.h
 	allocator_cpp.h
 	allocator_memory.h

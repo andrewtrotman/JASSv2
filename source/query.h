@@ -18,6 +18,7 @@
 #include "top_k_qsort.h"
 #include "parser_query.h"
 #include "accumulator_2d.h"
+#include "accumulator_counter.h"
 #include "query_term_list.h"
 #include "allocator_memory.h"
 
@@ -209,6 +210,7 @@ namespace JASS
 			ACCUMULATOR_TYPE *accumulator_pointers[MAX_TOP_K];					///< Array of pointers to the top k accumulators
 			ACCUMULATOR_TYPE impact;													///< The impact score to be added on a call to push_back()
 			accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;	///< The accumulators, one per document in the collection
+//			accumulator_counter<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;	///< The accumulators, one per document in the collection
 			size_t needed_for_top_k;													///< The number of results we still need in order to fill the top-k
 			heap<ACCUMULATOR_TYPE *, add_rsv_compare> top_results;			///< Heap containing the top-k results
 

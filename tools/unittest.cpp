@@ -58,6 +58,7 @@
 #include "serialise_integers.h"
 #include "evaluate_precision.h"
 #include "instream_file_star.h"
+#include "accumulator_counter.h"
 #include "compress_integer_all.h"
 #include "evaluate_buying_power.h"
 #include "compress_integer_none.h"
@@ -166,6 +167,9 @@ int main(void)
 			puts("Cannot test as no BMI1 instructions on this CPU");
 	// LCOV_EXCL_STOP
 			}
+
+		puts("accumulator_counter");
+		JASS::accumulator_counter<uint32_t, 1>::unittest();
 
 		puts("stem_porter");
 		JASS::stem_porter::unittest();
