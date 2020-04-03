@@ -11,7 +11,7 @@
 #include <exception>
 
 #include "ascii.h"
-#include "query.h"
+#include "query_heap.h"
 #include "string_cpp.h"
 #include "channel_file.h"
 #include "parser_query.h"
@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
 			
 			JASS::string query(memory);					// allocate a string to read into
 
-			auto jass_query_memory = std::make_shared<JASS::query<uint16_t, 10'000'000, 10>>(primary_key, 1024, 10);	// allocate a JASS query object
+			auto jass_query_memory = std::make_shared<JASS::query_heap<uint16_t, 10'000'000, 10>>(primary_key, 1024, 10);	// allocate a JASS query object
 			auto &jass_query = *jass_query_memory.get();		// pretend its an object
 
 			/*

@@ -172,6 +172,8 @@ set(JASSlib_FILES
 	posting.h
 	quantize.h
 	query.h
+	query_heap.h
+	query_maxblock.h
 	query_term.h
 	query_term_list.h
 	ranking_function.h

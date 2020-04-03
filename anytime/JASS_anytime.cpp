@@ -79,10 +79,10 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 	/*
 		Allocate a JASS query object
 	*/
-	JASS::query<uint16_t, MAX_DOCUMENTS, MAX_TOP_K> *jass_query;
+	JASS::query_heap<uint16_t, MAX_DOCUMENTS, MAX_TOP_K> *jass_query;
 	try
 		{
-		jass_query = new JASS::query<uint16_t, MAX_DOCUMENTS, MAX_TOP_K>(index.primary_keys(), index.document_count(), top_k);
+		jass_query = new JASS::query_heap<uint16_t, MAX_DOCUMENTS, MAX_TOP_K>(index.primary_keys(), index.document_count(), top_k);
 		}
 	catch (std::bad_array_new_length &)
 		{

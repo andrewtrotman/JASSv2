@@ -76,7 +76,7 @@ namespace JASS
 				std::vector<uint32_t>integer_sequence = {1, 1, 1, 1, 1, 1};
 				std::vector<std::string>primary_keys = {"zero", "one", "two", "three", "four", "five", "six"};
 				compress_integer_none identity;
-				query<uint16_t, 100, 100> query(primary_keys, 10, 5);
+				query_heap<uint16_t, 100, 100> query(primary_keys, 10, 5);
 				std::ostringstream result;
 
 				decoder_d1 decoder(20);

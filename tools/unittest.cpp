@@ -8,7 +8,6 @@
 #include "heap.h"
 #include "ascii.h"
 #include "maths.h"
-#include "query.h"
 #include "slice.h"
 #include "timer.h"
 #include "parser.h"
@@ -23,6 +22,7 @@
 #include "decode_d0.h"
 #include "decode_d1.h"
 #include "bitstring.h"
+#include "query_heap.h"
 #include "statistics.h"
 #include "evaluate_f.h"
 #include "hash_table.h"
@@ -437,8 +437,8 @@ int main(void)
 		puts("top_k_heap");
 		JASS::top_k_heap<int>::unittest();
 
-		puts("query");
-		JASS::query<uint16_t, 1, 1>::unittest();
+		puts("query_heap");
+		JASS::query_heap<uint16_t, 1, 1>::unittest();
 
 		puts("decode_d0");
 		JASS::decoder_d0::unittest();
