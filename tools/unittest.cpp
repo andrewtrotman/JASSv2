@@ -44,6 +44,7 @@
 #include "allocator_cpp.h"
 #include "instream_file.h"
 #include "index_manager.h"
+#include "query_maxblock.h"
 #include "allocator_pool.h"
 #include "index_postings.h"
 #include "accumulator_2d.h"
@@ -439,6 +440,9 @@ int main(void)
 
 		puts("query_heap");
 		JASS::query_heap<uint16_t, 1, 1>::unittest();
+
+		puts("query_maxblock");
+		JASS::query_maxblock<uint16_t, 1, 1>::unittest();
 
 		puts("decode_d0");
 		JASS::decoder_d0::unittest();

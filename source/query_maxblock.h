@@ -1,104 +1,41 @@
 /*
-	QUERY.H
-	-------
+	QUERY_MAXBLOCK.H
+	----------------
 	Copyright (c) 2017 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 /*!
 	@file
-	@brief Everything necessary to process a query
+	@brief Everything necessary to process a query maxblock to store the accumulators
 	@author Andrew Trotman
 	@copyright 2017 Andrew Trotman
 */
 #pragma once
 
-#include <immintrin.h>
-
-#include "heap.h"
-#include "top_k_qsort.h"
-#include "parser_query.h"
-#include "accumulator_2d.h"
-#include "accumulator_counter.h"
-#include "query_term_list.h"
-#include "allocator_memory.h"
+#include "query.h"
 
 namespace JASS
 	{
 	/*
-		CLASS QUERY
-		-----------
+		CLASS QUERY_MAXBLOCK
+		--------------------
 	*/
 	/*!
-		@brief Everything necessary to process a query is encapsulated in an object of this type
+		@brief Everything necessary to process a query (using a maxblock) is encapsulated in an object of this type.  Thanks go to Antonio Mallia for inveting this method.
 		@tparam ACCUMULATOR_TYPE The value-type for an accumulator (normally uint16_t or double).
 		@tparam MAX_DOCUMENTS The maximum number of documents that are ever going to exist in this collection
 		@tparam MAX_TOP_K The maximum top-k documents that are going to be asked for
 	*/
 	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	class query_maxblock
+	class query_maxblock : public query<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>
 		{
-		public:
-			/*
-				CLASS QUERY::ADD_RSV_COMPARE
-				----------------------------
-			*/
-			/*!
-				@brief Functor that does the comparison (looking for a < b, if a == b then pointer compare).
-			*/
-			class add_rsv_compare
-				{
-				public:
-					/*
-						QUERY::ADD_RSV_COMPARE::OPERATOR()
-						----------------------------------
-					*/
-					/*!
-						@brief Compare value then pointer for greater, equal, less then.
-						@param a [in] first pointer.
-						@param b [in] second pointer
-						@return 1 if greater, 0 if equal, -1 is less
-					*/
-					forceinline int operator() (ACCUMULATOR_TYPE *a, ACCUMULATOR_TYPE *b) const
-						{
-						/*
-							The most likely case is that the value at a is less than the value at b so do that check first.
-						*/
-						return *a < *b ? -1 : *a > *b ? 1 : a < b ? -1 : a == b ? 0 : 1;
-						}
-				};
-			/*
-				CLASS QUERY::SORT_RSV_COMPARE
-				-----------------------------
-			*/
-			/*!
-				@brief Functor that does the comparison (looking for a > b, if a == b then pointer compare).
-			*/
-			class sort_rsv_compare
-				{
-				public:
-					/*
-						QUERY::SORT_RSV_COMPARE::OPERATOR()
-						----------------------------------
-					*/
-					/*!
-						@brief Compare value then pointer for greater, equal, less then.
-						@param a [in] first pointer.
-						@param b [in] second pointer
-						@return 1 if greater, 0 if equal, -1 is less
-					*/
-					forceinline int operator() (ACCUMULATOR_TYPE *a, ACCUMULATOR_TYPE *b) const
-						{
-						/*
-							The most likely case is that the value at a is less than the value at b so do that check first.
-						*/
-						return *a < *b ? 1 : *a > *b ? -1 : a < b ? 1 : a == b ? 0 : -1;
-						}
-				};
+		private:
+			typedef query<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> parent;
 
 		public:
 			/*
-				CLASS QUERY::ITERATOR
-				----------------------
+				CLASS QUERY_MAXBLOCK::ITERATOR
+				------------------------------
 			*/
 			/*!
 				@brief Iterate over the top-k
@@ -106,8 +43,8 @@ namespace JASS
 			class iterator
 				{
 				/*
-					CLASS QUERY::ITERATOR::DOCID_RSV_PAIR()
-					---------------------------------------
+					CLASS QUERY_MAXBLOCK::ITERATOR::DOCID_RSV_PAIR()
+					------------------------------------------------
 				*/
 				/*!
 					@brief Literally a <document_id, rsv> ordered pair.
@@ -121,8 +58,8 @@ namespace JASS
 
 					public:
 						/*
-							QUERY::ITERATOR::DOCID_RSV_PAIR::DOCID_RSV_PAIR()
-							-------------------------------------------------
+							QUERY_MAXBLOCK::ITERATOR::DOCID_RSV_PAIR::DOCID_RSV_PAIR()
+							----------------------------------------------------------
 						*/
 						/*!
 							@brief Constructor.
@@ -140,20 +77,20 @@ namespace JASS
 					};
 
 				public:
-					query<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent;			///< The query object that this is iterating over
+					query_heap<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent;	///< The query object that this is iterating over
 					size_t where;																		///< Where in the results list we are
 
 				public:
 					/*
-						QUERY::ITERATOR::ITERATOR()
-						---------------------------
+						QUERY_MAXBLOCK::ITERATOR::ITERATOR()
+						------------------------------------
 					*/
 					/*!
 						@brief Constructor
 						@param parent [in] The object we are iterating over
 						@param where [in] Where in the results list this iterator starts
 					*/
-					iterator(query<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent, size_t where) :
+					iterator(query_heap<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent, size_t where) :
 						parent(parent),
 						where(where)
 						{
@@ -161,8 +98,8 @@ namespace JASS
 						}
 
 					/*
-						QUERY::ITERATOR::OPERATOR!=()
-						-----------------------------
+						QUERY_MAXBLOCK::ITERATOR::OPERATOR!=()
+						--------------------------------------
 					*/
 					/*!
 						@brief Compare two iterator objects for non-equality.
@@ -175,8 +112,8 @@ namespace JASS
 						}
 
 					/*
-						QUERY::ITERATOR::OPERATOR++()
-						-----------------------------
+						QUERY_MAXBLOCK::ITERATOR::OPERATOR++()
+						--------------------------------------
 					*/
 					/*!
 						@brief Increment this iterator.
@@ -188,8 +125,8 @@ namespace JASS
 						}
 
 					/*
-						QUERY::ITERATOR::OPERATOR*()
-						----------------------------
+						QUERY_MAXBLOCK::ITERATOR::OPERATOR*()
+						-------------------------------------
 					*/
 					/*!
 						@brief Return a reference to the <document_id,rsv> pair at the current location.
@@ -206,26 +143,16 @@ namespace JASS
 
 		private:
 			ACCUMULATOR_TYPE zero;														///< Constant zero used for pointer dereferenced comparisons
-			allocator_pool memory;														///< All memory allocation happens in this "arena"
 			ACCUMULATOR_TYPE *accumulator_pointers[MAX_TOP_K];					///< Array of pointers to the top k accumulators
-			ACCUMULATOR_TYPE impact;													///< The impact score to be added on a call to push_back()
 			accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;	///< The accumulators, one per document in the collection
 //			accumulator_counter<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;	///< The accumulators, one per document in the collection
 			size_t needed_for_top_k;													///< The number of results we still need in order to fill the top-k
-			heap<ACCUMULATOR_TYPE *, add_rsv_compare> top_results;			///< Heap containing the top-k results
-
-			parser_query parser;															///< Parser responsible for converting text into a parsed query
-			query_term_list *parsed_query;											///< The parsed query
-			const std::vector<std::string> &primary_keys;						///< A vector of strings, each the primary key for the document with an id equal to the vector index
-			size_t top_k;																	///< The number of results to track.
-
-			add_rsv_compare cmp;															///< Comparison during addition (used to order low to high a min heap)
-			sort_rsv_compare final_sort_cmp;											///< Comparison after search (used to order high to low)
+			heap<ACCUMULATOR_TYPE *, typename parent::add_rsv_compare> top_results;			///< Heap containing the top-k results
 
 		public:
 			/*
-				QUERY::QUERY()
-				--------------
+				QUERY_MAXBLOCK::QUERY_MAXBLOCK()
+				--------------------------------
 			*/
 			/*!
 				@brief Constructor
@@ -233,34 +160,18 @@ namespace JASS
 				@param documents [in] The number of documents in the collection.
 				@param top_k [in]	The top-k documents to return from the query once executed.
 			*/
-			query(const std::vector<std::string> &primary_keys, size_t documents = 1024, size_t top_k = 10) :
+			query_maxblock (const std::vector<std::string> &primary_keys, size_t documents = 1024, size_t top_k = 10) :
+				parent(primary_keys, documents, top_k),
 				zero(0),
-				impact(0),
 				accumulators(documents),
-				top_results(*accumulator_pointers, top_k),
-				parser(memory),
-				parsed_query(nullptr),
-				primary_keys(primary_keys),
-				top_k(top_k)
+				top_results(*accumulator_pointers, top_k)
 				{
 				rewind();
 				}
 
 			/*
-				QUERY::~QUERY()
-				---------------
-			*/
-			/*!
-				@brief Destructor
-			*/
-			~query()
-				{
-				delete parsed_query;
-				}
-
-			/*
-				QUERY::BEGIN()
-				--------------
+				QUERY_MAXBLOCK::BEGIN()
+				-----------------------
 			*/
 			/*!
 				@brief Return an iterator pointing to start of the top-k
@@ -273,8 +184,8 @@ namespace JASS
 				}
 
 			/*
-				QUERY::END()
-				------------
+				QUERY_MAXBLOCK::END()
+				---------------------
 			*/
 			/*!
 				@brief Return an iterator pointing to end of the top-k
@@ -282,40 +193,12 @@ namespace JASS
 			*/
 			auto end(void)
 				{
-				return iterator(*this, top_k);
+				return iterator(*this, this->top_k);
 				}
 
 			/*
-				QUERY::PARSE()
-				--------------
-			*/
-			/*!
-				@brief Take the given query and parse it.
-				@tparam STRING_TYPE Either a std::string or JASS::string.
-				@param query [in] The query to parse.
-			*/
-			template <typename STRING_TYPE>
-			void parse(const STRING_TYPE &query)
-				{
-				parser.parse(*parsed_query, query);
-				}
-
-			/*
-				QUERY::TERMS()
-				--------------
-			*/
-			/*!
-				@brief Return a reference to the parsed query.
-				@return A reference to the parsed query.
-			*/
-			query_term_list &terms(void)
-				{
-				return *parsed_query;
-				}
-
-			/*
-				QUERY::REWIND()
-				---------------
+				QUERY_MAXBLOCK::REWIND()
+				------------------------
 			*/
 			/*!
 				@brief Clear this object after use and ready for re-use
@@ -324,27 +207,25 @@ namespace JASS
 				{
 				accumulator_pointers[0] = &zero;
 				accumulators.rewind();
-				needed_for_top_k = top_k;
-				delete parsed_query;
-				parsed_query = new query_term_list(memory);
+				needed_for_top_k = this->top_k;
+				parent::rewind();
 				}
 
 			/*
-				QUERY::SORT()
-				-------------
+				QUERY_MAXBLOCK::SORT()
+				----------------------
 			*/
 			/*!
 				@brief sort this resuls list before iteration over it.
 			*/
 			void sort(void)
 				{
-				top_k_qsort::sort(accumulator_pointers + needed_for_top_k, top_k - needed_for_top_k, top_k, final_sort_cmp);
+				top_k_qsort::sort(accumulator_pointers + needed_for_top_k, this->top_k - needed_for_top_k, this->top_k, parent::final_sort_cmp);
 				}
 
-
 			/*
-				QUERY::ADD_RSV()
-				----------------
+				QUERY_MAXBLOCK::ADD_RSV()
+				-------------------------
 			*/
 			/*!
 				@brief Add weight to the rsv for document docuument_id
@@ -359,7 +240,7 @@ namespace JASS
 					By doing the add first its possible to reduce the "usual" path through the code to a single comparison.  The JASS v1 "usual" path took three comparisons.
 				*/
 				*which += score;
-				if (cmp(which, accumulator_pointers[0]) >= 0)			// ==0 is the case where we're the current bottom of heap so might need to be promoted
+				if (this->cmp(which, accumulator_pointers[0]) >= 0)			// ==0 is the case where we're the current bottom of heap so might need to be promoted
 					{
 					/*
 						We end up in the top-k, now to work out why.  As this is a rare occurence, we've got a little bit of time on our hands
@@ -379,7 +260,7 @@ namespace JASS
 					else
 						{
 						*which -= score;
-						int prior_compare = cmp(which, accumulator_pointers[0]);
+						int prior_compare = this->cmp(which, accumulator_pointers[0]);
 						*which += score;
 
 						if (prior_compare < 0)
@@ -391,48 +272,8 @@ namespace JASS
 				}
 
 			/*
-				QUERY::SET_SCORE()
-				------------------
-			*/
-			/*!
-				@brief Set the impact score to use in a push_back().
-				@param score [in] The impact score to be added to accumulators.
-			*/
-			forceinline void set_score(ACCUMULATOR_TYPE score)
-				{
-				this->impact = score;
-				}
-
-			/*
-				QUERY::PUSH_BACK()
-				------------------
-			*/
-			/*!
-				@brief Add the impact score to a bunch of accumulators
-				@param document_ids [in] The document IDs that the impact should be added to.
-				@details The first valid document id is 1, any calls with a document id of 0 will add to
-				the accumulator for document id 0, but since that is a non-existant document, the value is later
-				ignored.  So it IS safe to pad documet_ids with 0s.
-			*/
-			forceinline void push_back(__m256i document_ids)
-				{
-				uint32_t each[8];
-				__m256i *into = (__m256i *)each;
-
-				_mm256_storeu_si256(into, document_ids);
-				add_rsv(each[0], impact);
-				add_rsv(each[1], impact);
-				add_rsv(each[2], impact);
-				add_rsv(each[3], impact);
-				add_rsv(each[4], impact);
-				add_rsv(each[5], impact);
-				add_rsv(each[6], impact);
-				add_rsv(each[7], impact);
-				}
-
-			/*
-				QUERY::UNITTEST()
-				-----------------
+				QUERY_MAXBLOCK::UNITTEST()
+				--------------------------
 			*/
 			/*!
 				@brief Unit test this class
@@ -440,7 +281,7 @@ namespace JASS
 			static void unittest(void)
 				{
 				std::vector<std::string> keys = {"one", "two", "three", "four"};
-				query<uint16_t, 1024, 10> query_object(keys, 1024, 2);
+				query_heap<uint16_t, 1024, 10> query_object(keys, 1024, 2);
 				std::ostringstream string;
 
 				/*
@@ -472,7 +313,7 @@ namespace JASS
 						JASS_assert(term.token() == "three");
 					}
 
-				puts("query::PASSED");
+				puts("query_maxblock::PASSED");
 				}
 		};
 	}
