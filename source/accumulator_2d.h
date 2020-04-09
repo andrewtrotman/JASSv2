@@ -10,6 +10,7 @@
 #include <vector>
 #include <random>
 #include <numeric>
+#include <algorithm>
 
 #include <math.h>
 #include <stdint.h>
