@@ -42,7 +42,7 @@ namespace JASS
 		{
 		private:
 			TYPE *array;					///< The array to build the heap over
-			size_t size;					///< The maximum size of of the heap
+			size_t size;					///< The maximum size of the heap
 			COMPARE compare;				///< The comparison functor
 
 		private:

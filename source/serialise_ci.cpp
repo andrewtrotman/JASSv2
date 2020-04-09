@@ -152,11 +152,11 @@ namespace JASS
 
 		auto checksum = checksum::fletcher_16_file("JASS_postings.cpp");
 //		std::cout << "JASS_postings.c:" << checksum << '\n';
-		JASS_assert(checksum == 11692 || checksum == 61118);
+		JASS_assert(checksum == 19095 || checksum == 30121);
 
 		checksum = checksum::fletcher_16_file("JASS_postings.h");
 //		std::cout << "JASS_postings.h:" << checksum << '\n';
-		JASS_assert(checksum == 49868 || checksum == 29406);
+		JASS_assert(checksum == 16311 || checksum == 22729);
 
 		checksum = checksum::fletcher_16_file("JASS_vocabulary.cpp");
 //		std::cout << "JASS_vocabulary.cpp:" << checksum << '\n';

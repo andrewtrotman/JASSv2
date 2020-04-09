@@ -13,6 +13,7 @@
 #pragma once
 
 #include "query.h"
+#include "heap.h"
 
 namespace JASS
 	{
@@ -77,7 +78,7 @@ namespace JASS
 					};
 
 				public:
-					query_heap<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent;	///< The query object that this is iterating over
+					query_maxblock<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent;	///< The query object that this is iterating over
 					size_t where;																		///< Where in the results list we are
 
 				public:
@@ -90,7 +91,7 @@ namespace JASS
 						@param parent [in] The object we are iterating over
 						@param where [in] Where in the results list this iterator starts
 					*/
-					iterator(query_heap<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent, size_t where) :
+					iterator(query_maxblock<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent, size_t where) :
 						parent(parent),
 						where(where)
 						{
@@ -145,9 +146,11 @@ namespace JASS
 			ACCUMULATOR_TYPE zero;														///< Constant zero used for pointer dereferenced comparisons
 			ACCUMULATOR_TYPE *accumulator_pointers[MAX_TOP_K];					///< Array of pointers to the top k accumulators
 			accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;	///< The accumulators, one per document in the collection
-//			accumulator_counter<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;	///< The accumulators, one per document in the collection
 			size_t needed_for_top_k;													///< The number of results we still need in order to fill the top-k
 			heap<ACCUMULATOR_TYPE *, typename parent::add_rsv_compare> top_results;			///< Heap containing the top-k results
+			ACCUMULATOR_TYPE page_maximum[accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS>::maximum_number_of_clean_flags];		///< The current maximum value of the accumulator block
+//			ACCUMULATOR_TYPE page_maximum_pointers[accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS>::maximum_number_of_clean_flags];		///< Poointers to the current maximum value of the accumulator block
+			bool sorted;																	///< has heap and accumulator_pointers been sorted (false after rewind() true after sort())
 
 		public:
 			/*
@@ -167,6 +170,8 @@ namespace JASS
 				top_results(*accumulator_pointers, top_k)
 				{
 				rewind();
+//				for (size_t which = 0; which < number_of_clean_flags; which++)
+//					page_maximum_pointers[which] = &page_maximum[which];
 				}
 
 			/*
@@ -205,9 +210,11 @@ namespace JASS
 			*/
 			void rewind(void)
 				{
+				sorted = false;
 				accumulator_pointers[0] = &zero;
 				accumulators.rewind();
 				needed_for_top_k = this->top_k;
+				std::fill(page_maximum, page_maximum + accumulators.number_of_clean_flags, 0);
 				parent::rewind();
 				}
 
@@ -220,7 +227,39 @@ namespace JASS
 			*/
 			void sort(void)
 				{
-				top_k_qsort::sort(accumulator_pointers + needed_for_top_k, this->top_k - needed_for_top_k, this->top_k, parent::final_sort_cmp);
+				if (!sorted)
+					{
+					/*
+						Walk through the pages looking for the case where an accumulator in the page should appear in the heap
+					*/
+					ACCUMULATOR_TYPE *start = &accumulators.accumulator[0];
+					for (size_t page = 0; page < accumulators.number_of_clean_flags; page++)
+						{
+						start += accumulators.width;
+						if (page_maximum[page] > *accumulator_pointers[0])
+							{
+							for (ACCUMULATOR_TYPE *which = start; which < start + accumulators.width; which++)
+								if (*which > 0 && this->cmp(which, accumulator_pointers[0]) > 0)			// == 0 is the case where we're the current bottom of heap so might need to be promoted
+									{
+									if (needed_for_top_k > 0)
+										{
+										accumulator_pointers[--needed_for_top_k] = which;
+										if (needed_for_top_k == 0)
+											top_results.make_heap();
+										}
+									else
+										top_results.push_back(which);				// we're not in the heap so add this accumulator to the heap
+									}
+								}
+							}
+
+					/*
+						We now sort the array over which the heap is built so that we have a sorted list of docids from highest to lowest rsv.
+					*/
+					top_k_qsort::sort(accumulator_pointers + needed_for_top_k, this->top_k - needed_for_top_k, this->top_k, parent::final_sort_cmp);
+
+					sorted = true;
+					}
 				}
 
 			/*
@@ -234,41 +273,12 @@ namespace JASS
 			*/
 			forceinline void add_rsv(size_t document_id, ACCUMULATOR_TYPE score)
 				{
-				ACCUMULATOR_TYPE *which = &accumulators[document_id];			// This will create the accumulator if it doesn't already exist.
+				size_t page = accumulators.which_clean_flag(document_id);		// get the page number
+				ACCUMULATOR_TYPE *which = &accumulators[document_id];				// This will create the accumulator if it doesn't already exist.
 
-				/*
-					By doing the add first its possible to reduce the "usual" path through the code to a single comparison.  The JASS v1 "usual" path took three comparisons.
-				*/
 				*which += score;
-				if (this->cmp(which, accumulator_pointers[0]) >= 0)			// ==0 is the case where we're the current bottom of heap so might need to be promoted
-					{
-					/*
-						We end up in the top-k, now to work out why.  As this is a rare occurence, we've got a little bit of time on our hands
-					*/
-					if (needed_for_top_k > 0)
-						{
-						/*
-							the heap isn't full yet - so change only happens if we're a new addition (i.e. the old value was a 0)
-						*/
-						if (*which == score)
-							{
-							accumulator_pointers[--needed_for_top_k] = which;
-							if (needed_for_top_k == 0)
-								top_results.make_heap();
-							}
-						}
-					else
-						{
-						*which -= score;
-						int prior_compare = this->cmp(which, accumulator_pointers[0]);
-						*which += score;
 
-						if (prior_compare < 0)
-							top_results.push_back(which);				// we're not in the heap so add this accumulator to the heap
-						else
-							top_results.promote(which);				// we're already in the heap so promote this document
-						}
-					}
+				page_maximum[page] = maths::maximum(page_maximum[page], *which);
 				}
 
 			/*
@@ -281,7 +291,7 @@ namespace JASS
 			static void unittest(void)
 				{
 				std::vector<std::string> keys = {"one", "two", "three", "four"};
-				query_heap<uint16_t, 1024, 10> query_object(keys, 1024, 2);
+				query_maxblock<uint16_t, 1024, 10> query_object(keys, 1024, 2);
 				std::ostringstream string;
 
 				/*
@@ -296,22 +306,6 @@ namespace JASS
 				for (const auto rsv : query_object)
 					string << "<" << rsv.document_id << "," << rsv.rsv << ">";
 				JASS_assert(string.str() == "<3,20><1,15>");
-
-				/*
-					Check the parser
-				*/
-				size_t times = 0;
-				query_object.parse(std::string("one two three"));
-				for (const auto &term : query_object.terms())
-					{
-					times++;
-					if (times == 1)
-						JASS_assert(term.token() == "one");
-					else if (times == 2)
-						JASS_assert(term.token() == "two");
-					else if (times == 3)
-						JASS_assert(term.token() == "three");
-					}
 
 				puts("query_maxblock::PASSED");
 				}

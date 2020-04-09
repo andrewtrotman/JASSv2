@@ -8,6 +8,7 @@
 
 #include <new>
 #include <vector>
+#include <random>
 #include <numeric>
 
 #include <math.h>
@@ -50,14 +51,18 @@ namespace JASS
 			*/
 			static constexpr size_t maximum_shift = maths::floor_log2(maths::sqrt_compiletime(NUMBER_OF_ACCUMULATORS));					///< The amount to shift to get the right clean flag
 			static constexpr size_t maximum_width = 1 << maximum_shift;																					///< Each clean flag represents this number of accumulators in a "row"
+		public:
 			static constexpr size_t maximum_number_of_clean_flags = (NUMBER_OF_ACCUMULATORS + maximum_width - 1) / maximum_width;	///< The number of "rows" (i.e. clean flags).
+		private:
 			static constexpr size_t maximum_number_of_accumulators_allocated = maximum_width * maximum_number_of_clean_flags;			///< The numner of accumulators that were actually allocated (recall that this is a 2D array)
+		public:
 			uint8_t clean_flag[maximum_number_of_clean_flags];																								///< The clean flags are kept as bytes for faster lookup
 			ELEMENT accumulator[maximum_number_of_accumulators_allocated];																				///< The accumulators are kept in an array
 
 			/*
 				At run-time we use these parameters
 			*/
+		public:
 			size_t width;												///< Each clean flag represents this number of accumulators in a "row"
 			size_t shift;												///< The amount to shift to get the right clean flag
 			size_t number_of_clean_flags;							///< The number of "rows" (i.e. clean flags)
@@ -84,6 +89,7 @@ namespace JASS
 				*/
 				size_t square_root = (size_t)sqrt(number_of_accumulators);
 				shift = maths::floor_log2(square_root);
+
 //				if (((size_t)square_root & ((size_t)1 << (shift - 1))) != 0)
 //					shift++;
 
@@ -112,6 +118,20 @@ namespace JASS
 				}
 
 			/*
+				ACCUMULATOR_2D::WHICH_CLEAN_FLAG()
+				----------------------------------
+			*/
+			/*!
+				@brief Return the id of the clean flag to use.
+				@param element [in] The accumulator number.
+				@return The clean flag number.
+			*/
+			forceinline size_t which_clean_flag(size_t element) const
+				{
+				return element >> shift;
+				}
+
+			/*
 				ACCUMULATOR_2D::OPERATOR[]()
 				----------------------------
 			*/
@@ -123,7 +143,7 @@ namespace JASS
 			*/
 			forceinline ELEMENT &operator[](size_t which)
 				{
-				size_t flag = which >> shift;
+				size_t flag = which_clean_flag(which);
 				if (!clean_flag[flag])
 					{
 					std::fill(&accumulator[flag * width], &accumulator[flag * width + width], 0);

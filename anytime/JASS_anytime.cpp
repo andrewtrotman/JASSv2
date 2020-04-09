@@ -14,14 +14,15 @@
 
 #include "file.h"
 #include "timer.h"
-#include "query.h"
 #include "threads.h"
 #include "decode_d0.h"
+#include "query_heap.h"
 #include "run_export.h"
 #include "decode_none.h"
 #include "commandline.h"
 #include "channel_file.h"
 #include "channel_trec.h"
+#include "query_maxblock.h"
 #include "compress_integer.h"
 #include "JASS_anytime_stats.h"
 #include "JASS_anytime_query.h"
@@ -79,10 +80,12 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 	/*
 		Allocate a JASS query object
 	*/
-	JASS::query_heap<uint16_t, MAX_DOCUMENTS, MAX_TOP_K> *jass_query;
+	typedef JASS::query_maxblock<uint16_t, MAX_DOCUMENTS, MAX_TOP_K> QUERY_TYPE;
+//	typedef JASS::query_heap<uint16_t, MAX_DOCUMENTS, MAX_TOP_K> QUERY_TYPE;
+	QUERY_TYPE *jass_query;
 	try
 		{
-		jass_query = new JASS::query_heap<uint16_t, MAX_DOCUMENTS, MAX_TOP_K>(index.primary_keys(), index.document_count(), top_k);
+		jass_query = new QUERY_TYPE(index.primary_keys(), index.document_count(), top_k);
 		}
 	catch (std::bad_array_new_length &)
 		{

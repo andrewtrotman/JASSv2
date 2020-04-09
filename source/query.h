@@ -14,11 +14,8 @@
 
 #include <immintrin.h>
 
-#include "heap.h"
 #include "top_k_qsort.h"
 #include "parser_query.h"
-#include "accumulator_2d.h"
-#include "accumulator_counter.h"
 #include "query_term_list.h"
 #include "allocator_memory.h"
 
