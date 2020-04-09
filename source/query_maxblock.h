@@ -149,7 +149,7 @@ namespace JASS
 			size_t needed_for_top_k;													///< The number of results we still need in order to fill the top-k
 			heap<ACCUMULATOR_TYPE *, typename parent::add_rsv_compare> top_results;			///< Heap containing the top-k results
 			ACCUMULATOR_TYPE page_maximum[accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS>::maximum_number_of_clean_flags];		///< The current maximum value of the accumulator block
-//			ACCUMULATOR_TYPE page_maximum_pointers[accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS>::maximum_number_of_clean_flags];		///< Poointers to the current maximum value of the accumulator block
+			ACCUMULATOR_TYPE *page_maximum_pointers[accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS>::maximum_number_of_clean_flags];		///< Poointers to the current maximum value of the accumulator block
 			bool sorted;																	///< has heap and accumulator_pointers been sorted (false after rewind() true after sort())
 
 		public:
@@ -170,8 +170,8 @@ namespace JASS
 				top_results(*accumulator_pointers, top_k)
 				{
 				rewind();
-//				for (size_t which = 0; which < number_of_clean_flags; which++)
-//					page_maximum_pointers[which] = &page_maximum[which];
+				for (size_t which = 0; which < accumulators.number_of_clean_flags; which++)
+					page_maximum_pointers[which] = &page_maximum[which];
 				}
 
 			/*
@@ -230,14 +230,27 @@ namespace JASS
 				if (!sorted)
 					{
 					/*
+						Sort the page maximum values from highest to lowest.
+					*/
+					std::sort(page_maximum_pointers, page_maximum_pointers + accumulators.number_of_clean_flags,
+						[](const ACCUMULATOR_TYPE *a, const ACCUMULATOR_TYPE *b) -> bool
+						{
+						return *a > *b ? true : *a < *b ? false : a < b;
+						});
+
+//for (size_t page = 0; page < accumulators.number_of_clean_flags; page++)
+//	std::cout << "ID:" << page_maximum_pointers[page] - page_maximum << " Value:" << *(page_maximum_pointers[page]) << " P \n";
+//for (size_t page = 0; page < accumulators.number_of_clean_flags; page++)
+//	std::cout << "ID:" << page << " Value:" << page_maximum[page] << " V \n";
+
+					/*
 						Walk through the pages looking for the case where an accumulator in the page should appear in the heap
 					*/
-					ACCUMULATOR_TYPE *start = &accumulators.accumulator[0];
 					for (size_t page = 0; page < accumulators.number_of_clean_flags; page++)
 						{
-						start += accumulators.width;
-						if (page_maximum[page] > *accumulator_pointers[0])
+						if (*page_maximum_pointers[page] != 0 && *page_maximum_pointers[page] >= *accumulator_pointers[0])
 							{
+							ACCUMULATOR_TYPE *start = &accumulators.accumulator[(page_maximum_pointers[page] - page_maximum) * accumulators.width];
 							for (ACCUMULATOR_TYPE *which = start; which < start + accumulators.width; which++)
 								if (*which > 0 && this->cmp(which, accumulator_pointers[0]) > 0)			// == 0 is the case where we're the current bottom of heap so might need to be promoted
 									{
@@ -251,6 +264,8 @@ namespace JASS
 										top_results.push_back(which);				// we're not in the heap so add this accumulator to the heap
 									}
 								}
+							else
+								break;
 							}
 
 					/*
