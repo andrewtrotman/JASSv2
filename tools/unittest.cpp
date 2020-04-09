@@ -59,6 +59,7 @@
 #include "serialise_integers.h"
 #include "evaluate_precision.h"
 #include "instream_file_star.h"
+#include "query_maxblock_heap.h"
 #include "accumulator_counter.h"
 #include "compress_integer_all.h"
 #include "evaluate_buying_power.h"
@@ -443,6 +444,9 @@ int main(void)
 
 		puts("query_maxblock");
 		JASS::query_maxblock<uint16_t, 1, 1>::unittest();
+
+		puts("query_maxblock_heap");
+		JASS::query_maxblock_heap<uint16_t, 1, 1>::unittest();
 
 		puts("decode_d0");
 		JASS::decoder_d0::unittest();

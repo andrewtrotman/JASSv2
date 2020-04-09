@@ -1,12 +1,12 @@
 /*
-	QUERY_MAXBLOCK.H
-	----------------
+	QUERY_MAXBLOCK_HEAP.H
+	---------------------
 	Copyright (c) 2017 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 /*!
 	@file
-	@brief Everything necessary to process a query maxblock to store the accumulators
+	@brief Everything necessary to process a query maxblock to store the accumulators, but using a heap to reduce block checking.
 	@author Andrew Trotman
 	@copyright 2017 Andrew Trotman
 */
@@ -18,8 +18,8 @@
 namespace JASS
 	{
 	/*
-		CLASS QUERY_MAXBLOCK
-		--------------------
+		CLASS QUERY_MAXBLOCK_HEAP
+		-------------------------
 	*/
 	/*!
 		@brief Everything necessary to process a query (using a maxblock) is encapsulated in an object of this type.  Thanks go to Antonio Mallia for inveting this method.
@@ -28,15 +28,15 @@ namespace JASS
 		@tparam MAX_TOP_K The maximum top-k documents that are going to be asked for
 	*/
 	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	class query_maxblock : public query<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>
+	class query_maxblock_heap : public query<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>
 		{
 		private:
 			typedef query<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> parent;
 
 		public:
 			/*
-				CLASS QUERY_MAXBLOCK::ITERATOR
-				------------------------------
+				CLASS QUERY_MAXBLOCK_HEAP::ITERATOR
+				-----------------------------------
 			*/
 			/*!
 				@brief Iterate over the top-k
@@ -44,8 +44,8 @@ namespace JASS
 			class iterator
 				{
 				/*
-					CLASS QUERY_MAXBLOCK::ITERATOR::DOCID_RSV_PAIR()
-					------------------------------------------------
+					CLASS QUERY_MAXBLOCK_HEAP::ITERATOR::DOCID_RSV_PAIR()
+					-----------------------------------------------------
 				*/
 				/*!
 					@brief Literally a <document_id, rsv> ordered pair.
@@ -59,8 +59,8 @@ namespace JASS
 
 					public:
 						/*
-							QUERY_MAXBLOCK::ITERATOR::DOCID_RSV_PAIR::DOCID_RSV_PAIR()
-							----------------------------------------------------------
+							QUERY_MAXBLOCK_HEAP::ITERATOR::DOCID_RSV_PAIR::DOCID_RSV_PAIR()
+							---------------------------------------------------------------
 						*/
 						/*!
 							@brief Constructor.
@@ -78,20 +78,20 @@ namespace JASS
 					};
 
 				public:
-					query_maxblock<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent;	///< The query object that this is iterating over
+					query_maxblock_heap<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent;	///< The query object that this is iterating over
 					size_t where;																		///< Where in the results list we are
 
 				public:
 					/*
-						QUERY_MAXBLOCK::ITERATOR::ITERATOR()
-						------------------------------------
+						QUERY_MAXBLOCK_HEAP::ITERATOR::ITERATOR()
+						-----------------------------------------
 					*/
 					/*!
 						@brief Constructor
 						@param parent [in] The object we are iterating over
 						@param where [in] Where in the results list this iterator starts
 					*/
-					iterator(query_maxblock<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent, size_t where) :
+					iterator(query_maxblock_heap<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent, size_t where) :
 						parent(parent),
 						where(where)
 						{
@@ -99,8 +99,8 @@ namespace JASS
 						}
 
 					/*
-						QUERY_MAXBLOCK::ITERATOR::OPERATOR!=()
-						--------------------------------------
+						QUERY_MAXBLOCK_HEAP::ITERATOR::OPERATOR!=()
+						-------------------------------------------
 					*/
 					/*!
 						@brief Compare two iterator objects for non-equality.
@@ -113,8 +113,8 @@ namespace JASS
 						}
 
 					/*
-						QUERY_MAXBLOCK::ITERATOR::OPERATOR++()
-						--------------------------------------
+						QUERY_MAXBLOCK_HEAP::ITERATOR::OPERATOR++()
+						-------------------------------------------
 					*/
 					/*!
 						@brief Increment this iterator.
@@ -126,8 +126,8 @@ namespace JASS
 						}
 
 					/*
-						QUERY_MAXBLOCK::ITERATOR::OPERATOR*()
-						-------------------------------------
+						QUERY_MAXBLOCK_HEAP::ITERATOR::OPERATOR*()
+						------------------------------------------
 					*/
 					/*!
 						@brief Return a reference to the <document_id,rsv> pair at the current location.
@@ -143,16 +143,19 @@ namespace JASS
 					};
 
 		private:
-			ACCUMULATOR_TYPE *accumulator_pointers[MAX_DOCUMENTS];					///< Array of pointers to the top k accumulators
+			ACCUMULATOR_TYPE zero;														///< Constant zero used for pointer dereferenced comparisons
+			ACCUMULATOR_TYPE *accumulator_pointers[MAX_TOP_K];					///< Array of pointers to the top k accumulators
 			accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;	///< The accumulators, one per document in the collection
+			size_t needed_for_top_k;													///< The number of results we still need in order to fill the top-k
+			heap<ACCUMULATOR_TYPE *, typename parent::add_rsv_compare> top_results;			///< Heap containing the top-k results
 			ACCUMULATOR_TYPE page_maximum[accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS>::maximum_number_of_clean_flags];		///< The current maximum value of the accumulator block
+			ACCUMULATOR_TYPE *page_maximum_pointers[accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS>::maximum_number_of_clean_flags];		///< Poointers to the current maximum value of the accumulator block
 			bool sorted;																	///< has heap and accumulator_pointers been sorted (false after rewind() true after sort())
-			size_t non_zero_accumulators;												///< The number of non-zero accumulators (should be top-k or less)
 
 		public:
 			/*
-				QUERY_MAXBLOCK::QUERY_MAXBLOCK()
-				--------------------------------
+				QUERY_MAXBLOCK_HEAP::QUERY_MAXBLOCK_HEAP()
+				------------------------------------------
 			*/
 			/*!
 				@brief Constructor
@@ -160,16 +163,20 @@ namespace JASS
 				@param documents [in] The number of documents in the collection.
 				@param top_k [in]	The top-k documents to return from the query once executed.
 			*/
-			query_maxblock (const std::vector<std::string> &primary_keys, size_t documents = 1024, size_t top_k = 10) :
+			query_maxblock_heap (const std::vector<std::string> &primary_keys, size_t documents = 1024, size_t top_k = 10) :
 				parent(primary_keys, documents, top_k),
-				accumulators(documents)
+				zero(0),
+				accumulators(documents),
+				top_results(*accumulator_pointers, top_k)
 				{
 				rewind();
+				for (size_t which = 0; which < accumulators.number_of_clean_flags; which++)
+					page_maximum_pointers[which] = &page_maximum[which];
 				}
 
 			/*
-				QUERY_MAXBLOCK::BEGIN()
-				-----------------------
+				QUERY_MAXBLOCK_HEAP::BEGIN()
+				----------------------------
 			*/
 			/*!
 				@brief Return an iterator pointing to start of the top-k
@@ -178,12 +185,12 @@ namespace JASS
 			auto begin(void)
 				{
 				sort();
-				return iterator(*this, 0);
+				return iterator(*this, needed_for_top_k);
 				}
 
 			/*
-				QUERY_MAXBLOCK::END()
-				---------------------
+				QUERY_MAXBLOCK_HEAP::END()
+				--------------------------
 			*/
 			/*!
 				@brief Return an iterator pointing to end of the top-k
@@ -191,12 +198,12 @@ namespace JASS
 			*/
 			auto end(void)
 				{
-				return iterator(*this, non_zero_accumulators);
+				return iterator(*this, this->top_k);
 				}
 
 			/*
-				QUERY_MAXBLOCK::REWIND()
-				------------------------
+				QUERY_MAXBLOCK_HEAP::REWIND()
+				-----------------------------
 			*/
 			/*!
 				@brief Clear this object after use and ready for re-use
@@ -204,15 +211,16 @@ namespace JASS
 			void rewind(void)
 				{
 				sorted = false;
+				accumulator_pointers[0] = &zero;
 				accumulators.rewind();
-				non_zero_accumulators = 0;
+				needed_for_top_k = this->top_k;
 				std::fill(page_maximum, page_maximum + accumulators.number_of_clean_flags, 0);
 				parent::rewind();
 				}
 
 			/*
-				QUERY_MAXBLOCK::SORT()
-				----------------------
+				QUERY_MAXBLOCK_HEAP::SORT()
+				---------------------------
 			*/
 			/*!
 				@brief sort this resuls list before iteration over it.
@@ -222,31 +230,56 @@ namespace JASS
 				if (!sorted)
 					{
 					/*
-						Walk through the pages looking for the case where an accumulator in the page might appear in the results list
+						Sort the page maximum values from highest to lowest.
 					*/
-					non_zero_accumulators = 0;
+					std::sort(page_maximum_pointers, page_maximum_pointers + accumulators.number_of_clean_flags,
+						[](const ACCUMULATOR_TYPE *a, const ACCUMULATOR_TYPE *b) -> bool
+						{
+						return *a > *b ? true : *a < *b ? false : a < b;
+						});
+
+//for (size_t page = 0; page < accumulators.number_of_clean_flags; page++)
+//	std::cout << "ID:" << page_maximum_pointers[page] - page_maximum << " Value:" << *(page_maximum_pointers[page]) << " P \n";
+//for (size_t page = 0; page < accumulators.number_of_clean_flags; page++)
+//	std::cout << "ID:" << page << " Value:" << page_maximum[page] << " V \n";
+
+					/*
+						Walk through the pages looking for the case where an accumulator in the page should appear in the heap
+					*/
 					for (size_t page = 0; page < accumulators.number_of_clean_flags; page++)
-						if (accumulators.clean_flag[page] != 0)
+						{
+						if (*page_maximum_pointers[page] != 0 && *page_maximum_pointers[page] >= *accumulator_pointers[0])
 							{
-							ACCUMULATOR_TYPE *start = &accumulators.accumulator[page * accumulators.width];
+							ACCUMULATOR_TYPE *start = &accumulators.accumulator[(page_maximum_pointers[page] - page_maximum) * accumulators.width];
 							for (ACCUMULATOR_TYPE *which = start; which < start + accumulators.width; which++)
-								if (*which != 0)
-									accumulator_pointers[non_zero_accumulators++] = which;
+								if (*which > 0 && this->cmp(which, accumulator_pointers[0]) > 0)			// == 0 is the case where we're the current bottom of heap so might need to be promoted
+									{
+									if (needed_for_top_k > 0)
+										{
+										accumulator_pointers[--needed_for_top_k] = which;
+										if (needed_for_top_k == 0)
+											top_results.make_heap();
+										}
+									else
+										top_results.push_back(which);				// we're not in the heap so add this accumulator to the heap
+									}
+								}
+							else
+								break;
 							}
 
 					/*
 						We now sort the array over which the heap is built so that we have a sorted list of docids from highest to lowest rsv.
 					*/
-					top_k_qsort::sort(accumulator_pointers, non_zero_accumulators, this->top_k, parent::final_sort_cmp);
-					non_zero_accumulators = maths::minimum(non_zero_accumulators, this->top_k);
+					top_k_qsort::sort(accumulator_pointers + needed_for_top_k, this->top_k - needed_for_top_k, this->top_k, parent::final_sort_cmp);
 
 					sorted = true;
 					}
 				}
 
 			/*
-				QUERY_MAXBLOCK::ADD_RSV()
-				-------------------------
+				QUERY_MAXBLOCK_HEAP::ADD_RSV()
+				------------------------------
 			*/
 			/*!
 				@brief Add weight to the rsv for document docuument_id
@@ -264,8 +297,8 @@ namespace JASS
 				}
 
 			/*
-				QUERY_MAXBLOCK::UNITTEST()
-				--------------------------
+				QUERY_MAXBLOCK_HEAP::UNITTEST()
+				-------------------------------
 			*/
 			/*!
 				@brief Unit test this class
@@ -289,7 +322,7 @@ namespace JASS
 					string << "<" << rsv.document_id << "," << rsv.rsv << ">";
 				JASS_assert(string.str() == "<3,20><1,15>");
 
-				puts("query_maxblock::PASSED");
+				puts("query_maxblock_heap::PASSED");
 				}
 		};
 	}

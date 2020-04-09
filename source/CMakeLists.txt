@@ -173,6 +173,7 @@ set(JASSlib_FILES
 	quantize.h
 	query.h
 	query_heap.h
+	query_maxblock_heap.h
 	query_maxblock.h
 	query_term.h
 	query_term_list.h
