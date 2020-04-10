@@ -206,7 +206,7 @@ namespace JASS
 				sorted = false;
 				accumulators.rewind();
 				non_zero_accumulators = 0;
-				std::fill(page_maximum, page_maximum + accumulators.number_of_clean_flags, 0);
+//				std::fill(page_maximum, page_maximum + accumulators.number_of_clean_flags, 0);
 				parent::rewind();
 				}
 
@@ -256,6 +256,8 @@ namespace JASS
 			forceinline void add_rsv(size_t document_id, ACCUMULATOR_TYPE score)
 				{
 				size_t page = accumulators.which_clean_flag(document_id);		// get the page number
+				if (accumulators.clean_flag[page])
+					page_maximum[page] = 0;
 				ACCUMULATOR_TYPE *which = &accumulators[document_id];				// This will create the accumulator if it doesn't already exist.
 
 				*which += score;
