@@ -172,6 +172,7 @@ set(JASSlib_FILES
 	posting.h
 	quantize.h
 	query.h
+	query_bucket.h
 	query_heap.h
 	query_maxblock_heap.h
 	query_maxblock.h

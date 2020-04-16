@@ -40,6 +40,7 @@
 #include "parser_fasta.h"
 #include "channel_file.h"
 #include "channel_trec.h"
+#include "query_bucket.h"
 #include "dynamic_array.h"
 #include "allocator_cpp.h"
 #include "instream_file.h"
@@ -447,6 +448,9 @@ int main(void)
 
 		puts("query_maxblock_heap");
 		JASS::query_maxblock_heap<uint16_t, 1, 1>::unittest();
+
+		puts("query_bucket");
+		JASS::query_bucket<uint16_t, 1, 1>::unittest();
 
 		puts("decode_d0");
 		JASS::decoder_d0::unittest();

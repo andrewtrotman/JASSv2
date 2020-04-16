@@ -325,5 +325,3 @@ namespace JASS
 			static void unittest(void);
 		};
 	}
-
-

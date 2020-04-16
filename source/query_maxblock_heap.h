@@ -208,7 +208,7 @@ namespace JASS
 			/*!
 				@brief Clear this object after use and ready for re-use
 			*/
-			void rewind(void)
+			void rewind(size_t largest_possible_rsv = 0)
 				{
 				sorted = false;
 				accumulator_pointers[0] = &zero;

@@ -20,6 +20,7 @@
 #include "run_export.h"
 #include "decode_none.h"
 #include "commandline.h"
+#include "query_bucket.h"
 #include "channel_file.h"
 #include "channel_trec.h"
 #include "query_maxblock.h"
@@ -82,7 +83,8 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 		Allocate a JASS query object
 	*/
 //	typedef JASS::query_maxblock<uint16_t, MAX_DOCUMENTS, MAX_TOP_K> QUERY_TYPE;
-	typedef JASS::query_heap<uint16_t, MAX_DOCUMENTS, MAX_TOP_K> QUERY_TYPE;
+//	typedef JASS::query_heap<uint16_t, MAX_DOCUMENTS, MAX_TOP_K> QUERY_TYPE;
+	typedef JASS::query_bucket<uint16_t, MAX_DOCUMENTS, MAX_TOP_K> QUERY_TYPE;
 //	typedef JASS::query_maxblock_heap<uint16_t, MAX_DOCUMENTS, MAX_TOP_K> QUERY_TYPE;
 
 	QUERY_TYPE *jass_query;
@@ -138,6 +140,7 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 			Parse the query and extract the list of impact segments
 		*/
 		uint64_t *current_segment = segment_order;
+		size_t largest_possible_rsv = 0;
 		for (const auto &term : terms)
 			{
 // std::cout << "TERM:" << term << "\n";
@@ -153,6 +156,8 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 				Add to the list of impact segments that need to be processed
 			*/
 			std::copy((uint64_t *)(metadata.offset), (uint64_t *)(metadata.offset) + metadata.impacts, current_segment);
+			size_t highest_term_impact = ((JASS::deserialised_jass_v1::segment_header *)(index.postings() + *current_segment))->impact;
+			largest_possible_rsv += highest_term_impact;
 			current_segment += metadata.impacts;
 			}
 
@@ -188,7 +193,7 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 		/*
 			Process the segments
 		*/
-		jass_query->rewind();
+		jass_query->rewind(largest_possible_rsv);
 
 		size_t postings_processed = 0;
 		for (uint64_t *current = segment_order; current < current_segment; current++)

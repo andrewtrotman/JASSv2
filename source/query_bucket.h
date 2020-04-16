@@ -1,12 +1,12 @@
 /*
-	QUERY_HEAP.H
-	------------
+	QUERY_BUCKET.H
+	--------------
 	Copyright (c) 2017 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 /*!
 	@file
-	@brief Everything necessary to process a query using a heap to store the top-k
+	@brief Everything necessary to process a query using a bucket sort to store the top-k
 	@author Andrew Trotman
 	@copyright 2017 Andrew Trotman
 */
@@ -19,25 +19,25 @@
 namespace JASS
 	{
 	/*
-		CLASS QUERY_HEAP
-		----------------
+		CLASS QUERY_BUCKET
+		------------------
 	*/
 	/*!
-		@brief Everything necessary to process a query (using a heap) is encapsulated in an object of this type
+		@brief Everything necessary to process a query (using a bucket sort) is encapsulated in an object of this type
 		@tparam ACCUMULATOR_TYPE The value-type for an accumulator (normally uint16_t or double).
 		@tparam MAX_DOCUMENTS The maximum number of documents that are ever going to exist in this collection
 		@tparam MAX_TOP_K The maximum top-k documents that are going to be asked for
 	*/
 	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	class query_heap : public query<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>
+	class query_bucket : public query<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>
 		{
 		private:
 			typedef query<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> parent;
 
 		public:
 			/*
-				CLASS QUERY_HEAP::ITERATOR
-				--------------------------
+				CLASS QUERY_BUCKET::ITERATOR
+				----------------------------
 			*/
 			/*!
 				@brief Iterate over the top-k
@@ -45,8 +45,8 @@ namespace JASS
 			class iterator
 				{
 				/*
-					CLASS QUERY_HEAP::ITERATOR::DOCID_RSV_PAIR()
-					--------------------------------------------
+					CLASS QUERY_BUCKET::ITERATOR::DOCID_RSV_PAIR()
+					----------------------------------------------
 				*/
 				/*!
 					@brief Literally a <document_id, rsv> ordered pair.
@@ -60,8 +60,8 @@ namespace JASS
 
 					public:
 						/*
-							QUERY_HEAP::ITERATOR::DOCID_RSV_PAIR::DOCID_RSV_PAIR()
-							------------------------------------------------------
+							QUERY_BUCKET::ITERATOR::DOCID_RSV_PAIR::DOCID_RSV_PAIR()
+							--------------------------------------------------------
 						*/
 						/*!
 							@brief Constructor.
@@ -79,20 +79,20 @@ namespace JASS
 					};
 
 				public:
-					query_heap<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent;	///< The query object that this is iterating over
+					query_bucket<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent;	///< The query object that this is iterating over
 					size_t where;																		///< Where in the results list we are
 
 				public:
 					/*
-						QUERY_HEAP::ITERATOR::ITERATOR()
-						--------------------------------
+						QUERY_BUCKET::ITERATOR::ITERATOR()
+						----------------------------------
 					*/
 					/*!
 						@brief Constructor
 						@param parent [in] The object we are iterating over
 						@param where [in] Where in the results list this iterator starts
 					*/
-					iterator(query_heap<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent, size_t where) :
+					iterator(query_bucket<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent, size_t where) :
 						parent(parent),
 						where(where)
 						{
@@ -100,8 +100,8 @@ namespace JASS
 						}
 
 					/*
-						QUERY_HEAP::ITERATOR::OPERATOR!=()
-						----------------------------------
+						QUERY_BUCKET::ITERATOR::OPERATOR!=()
+						------------------------------------
 					*/
 					/*!
 						@brief Compare two iterator objects for non-equality.
@@ -114,8 +114,8 @@ namespace JASS
 						}
 
 					/*
-						QUERY_HEAP::ITERATOR::OPERATOR++()
-						----------------------------------
+						QUERY_BUCKET::ITERATOR::OPERATOR++()
+						------------------------------------
 					*/
 					/*!
 						@brief Increment this iterator.
@@ -127,8 +127,8 @@ namespace JASS
 						}
 
 					/*
-						QUERY_HEAP::ITERATOR::OPERATOR*()
-						---------------------------------
+						QUERY_BUCKET::ITERATOR::OPERATOR*()
+						-----------------------------------
 					*/
 					/*!
 						@brief Return a reference to the <document_id,rsv> pair at the current location.
@@ -138,8 +138,8 @@ namespace JASS
 					*/
 					docid_rsv_pair operator*()
 						{
-						size_t id = parent.accumulator_pointers[where] - &parent.accumulators[0];
-						return docid_rsv_pair(id, parent.primary_keys[id], parent.accumulators[id]);
+						size_t id = parent.accumulator_pointers[where] - parent.shadow_accumulator;
+						return docid_rsv_pair(id, parent.primary_keys[id], parent.shadow_accumulator[id]);
 						}
 					};
 
@@ -147,15 +147,20 @@ namespace JASS
 			ACCUMULATOR_TYPE zero;														///< Constant zero used for pointer dereferenced comparisons
 			ACCUMULATOR_TYPE *accumulator_pointers[MAX_TOP_K];					///< Array of pointers to the top k accumulators
 			accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;	///< The accumulators, one per document in the collection
-//			accumulator_counter<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;	///< The accumulators, one per document in the collection
-			size_t needed_for_top_k;													///< The number of results we still need in order to fill the top-k
-			heap<ACCUMULATOR_TYPE *, typename parent::add_rsv_compare> top_results;			///< Heap containing the top-k results
 			bool sorted;																	///< has heap and accumulator_pointers been sorted (false after rewind() true after sort())
+
+			static constexpr size_t rounded_top_k = 1 << maths::ceiling_log2(MAX_TOP_K);
+			static constexpr size_t rounded_top_k_filter = rounded_top_k - 1;
+			compress_integer::integer bucket[std::numeric_limits<ACCUMULATOR_TYPE>::max()][rounded_top_k];	///< The array of buckets to use.
+			uint16_t bucket_depth[std::numeric_limits<ACCUMULATOR_TYPE>::max()];						///< The number of documents in the given bucket
+			ACCUMULATOR_TYPE largest_used_bucket;																///< The largest bucket used (to decrease cost of initialisation and search)
+			ACCUMULATOR_TYPE shadow_accumulator[MAX_DOCUMENTS];											///< Used to deduplicate the top-k
+			size_t accumulator_pointers_used;																	///< The number of accumulator_pointers used (can be smaller than top_k)
 
 		public:
 			/*
-				QUERY_HEAP::QUERY_HEAP()
-				------------------------
+				QUERY_BUCKET::QUERY_BUCKET()
+				----------------------------
 			*/
 			/*!
 				@brief Constructor
@@ -163,18 +168,19 @@ namespace JASS
 				@param documents [in] The number of documents in the collection.
 				@param top_k [in]	The top-k documents to return from the query once executed.
 			*/
-			query_heap (const std::vector<std::string> &primary_keys, size_t documents = 1024, size_t top_k = 10) :
+			query_bucket(const std::vector<std::string> &primary_keys, size_t documents = 1024, size_t top_k = 10) :
 				parent(primary_keys, documents, top_k),
 				zero(0),
 				accumulators(documents),
-				top_results(*accumulator_pointers, top_k)
+				largest_used_bucket(0)
 				{
+				std::fill(bucket_depth, bucket_depth + std::numeric_limits<ACCUMULATOR_TYPE>::max() + 1, 0);
 				rewind();
 				}
 
 			/*
-				QUERY_HEAP::BEGIN()
-				-------------------
+				QUERY_BUCKET::BEGIN()
+				---------------------
 			*/
 			/*!
 				@brief Return an iterator pointing to start of the top-k
@@ -183,12 +189,12 @@ namespace JASS
 			auto begin(void)
 				{
 				sort();
-				return iterator(*this, needed_for_top_k);
+				return iterator(*this, 0);
 				}
 
 			/*
-				QUERY_HEAP::END()
-				-----------------
+				QUERY_BUCKET::END()
+				-------------------
 			*/
 			/*!
 				@brief Return an iterator pointing to end of the top-k
@@ -196,28 +202,31 @@ namespace JASS
 			*/
 			auto end(void)
 				{
-				return iterator(*this, this->top_k);
+				return iterator(*this, accumulator_pointers_used);
 				}
 
 			/*
-				QUERY_HEAP::REWIND()
-				--------------------
+				QUERY_BUCKET::REWIND()
+				----------------------
 			*/
 			/*!
 				@brief Clear this object after use and ready for re-use
+				@param largest_possible_rsv [in] the largest possible rsv value (or larger that that)
 			*/
 			void rewind(size_t largest_possible_rsv = 0)
 				{
 				sorted = false;
-				accumulator_pointers[0] = &zero;
 				accumulators.rewind();
-				needed_for_top_k = this->top_k;
+
+				largest_used_bucket = largest_possible_rsv;
+				std::fill(bucket_depth, bucket_depth + largest_used_bucket + 1, 0);
+
 				parent::rewind();
 				}
 
 			/*
-				QUERY_HEAP::SORT()
-				------------------
+				QUERY_BUCKET::SORT()
+				--------------------
 			*/
 			/*!
 				@brief sort this resuls list before iteration over it.
@@ -226,14 +235,39 @@ namespace JASS
 				{
 				if (!sorted)
 					{
-					top_k_qsort::sort(accumulator_pointers + needed_for_top_k, this->top_k - needed_for_top_k, this->top_k, parent::final_sort_cmp);
+					/*
+						Copy to the array of pointers for sorting (this will include duplicates)
+					*/
+					accumulator_pointers_used = 0;
+					for (size_t current_bucket = largest_used_bucket; current_bucket > 0; current_bucket--)
+						for (size_t which = 0; which < bucket_depth[current_bucket]; which++)
+							{
+							size_t doc_id = bucket[current_bucket][which];
+							if (accumulators.accumulator[doc_id] != 0)		// only include those not already in the top-k
+								{
+								shadow_accumulator[doc_id] = accumulators.accumulator[doc_id];
+								accumulator_pointers[accumulator_pointers_used] = &shadow_accumulator[doc_id];
+								accumulators.accumulator[doc_id] = 0;		// mark it as already in the top-k
+
+								accumulator_pointers_used++;
+
+								if (accumulator_pointers_used >= this->top_k)
+									goto got_them_all;
+								}
+							}
+							
+				got_them_all:
+					/*
+						Sort on the top-k
+					*/
+					top_k_qsort::sort(accumulator_pointers, accumulator_pointers_used, this->top_k, parent::final_sort_cmp);
 					sorted = true;
 					}
 				}
 
 			/*
-				QUERY_HEAP::ADD_RSV()
-				---------------------
+				QUERY_BUCKET::ADD_RSV()
+				-----------------------
 			*/
 			/*!
 				@brief Add weight to the rsv for document docuument_id
@@ -244,44 +278,17 @@ namespace JASS
 				{
 				ACCUMULATOR_TYPE *which = &accumulators[document_id];			// This will create the accumulator if it doesn't already exist.
 
-				/*
-					By doing the add first its possible to reduce the "usual" path through the code to a single comparison.  The JASS v1 "usual" path took three comparisons.
-				*/
 				*which += score;
-				if (this->cmp(which, accumulator_pointers[0]) >= 0)			// ==0 is the case where we're the current bottom of heap so might need to be promoted
-					{
-					/*
-						We end up in the top-k, now to work out why.  As this is a rare occurence, we've got a little bit of time on our hands
-					*/
-					if (needed_for_top_k > 0)
-						{
-						/*
-							the heap isn't full yet - so change only happens if we're a new addition (i.e. the old value was a 0)
-						*/
-						if (*which == score)
-							{
-							accumulator_pointers[--needed_for_top_k] = which;
-							if (needed_for_top_k == 0)
-								top_results.make_heap();
-							}
-						}
-					else
-						{
-						*which -= score;
-						int prior_compare = this->cmp(which, accumulator_pointers[0]);
-						*which += score;
 
-						if (prior_compare < 0)
-							top_results.push_back(which);				// we're not in the heap so add this accumulator to the heap
-						else
-							top_results.promote(which);				// we're already in the heap so promote this document
-						}
-					}
+				ACCUMULATOR_TYPE new_rsv = *which;
+
+				bucket[new_rsv][bucket_depth[new_rsv] & rounded_top_k_filter] = document_id;
+				bucket_depth[new_rsv]++;
 				}
 
 			/*
-				QUERY_HEAP::UNITTEST()
-				----------------------
+				QUERY_BUCKET::UNITTEST()
+				------------------------
 			*/
 			/*!
 				@brief Unit test this class
@@ -321,7 +328,7 @@ namespace JASS
 						JASS_assert(term.token() == "three");
 					}
 
-				puts("query_heap::PASSED");
+				puts("query_bucket::PASSED");
 				}
 		};
 	}
