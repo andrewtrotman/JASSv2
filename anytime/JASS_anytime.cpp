@@ -83,8 +83,8 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 		Allocate a JASS query object
 	*/
 //	typedef JASS::query_maxblock<uint16_t, MAX_DOCUMENTS, MAX_TOP_K> QUERY_TYPE;
-//	typedef JASS::query_heap<uint16_t, MAX_DOCUMENTS, MAX_TOP_K> QUERY_TYPE;
-	typedef JASS::query_bucket<uint16_t, MAX_DOCUMENTS, MAX_TOP_K> QUERY_TYPE;
+	typedef JASS::query_heap<uint16_t, MAX_DOCUMENTS, MAX_TOP_K> QUERY_TYPE;
+//	typedef JASS::query_bucket<uint16_t, MAX_DOCUMENTS, MAX_TOP_K> QUERY_TYPE;
 //	typedef JASS::query_maxblock_heap<uint16_t, MAX_DOCUMENTS, MAX_TOP_K> QUERY_TYPE;
 
 	QUERY_TYPE *jass_query;
