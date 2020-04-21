@@ -31,18 +31,21 @@ namespace JASS
 		Thanks go to Antonio Mallia for inveting this method.
 		@tparam ELEMENT The type of accumulator being used (default is uint16_t)
 	*/
-	template <typename ELEMENT, size_t NUMBER_OF_ACCUMULATORS, typename = typename std::enable_if<std::is_arithmetic<ELEMENT>::value, ELEMENT>::type>
+	template <typename ELEMENT, size_t NUMBER_OF_ACCUMULATORS, size_t COUNTER_BITSIZE, typename = typename std::enable_if<std::is_arithmetic<ELEMENT>::value, ELEMENT>::type>
 	class accumulator_counter
 		{
+		static_assert(COUNTER_BITSIZE == 8 || COUNTER_BITSIZE == 4);
 		/*
-			This somewhat bizar line is so that unittest() can see the private members of another instance of the class.
+			This somewhat bizar line is so that unittest() can see the private members of different type instance of the class.
 			Does anyone know what the actual syntax is to make it only unittest() that can see the private members?
 		*/
-		template<typename A, size_t B, typename C> friend class accumulator_2d;
+		template<typename A, size_t B, size_t C, typename D> friend class accumulator_counter;
 
 		private:
 			size_t number_of_accumulators;									///< The number of accumulators that the user asked for
 			uint8_t clean_id;														///< If clean_flag[x] == clean_id then accumulator[x] is valid
+			static constexpr decltype(clean_id) max_clean_id = (1 << COUNTER_BITSIZE) - 1;	///< The largest allowable clean id
+			static constexpr decltype(clean_id) min_clean_id = 0;									///< The smallest allowable clean id
 			decltype(clean_id) clean_flag[NUMBER_OF_ACCUMULATORS];	///< The clean flags are kept as bytes for faster lookup
 			ELEMENT accumulator[NUMBER_OF_ACCUMULATORS];					///< The accumulators are kept in an array
 
@@ -61,7 +64,7 @@ namespace JASS
 				/*
 					Clear the clean flags and accumulators ready for use.
 				*/
-				clean_id = 0;
+				clean_id = min_clean_id;
 				std::fill(clean_flag, clean_flag + number_of_accumulators, 0);
 				std::fill(accumulator, accumulator + number_of_accumulators, 0);
 				}
@@ -78,10 +81,24 @@ namespace JASS
 			*/
 			forceinline ELEMENT &operator[](size_t which)
 				{
-				if (clean_flag[which] != clean_id)
+				if constexpr (COUNTER_BITSIZE == 8)
 					{
-					accumulator[which] = 0;
-					clean_flag[which] = clean_id;
+					if (clean_flag[which] != clean_id)
+						{
+						accumulator[which] = 0;
+						clean_flag[which] = clean_id;
+						}
+					}
+				else
+					{
+					size_t clean_flag_byte = which >> 1;
+					size_t clean_shift = (which & 1) * 4;
+
+					if (((clean_flag[clean_flag_byte] >> clean_shift) & max_clean_id) != clean_id)
+						{
+						accumulator[which] = 0;
+						clean_flag[clean_flag_byte] = (clean_flag[clean_flag_byte] & ~(max_clean_id << clean_shift)) | (clean_id << clean_shift);
+						}
 					}
 				return accumulator[which];
 				}
@@ -110,13 +127,15 @@ namespace JASS
 			*/
 			void rewind(void)
 				{
-				if (clean_id == std::numeric_limits<decltype(clean_id)>::max())
+				if (clean_id == max_clean_id)
 					{
-					clean_id = std::numeric_limits<decltype(clean_id)>::min();
-					std::fill(clean_flag, clean_flag + number_of_accumulators, clean_id);
+					clean_id = min_clean_id;
+					if constexpr (COUNTER_BITSIZE == 8)
+						std::fill(clean_flag, clean_flag + number_of_accumulators, min_clean_id);
+					else
+						std::fill(clean_flag, clean_flag + (number_of_accumulators + 1) / 2, min_clean_id);
 					}
-				else
-					clean_id++;
+				clean_id++;
 				}
 
 			/*
@@ -131,7 +150,7 @@ namespace JASS
 				/*
 					Allocate an array of 64 accumulators and make sure the width and height are correct
 				*/
-				accumulator_counter<size_t, 64> array(64);
+				accumulator_counter<size_t, 64, 8> array(64);
 
 				/*
 					Populate an array with the shuffled sequence 0..instance.size()

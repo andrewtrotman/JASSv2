@@ -95,6 +95,7 @@
 #include "compress_integer_carryover_12.h"
 #include "evaluate_rank_biased_precision.h"
 #include "compress_integer_variable_byte.h"
+#include "accumulator_counter_interleaved.h"
 #include "evaluate_mean_reciprocal_rank4k.h"
 #include "evaluate_expected_search_length.h"
 #include "compress_integer_simple_9_packed.h"
@@ -172,7 +173,10 @@ int main(void)
 			}
 
 		puts("accumulator_counter");
-		JASS::accumulator_counter<uint32_t, 1>::unittest();
+		JASS::accumulator_counter<uint32_t, 1, 8>::unittest();
+
+		puts("accumulator_counter_interleaved");
+		JASS::accumulator_counter_interleaved<uint32_t, 1>::unittest();
 
 		puts("stem_porter");
 		JASS::stem_porter::unittest();
