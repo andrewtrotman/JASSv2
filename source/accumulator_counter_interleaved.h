@@ -27,25 +27,28 @@ namespace JASS
 		@brief Store the accumulator in a an array and use a query-counter array to know when to clear.
 		@details Thanks go to Antonio Mallia for inveting this method.
 		@tparam ELEMENT The type of accumulator being used (default is uint16_t)
-		@tparam NUMBER_OF_ACCUMULATORS The maximum number of accumulators that can be allocated
+		@tparam NUMBER_OF_ACCUMULATORS The maxium number of documents allowed in any index
+		@tparam COUNTER_BITSIZE The number of bits used for the query counter
 	*/
-	template <typename ELEMENT, size_t NUMBER_OF_ACCUMULATORS, typename = typename std::enable_if<std::is_arithmetic<ELEMENT>::value, ELEMENT>::type>
+	template <typename ELEMENT, size_t NUMBER_OF_ACCUMULATORS, size_t COUNTER_BITSIZE, typename = typename std::enable_if<std::is_arithmetic<ELEMENT>::value, ELEMENT>::type>
 	class accumulator_counter_interleaved
 		{
+		static_assert(COUNTER_BITSIZE == 8 || COUNTER_BITSIZE == 4);
+
 		/*
 			This somewhat bizar line is so that unittest() can see the private members of different type instance of the class.
 			Does anyone know what the actual syntax is to make it only unittest() that can see the private members?
 		*/
-		template<typename A, size_t B, typename D> friend class accumulator_counter_interleaved;
+		template<typename A, size_t B, size_t C, typename D> friend class accumulator_counter_interleaved;
 
 		/*
 			A cache line is 64 bytes so at uint16_t for an accumumulator we get 64/2=32 accumulators per chunk
-			but we need clean flags (8 bits per accumulator) so we really only get (64*8)/(16+8) = 21 accumulators per chunk
+			but we need clean flags (8 bits per flag) so we really only get (64*8)/(16+8) = 21 accumulators per chunk
 			that means we need 21 bytes for the clean flags.  21 * 2 + 21 = 64  so there is 1 byte of padding.
+			With 4 bits per flag we get  (64*8)/(16+4)=25 accumulators and 1 byte of adding
 		*/
-		static constexpr size_t cache_line_size = 64;
-		static constexpr size_t accumulators_per_chunk = 21;
-		static constexpr size_t chunk_padding = ((sizeof(ELEMENT) + 1) * accumulators_per_chunk) % cache_line_size;
+		static constexpr size_t accumulators_per_chunk = COUNTER_BITSIZE == 8 ? 21 : 25;
+		static constexpr size_t clean_flag_bytes = COUNTER_BITSIZE == 8 ? accumulators_per_chunk : (accumulators_per_chunk / 2) + (accumulators_per_chunk & 1);
 
 		/*
 			CLASS ACCUMULTOR_COUNTER_INTERLEAVED::CHUNK
@@ -61,8 +64,7 @@ namespace JASS
 					We put the accumulators first so that we can do pointer arithmatic to go from an accumulator pointer to an index
 				*/
 				ELEMENT accumulator[accumulators_per_chunk];			///< The accumulators
-				uint8_t clean_flag[accumulators_per_chunk];			///< The clean flags for this block
-				uint8_t padding[chunk_padding];							///< Padding
+				uint8_t clean_flag[clean_flag_bytes];					///< The clean flags for this block
 
 			public:
 				/*
@@ -74,7 +76,8 @@ namespace JASS
 				*/
 				forceinline void rewind(void)
 					{
-					std::fill(clean_flag, clean_flag + accumulators_per_chunk, min_clean_id);
+					::memset(clean_flag, min_clean_id, clean_flag_bytes);
+//					std::fill(clean_flag, clean_flag + clean_flag_bytes, min_clean_id);
 					}
 			};
 
@@ -83,7 +86,7 @@ namespace JASS
 			size_t number_of_chunks;											///< The number of chunks of accumulators that are needed
 			uint8_t clean_id;														///< If clean_flag[x] == clean_id then accumulator[x] is valid
 			static constexpr uint8_t min_clean_id = 0;					///< The smallest clean_id, used as an initialiser for the clean flags
-			static constexpr uint8_t max_clean_id = 0xFF;				///< The largest clean_id, if we exceed this we must reinitialise the clean flags
+			static constexpr uint8_t max_clean_id = COUNTER_BITSIZE == 8 ? 0xFF : 0x0F;	///< The largest clean_id, if we exceed this we must reinitialise the clean flags
 			chunk accumulator_chunk[(NUMBER_OF_ACCUMULATORS + accumulators_per_chunk - 1) / accumulators_per_chunk];		///< The accumulators are kept in an array of chunks
 
 		public:
@@ -122,15 +125,46 @@ namespace JASS
 				size_t chunk = which / accumulators_per_chunk;
 				size_t part_of_chunk = which % accumulators_per_chunk;
 
-				if (accumulator_chunk[chunk].clean_flag[part_of_chunk] != clean_id)
+				if constexpr (COUNTER_BITSIZE == 8)
 					{
-					accumulator_chunk[chunk].clean_flag[part_of_chunk] = clean_id;
-					accumulator_chunk[chunk].accumulator[part_of_chunk] = 0;
+					if (accumulator_chunk[chunk].clean_flag[part_of_chunk] != clean_id)
+						{
+						accumulator_chunk[chunk].clean_flag[part_of_chunk] = clean_id;
+						accumulator_chunk[chunk].accumulator[part_of_chunk] = 0;
+						}
+					}
+				else
+					{
+					size_t clean_flag_byte = part_of_chunk >> 1;
+					size_t clean_shift = (part_of_chunk & 1) * 4;
+
+					if (((accumulator_chunk[chunk].clean_flag[clean_flag_byte] >> clean_shift) & max_clean_id) != clean_id)
+						{
+						accumulator_chunk[chunk].clean_flag[clean_flag_byte] = (accumulator_chunk[chunk].clean_flag[clean_flag_byte] & ~(max_clean_id << clean_shift)) | (clean_id << clean_shift);
+						accumulator_chunk[chunk].accumulator[part_of_chunk] = 0;
+						}
 					}
 
 				return accumulator_chunk[chunk].accumulator[part_of_chunk];
 				}
-			
+
+			/*
+				ACCUMULTOR_COUNTER_INTERLEAVED::GET_INDEX()
+				-------------------------------------------
+			*/
+			/*!
+				@brief Given a pointer to an accumulator, return the acumulator index
+				@param return a value such that get_index(&accumulator[x]) == x
+			*/
+			forceinline size_t get_index(ELEMENT *pointer)
+				{
+				auto distance = reinterpret_cast<uint8_t *>(pointer) - reinterpret_cast<uint8_t *>(accumulator_chunk);
+				auto blocks = distance / sizeof(accumulator_chunk[0]);
+				auto extra_bytes = distance % sizeof(accumulator_chunk[0]);
+
+				return blocks * accumulators_per_chunk + extra_bytes / sizeof(ELEMENT);
+				}
+
 			/*
 				ACCUMULTOR_COUNTER_INTERLEAVED::SIZE()
 				--------------------------------------

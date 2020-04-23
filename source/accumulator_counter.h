@@ -30,6 +30,8 @@ namespace JASS
 		avoid initilising the acumulator array most of the time, at the cost of NUMBER_OF_ACCUMULATORS units of storage.
 		Thanks go to Antonio Mallia for inveting this method.
 		@tparam ELEMENT The type of accumulator being used (default is uint16_t)
+		@tparam NUMBER_OF_ACCUMULATORS The maxium number of documents allowed in any index
+		@tparam COUNTER_BITSIZE The number of bits used for the query counter
 	*/
 	template <typename ELEMENT, size_t NUMBER_OF_ACCUMULATORS, size_t COUNTER_BITSIZE, typename = typename std::enable_if<std::is_arithmetic<ELEMENT>::value, ELEMENT>::type>
 	class accumulator_counter
@@ -102,7 +104,20 @@ namespace JASS
 					}
 				return accumulator[which];
 				}
-			
+
+			/*
+				ACCUMULTOR_COUNTER_INTERLEAVED::GET_INDEX()
+				-------------------------------------------
+			*/
+			/*!
+				@brief Given a pointer to an accumulator, return the acumulator index
+				@param return a value such that get_index(&accumulator[x]) == x
+			*/
+			forceinline size_t get_index(ELEMENT *pointer)
+				{
+				return pointer - accumulator;
+				}
+
 			/*
 				ACCUMULATOR_COUNTER::SIZE()
 				---------------------------

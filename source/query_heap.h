@@ -12,10 +12,11 @@
 */
 #pragma once
 
+#include "heap.h"
 #include "query.h"
 #include "accumulator_2d.h"
 #include "accumulator_counter.h"
-#include "heap.h"
+#include "accumulator_counter_interleaved.h"
 
 namespace JASS
 	{
@@ -139,7 +140,8 @@ namespace JASS
 					*/
 					docid_rsv_pair operator*()
 						{
-						size_t id = parent.accumulator_pointers[where] - &parent.accumulators[0];
+						size_t id = parent.accumulators.get_index(parent.accumulator_pointers[where]);
+
 						return docid_rsv_pair(id, parent.primary_keys[id], parent.accumulators[id]);
 						}
 					};
@@ -148,7 +150,10 @@ namespace JASS
 			ACCUMULATOR_TYPE zero;														///< Constant zero used for pointer dereferenced comparisons
 			ACCUMULATOR_TYPE *accumulator_pointers[MAX_TOP_K];					///< Array of pointers to the top k accumulators
 			accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;	///< The accumulators, one per document in the collection
+//			accumulator_counter<ACCUMULATOR_TYPE, MAX_DOCUMENTS, 8> accumulators;	///< The accumulators, one per document in the collection
 //			accumulator_counter<ACCUMULATOR_TYPE, MAX_DOCUMENTS, 4> accumulators;	///< The accumulators, one per document in the collection
+//			accumulator_counter_interleaved<ACCUMULATOR_TYPE, MAX_DOCUMENTS, 8> accumulators;	///< The accumulators, one per document in the collection
+//			accumulator_counter_interleaved<ACCUMULATOR_TYPE, MAX_DOCUMENTS, 4> accumulators;	///< The accumulators, one per document in the collection
 			size_t needed_for_top_k;													///< The number of results we still need in order to fill the top-k
 			heap<ACCUMULATOR_TYPE *, typename parent::add_rsv_compare> top_results;			///< Heap containing the top-k results
 			bool sorted;																	///< has heap and accumulator_pointers been sorted (false after rewind() true after sort())

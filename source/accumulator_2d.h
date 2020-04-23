@@ -34,7 +34,8 @@ namespace JASS
 		This implementation differs from that implenentation is so far as the size of the page is alwaya a whole power of 2 and thus the clean flag can
 		be found wiht a bit shit rather than a mod.
 		@tparam ELEMENT The type of accumulator being used (default is uint16_t)
-	*/
+		@tparam NUMBER_OF_ACCUMULATORS The maxium number of documents allowed in any index
+*/
 	template <typename ELEMENT, size_t NUMBER_OF_ACCUMULATORS, typename = typename std::enable_if<std::is_arithmetic<ELEMENT>::value, ELEMENT>::type>
 	class accumulator_2d
 		{
@@ -153,7 +154,20 @@ namespace JASS
 
 				return accumulator[which];
 				}
-			
+
+			/*
+				ACCUMULTOR_COUNTER_INTERLEAVED::GET_INDEX()
+				-------------------------------------------
+			*/
+			/*!
+				@brief Given a pointer to an accumulator, return the acumulator index
+				@param return a value such that get_index(&accumulator[x]) == x
+			*/
+			forceinline size_t get_index(ELEMENT *pointer)
+				{
+				return pointer - accumulator;
+				}
+
 			/*
 				ACCUMULATOR_2D::SIZE()
 				----------------------

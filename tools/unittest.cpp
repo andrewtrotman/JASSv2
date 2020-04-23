@@ -176,7 +176,7 @@ int main(void)
 		JASS::accumulator_counter<uint32_t, 1, 8>::unittest();
 
 		puts("accumulator_counter_interleaved");
-		JASS::accumulator_counter_interleaved<uint32_t, 1>::unittest();
+		JASS::accumulator_counter_interleaved<uint32_t, 1, 8>::unittest();
 
 		puts("stem_porter");
 		JASS::stem_porter::unittest();
