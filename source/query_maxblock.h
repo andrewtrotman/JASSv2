@@ -137,7 +137,8 @@ namespace JASS
 					*/
 					docid_rsv_pair operator*()
 						{
-						size_t id = parent.accumulator_pointers[where] - &parent.accumulators[0];
+//						size_t id = parent.accumulator_pointers[where] - &parent.accumulators[0];
+						size_t id = parent.accumulators.get_index(parent.accumulator_pointers[where]);
 						return docid_rsv_pair(id, parent.primary_keys[id], parent.accumulators[id]);
 						}
 					};
