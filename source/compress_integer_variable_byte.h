@@ -246,7 +246,7 @@ namespace JASS
 				-------------------------------------------------
 			*/
 			/*!
-				@brief Encode the given integer placing the encoding into destination (whose size is not validated).
+				@brief Decode the given integer placing the encoding into destination (whose size is not validated).
 				@param decoded [out] The decoded integer.
 				@param source [in] The buffer to decode from.
 			*/
