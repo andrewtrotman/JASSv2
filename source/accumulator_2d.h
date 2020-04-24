@@ -148,7 +148,8 @@ namespace JASS
 				size_t flag = which_clean_flag(which);
 				if (!clean_flag[flag])
 					{
-					std::fill(&accumulator[flag * width], &accumulator[flag * width + width], 0);
+//					std::fill(&accumulator[flag * width], &accumulator[flag * width + width], fALSE);
+					::memset(accumulator + flag * width, 0, width * sizeof(*accumulator));
 					clean_flag[flag] = true;
 					}
 
@@ -192,7 +193,8 @@ namespace JASS
 			*/
 			void rewind(void)
 				{
-				std::fill(clean_flag, clean_flag + number_of_clean_flags, false);
+//				std::fill(clean_flag, clean_flag + number_of_clean_flags, false);
+				::memset(clean_flag, 0, number_of_clean_flags * sizeof(*clean_flag));
 				}
 
 			/*

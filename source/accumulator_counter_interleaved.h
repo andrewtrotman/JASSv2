@@ -51,6 +51,7 @@ namespace JASS
 		static constexpr size_t accumulators_per_chunk = 1;
 		static constexpr size_t clean_flag_bytes = COUNTER_BITSIZE == 8 ? accumulators_per_chunk : (accumulators_per_chunk / 2) + (accumulators_per_chunk & 1);
 
+		typedef uint16_t query_counter_type;
 		/*
 			CLASS ACCUMULTOR_COUNTER_INTERLEAVED::CHUNK
 			-------------------------------------------
@@ -58,8 +59,9 @@ namespace JASS
 		/*!
 			@brief The block of memory we're going to use is an interleaving of clean flags and the accumulators
 		*/
+
 #pragma pack(push, 1)
-		template <int N>
+		template <int ACCUMULATORS_PER_CHUNK>
 		class chunk
 			{
 			public:
@@ -67,7 +69,7 @@ namespace JASS
 					We put the accumulators first so that we can do pointer arithmatic to go from an accumulator pointer to an index
 				*/
 				ELEMENT accumulator[accumulators_per_chunk];			///< The accumulators
-				uint8_t clean_flag[clean_flag_bytes];					///< The clean flags for this block
+				query_counter_type clean_flag[clean_flag_bytes];					///< The clean flags for this block
 
 			public:
 				/*
@@ -81,14 +83,47 @@ namespace JASS
 					{
 					::memset(clean_flag, min_clean_id, clean_flag_bytes);
 					}
+
+				/*
+					ACCUMULTOR_COUNTER_INTERLEAVED::CHUNK::ALLOCATE_ACCUMULATOR()
+					-------------------------------------------------------------
+				*/
+				/*!
+					@brief Return a correctly cleared accumulator
+					@param part_of_chunk [in] The accumulator within this chunk to use
+					@param clean_id [in] The current query ID
+				*/
+				forceinline ELEMENT &allocate_accumulator(size_t part_of_chunk, query_counter_type clean_id)
+					{
+					if constexpr (COUNTER_BITSIZE == 8)
+						{
+						if (clean_flag[part_of_chunk] != clean_id)
+							{
+							clean_flag[part_of_chunk] = clean_id;
+							accumulator[part_of_chunk] = 0;
+							}
+						}
+					else
+						{
+						size_t clean_flag_byte = part_of_chunk >> 1;
+						size_t clean_shift = (part_of_chunk & 1) * 4;
+
+						if (((clean_flag[clean_flag_byte] >> clean_shift) & max_clean_id) != clean_id)
+							{
+							clean_flag[clean_flag_byte] = (clean_flag[clean_flag_byte] & ~(max_clean_id << clean_shift)) | (clean_id << clean_shift);
+							accumulator[part_of_chunk] = 0;
+							}
+						}
+					return accumulator[part_of_chunk];
+					}
 			};
-#ifdef NEVER
+//#ifdef NEVER
 		template <>
 		class chunk<1>
 			{
 			public:
 				ELEMENT accumulator;			///< The accumulators
-				uint8_t clean_flag;			///< The clean flag
+				query_counter_type clean_flag;			///< The clean flag
 
 			public:
 				/*
@@ -102,16 +137,36 @@ namespace JASS
 					{
 					clean_flag = 0;
 					}
+
+				/*
+					ACCUMULTOR_COUNTER_INTERLEAVED::CHUNK::ALLOCATE_ACCUMULATOR()
+					-------------------------------------------------------------
+				*/
+				/*!
+					@brief Return a correctly cleared accumulator
+					@param part_of_chunk [in] The accumulator within this chunk to use
+					@param clean_id [in] The current query ID
+				*/
+				forceinline ELEMENT &allocate_accumulator(size_t part_of_chunk, query_counter_type clean_id)
+					{
+					if (clean_flag != clean_id)
+						{
+						clean_flag = clean_id;
+						accumulator = 0;
+						}
+
+					return accumulator;
+					}
 			};
-#endif
+//#endif
 #pragma pack(pop)
 
 		private:
 			size_t number_of_accumulators;									///< The number of accumulators that the user asked for
 			size_t number_of_chunks;											///< The number of chunks of accumulators that are needed
-			uint8_t clean_id;														///< If clean_flag[x] == clean_id then accumulator[x] is valid
-			static constexpr uint8_t min_clean_id = 0;					///< The smallest clean_id, used as an initialiser for the clean flags
-			static constexpr uint8_t max_clean_id = COUNTER_BITSIZE == 8 ? 0xFF : 0x0F;	///< The largest clean_id, if we exceed this we must reinitialise the clean flags
+			query_counter_type clean_id;														///< If clean_flag[x] == clean_id then accumulator[x] is valid
+			static constexpr query_counter_type min_clean_id = 0;					///< The smallest clean_id, used as an initialiser for the clean flags
+			static constexpr query_counter_type max_clean_id = COUNTER_BITSIZE == 8 ? 0xFF : 0x0F;	///< The largest clean_id, if we exceed this we must reinitialise the clean flags
 			chunk<accumulators_per_chunk> accumulator_chunk[(NUMBER_OF_ACCUMULATORS + accumulators_per_chunk - 1) / accumulators_per_chunk];		///< The accumulators are kept in an array of chunks
 
 		public:
@@ -167,27 +222,7 @@ namespace JASS
 					part_of_chunk = which % accumulators_per_chunk;
 					}
 
-				if constexpr (COUNTER_BITSIZE == 8)
-					{
-					if (accumulator_chunk[chunk].clean_flag[part_of_chunk] != clean_id)
-						{
-						accumulator_chunk[chunk].clean_flag[part_of_chunk] = clean_id;
-						accumulator_chunk[chunk].accumulator[part_of_chunk] = 0;
-						}
-					}
-				else
-					{
-					size_t clean_flag_byte = part_of_chunk >> 1;
-					size_t clean_shift = (part_of_chunk & 1) * 4;
-
-					if (((accumulator_chunk[chunk].clean_flag[clean_flag_byte] >> clean_shift) & max_clean_id) != clean_id)
-						{
-						accumulator_chunk[chunk].clean_flag[clean_flag_byte] = (accumulator_chunk[chunk].clean_flag[clean_flag_byte] & ~(max_clean_id << clean_shift)) | (clean_id << clean_shift);
-						accumulator_chunk[chunk].accumulator[part_of_chunk] = 0;
-						}
-					}
-
-				return accumulator_chunk[chunk].accumulator[part_of_chunk];
+				return accumulator_chunk[chunk].allocate_accumulator(part_of_chunk, clean_id);
 				}
 
 			/*
