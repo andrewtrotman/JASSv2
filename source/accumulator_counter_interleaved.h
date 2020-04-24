@@ -117,9 +117,9 @@ namespace JASS
 					return accumulator[part_of_chunk];
 					}
 			};
-//#ifdef NEVER
+#ifdef NEVER
 		template <>
-		class chunk<1>
+		class chunk <1>
 			{
 			public:
 				ELEMENT accumulator;			///< The accumulators
@@ -158,7 +158,7 @@ namespace JASS
 					return accumulator;
 					}
 			};
-//#endif
+#endif
 #pragma pack(pop)
 
 		private:
