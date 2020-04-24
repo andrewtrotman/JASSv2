@@ -47,7 +47,8 @@ namespace JASS
 			that means we need 21 bytes for the clean flags.  21 * 2 + 21 = 64  so there is 1 byte of padding.
 			With 4 bits per flag we get  (64*8)/(16+4)=25 accumulators and 1 byte of adding
 		*/
-		static constexpr size_t accumulators_per_chunk = COUNTER_BITSIZE == 8 ? 21 : 25;
+//		static constexpr size_t accumulators_per_chunk = (COUNTER_BITSIZE == 8 ? 21 : 25);
+		static constexpr size_t accumulators_per_chunk = 1;
 		static constexpr size_t clean_flag_bytes = COUNTER_BITSIZE == 8 ? accumulators_per_chunk : (accumulators_per_chunk / 2) + (accumulators_per_chunk & 1);
 
 		/*
@@ -57,6 +58,8 @@ namespace JASS
 		/*!
 			@brief The block of memory we're going to use is an interleaving of clean flags and the accumulators
 		*/
+#pragma pack(push, 1)
+		template <int N>
 		class chunk
 			{
 			public:
@@ -77,9 +80,31 @@ namespace JASS
 				forceinline void rewind(void)
 					{
 					::memset(clean_flag, min_clean_id, clean_flag_bytes);
-//					std::fill(clean_flag, clean_flag + clean_flag_bytes, min_clean_id);
 					}
 			};
+#ifdef NEVER
+		template <>
+		class chunk<1>
+			{
+			public:
+				ELEMENT accumulator;			///< The accumulators
+				uint8_t clean_flag;			///< The clean flag
+
+			public:
+				/*
+					ACCUMULTOR_COUNTER_INTERLEAVED::CHUNK::REWIND()
+					-----------------------------------------------
+				*/
+				/*!
+					@brief Clear the clean flags marking each accumulator as dirty
+				*/
+				forceinline void rewind(void)
+					{
+					clean_flag = 0;
+					}
+			};
+#endif
+#pragma pack(pop)
 
 		private:
 			size_t number_of_accumulators;									///< The number of accumulators that the user asked for
@@ -87,7 +112,7 @@ namespace JASS
 			uint8_t clean_id;														///< If clean_flag[x] == clean_id then accumulator[x] is valid
 			static constexpr uint8_t min_clean_id = 0;					///< The smallest clean_id, used as an initialiser for the clean flags
 			static constexpr uint8_t max_clean_id = COUNTER_BITSIZE == 8 ? 0xFF : 0x0F;	///< The largest clean_id, if we exceed this we must reinitialise the clean flags
-			chunk accumulator_chunk[(NUMBER_OF_ACCUMULATORS + accumulators_per_chunk - 1) / accumulators_per_chunk];		///< The accumulators are kept in an array of chunks
+			chunk<accumulators_per_chunk> accumulator_chunk[(NUMBER_OF_ACCUMULATORS + accumulators_per_chunk - 1) / accumulators_per_chunk];		///< The accumulators are kept in an array of chunks
 
 		public:
 			/*
@@ -122,8 +147,25 @@ namespace JASS
 			*/
 			forceinline ELEMENT &operator[](size_t which)
 				{
-				size_t chunk = which / accumulators_per_chunk;
-				size_t part_of_chunk = which % accumulators_per_chunk;
+				size_t chunk;
+				size_t part_of_chunk;
+
+				if constexpr (accumulators_per_chunk == (1 << maths::floor_log2(accumulators_per_chunk)))
+					{
+					/*
+						Whole power of 2 so do a dividion with a shift
+					*/
+					chunk = which >> maths::floor_log2(accumulators_per_chunk);
+					part_of_chunk = which & (accumulators_per_chunk - 1);
+					}
+				else
+					{
+					/*
+						Slow division
+					*/
+					chunk = which / accumulators_per_chunk;
+					part_of_chunk = which % accumulators_per_chunk;
+					}
 
 				if constexpr (COUNTER_BITSIZE == 8)
 					{

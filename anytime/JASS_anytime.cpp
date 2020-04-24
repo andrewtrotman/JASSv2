@@ -320,6 +320,7 @@ int main(int argc, const char *argv[])
 		std::cout << "There are " << index.document_count() << " documents in this index which is larger than MAX_DOCUMENTS (" << MAX_DOCUMENTS << "), change MAX_DOCUMENTS in " << __FILE__ << " and recompile.\n";
 		exit(1);
 		}
+	stats.number_of_documents = index.document_count();
 
 	/*
 		Set the Anytime stopping criteria
