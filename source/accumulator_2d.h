@@ -4,7 +4,7 @@
 	Copyright (c) 2017 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
- #pragma once
+#pragma once
 
 #include <new>
 #include <vector>
@@ -18,6 +18,8 @@
 
 #include "maths.h"
 #include "forceinline.h"
+
+#define USE_QUERY_IDS 1
 
 namespace JASS
 	{
@@ -46,6 +48,9 @@ namespace JASS
 		template<typename A, size_t B, typename C> friend class accumulator_2d;
 
 		private:
+			typedef uint16_t flag_type;
+
+		private:
 			/*
 				This class is templated so as to put the array and the clean flags in-object rather than pointers.  So, its necessary
 				to work out the maxumum sizes of the two arrays at compile time and the check at construction that no overflow
@@ -58,9 +63,12 @@ namespace JASS
 		private:
 			static constexpr size_t maximum_number_of_accumulators_allocated = maximum_width * maximum_number_of_clean_flags;			///< The numner of accumulators that were actually allocated (recall that this is a 2D array)
 		public:
-			uint8_t clean_flag[maximum_number_of_clean_flags];																								///< The clean flags are kept as bytes for faster lookup
+			flag_type clean_flag[maximum_number_of_clean_flags];																								///< The clean flags are kept as bytes for faster lookup
 			ELEMENT accumulator[maximum_number_of_accumulators_allocated];																				///< The accumulators are kept in an array
 
+#ifdef USE_QUERY_IDS
+			flag_type query_id;
+#endif
 			/*
 				At run-time we use these parameters
 			*/
@@ -81,6 +89,9 @@ namespace JASS
 				@param number_of_accumulators [in] The numnber of elements in the array being managed.
 			*/
 			accumulator_2d(size_t number_of_accumulators) :
+#ifdef USE_QUERY_IDS
+				query_id(std::numeric_limits<decltype(query_id)>::max()),
+#endif
 				number_of_accumulators(number_of_accumulators)
 				{
 				/*
@@ -146,12 +157,20 @@ namespace JASS
 			forceinline ELEMENT &operator[](size_t which)
 				{
 				size_t flag = which_clean_flag(which);
+#ifdef USE_QUERY_IDS
+				if (clean_flag[flag] != query_id)
+					{
+					::memset(accumulator + flag * width, 0, width * sizeof(*accumulator));
+					clean_flag[flag] = query_id;
+					}
+#else
 				if (!clean_flag[flag])
 					{
 //					std::fill(&accumulator[flag * width], &accumulator[flag * width + width], fALSE);
 					::memset(accumulator + flag * width, 0, width * sizeof(*accumulator));
 					clean_flag[flag] = true;
 					}
+#endif
 
 				return accumulator[which];
 				}
@@ -193,8 +212,17 @@ namespace JASS
 			*/
 			void rewind(void)
 				{
+#ifdef USE_QUERY_IDS
+				if (query_id == std::numeric_limits<decltype(query_id)>::max())
+					{
+					::memset(clean_flag, 0, number_of_clean_flags * sizeof(*clean_flag));
+					query_id = 0;
+					}
+				query_id++;
+#else
 //				std::fill(clean_flag, clean_flag + number_of_clean_flags, false);
 				::memset(clean_flag, 0, number_of_clean_flags * sizeof(*clean_flag));
+#endif
 				}
 
 			/*
