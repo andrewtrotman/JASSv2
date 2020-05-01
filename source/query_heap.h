@@ -30,11 +30,11 @@ namespace JASS
 		@tparam MAX_DOCUMENTS The maximum number of documents that are ever going to exist in this collection
 		@tparam MAX_TOP_K The maximum top-k documents that are going to be asked for
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	class query_heap : public query<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K, query_heap<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>>
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K, typename DECODER>
+	class query_heap : public query<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K, query_heap<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K, DECODER>, DECODER>
 		{
 		private:
-			typedef query<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K, query_heap<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>> parent;
+			typedef query<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K, query_heap<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K, DECODER>, DECODER> parent;
 
 		public:
 			/*
@@ -81,7 +81,7 @@ namespace JASS
 					};
 
 				public:
-					query_heap<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent;	///< The query object that this is iterating over
+					query_heap<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K, DECODER> &parent;	///< The query object that this is iterating over
 					size_t where;																		///< Where in the results list we are
 
 				public:
@@ -94,7 +94,7 @@ namespace JASS
 						@param parent [in] The object we are iterating over
 						@param where [in] Where in the results list this iterator starts
 					*/
-					iterator(query_heap<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent, size_t where) :
+					iterator(query_heap<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K, DECODER> &parent, size_t where) :
 						parent(parent),
 						where(where)
 						{
@@ -295,7 +295,7 @@ namespace JASS
 			static void unittest(void)
 				{
 				std::vector<std::string> keys = {"one", "two", "three", "four"};
-				query_heap<uint16_t, 1024, 10> query_object(keys, 1024, 2);
+				query_heap<uint16_t, 1024, 10, DECODER> query_object(keys, 1024, 2);
 				std::ostringstream string;
 
 				/*

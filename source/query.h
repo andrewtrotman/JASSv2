@@ -17,8 +17,8 @@
 #include "top_k_qsort.h"
 #include "parser_query.h"
 #include "query_term_list.h"
+#include "compress_integer.h"
 #include "allocator_memory.h"
-#include "compress_integer_special.h"
 
 namespace JASS
 	{
@@ -33,8 +33,8 @@ namespace JASS
 		@tparam MAX_TOP_K The maximum top-k documents that are going to be asked for
 		@tparam DECODER The object type that will decompress and D1 (for example) decoded integers
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K, typename CHILD_TYPE, typename DECODER = compress_integer_special>
-	class query : public DECODER
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K, typename CHILD_TYPE, typename DECODER>
+	class query
 		{
 		public:
 			/*
@@ -196,7 +196,7 @@ namespace JASS
 				{
 				set_score(impact);
 //std::cout << "\n[" << impact << "]";
-				static_cast<DECODER *>(this)->decode_with_writer(*this, integers, compressed, compressed_size);
+				static_cast<DECODER *>(this)->decode_with_writer(integers, compressed, compressed_size);
 				}
 
 			/*

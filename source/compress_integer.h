@@ -225,9 +225,6 @@ namespace JASS
 			*/
 			virtual void decode(integer *decoded, size_t integers_to_decode, const void *source, size_t source_length) = 0;
 
-
-
-
 			/*
 				COMPRESS_INTEGER::UNITTEST_ONE()
 				--------------------------------

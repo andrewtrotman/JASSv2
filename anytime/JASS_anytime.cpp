@@ -30,10 +30,12 @@
 //#include "query_maxblock_heap.h"
 #include "deserialised_jass_v1.h"
 #include "compress_integer_all.h"
+#include "compress_integer_none.h"
+#include "compress_integer_special.h"
 #include "JASS_anytime_thread_result.h"
 
 
-#define SPECIAL
+//#define SPECIAL
 
 
 constexpr size_t MAX_QUANTUM = 0x0FFF;
@@ -74,18 +76,16 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 	/*
 		Extract the compression scheme from the index
 	*/
-	std::string codex_name;
-
 #ifdef SPECIAL
+	std::string codex_name;
 	int32_t d_ness;
 	JASS::compress_integer &decompressor = index.codex(codex_name, d_ness);
 	std::cout << "Index compressed with " << codex_name << "-D" << d_ness << "\n";
 #else
+	std::string codex_name;
 	int32_t d_ness;
-
-	d_ness = 1;
-	JASS::compress_integer &decompressor = JASS::compress_integer_all::get_by_name("None");
-
+	JASS::compress_integer &decompressor = index.codex(codex_name, d_ness);
+//	JASS::compress_integer &decompressor = * new JASS::compress_integer_special<uint16_t, MAX_DOCUMENTS, MAX_TOP_K>(index.primary_keys(), index.document_count(), top_k);
 	auto decoder = new DECODER(index.document_count() + 4096);				// Some decoders write past the end of the output buffer (e.g. GroupVarInt) so we allocate enough space for the overflow
 #endif
 
@@ -98,10 +98,10 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 		Allocate a JASS query object
 	*/
 #ifdef SPECIAL
-	typedef JASS::query_heap<uint16_t, MAX_DOCUMENTS, MAX_TOP_K> QUERY_TYPE;
+	typedef JASS::compress_integer_special<uint16_t, MAX_DOCUMENTS, MAX_TOP_K> QUERY_TYPE;
 #else
 //	typedef JASS::query_maxblock<uint16_t, MAX_DOCUMENTS, MAX_TOP_K> QUERY_TYPE;
-	typedef JASS::query_heap<uint16_t, MAX_DOCUMENTS, MAX_TOP_K> QUERY_TYPE;
+	typedef JASS::query_heap<uint16_t, MAX_DOCUMENTS, MAX_TOP_K, JASS::compress_integer_special<uint16_t, MAX_DOCUMENTS, MAX_TOP_K>> QUERY_TYPE;
 //	typedef JASS::query_bucket<uint16_t, MAX_DOCUMENTS, MAX_TOP_K> QUERY_TYPE;
 //	typedef JASS::query_maxblock_heap<uint16_t, MAX_DOCUMENTS, MAX_TOP_K> QUERY_TYPE;
 #endif
