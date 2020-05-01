@@ -225,23 +225,8 @@ namespace JASS
 			*/
 			virtual void decode(integer *decoded, size_t integers_to_decode, const void *source, size_t source_length) = 0;
 
-			/*
-				COMPRESS_INTEGER::DECODE()
-				--------------------------
-			*/
-			/*!
-				@brief Decode a sequence of integers encoded with this codex.
-				@param into [out] The object to recieve the decoded integes via push_back(doc, impact).
-				@param impact [in] The impact score passed to into.
-				@param integers_to_decode [in] The minimum number of integers to decode (it may decode more).
-				@param source [in] The encoded integers.
-				@param source_length [in] The length (in bytes) of the source buffer.
-			*/
-			template <typename INTO>
-			void decode(INTO &decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
-				{
-				/* Nothing */
-				}
+
+
 
 			/*
 				COMPRESS_INTEGER::UNITTEST_ONE()

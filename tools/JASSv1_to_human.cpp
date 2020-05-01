@@ -196,10 +196,8 @@ int main(int argc, const char *argv[])
 	*/
 	if (d_ness == 0)
 		walk_index<JASS::decoder_d0>(index, decompressor);
-	else if (d_ness == 1)
+	else // if (d_ness == 1)
 		walk_index<JASS::decoder_d1>(index, decompressor);
-	else
-		walk_index<JASS::decoder_none>(index, decompressor);
 
 	/*
 		Print the primary key list

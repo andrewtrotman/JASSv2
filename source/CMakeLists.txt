@@ -97,6 +97,7 @@ set(JASSlib_FILES
 	compress_integer_simple_9.cpp
 	compress_integer_simple_9_packed.h
 	compress_integer_simple_9_packed.cpp
+	compress_integer_special.h
 	compress_integer_stream_vbyte.h
 	compress_integer_stream_vbyte.cpp
 	compress_integer_variable_byte.h

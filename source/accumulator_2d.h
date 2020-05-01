@@ -157,6 +157,7 @@ namespace JASS
 			forceinline ELEMENT &operator[](size_t which)
 				{
 				size_t flag = which_clean_flag(which);
+
 #ifdef USE_QUERY_IDS
 				if (clean_flag[flag] != query_id)
 					{

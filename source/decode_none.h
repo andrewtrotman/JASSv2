@@ -6,7 +6,7 @@
 */
 /*!
 	@file
-	@brief The D<n> decoder to use when the compressor / decompressor do the decoding
+	@brief Experimental D0 decode used to push add_rsv() into the decompressor
 	@author Andrew Trotman
 	@copyright 2019 Andrew Trotman
 */
@@ -30,7 +30,8 @@ namespace JASS
 		"none" decoder that does no work.  It differs from D0 in so far as the class implements the
 		SIMD scatter / gather behaviour.
 	*/
-	class decoder_none
+	template <typename DECOMPRESSOR>
+	class decoder_none : public DECOMPRESSOR
 		{
 		public:
 			/*
@@ -56,23 +57,18 @@ namespace JASS
 				}
 
 			/*
-				DECODER_NONE::DECODE_AND_PROCESS()
+				DECODER_NONE::DECODE_AND_ADD_RSV()
 				----------------------------------
 			*/
 			/*!
-				@brief Given the integer decoder, the number of integes to decode, and the compressed sequence, decompress (but do not process).
-				@param impact [in] The impact score to add for each document id in the list.
-				@param accumulators [in] The accumulators to add to
-				@param decoder [in] The codex to use to decompress and preocess.
+				@brief Decode the comprerssed postings and call add_rsv() on each one
 				@param integers [in] The number of integers that are compressed.
 				@param compressed [in] The compressed sequence.
 				@param compressed_size [in] The length of the compressed sequence.
 			*/
-			template <typename QUERY_T, typename DECOMPRESSOR_T>
-			void decode_and_process(uint16_t impact, QUERY_T &accumulators, DECOMPRESSOR_T &decoder, size_t integers, const void *compressed, size_t compressed_size)
+			void decode_and_add_rsv(size_t integers, const void *compressed, size_t compressed_size)
 				{
-				accumulators.set_score(impact);
-				decoder.decode(accumulators, integers, compressed, compressed_size);
+				DECOMPRESSOR::decode(integers, compressed, compressed_size);
 				}
 		};
 	}

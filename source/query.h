@@ -18,6 +18,7 @@
 #include "parser_query.h"
 #include "query_term_list.h"
 #include "allocator_memory.h"
+#include "compress_integer_special.h"
 
 namespace JASS
 	{
@@ -30,9 +31,10 @@ namespace JASS
 		@tparam ACCUMULATOR_TYPE The value-type for an accumulator (normally uint16_t or double).
 		@tparam MAX_DOCUMENTS The maximum number of documents that are ever going to exist in this collection
 		@tparam MAX_TOP_K The maximum top-k documents that are going to be asked for
+		@tparam DECODER The object type that will decompress and D1 (for example) decoded integers
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	class query
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K, typename CHILD_TYPE, typename DECODER = compress_integer_special>
+	class query : public DECODER
 		{
 		public:
 			/*
@@ -180,6 +182,24 @@ namespace JASS
 				}
 
 			/*
+				QUERY::DECODE_AND_PROCESS()
+				---------------------------
+			*/
+			/*!
+				@brief Given the integer decoder, the number of integes to decode, and the compressed sequence, decompress (but do not process).
+				@param impact [in] The impact score to add for each document id in the list.
+				@param integers [in] The number of integers that are compressed.
+				@param compressed [in] The compressed sequence.
+				@param compressed_size [in] The length of the compressed sequence.
+			*/
+			void decode_and_process(ACCUMULATOR_TYPE impact, size_t integers, const void *compressed, size_t compressed_size)
+				{
+				set_score(impact);
+//std::cout << "\n[" << impact << "]";
+				static_cast<DECODER *>(this)->decode_with_writer(*this, integers, compressed, compressed_size);
+				}
+
+			/*
 				QUERY::SET_SCORE()
 				------------------
 			*/
@@ -198,6 +218,22 @@ namespace JASS
 			*/
 			/*!
 				@brief Add the impact score to a bunch of accumulators
+				@param document_id [in] The document ID that the impact should be added to.
+				@details The first valid document id is 1, any calls with a document id of 0 will add to
+				the accumulator for document id 0, but since that is a non-existant document, the value is later
+				ignored.  So it IS safe to pad documet_ids with 0s.
+			*/
+			forceinline void push_back(compress_integer::integer document_id)
+				{
+				static_cast<CHILD_TYPE *>(this)->add_rsv(document_id, impact);
+				}
+
+			/*
+				QUERY::PUSH_BACK()
+				------------------
+			*/
+			/*!
+				@brief Add the impact score to a bunch of accumulators
 				@param document_ids [in] The document IDs that the impact should be added to.
 				@details The first valid document id is 1, any calls with a document id of 0 will add to
 				the accumulator for document id 0, but since that is a non-existant document, the value is later
@@ -205,18 +241,14 @@ namespace JASS
 			*/
 			forceinline void push_back(__m256i document_ids)
 				{
-				uint32_t each[8];
-				__m256i *into = (__m256i *)each;
-
-				_mm256_storeu_si256(into, document_ids);
-				add_rsv(each[0], impact);
-				add_rsv(each[1], impact);
-				add_rsv(each[2], impact);
-				add_rsv(each[3], impact);
-				add_rsv(each[4], impact);
-				add_rsv(each[5], impact);
-				add_rsv(each[6], impact);
-				add_rsv(each[7], impact);
+				push_back(_mm256_extract_epi32(document_ids, 0));
+				push_back(_mm256_extract_epi32(document_ids, 1));
+				push_back(_mm256_extract_epi32(document_ids, 2));
+				push_back(_mm256_extract_epi32(document_ids, 3));
+				push_back(_mm256_extract_epi32(document_ids, 4));
+				push_back(_mm256_extract_epi32(document_ids, 5));
+				push_back(_mm256_extract_epi32(document_ids, 6));
+				push_back(_mm256_extract_epi32(document_ids, 7));
 				}
 		};
 	}

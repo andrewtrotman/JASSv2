@@ -31,10 +31,10 @@ namespace JASS
 		@tparam MAX_TOP_K The maximum top-k documents that are going to be asked for
 	*/
 	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	class query_heap : public query<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>
+	class query_heap : public query<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K, query_heap<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>>
 		{
 		private:
-			typedef query<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> parent;
+			typedef query<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K, query_heap<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>> parent;
 
 		public:
 			/*
@@ -246,7 +246,7 @@ namespace JASS
 				@param document_id [in] which document to increment
 				@param score [in] the amount of weight to add
 			*/
-			forceinline void add_rsv(size_t document_id, ACCUMULATOR_TYPE score)
+			forceinline void add_rsv(compress_integer::integer document_id, ACCUMULATOR_TYPE score)
 				{
 				ACCUMULATOR_TYPE *which = &accumulators[document_id];			// This will create the accumulator if it doesn't already exist.
 
