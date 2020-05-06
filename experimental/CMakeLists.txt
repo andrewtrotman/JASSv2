@@ -10,14 +10,3 @@
 
 include_directories(../source)
 
-#
-# examine_index
-#
-
-add_executable(examine_index
-	examine_index.cpp
-	)
-
-target_link_libraries(examine_index
-	JASSlib
-	)

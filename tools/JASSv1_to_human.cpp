@@ -14,9 +14,6 @@
 #include <iostream>
 
 #include "file.h"
-#include "decode_d0.h"
-#include "decode_d1.h"
-#include "decode_none.h"
 #include "commandline.h"
 #include "deserialised_jass_v1.h"
 
@@ -105,11 +102,9 @@ class printer
 	@param index [in] Reference to a JASS v1 deserialised index object.
 	@param decompressor [in] reference to an object that can decompress a postings list segment.
 */
-template <typename DECODER>
 void walk_index(JASS::deserialised_jass_v1 &index, JASS::compress_integer &decompressor)
 	{
 	printer out_stream;
-	DECODER decoder(index.document_count() + 4096);		// Some decoders write past the end of the output buffer (e.g. GroupVarInt) so we allocate enough space for the overflow
 
 	/*
 		Walk each term
@@ -129,7 +124,8 @@ void walk_index(JASS::deserialised_jass_v1 &index, JASS::compress_integer &decom
 				uint64_t *postings = (uint64_t *)term.offset + current_segment;
 				const JASS::deserialised_jass_v1::segment_header &header = *reinterpret_cast<const JASS::deserialised_jass_v1::segment_header *>(index.postings() + *postings);
 
-				decoder.decode_and_process(header.impact, out_stream, decompressor, header.segment_frequency, index.postings() + header.offset, header.end - header.offset);
+				decompressor.set_impact(header.impact);
+				decompressor.decode_with_writer(out_stream, header.segment_frequency, index.postings() + header.offset, header.end - header.offset);
 				}
 			}
 		std::cout << '\n';
@@ -194,10 +190,7 @@ int main(int argc, const char *argv[])
 	/*
 		Print the postings lists
 	*/
-	if (d_ness == 0)
-		walk_index<JASS::decoder_d0>(index, decompressor);
-	else // if (d_ness == 1)
-		walk_index<JASS::decoder_d1>(index, decompressor);
+	walk_index(index, decompressor);
 
 	/*
 		Print the primary key list

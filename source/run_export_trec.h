@@ -12,7 +12,7 @@
 */
 #pragma once
 
-#include "decode_d1.h"
+#include "compress_integer_none.h"
 
 namespace JASS
 	{

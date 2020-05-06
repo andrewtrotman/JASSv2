@@ -11,8 +11,6 @@
 #include <iostream>
 
 #include "maths.h"
-#include "decode_d0.h"
-#include "decode_d1.h"
 #include "deserialised_jass_v1.h"
 
 std::map<size_t, size_t> global_frequencies;
