@@ -18,7 +18,8 @@
 
 namespace JASS
 	{
-	const compress_integer_carryover_12::selector compress_integer_carryover_12::transition_table[] =
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+	const typename compress_integer_carryover_12<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::selector compress_integer_carryover_12<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::transition_table[] =
 		{
 			/* Selector in the 32-bit integer (30-bit payload) */
 		/*0*/  {"a30", 1, 30, false, {0, 1, 2, 11}},
@@ -53,9 +54,10 @@ namespace JASS
 		COMPRESS_INTEGER_CARRYOVER_12::ENCODE()
 		---------------------------------------
 	*/
-	size_t compress_integer_carryover_12::encode(void *encoded, size_t destination_length, const integer *source, size_t source_integers)
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+	size_t compress_integer_carryover_12<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::encode(void *encoded, size_t destination_length, const document_id::integer *source, size_t source_integers)
 		{
-		const integer *from = source;
+		const auto *from = source;
 		uint32_t *destination = static_cast<uint32_t *>(encoded);
 		uint32_t *end = destination + (destination_length >> 2);
 
@@ -173,12 +175,13 @@ printf("source[%d] %d * %d-bits [%d->%d]\n", (int)used, (int)transition_table[tr
 		COMPRESS_INTEGER_CARRYOVER_12::DECODE()
 		---------------------------------------
 	*/
-	void compress_integer_carryover_12::decode(integer *destination, size_t integers_to_decode, const void *compressed, size_t compressed_size_in_bytes)
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+	void compress_integer_carryover_12<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::decode(document_id::integer *destination, size_t integers_to_decode, const void *compressed, size_t compressed_size_in_bytes)
 		{
 #ifdef CARRY_DEBUG
 		integer *start_of_output = destination;
 #endif
-		const integer *end = destination + integers_to_decode;
+		const auto *end = destination + integers_to_decode;
 		const uint32_t *source = static_cast<const uint32_t *>(compressed);
 
 		/*
@@ -593,9 +596,10 @@ printf("at %d, Transiton:%d NextSelector:%d\n", (int)selector, (int)((payload >>
 		COMPRESS_INTEGER_CARRYOVER_12::UNITTEST()
 		-----------------------------------------
 	*/
-	void compress_integer_carryover_12::unittest(void)
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+	void compress_integer_carryover_12<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::unittest(void)
 		{
-		std::vector<integer> every_case;
+		std::vector<document_id::integer> every_case;
 		size_t instance;
 
 		for (instance = 0; instance < 1; instance++)
@@ -688,7 +692,7 @@ printf("at %d, Transiton:%d NextSelector:%d\n", (int)selector, (int)((payload >>
 		compressor.decode(&decompressed[0], 1, &compressed[0], size_once_compressed);
 		JASS_assert(decompressed[0] == every_case[0]);
 
-		integer one = 1;
+		document_id::integer one = 1;
 		size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &one, 0);
 		JASS_assert(size_once_compressed == 0);
 

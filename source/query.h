@@ -14,6 +14,7 @@
 
 #include <immintrin.h>
 
+#include "document_id.h"
 #include "top_k_qsort.h"
 #include "parser_query.h"
 #include "query_term_list.h"
@@ -223,7 +224,7 @@ namespace JASS
 				the accumulator for document id 0, but since that is a non-existant document, the value is later
 				ignored.  So it IS safe to pad documet_ids with 0s.
 			*/
-			forceinline void push_back(compress_integer::integer document_id)
+			forceinline void push_back(document_id::integer document_id)
 				{
 				static_cast<CHILD_TYPE *>(this)->add_rsv(document_id, impact);
 				}

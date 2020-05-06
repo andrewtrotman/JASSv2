@@ -16,7 +16,8 @@ namespace JASS
 		COMPRESS_INTEGER_ELIAS_DELTA::ENCODE()
 		--------------------------------------
 	*/
-	size_t compress_integer_elias_delta::encode(void *encoded_as_void, size_t encoded_buffer_length, const integer *source, size_t source_integers)
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+	size_t compress_integer_elias_delta<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::encode(void *encoded_as_void, size_t encoded_buffer_length, const document_id::integer *source, size_t source_integers)
 		{
 		uint8_t *encoded = static_cast<uint8_t *>(encoded_as_void);
 
@@ -29,7 +30,7 @@ namespace JASS
 			encode
 		*/
 		uint64_t into = 0;									// bit position to write into (counted from the beginning of encoded).
-		for (const integer *value = source; value < source + source_integers; value++)
+		for (const auto *value = source; value < source + source_integers; value++)
 			{
 			/*
 				Get the length
@@ -83,7 +84,8 @@ namespace JASS
 		COMPRESS_INTEGER_ELIAS_DELTA::DECODE()
 		--------------------------------------
 	*/
-	void compress_integer_elias_delta::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+	void compress_integer_elias_delta<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::decode(document_id::integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
 		{
 		const uint64_t *source = reinterpret_cast<const uint64_t *>(source_as_void);
 		uint64_t value = 0;
@@ -92,7 +94,7 @@ namespace JASS
 		int8_t bits_used;		/// bits used in the second word if we cross a word boundary (and not kept from block to block)
 		int8_t bits_remaining = 0;
 
-		for (integer *end = decoded + integers_to_decode; decoded < end; decoded++)
+		for (auto *end = decoded + integers_to_decode; decoded < end; decoded++)
 			{
 			/*
 				get the width of the width
@@ -143,7 +145,7 @@ namespace JASS
 			*/
 			if (bits_remaining - binary >= 0)
 				{
-				*decoded = (integer)(_bextr_u64(value, 0, binary)) | (1 << (binary - 1));
+				*decoded = (document_id::integer)(_bextr_u64(value, 0, binary)) | (1 << (binary - 1));
 				bits_remaining -= binary - 1;
 				value >>= binary - 1;
 				}
@@ -166,20 +168,21 @@ namespace JASS
 		COMPRESS_INTEGER_ELIAS_DELTA::UNITTEST()
 		----------------------------------------
 	*/
-	void compress_integer_elias_delta::unittest(void)
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+	void compress_integer_elias_delta<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::unittest(void)
 		{
 		compress_integer_elias_delta codec;
 
 		std::vector<uint8_t> buffer(1024);
-		std::vector<integer> sequence = {1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, };
-		std::vector<integer> into(sequence.size());
+		std::vector<document_id::integer> sequence = {1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, };
+		std::vector<document_id::integer> into(sequence.size());
 
 		auto encoded_length = codec.encode(&buffer[0], buffer.size(), &sequence[0], sequence.size());
 		codec.decode(&into[0], sequence.size(), &buffer[0], encoded_length);
 
 		JASS_assert(into == sequence);
 
-		compress_integer::unittest(compress_integer_elias_delta(), 1);
+		compress_integer<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::unittest(compress_integer_elias_delta(), 1);
 		puts("compress_integer_elias_delta::PASSED");
 		}
 	}

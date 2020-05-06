@@ -45,7 +45,7 @@ namespace JASS
 			/*
 				Each of these buffers is re-used in the serialisation process
 			*/
-			compress_integer::integer *document_ids;					///< The re-used buffer storing decoded document ids
+			document_id::integer *document_ids;					///< The re-used buffer storing decoded document ids
 			index_postings_impact::impact_type *term_frequencies;	///< The re-used buffer storing the term frequencies
 			size_t temporary_size;											///< The number of bytes in temporary
 			uint8_t *temporary;												///< Temporary buffer - cannot be used to store anything between calls
@@ -105,7 +105,7 @@ namespace JASS
 						@param document_ids [in] The array of document ids in which the term is found
 						@param term_frequencies [in] The number of occurences of the term in each document id in document_ids
 					*/
-					virtual void operator()(const slice &term, const index_postings &postings, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies)
+					virtual void operator()(const slice &term, const index_postings &postings, document_id::integer document_frequency, document_id::integer *document_ids, index_postings_impact::impact_type *term_frequencies)
 						{
 						postings_out << term << "->" << postings << std::endl;
 						}
@@ -349,7 +349,7 @@ namespace JASS
 				*/
 				do
 					{
-					compress_integer::integer document_length = 0;
+					document_id::integer document_length = 0;
 					/*
 						Read the next document and give it to the parser (until eof).
 					*/

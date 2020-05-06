@@ -20,7 +20,8 @@ namespace JASS
 		COMPRESS_INTEGER_LYCK_16::ENCODE()
 		-----------------------------------
 	*/
-	size_t compress_integer_lyck_16::encode(void *encoded, size_t encoded_buffer_length, const integer *source, size_t source_integers)
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+	size_t compress_integer_lyck_16<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::encode(void *encoded, size_t encoded_buffer_length, const document_id::integer *source, size_t source_integers)
 		{
 		uint8_t *destination = (uint8_t *)encoded;
 		uint8_t *end_of_destination = destination + encoded_buffer_length;
@@ -38,7 +39,7 @@ namespace JASS
 			uint32_t ending = source_integers > 16 ? 16 : (uint32_t)source_integers;
 			for (integers_to_encode = 0; integers_to_encode < ending; integers_to_encode++)
 				{
-				auto bits = compress_integer_bitpack::bits_needed(source[integers_to_encode]);
+				auto bits = compress_integer_bitpack<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::bits_needed(source[integers_to_encode]);
 				/*
 					Check for overflow
 				*/
@@ -102,7 +103,8 @@ namespace JASS
 		COMPRESS_INTEGER_LYCK_16::DECODE()
 		----------------------------------
 	*/
-	void compress_integer_lyck_16::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+	void compress_integer_lyck_16<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::decode(document_id::integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
 		{
 		uint32_t *into = (uint32_t *)decoded;
 		const uint8_t *source = (const uint8_t *)source_as_void;
@@ -153,7 +155,8 @@ namespace JASS
 		COMPRESS_INTEGER_LYCK_16::UNITTEST_ONE()
 		----------------------------------------
 	*/
-	void compress_integer_lyck_16::unittest_one(const std::vector<uint32_t> &sequence)
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+	void compress_integer_lyck_16<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::unittest_one(const std::vector<uint32_t> &sequence)
 		{
 		compress_integer_lyck_16 compressor;
 		std::vector<uint32_t>compressed(sequence.size() * 5);
@@ -169,7 +172,8 @@ namespace JASS
 		COMPRESS_INTEGER_LYCK_16::UNITTEST()
 		------------------------------------
 	*/
-	void compress_integer_lyck_16::unittest(void)
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+	void compress_integer_lyck_16<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::unittest(void)
 		{
 		std::vector<uint32_t> every_case;
 		uint32_t instance;

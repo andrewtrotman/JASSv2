@@ -15,7 +15,7 @@
 #include "file.h"
 #include "timer.h"
 #include "threads.h"
-#include "decode_d0.h"
+//#include "decode_d0.h"
 #include "query_heap.h"
 #include "run_export.h"
 #include "decode_none.h"
@@ -35,7 +35,7 @@
 #include "JASS_anytime_thread_result.h"
 
 
-//#define SPECIAL
+#define SPECIAL
 
 
 constexpr size_t MAX_QUANTUM = 0x0FFF;

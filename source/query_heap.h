@@ -14,6 +14,7 @@
 
 #include "heap.h"
 #include "query.h"
+#include "document_id.h"
 #include "accumulator_2d.h"
 #include "accumulator_counter.h"
 #include "accumulator_counter_interleaved.h"
@@ -169,7 +170,7 @@ namespace JASS
 				@param documents [in] The number of documents in the collection.
 				@param top_k [in]	The top-k documents to return from the query once executed.
 			*/
-			query_heap (const std::vector<std::string> &primary_keys, size_t documents = 1024, size_t top_k = 10) :
+			query_heap(const std::vector<std::string> &primary_keys, size_t documents = 1024, size_t top_k = 10) :
 				parent(primary_keys, documents, top_k),
 				zero(0),
 				accumulators(documents),
@@ -246,7 +247,7 @@ namespace JASS
 				@param document_id [in] which document to increment
 				@param score [in] the amount of weight to add
 			*/
-			forceinline void add_rsv(compress_integer::integer document_id, ACCUMULATOR_TYPE score)
+			forceinline void add_rsv(document_id::integer document_id, ACCUMULATOR_TYPE score)
 				{
 				ACCUMULATOR_TYPE *which = &accumulators[document_id];			// This will create the accumulator if it doesn't already exist.
 

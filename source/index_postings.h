@@ -51,7 +51,7 @@ namespace JASS
 			class posting
 				{
 				public:
-					compress_integer::integer document_id;						///< Internal document identifier
+					document_id::integer document_id;						///< Internal document identifier
 					index_postings_impact::impact_type term_frequency;		///< Number of times the term occurs in this document
 
 				public:
@@ -73,7 +73,7 @@ namespace JASS
 				};
 
 		private:
-			compress_integer::integer highest_document;									///< The higest document number seen in this postings list (counting from 1)
+			document_id::integer highest_document;									///< The higest document number seen in this postings list (counting from 1)
 			dynamic_array<uint8_t> document_ids;											///< Array holding the docids (variable byte encoded)
 			dynamic_array<index_postings_impact::impact_type> term_frequencies;	///< Array holding the term frequencies (as integers)
 
@@ -103,7 +103,7 @@ namespace JASS
 			/*!
 				@brief Add to the end of the postings list.
 			*/
-			virtual void push_back(JASS::compress_integer::integer document_id)
+			virtual void push_back(JASS::document_id::integer document_id)
 				{
 				if (document_id == highest_document)
 					{
@@ -125,7 +125,7 @@ namespace JASS
 					/*
 						Compress into the temporary buffer then copy into the postings
 					*/
-					compress_integer_variable_byte::compress_into(ending, document_id - highest_document);
+					compress_integer_variable_byte<uint16_t, 1, 1>::compress_into(ending, document_id - highest_document);
 
 					for (uint8_t *byte = space; byte < ending; byte++)
 						document_ids.push_back(*byte);
@@ -163,7 +163,7 @@ namespace JASS
 					/*
 						Compress into the temporary buffer then copy into the postings
 					*/
-					compress_integer_variable_byte::compress_into(ending, data[current].docid);
+					compress_integer_variable_byte<uint16_t,1,1>::compress_into(ending, data[current].docid);
 					for (uint8_t *byte = space; byte < ending; byte++)
 						document_ids.push_back(*byte);
 
@@ -189,7 +189,7 @@ namespace JASS
 
 				@return Returns the document frequency of this term, or 0 on failure.
 			*/
-			compress_integer::integer linearize(uint8_t *temporary, size_t temporary_size, compress_integer::integer *ids, index_postings_impact::impact_type *frequencies, size_t id_and_frequencies_length) const
+			document_id::integer linearize(uint8_t *temporary, size_t temporary_size, document_id::integer *ids, index_postings_impact::impact_type *frequencies, size_t id_and_frequencies_length) const
 				{
 				/*
 					Linearize the term frequencies
@@ -209,12 +209,12 @@ namespace JASS
 				/*
 					Decompress the document ids
 				*/
-				compress_integer_variable_byte::static_decode(ids, document_frequency, temporary, needs);
+				compress_integer_variable_byte<uint16_t, 1, 1>::static_decode(ids, document_frequency, temporary, needs);
 
 				/*
 					Decode the deltas
 				*/
-				compress_integer::integer sum = 0;
+				document_id::integer sum = 0;
 				auto end = ids + document_frequency;
 				for (auto current = ids; current < end; current++)
 					{
@@ -225,7 +225,7 @@ namespace JASS
 				/*
 					And return the document frequency
 				*/
-				return static_cast<compress_integer::integer>(document_frequency);
+				return static_cast<document_id::integer>(document_frequency);
 				}
 
 			/*
@@ -253,9 +253,9 @@ namespace JASS
 				@param document_ids [in] The list of document ids.
 				@param term_frequencies [in] The list of term frequencies.
 			*/
-			void impact_order(index_postings_impact &postings_list, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies) const
+			void impact_order(index_postings_impact &postings_list, document_id::integer document_frequency, document_id::integer *document_ids, index_postings_impact::impact_type *term_frequencies) const
 				{
-				std::array<compress_integer::integer, index_postings_impact::largest_impact + 1> frequencies = {};			// +1 because it counts from 0.
+				std::array<document_id::integer, index_postings_impact::largest_impact + 1> frequencies = {};			// +1 because it counts from 0.
 				size_t number_of_postings = 0;
 				index_postings_impact::impact_type highest_impact = 0;
 				index_postings_impact::impact_type lowest_impact = std::numeric_limits<decltype(lowest_impact)>::max();
@@ -321,7 +321,7 @@ namespace JASS
 				/*
 					Now place the postings in the right places
 				*/
-				compress_integer::integer *current_id = document_ids;
+				document_id::integer *current_id = document_ids;
 				for (index_postings_impact::impact_type *current_tf = term_frequencies; current_tf < end; current_tf++)
 					{
 					postings_list.get_postings()[frequencies[*current_tf]] = *current_id;
@@ -345,7 +345,7 @@ namespace JASS
 				/*
 					Serialise the postings
 				*/
-				auto id_list = std::make_unique<compress_integer::integer []>(document_frequency);
+				auto id_list = std::make_unique<document_id::integer []>(document_frequency);
 				auto tf_list = std::make_unique<index_postings_impact::impact_type []>(document_frequency);
 				size_t temporary_size = document_frequency * 10;		 // worst case is that each integer is encoded in 10 bytes and so the linear buffer is 10 times the number of document frequencies
 				auto temporary = std::make_unique<uint8_t []>(temporary_size);
@@ -357,7 +357,7 @@ namespace JASS
 				*/
 				auto end = id_list.get() + document_frequency;
 				auto current_tf = tf_list.get();
-				for (compress_integer::integer *current_id = id_list.get(); current_id < end; current_id++, current_tf++)
+				for (document_id::integer *current_id = id_list.get(); current_id < end; current_id++, current_tf++)
 					stream << '<' << *current_id << ',' << (size_t)*current_tf << '>';
 
 				}

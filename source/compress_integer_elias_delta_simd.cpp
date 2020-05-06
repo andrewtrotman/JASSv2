@@ -25,7 +25,8 @@ namespace JASS
 		HIGH_BITS[]
 		-----------
 	*/
-	static const uint32_t high_bits[] =
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+	const uint32_t compress_integer_elias_delta_simd<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::high_bits[] =
 		{
 		0b00000000000000000000000000000000,
 		0b10000000000000000000000000000000,
@@ -66,7 +67,8 @@ namespace JASS
 		COMPRESS_INTEGER_ELIAS_DELTA_SIMD::PUSH_SELECTOR()
 		--------------------------------------------------
 	*/
-	void compress_integer_elias_delta_simd::push_selector(uint32_t *&destination, uint8_t raw, uint32_t &selector_bits_used, uint64_t &accumulated_selector)
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+	void compress_integer_elias_delta_simd<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::push_selector(uint32_t *&destination, uint8_t raw, uint32_t &selector_bits_used, uint64_t &accumulated_selector)
 		{
 		/*
 			Write out the length of the selector in unary
@@ -96,7 +98,8 @@ namespace JASS
 		COMPRESS_INTEGER_ELIAS_DELTA_SIMD::ENCODE()
 		-------------------------------------------
 	*/
-	size_t compress_integer_elias_delta_simd::encode(void *encoded, size_t encoded_buffer_length, const integer *array, size_t elements)
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+	size_t compress_integer_elias_delta_simd<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::encode(void *encoded, size_t encoded_buffer_length, const document_id::integer *array, size_t elements)
 		{
 		uint32_t selector_bits_used = 0;
 		uint64_t accumulated_selector = 0;
@@ -244,7 +247,7 @@ namespace JASS
 		return total_length;
 		}
 
-	alignas(64) static const uint32_t mask_set[33][16]=
+	alignas(64) const uint32_t mask_set[33][16]=
 		{
 		{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},								///< Sentinal as the selector cannot be 0.
 		{0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01},								///< AND mask for 1-bit integers
@@ -285,7 +288,8 @@ namespace JASS
  		COMPRESS_INTEGER_ELIAS_DELTA_SIMD::DECODE_SELECTOR()
  		----------------------------------------------------
  	*/
- 	forceinline uint8_t compress_integer_elias_delta_simd::decode_selector(const uint32_t *&selector_set, uint32_t &selector_bits_used, uint64_t &accumulated_selector)
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+ 	forceinline uint8_t compress_integer_elias_delta_simd<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::decode_selector(const uint32_t *&selector_set, uint32_t &selector_bits_used, uint64_t &accumulated_selector)
  		{
  		if (selector_bits_used >= 32)
  			{
@@ -318,7 +322,8 @@ namespace JASS
 		COMPRESS_INTEGER_ELIAS_DELTA_SIMD::DECODE()
 		-------------------------------------------
 	*/
-	void compress_integer_elias_delta_simd::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+	void compress_integer_elias_delta_simd<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::decode(document_id::integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
 		{
 		uint32_t used = 0;
 		__m512i *into = reinterpret_cast<__m512i *>(decoded);
@@ -381,7 +386,8 @@ namespace JASS
 		COMPRESS_INTEGER_ELIAS_DELTA_SIMD::DECODE()
 		-------------------------------------------
 	*/
-	void compress_integer_elias_delta_simd::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+	void compress_integer_elias_delta_simd<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::decode(document_id::integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
 		{
 		uint32_t used = 0;
 		__m256i *into = reinterpret_cast<__m256i *>(decoded);
@@ -453,11 +459,12 @@ namespace JASS
 		COMPRESS_INTEGER_ELIAS_DELTA_SIMD::UNITTEST()
 		---------------------------------------------
 	*/
-	void compress_integer_elias_delta_simd::unittest(void)
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+	void compress_integer_elias_delta_simd<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::unittest(void)
 		{
 		compress_integer_elias_delta_simd compressor;
 
-		compress_integer::unittest(compress_integer_elias_delta_simd(), 1);
+		compress_integer<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::unittest(compress_integer_elias_delta_simd(), 1);
 
 		std::vector<uint32_t> broken_sequence =
 			{

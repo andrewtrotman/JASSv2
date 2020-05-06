@@ -33,7 +33,8 @@ namespace JASS
 		See:
 			V. Anh, A. Moffat (2005), Inverted Index Compression Using Word-Aligned Binary Codes, Information Retrieval, 8(1):151-166
 	*/
-	class compress_integer_carryover_12 : public compress_integer_simple_9
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+	class compress_integer_carryover_12 : public compress_integer_simple_9<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>
 		{
 		private:
 			/*
@@ -64,7 +65,8 @@ namespace JASS
 			/*!
 				@brief Constructor.
 			*/
-			compress_integer_carryover_12()
+			compress_integer_carryover_12(const std::vector<std::string> &primary_keys, size_t documents = 1024, size_t top_k = 10) :
+			compress_integer_simple_9<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>(primary_keys, documents, top_k)
 				{
 				/* Nothing */
 				}
@@ -93,7 +95,7 @@ namespace JASS
 				@param source_integers [in] The length (in integers) of the source buffer.
 				@return The number of bytes used to encode the integer sequence, or 0 on error (i.e. overflow).
 			*/
-			virtual size_t encode(void *encoded, size_t encoded_buffer_length, const integer *source, size_t source_integers);
+			virtual size_t encode(void *encoded, size_t encoded_buffer_length, const document_id::integer *source, size_t source_integers);
 			
 			/*
 				COMPRESS_INTEGER_CARRYOVER_12::DECODE()
@@ -106,7 +108,7 @@ namespace JASS
 				@param source [in] The encoded integers.
 				@param source_length [in] The length (in bytes) of the source buffer.
 			*/
-			virtual void decode(integer *decoded, size_t integers_to_decode, const void *source, size_t source_length);
+			virtual void decode(document_id::integer *decoded, size_t integers_to_decode, const void *source, size_t source_length);
 			
 			/*
 				COMPRESS_INTEGER_CARRYOVER_12::UNITTEST()

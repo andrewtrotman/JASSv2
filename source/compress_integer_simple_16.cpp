@@ -18,7 +18,8 @@ namespace JASS
 		------------------------------------------------
 		Number of bits to shift across when packing - is sum of prior packed ints (see above)
 	*/
-	const size_t compress_integer_simple_16::simple16_shift_table[] =
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+	const size_t compress_integer_simple_16<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::simple16_shift_table[] =
 		{
 		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,
 		0, 2, 4, 6, 8, 10, 12, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 28, 28, 28, 28, 28, 28,
@@ -43,7 +44,8 @@ namespace JASS
 		---------------------------------------------
 		Number of integers packed into a word, given its mask type
 	*/
-	const size_t compress_integer_simple_16::ints_packed_table[] =
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+	const size_t compress_integer_simple_16<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::ints_packed_table[] =
 		{
 		28, 21, 21, 21, 14, 9, 8, 7, 6, 6, 5, 5, 4, 3, 2, 1
 		};
@@ -53,7 +55,8 @@ namespace JASS
 		------------------------------------------
 		Bitmask map for valid masks at an offset (column) for some num_bits_needed (row).
 	*/
-	const size_t compress_integer_simple_16::can_pack_table[] =
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+	const size_t compress_integer_simple_16<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::can_pack_table[] =
 		{
 		0xffff, 0x7fff, 0x3fff, 0x1fff, 0x0fff, 0x03ff, 0x00ff, 0x007f, 0x003f, 0x001f, 0x001f, 0x001f, 0x001f, 0x001f, 0x000f, 0x000f, 0x000f, 0x000f, 0x000f, 0x000f, 0x000f, 0x0001, 0x0001, 0x0001, 0x0001, 0x0001, 0x0001, 0x0001,
 		0xfff2, 0x7ff2, 0x3ff2, 0x1ff2, 0x0ff2, 0x03f2, 0x00f2, 0x0074, 0x0034, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0008, 0x0008, 0x0008, 0x0008, 0x0008, 0x0008, 0x0008, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
@@ -74,7 +77,8 @@ namespace JASS
 		----------------------------------------------------
 		We AND out masks for offsets where we don't know if we can fully pack for that offset
 	*/
-	const size_t compress_integer_simple_16::invalid_masks_for_offset[] =
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+	const size_t compress_integer_simple_16<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::invalid_masks_for_offset[] =
 		{
 		0x0000, 0x8000, 0xc000, 0xe000, 0xf000, 0xfc00, 0xff00, 0xff80, 0xffc0, 0xffe0, 0xffe0, 0xffe0, 0xffe0, 0xffe0, 0xfff0, 0xfff0, 0xfff0, 0xfff0, 0xfff0, 0xfff0, 0xfff0, 0xfffe, 0xfffe, 0xfffe, 0xfffe, 0xfffe, 0xfffe, 0xfffe, 0xffff
 		};
@@ -84,7 +88,8 @@ namespace JASS
 		-----------------------------------------------
 		Translates the 'bits_needed' to the appropriate 'row' offset for use with can_pack table.
 	*/
-	const size_t compress_integer_simple_16::row_for_bits_needed[] =
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+	const size_t compress_integer_simple_16<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::row_for_bits_needed[] =
 		{
 		0, 0, 28, 56, 84, 112, 140, 168, 196, 196, 224, 252, 252, 252, 252, 280, 280, 280, 280, 280, 280, 280, 280, 280, 280, 280, 280, 280, 280,				// Valid
 		308, 308, 308, 308, 308, 308, 308, 308, 308, 308, 308, 308, 308, 308, 308, 308, 308, 308, 308, 308, 308, 308, 308, 308, 308, 308, 308, 308, 308, 308, 308, 308, 308, 308, 308, 308 // Overflow
@@ -94,7 +99,8 @@ namespace JASS
 		COMPRESS_INTEGER_SIMPLE_16::ENCODE()
 		------------------------------------
 	*/
-	size_t compress_integer_simple_16::encode(void *destination, size_t destination_length, const integer *source, size_t source_integers)
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+	size_t compress_integer_simple_16<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::encode(void *destination, size_t destination_length, const document_id::integer *source, size_t source_integers)
 		{
 		size_t words_in_compressed_string;
 
@@ -152,15 +158,16 @@ namespace JASS
 		COMPRESS_INTEGER_SIMPLE_16::DECODE()
 		------------------------------------
 	*/
-	void compress_integer_simple_16::decode(integer *destination, size_t destination_integers, const void *source, size_t source_length)
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+	void compress_integer_simple_16<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::decode(document_id::integer *destination, size_t destination_integers, const void *source, size_t source_length)
 		{
 		const uint32_t *compressed_sequence = reinterpret_cast<const uint32_t *>(source);
-		integer *end = destination + destination_integers;
+		auto *end = destination + destination_integers;
 
 		while (destination < end)
 			{
-			integer value = *compressed_sequence++;
-			integer mask_type = value & 0xF;
+			auto value = *compressed_sequence++;
+			auto mask_type = value & 0xF;
 			value >>= 4;
 
 			/*
@@ -369,9 +376,10 @@ namespace JASS
 		COMPRESS_INTEGER_SIMPLE_16::UNITTEST()
 		-------------------------------------
 	*/
-	void compress_integer_simple_16::unittest(void)
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+	void compress_integer_simple_16<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::unittest(void)
 		{
-		std::vector<integer> every_case;
+			std::vector<document_id::integer> every_case;
 
 		size_t instance;
 
@@ -495,7 +503,7 @@ namespace JASS
 		for (instance = 0; instance < 1; instance++)
 			every_case.push_back(0x0FFFFFFF);
 
-		compress_integer_simple_16 compressor;
+		compress_integer_simple_16<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> compressor;
 		std::vector<uint32_t>compressed(every_case.size() * 2);
 		std::vector<uint32_t>decompressed(every_case.size() + 256);
 
@@ -510,7 +518,7 @@ namespace JASS
 			(2) Integer overflow
 			(3) buffer overflow
 		*/
-		integer one = 1;
+		document_id::integer one = 1;
 		size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &one, 0);
 		JASS_assert(size_once_compressed == 0);
 

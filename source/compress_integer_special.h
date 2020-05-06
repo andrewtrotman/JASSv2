@@ -13,16 +13,15 @@
 #pragma once
 
 #include "compress_integer.h"
-#include "query_heap.h"
 
 namespace JASS
 	{
 	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	class compress_integer_special : public compress_integer, public query_heap<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K, compress_integer_special<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>>
+	class compress_integer_special : public compress_integer <ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>
 		{
 		public:
 			compress_integer_special(const std::vector<std::string> &primary_keys, size_t documents = 1024, size_t top_k = 10) :
-				query_heap<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K, compress_integer_special>(primary_keys, documents, top_k)
+				compress_integer<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K, compress_integer_special>(primary_keys, documents, top_k)
 				{
 				/*
 					Nothing

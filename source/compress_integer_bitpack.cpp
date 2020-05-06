@@ -17,7 +17,8 @@ namespace JASS
 		happens when, for example, you can get away with 9 bits, but since 9 * 3 = 27 and 10 * 3 = 30, you
 		may as well use 10 bits.
 	*/
-	const uint32_t compress_integer_bitpack::bits_to_use_complete[] =			///< bits to use (column 1 ) for bits in integer (right column)
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+	const uint32_t compress_integer_bitpack<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::bits_to_use_complete[] =			///< bits to use (column 1 ) for bits in integer (right column)
 		{
 		1, //0
 		1, //1
@@ -60,7 +61,8 @@ namespace JASS
 		Given the width in bits, which selector should be used?  This is used to ensure
 		a switch() statement has all the entries 0..n with no gaps.
 	*/
-	const uint32_t compress_integer_bitpack::selector_to_use_complete[] =			///< selector to use (column 1 ) for bits in integer (right column)
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+	const uint32_t compress_integer_bitpack<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::selector_to_use_complete[] =			///< selector to use (column 1 ) for bits in integer (right column)
 		{
 		0, //0
 		0, //1

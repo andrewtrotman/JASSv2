@@ -18,17 +18,18 @@ namespace JASS
 		COMPRESS_INTEGER_VARIABLE_BYTE::ENCODE()
 		----------------------------------------
 	*/
-	size_t compress_integer_variable_byte::encode(void *encoded_as_void, size_t encoded_buffer_length, const integer *source, size_t source_integers)
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+	size_t compress_integer_variable_byte<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::encode(void *encoded_as_void, size_t encoded_buffer_length, const document_id::integer *source, size_t source_integers)
 		{
 		uint8_t *encoded = static_cast<uint8_t *>(encoded_as_void);
 		size_t used = 0;						// the number of bytes of storage used so far
 
-		const integer *end = source + source_integers;			// the end of the input sequence
+		const auto *end = source + source_integers;			// the end of the input sequence
 		
 		/*
 			Iterate over each integer in the input sequence
 		*/
-		for (const integer *current = source; current < end; current++)
+		for (const auto *current = source; current < end; current++)
 			{
 			/*
 				find out how much space it'll take
@@ -55,24 +56,25 @@ namespace JASS
 		COMPRESS_INTEGER_VARIABLE_BYTE::UNITTEST()
 		------------------------------------------
 	*/
-	void compress_integer_variable_byte::unittest(void)
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+	void compress_integer_variable_byte<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::unittest(void)
 		{
 		compress_integer_variable_byte codex;								// so that encode() and decode() can be called
 		size_t bytes_used;														// the number of bytes used to encode the integer sequence
 		uint8_t encoded_buffer[2048];											// sequences are encoded into this buffer
-		integer decoded_buffer[2048];											// sequences are decoded into this buffer
+		document_id::integer decoded_buffer[2048];											// sequences are decoded into this buffer
 		
 		/*
 			Check what happens if it won't fit
 		*/
-		const integer too_big[] = {1 << 21,  (1 << 28) - 1};		// the bounds on 4-byte encodings
+		const document_id::integer too_big[] = {1 << 21,  (1 << 28) - 1};		// the bounds on 4-byte encodings
 		bytes_used = codex.encode(encoded_buffer, 1, too_big, sizeof(too_big) / sizeof(*too_big));
 		JASS_assert(bytes_used == 0);
 		
 		/*
 			Check the upper and lower bounds of 1-byte encodings
 		*/
-		const integer one_byte[] = {0, (1 << 7) - 1};					// the bounds on 1-byte encodings
+		const document_id::integer one_byte[] = {0, (1 << 7) - 1};					// the bounds on 1-byte encodings
 		memset(encoded_buffer, 0, sizeof(encoded_buffer));
 		memset(decoded_buffer, 0, sizeof(decoded_buffer));
 		bytes_used = codex.encode(encoded_buffer, sizeof(encoded_buffer), one_byte, sizeof(one_byte) / sizeof(*one_byte));
@@ -83,7 +85,7 @@ namespace JASS
 		/*
 			Check the upper and lower bounds of 2-byte encodings
 		*/
-		const integer two_byte[] = {1 << 7,  (1 << 14) - 1};			// the bounds on 2-byte encodings
+		const document_id::integer two_byte[] = {1 << 7,  (1 << 14) - 1};			// the bounds on 2-byte encodings
 		memset(encoded_buffer, 0, sizeof(encoded_buffer));
 		memset(decoded_buffer, 0, sizeof(decoded_buffer));
 		bytes_used = codex.encode(encoded_buffer, sizeof(encoded_buffer), two_byte, sizeof(two_byte) / sizeof(*two_byte));
@@ -94,7 +96,7 @@ namespace JASS
 		/*
 			Check the upper and lower bounds of 3-byte encodings
 		*/
-		const integer three_byte[] = {1 << 14,  (1 << 21) - 1};		// the bounds on 3-byte encodings
+		const document_id::integer three_byte[] = {1 << 14,  (1 << 21) - 1};		// the bounds on 3-byte encodings
 		memset(encoded_buffer, 0, sizeof(encoded_buffer));
 		memset(decoded_buffer, 0, sizeof(decoded_buffer));
 		bytes_used = codex.encode(encoded_buffer, sizeof(encoded_buffer), three_byte, sizeof(three_byte) / sizeof(*three_byte));
@@ -105,7 +107,7 @@ namespace JASS
 		/*
 			Check the upper and lower bounds of 4-byte encodings
 		*/
-		const integer four_byte[] = {1 << 21,  (1 << 28) - 1};		// the bounds on 4-byte encodings
+		const document_id::integer four_byte[] = {1 << 21,  (1 << 28) - 1};		// the bounds on 4-byte encodings
 		memset(encoded_buffer, 0, sizeof(encoded_buffer));
 		memset(decoded_buffer, 0, sizeof(decoded_buffer));
 		bytes_used = codex.encode(encoded_buffer, sizeof(encoded_buffer), four_byte, sizeof(four_byte) / sizeof(*four_byte));
@@ -116,7 +118,7 @@ namespace JASS
 		/*
 			Check the upper and lower bounds of 5-byte encodings
 		*/
-		const integer five_byte[] = {1 << 28,  0xFFFFFFFF};			// the bounds on 5-byte encodings
+		const document_id::integer five_byte[] = {1 << 28,  0xFFFFFFFF};			// the bounds on 5-byte encodings
 		memset(encoded_buffer, 0, sizeof(encoded_buffer));
 		memset(decoded_buffer, 0, sizeof(decoded_buffer));
 		bytes_used = codex.encode(encoded_buffer, sizeof(encoded_buffer), five_byte, sizeof(five_byte) / sizeof(*five_byte));
@@ -131,8 +133,8 @@ namespace JASS
 		*/
 		std::random_device device;
 		std::mt19937 generator(device());
-		std::uniform_int_distribution<integer> distribution;
-		integer raw_buffer[128];
+		std::uniform_int_distribution<document_id::integer> distribution;
+		document_id::integer raw_buffer[128];
 		
 		for (size_t count = 0; count < sizeof(raw_buffer) / sizeof(*raw_buffer); count++)
 			raw_buffer[count] = distribution(generator);

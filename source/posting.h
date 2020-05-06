@@ -28,8 +28,8 @@ namespace JASS
 	class posting
 		{
 		public:
-			compress_integer::integer docid;					///< The Document identifier.
-			compress_integer::integer term_frequency;		///< The number of times the term occurs in document with id docid.
+			document_id::integer docid;					///< The Document identifier.
+			document_id::integer term_frequency;		///< The number of times the term occurs in document with id docid.
 		public:
 			posting() :
 				docid(0),

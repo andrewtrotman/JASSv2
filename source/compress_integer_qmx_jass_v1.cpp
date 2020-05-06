@@ -62,30 +62,6 @@
 #endif
 namespace JASS
 {
-/*
-	COMPRESS_INTEGER_QMX_JASS_V1::COMPRESS_INTEGER_QMX_JASS_V1()
-	------------------------------------------------------------
-*/
-compress_integer_qmx_jass_v1::compress_integer_qmx_jass_v1()
-{
-length_buffer = NULL;
-length_buffer_length = 0;
-}
-
-/*
-	COMPRESS_INTEGER_QMX_JASS_V1::~COMPRESS_INTEGER_QMX_JASS_V1()
-	-------------------------------------------------------------
-*/
-compress_integer_qmx_jass_v1::~compress_integer_qmx_jass_v1()
-{
-delete [] length_buffer;
-#ifdef STATS
-	int which;
-	for (which = 0; which <= 32; which++)
-		if (stats[which] != 0)
-			printf("%d\t%ud\ttimes\n", which, stats[which]);
-#endif
-}
 
 /*
 	BITS_NEEDED_FOR()
@@ -439,7 +415,8 @@ return max(max(a, b), max(c, d));
 	COMPRESS_INTEGER_QMX_JASS_V1::ENCODE()
 	--------------------------------------
 */
-size_t compress_integer_qmx_jass_v1::encode(void *encoded, size_t encoded_buffer_length, const integer *source, size_t source_integers)
+template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+size_t compress_integer_qmx_jass_v1<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::encode(void *encoded, size_t encoded_buffer_length, const document_id::document_id::integer *source, size_t source_integers)
 {
 uint32_t *into = (uint32_t *)encoded;
 const uint32_t WASTAGE = 512;
@@ -834,17 +811,17 @@ return destination - (uint8_t *)into;	// return length in bytes
 	{
 	int instance;
 
-	printf("static uint32_t ALIGN_16 static_mask_21[]  = {0x1fffff, 0x1fffff, 0x1fffff, 0x1fffff};\n");
-	printf("static uint32_t ALIGN_16 static_mask_12[]  = {0xfff, 0xfff, 0xfff, 0xfff};\n");
-	printf("static uint32_t ALIGN_16 static_mask_10[] = {0x3ff, 0x3ff, 0x3ff, 0x3ff};\n");
-	printf("static uint32_t ALIGN_16 static_mask_9[]  = {0x1ff, 0x1ff, 0x1ff, 0x1ff};\n");
-	printf("static uint32_t ALIGN_16 static_mask_7[]  = {0x7f, 0x7f, 0x7f, 0x7f};\n");
-	printf("static uint32_t ALIGN_16 static_mask_6[]  = {0x3f, 0x3f, 0x3f, 0x3f};\n");
-	printf("static uint32_t ALIGN_16 static_mask_5[]  = {0x1f, 0x1f, 0x1f, 0x1f};\n");
-	printf("static uint32_t ALIGN_16 static_mask_4[]  = {0x0f, 0x0f, 0x0f, 0x0f};\n");
-	printf("static uint32_t ALIGN_16 static_mask_3[]  = {0x07, 0x07, 0x07, 0x07};\n");
-	printf("static uint32_t ALIGN_16 static_mask_2[]  = {0x03, 0x03, 0x03, 0x03};\n");
-	printf("static uint32_t ALIGN_16 static_mask_1[]  = {0x01, 0x01, 0x01, 0x01};\n");
+	printf("static uint32_t ALIGN_16 qmxv1_static_mask_21[]  = {0x1fffff, 0x1fffff, 0x1fffff, 0x1fffff};\n");
+	printf("static uint32_t ALIGN_16 qmxv1_static_mask_12[]  = {0xfff, 0xfff, 0xfff, 0xfff};\n");
+	printf("static uint32_t ALIGN_16 qmxv1_static_mask_10[] = {0x3ff, 0x3ff, 0x3ff, 0x3ff};\n");
+	printf("static uint32_t ALIGN_16 qmxv1_static_mask_9[]  = {0x1ff, 0x1ff, 0x1ff, 0x1ff};\n");
+	printf("static uint32_t ALIGN_16 qmxv1_static_mask_7[]  = {0x7f, 0x7f, 0x7f, 0x7f};\n");
+	printf("static uint32_t ALIGN_16 qmxv1_static_mask_6[]  = {0x3f, 0x3f, 0x3f, 0x3f};\n");
+	printf("static uint32_t ALIGN_16 qmxv1_static_mask_5[]  = {0x1f, 0x1f, 0x1f, 0x1f};\n");
+	printf("static uint32_t ALIGN_16 qmxv1_static_mask_4[]  = {0x0f, 0x0f, 0x0f, 0x0f};\n");
+	printf("static uint32_t ALIGN_16 qmxv1_static_mask_3[]  = {0x07, 0x07, 0x07, 0x07};\n");
+	printf("static uint32_t ALIGN_16 qmxv1_static_mask_2[]  = {0x03, 0x03, 0x03, 0x03};\n");
+	printf("static uint32_t ALIGN_16 qmxv1_static_mask_1[]  = {0x01, 0x01, 0x01, 0x01};\n");
 	printf("void ANT_compress_qmx::decodeArray(const uint32_t *source, uint64_t len, uint32_t *to, uint64_t destination_integers)\n");
 	printf("{\n");
 	printf("__m128i byte_stream, byte_stream_2, tmp, tmp2, mask_21, mask_12, mask_10, mask_9, mask_7, mask_6, mask_5, mask_4, mask_3, mask_2, mask_1;\n");
@@ -852,17 +829,17 @@ return destination - (uint8_t *)into;	// return length in bytes
 	printf("uint8_t *keys = ((uint8_t *)source) + len - 1;\n");
 
  	printf("\n");
-	printf("mask_21 = _mm_load_si128((__m128i *)static_mask_21);\n");
-	printf("mask_12 = _mm_load_si128((__m128i *)static_mask_12);\n");
-	printf("mask_10 = _mm_load_si128((__m128i *)static_mask_10);\n");
-	printf("mask_9 = _mm_load_si128((__m128i *)static_mask_9);\n");
-	printf("mask_7 = _mm_load_si128((__m128i *)static_mask_7);\n");
-	printf("mask_6 = _mm_load_si128((__m128i *)static_mask_6);\n");
-	printf("mask_5 = _mm_load_si128((__m128i *)static_mask_5);\n");
-	printf("mask_4 = _mm_load_si128((__m128i *)static_mask_4);\n");
-	printf("mask_3 = _mm_load_si128((__m128i *)static_mask_3);\n");
-	printf("mask_2 = _mm_load_si128((__m128i *)static_mask_2);\n");
-	printf("mask_1 = _mm_load_si128((__m128i *)static_mask_1);\n");
+	printf("mask_21 = _mm_load_si128((__m128i *)qmxv1_static_mask_21);\n");
+	printf("mask_12 = _mm_load_si128((__m128i *)qmxv1_static_mask_12);\n");
+	printf("mask_10 = _mm_load_si128((__m128i *)qmxv1_static_mask_10);\n");
+	printf("mask_9 = _mm_load_si128((__m128i *)qmxv1_static_mask_9);\n");
+	printf("mask_7 = _mm_load_si128((__m128i *)qmxv1_static_mask_7);\n");
+	printf("mask_6 = _mm_load_si128((__m128i *)qmxv1_static_mask_6);\n");
+	printf("mask_5 = _mm_load_si128((__m128i *)qmxv1_static_mask_5);\n");
+	printf("mask_4 = _mm_load_si128((__m128i *)qmxv1_static_mask_4);\n");
+	printf("mask_3 = _mm_load_si128((__m128i *)qmxv1_static_mask_3);\n");
+	printf("mask_2 = _mm_load_si128((__m128i *)qmxv1_static_mask_2);\n");
+	printf("mask_1 = _mm_load_si128((__m128i *)qmxv1_static_mask_1);\n");
 	printf("\n");
 
 	printf("while (in <= keys)			// <= because there can be a boundary case where the final key is 255*0 bit integers\n");
@@ -881,7 +858,7 @@ return destination - (uint8_t *)into;	// return length in bytes
 			for (int run = 0; run < 0x10 - (instance & 0x0F); run++)
 				{
 				printf("#ifdef NO_ZEROS\n");
-				printf("\t\t\ttmp = _mm_load_si128((__m128i *)static_mask_1);\n");
+				printf("\t\t\ttmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);\n");
 				printf("#else\n");
 				printf("\t\t\ttmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));\n");
 				printf("#endif\n");
@@ -1396,7 +1373,8 @@ return destination - (uint8_t *)into;	// return length in bytes
 		COMPRESS_INTEGER_QMX_JASS_V1::UNITTEST_ONE()
 		--------------------------------------------
 	*/
-	void compress_integer_qmx_jass_v1::unittest_one(const std::vector<uint32_t> &sequence)
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+	void compress_integer_qmx_jass_v1<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::unittest_one(const std::vector<uint32_t> &sequence)
 		{
 		compress_integer_qmx_jass_v1 compressor;
 		std::vector<uint32_t>compressed(sequence.size() * 2);
@@ -1412,7 +1390,8 @@ return destination - (uint8_t *)into;	// return length in bytes
 		COMPRESS_INTEGER_QMX_JASS_V1::UNITTEST()
 		----------------------------------------
 	*/
-	void compress_integer_qmx_jass_v1::unittest(void)
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+	void compress_integer_qmx_jass_v1<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::unittest(void)
 		{
 		/*
 			Start with an example sequence of integers.
@@ -1688,37 +1667,38 @@ return destination - (uint8_t *)into;	// return length in bytes
 	-------------------------------------------
 	this code was generated by the method above.
 */
-static uint32_t ALIGN_16 static_mask_21[]  = {0x1fffff, 0x1fffff, 0x1fffff, 0x1fffff};
-static uint32_t ALIGN_16 static_mask_12[]  = {0xfff, 0xfff, 0xfff, 0xfff};
-static uint32_t ALIGN_16 static_mask_10[] = {0x3ff, 0x3ff, 0x3ff, 0x3ff};
-static uint32_t ALIGN_16 static_mask_9[]  = {0x1ff, 0x1ff, 0x1ff, 0x1ff};
-static uint32_t ALIGN_16 static_mask_7[]  = {0x7f, 0x7f, 0x7f, 0x7f};
-static uint32_t ALIGN_16 static_mask_6[]  = {0x3f, 0x3f, 0x3f, 0x3f};
-static uint32_t ALIGN_16 static_mask_5[]  = {0x1f, 0x1f, 0x1f, 0x1f};
-static uint32_t ALIGN_16 static_mask_4[]  = {0x0f, 0x0f, 0x0f, 0x0f};
-static uint32_t ALIGN_16 static_mask_3[]  = {0x07, 0x07, 0x07, 0x07};
-static uint32_t ALIGN_16 static_mask_2[]  = {0x03, 0x03, 0x03, 0x03};
-static uint32_t ALIGN_16 static_mask_1[]  = {0x01, 0x01, 0x01, 0x01};
+static uint32_t ALIGN_16 qmxv1_static_mask_21[]  = {0x1fffff, 0x1fffff, 0x1fffff, 0x1fffff};
+static uint32_t ALIGN_16 qmxv1_static_mask_12[]  = {0xfff, 0xfff, 0xfff, 0xfff};
+static uint32_t ALIGN_16 qmxv1_static_mask_10[] = {0x3ff, 0x3ff, 0x3ff, 0x3ff};
+static uint32_t ALIGN_16 qmxv1_static_mask_9[]  = {0x1ff, 0x1ff, 0x1ff, 0x1ff};
+static uint32_t ALIGN_16 qmxv1_static_mask_7[]  = {0x7f, 0x7f, 0x7f, 0x7f};
+static uint32_t ALIGN_16 qmxv1_static_mask_6[]  = {0x3f, 0x3f, 0x3f, 0x3f};
+static uint32_t ALIGN_16 qmxv1_static_mask_5[]  = {0x1f, 0x1f, 0x1f, 0x1f};
+static uint32_t ALIGN_16 qmxv1_static_mask_4[]  = {0x0f, 0x0f, 0x0f, 0x0f};
+static uint32_t ALIGN_16 qmxv1_static_mask_3[]  = {0x07, 0x07, 0x07, 0x07};
+static uint32_t ALIGN_16 qmxv1_static_mask_2[]  = {0x03, 0x03, 0x03, 0x03};
+static uint32_t ALIGN_16 qmxv1_static_mask_1[]  = {0x01, 0x01, 0x01, 0x01};
 
 
-void compress_integer_qmx_jass_v1::decode(integer *to, size_t destination_integers, const void *source_void, size_t len)
+template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+void compress_integer_qmx_jass_v1<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::decode(document_id::integer *to, size_t destination_integers, const void *source_void, size_t len)
 {
 uint32_t *source = (uint32_t *)source_void;
 __m128i byte_stream, byte_stream_2, tmp, tmp2, mask_21, mask_12, mask_10, mask_9, mask_7, mask_6, mask_5, mask_4, mask_3, mask_2, mask_1;
 uint8_t *in = (uint8_t *)source;
 uint8_t *keys = ((uint8_t *)source) + len - 1;
 
-mask_21 = _mm_load_si128((__m128i *)static_mask_21);
-mask_12 = _mm_load_si128((__m128i *)static_mask_12);
-mask_10 = _mm_load_si128((__m128i *)static_mask_10);
-mask_9 = _mm_load_si128((__m128i *)static_mask_9);
-mask_7 = _mm_load_si128((__m128i *)static_mask_7);
-mask_6 = _mm_load_si128((__m128i *)static_mask_6);
-mask_5 = _mm_load_si128((__m128i *)static_mask_5);
-mask_4 = _mm_load_si128((__m128i *)static_mask_4);
-mask_3 = _mm_load_si128((__m128i *)static_mask_3);
-mask_2 = _mm_load_si128((__m128i *)static_mask_2);
-mask_1 = _mm_load_si128((__m128i *)static_mask_1);
+mask_21 = _mm_load_si128((__m128i *)qmxv1_static_mask_21);
+mask_12 = _mm_load_si128((__m128i *)qmxv1_static_mask_12);
+mask_10 = _mm_load_si128((__m128i *)qmxv1_static_mask_10);
+mask_9 = _mm_load_si128((__m128i *)qmxv1_static_mask_9);
+mask_7 = _mm_load_si128((__m128i *)qmxv1_static_mask_7);
+mask_6 = _mm_load_si128((__m128i *)qmxv1_static_mask_6);
+mask_5 = _mm_load_si128((__m128i *)qmxv1_static_mask_5);
+mask_4 = _mm_load_si128((__m128i *)qmxv1_static_mask_4);
+mask_3 = _mm_load_si128((__m128i *)qmxv1_static_mask_3);
+mask_2 = _mm_load_si128((__m128i *)qmxv1_static_mask_2);
+mask_1 = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 
 while (in <= keys)			// <= because there can be a boundary case where the final key is 255*0 bit integers
 	{
@@ -1726,7 +1706,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 		{
 		case 0x00:
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -1796,7 +1776,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 0 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -1866,7 +1846,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 64 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -1936,7 +1916,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 128 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -2006,7 +1986,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 192 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -2076,7 +2056,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 256 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -2146,7 +2126,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 320 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -2216,7 +2196,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 384 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -2286,7 +2266,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 448 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -2356,7 +2336,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 512 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -2426,7 +2406,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 576 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -2496,7 +2476,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 640 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -2566,7 +2546,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 704 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -2636,7 +2616,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 768 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -2706,7 +2686,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 832 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -2776,7 +2756,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 896 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -2849,7 +2829,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			break;
 		case 0x01:
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -2919,7 +2899,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 0 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -2989,7 +2969,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 64 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -3059,7 +3039,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 128 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -3129,7 +3109,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 192 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -3199,7 +3179,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 256 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -3269,7 +3249,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 320 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -3339,7 +3319,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 384 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -3409,7 +3389,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 448 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -3479,7 +3459,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 512 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -3549,7 +3529,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 576 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -3619,7 +3599,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 640 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -3689,7 +3669,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 704 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -3759,7 +3739,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 768 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -3829,7 +3809,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 832 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -3902,7 +3882,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			break;
 		case 0x02:
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -3972,7 +3952,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 0 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -4042,7 +4022,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 64 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -4112,7 +4092,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 128 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -4182,7 +4162,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 192 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -4252,7 +4232,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 256 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -4322,7 +4302,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 320 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -4392,7 +4372,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 384 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -4462,7 +4442,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 448 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -4532,7 +4512,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 512 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -4602,7 +4582,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 576 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -4672,7 +4652,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 640 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -4742,7 +4722,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 704 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -4812,7 +4792,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 768 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -4885,7 +4865,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			break;
 		case 0x03:
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -4955,7 +4935,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 0 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -5025,7 +5005,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 64 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -5095,7 +5075,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 128 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -5165,7 +5145,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 192 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -5235,7 +5215,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 256 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -5305,7 +5285,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 320 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -5375,7 +5355,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 384 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -5445,7 +5425,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 448 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -5515,7 +5495,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 512 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -5585,7 +5565,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 576 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -5655,7 +5635,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 640 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -5725,7 +5705,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 704 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -5798,7 +5778,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			break;
 		case 0x04:
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -5868,7 +5848,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 0 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -5938,7 +5918,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 64 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -6008,7 +5988,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 128 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -6078,7 +6058,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 192 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -6148,7 +6128,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 256 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -6218,7 +6198,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 320 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -6288,7 +6268,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 384 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -6358,7 +6338,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 448 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -6428,7 +6408,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 512 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -6498,7 +6478,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 576 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -6568,7 +6548,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 640 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -6641,7 +6621,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			break;
 		case 0x05:
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -6711,7 +6691,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 0 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -6781,7 +6761,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 64 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -6851,7 +6831,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 128 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -6921,7 +6901,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 192 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -6991,7 +6971,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 256 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -7061,7 +7041,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 320 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -7131,7 +7111,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 384 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -7201,7 +7181,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 448 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -7271,7 +7251,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 512 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -7341,7 +7321,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 576 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -7414,7 +7394,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			break;
 		case 0x06:
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -7484,7 +7464,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 0 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -7554,7 +7534,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 64 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -7624,7 +7604,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 128 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -7694,7 +7674,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 192 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -7764,7 +7744,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 256 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -7834,7 +7814,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 320 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -7904,7 +7884,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 384 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -7974,7 +7954,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 448 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -8044,7 +8024,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 512 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -8117,7 +8097,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			break;
 		case 0x07:
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -8187,7 +8167,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 0 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -8257,7 +8237,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 64 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -8327,7 +8307,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 128 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -8397,7 +8377,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 192 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -8467,7 +8447,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 256 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -8537,7 +8517,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 320 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -8607,7 +8587,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 384 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -8677,7 +8657,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 448 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -8750,7 +8730,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			break;
 		case 0x08:
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -8820,7 +8800,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 0 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -8890,7 +8870,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 64 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -8960,7 +8940,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 128 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -9030,7 +9010,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 192 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -9100,7 +9080,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 256 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -9170,7 +9150,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 320 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -9240,7 +9220,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 384 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -9313,7 +9293,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			break;
 		case 0x09:
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -9383,7 +9363,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 0 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -9453,7 +9433,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 64 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -9523,7 +9503,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 128 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -9593,7 +9573,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 192 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -9663,7 +9643,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 256 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -9733,7 +9713,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 320 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -9806,7 +9786,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			break;
 		case 0x0a:
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -9876,7 +9856,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 0 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -9946,7 +9926,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 64 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -10016,7 +9996,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 128 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -10086,7 +10066,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 192 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -10156,7 +10136,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 256 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -10229,7 +10209,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			break;
 		case 0x0b:
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -10299,7 +10279,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 0 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -10369,7 +10349,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 64 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -10439,7 +10419,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 128 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -10509,7 +10489,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 192 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -10582,7 +10562,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			break;
 		case 0x0c:
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -10652,7 +10632,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 0 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -10722,7 +10702,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 64 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -10792,7 +10772,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 128 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -10865,7 +10845,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			break;
 		case 0x0d:
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -10935,7 +10915,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 0 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -11005,7 +10985,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 64 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -11078,7 +11058,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			break;
 		case 0x0e:
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -11148,7 +11128,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			_mm_store_si128((__m128i *)to + 0 + 63, tmp);
 
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif
@@ -11221,7 +11201,7 @@ while (in <= keys)			// <= because there can be a boundary case where the final 
 			break;
 		case 0x0f:
 #ifdef NO_ZEROS
-			tmp = _mm_load_si128((__m128i *)static_mask_1);
+			tmp = _mm_load_si128((__m128i *)qmxv1_static_mask_1);
 #else
 			tmp = _mm_castps_si128(_mm_xor_ps(_mm_cvtepu8_epi32(tmp), _mm_cvtepu8_epi32(tmp)));
 #endif

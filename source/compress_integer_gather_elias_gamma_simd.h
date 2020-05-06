@@ -28,7 +28,8 @@ namespace JASS
 	/*!
 		@brief Pack 32-bit integers into 512-bit SIMD words using prn and carryover
 	*/
-	class compress_integer_gather_elias_gamma_simd: public compress_integer_elias_gamma_simd
+	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
+	class compress_integer_gather_elias_gamma_simd: public compress_integer_elias_gamma_simd<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>
 		{
 		public:
 			/*
