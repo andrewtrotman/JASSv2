@@ -146,7 +146,7 @@ namespace JASS
 			std::vector<uint64_t> primary_key_offsets;	///< A list of locations (on disk) of each primary key.
 			allocator_pool memory;								///< Memory used to store the impact-ordered postings list.
 			index_postings_impact impact_ordered;			///< The re-used impact ordered postings list.
-			std::shared_ptr<compress_integer_t> encoder;	///< The integer encoder used to compress postings lists.
+			std::shared_ptr<compress_integer> encoder;	///< The integer encoder used to compress postings lists.
 			allocator_cpp<uint8_t> allocator;				///< C++ allocator between memory object and std::vector object
 			std::vector<uint8_t, allocator_cpp<uint8_t>> compressed_buffer;		///< The buffer used to compress postings into.
 			std::vector<slice, allocator_cpp<slice>> compressed_segments;			///< vector of pointers (and lengths) to the compressed postings.
@@ -166,7 +166,7 @@ namespace JASS
 				@param term_frequencies [in] An array (of length document_frequency) of term frequencies (corresponding to document_ids).
 				@return The location (in CIpostings.bin) of the start of the serialised postings list.
 			*/
-			size_t write_postings(const index_postings &postings, size_t &number_of_impacts, document_id::integer document_frequency, document_id::integer *document_ids, index_postings_impact::impact_type *term_frequencies);
+			size_t write_postings(const index_postings &postings, size_t &number_of_impacts, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies);
 
 		public:
 			/*
@@ -179,7 +179,7 @@ namespace JASS
 				@param encoder [in] An shared pointer to a codex responsible for performing the compression of postings lists (default = compress_integer_QMX_jass_v1()).
 				@param alignment [in] The start address of a postings list is padded to start on these boundaries (needed for compress_integer_QMX_jass_v1 (use 16), and others).  Default = 0.
 			*/
-			serialise_jass_v1(size_t documents, std::shared_ptr<compress_integer_t> encoder = std::make_shared<compress_integer_qmx_jass_v1<uint16_t, 1, 1>>(std::vector<std::string>()), int8_t alignment = 16) :
+			serialise_jass_v1(size_t documents, std::shared_ptr<compress_integer> encoder = std::make_shared<compress_integer_qmx_jass_v1>(), int8_t alignment = 16) :
 				vocabulary_strings("CIvocab_terms.bin", "w+b"),
 				vocabulary("CIvocab.bin", "w+b"),
 				postings("CIpostings.bin", "w+b"),
@@ -196,7 +196,7 @@ namespace JASS
 					allocate space for storing the compressed postings.  But, allocate too much space as some
 					encoders can't write a sequence smaller than a minimum size,
 				*/
-				compressed_buffer.resize((documents + 1024) * sizeof(document_id::integer));
+				compressed_buffer.resize((documents + 1024) * sizeof(compress_integer::integer));
 				compressed_segments.reserve(index_postings_impact::largest_impact);
 
 				/*
@@ -227,7 +227,7 @@ namespace JASS
 				@param document_ids [in] An array (of length document_frequency) of document ids.
 				@param term_frequencies [in] An array (of length document_frequency) of term frequencies (corresponding to document_ids).
 			*/
-			virtual void operator()(const slice &term, const index_postings &postings, document_id::integer document_frequency, document_id::integer *document_ids, index_postings_impact::impact_type *term_frequencies);
+			virtual void operator()(const slice &term, const index_postings &postings, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies);
 
 			/*
 				SERIALISE_JASS_V1::DELEGATE::OPERATOR()()

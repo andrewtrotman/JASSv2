@@ -14,11 +14,9 @@
 
 #include <immintrin.h>
 
-#include "document_id.h"
 #include "top_k_qsort.h"
 #include "parser_query.h"
 #include "query_term_list.h"
-#include "compress_integer.h"
 #include "allocator_memory.h"
 
 namespace JASS
@@ -29,14 +27,15 @@ namespace JASS
 	*/
 	/*!
 		@brief Everything necessary to process a query is encapsulated in an object of this type
-		@tparam ACCUMULATOR_TYPE The value-type for an accumulator (normally uint16_t or double).
-		@tparam MAX_DOCUMENTS The maximum number of documents that are ever going to exist in this collection
-		@tparam MAX_TOP_K The maximum top-k documents that are going to be asked for
-		@tparam DECODER The object type that will decompress and D1 (for example) decoded integers
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K, typename CHILD_TYPE, typename DECODER>
 	class query
 		{
+		public:
+			typedef uint16_t ACCUMULATOR_TYPE;									///< the type of an accumulator (probably a uint16_t)
+			typedef uint32_t DOCID_TYPE;											///< the type of a document id (from a compressor)
+			static constexpr size_t MAX_DOCUMENTS = 55'000'000;			///< the maximum number of documents an index can hold
+			static constexpr size_t MAX_TOP_K = 1'000;						///< the maximum top-k value
+
 		public:
 			/*
 				CLASS QUERY::ADD_RSV_COMPARE
@@ -96,12 +95,14 @@ namespace JASS
 				};
 
 		protected:
-			allocator_pool memory;														///< All memory allocation happens in this "arena"
 			ACCUMULATOR_TYPE impact;													///< The impact score to be added on a call to push_back()
+			allocator_pool memory;														///< All memory allocation happens in this "arena"
+			std::vector<uint32_t> decompress_buffer;								///< The delta-encoded decopressed integer sequence.
+			DOCID_TYPE documents;														///< The numnber of documents this index contains
 
 			parser_query parser;															///< Parser responsible for converting text into a parsed query
 			query_term_list *parsed_query;											///< The parsed query
-			const std::vector<std::string> &primary_keys;						///< A vector of strings, each the primary key for the document with an id equal to the vector index
+			const std::vector<std::string> *primary_keys;						///< A vector of strings, each the primary key for the document with an id equal to the vector index
 
 		public:
 			size_t top_k;																	///< The number of results to track.
@@ -115,17 +116,31 @@ namespace JASS
 			*/
 			/*!
 				@brief Constructor
+			*/
+			query() :
+				parser(memory),
+				parsed_query(nullptr),
+				primary_keys(nullptr),
+				top_k(0)
+				{
+				}
+
+			/*
+				QUERY::INIT()
+				-------------
+			*/
+			/*!
+				@brief Initialise the object. MUST be called before first use.
 				@param primary_keys [in] Vector of the document primary keys used to convert from internal document ids to external primary keys.
 				@param documents [in] The number of documents in the collection.
 				@param top_k [in]	The top-k documents to return from the query once executed.
 			*/
-			query(const std::vector<std::string> &primary_keys, size_t documents = 1024, size_t top_k = 10) :
-				impact(0),
-				parser(memory),
-				parsed_query(nullptr),
-				primary_keys(primary_keys),
-				top_k(top_k)
+			virtual void init(const std::vector<std::string> &primary_keys, size_t documents = 1024, size_t top_k = 10)
 				{
+				this->primary_keys = &primary_keys;
+				this->top_k = top_k;
+				this->documents = documents;
+				decompress_buffer.resize(documents);
 				rewind();
 				}
 
@@ -136,7 +151,7 @@ namespace JASS
 			/*!
 				@brief Destructor
 			*/
-			~query()
+			virtual ~query()
 				{
 				delete parsed_query;
 				}
@@ -176,15 +191,28 @@ namespace JASS
 			/*!
 				@brief Clear this object after use and ready for re-use
 			*/
-			void rewind(void)
+			virtual void rewind(ACCUMULATOR_TYPE largest_possible_rsv = 0)
 				{
 				delete parsed_query;
 				parsed_query = new query_term_list(memory);
 				}
 
 			/*
-				QUERY::DECODE_AND_PROCESS()
-				---------------------------
+				QUERY::SET_IMPACT()
+				-------------------
+			*/
+			/*!
+				@brief Set the impact score to use in a push_back().
+				@param score [in] The impact score to be added to accumulators.
+			*/
+			forceinline void set_impact(ACCUMULATOR_TYPE score)
+				{
+				impact = score;
+				}
+
+			/*
+				QUERY_HEAP::DECODE_AND_PROCESS()
+				--------------------------------
 			*/
 			/*!
 				@brief Given the integer decoder, the number of integes to decode, and the compressed sequence, decompress (but do not process).
@@ -193,63 +221,40 @@ namespace JASS
 				@param compressed [in] The compressed sequence.
 				@param compressed_size [in] The length of the compressed sequence.
 			*/
-			void decode_and_process(ACCUMULATOR_TYPE impact, size_t integers, const void *compressed, size_t compressed_size)
+			forceinline void decode_and_process(ACCUMULATOR_TYPE impact, size_t integers, const void *compressed, size_t compressed_size)
 				{
-				set_score(impact);
+				set_impact(impact);
 //std::cout << "\n[" << impact << "]";
-				static_cast<DECODER *>(this)->decode_with_writer(integers, compressed, compressed_size);
+				decode_with_writer(integers, compressed, compressed_size);
 				}
 
 			/*
-				QUERY::SET_SCORE()
-				------------------
+				QUERY::DECODE_WITH_WRITER()
+				---------------------------
 			*/
 			/*!
-				@brief Set the impact score to use in a push_back().
-				@param score [in] The impact score to be added to accumulators.
+				@brief Given the integer decoder, the number of integes to decode, and the compressed sequence, decompress (but do not process).
+				@param integers [in] The number of integers that are compressed.
+				@param compressed [in] The compressed sequence.
+				@param compressed_size [in] The length of the compressed sequence.
 			*/
-			forceinline void set_score(ACCUMULATOR_TYPE score)
+			virtual void decode_with_writer(size_t integers, const void *compressed, size_t compressed_size)
 				{
-				this->impact = score;
 				}
 
 			/*
-				QUERY::PUSH_BACK()
-				------------------
+				QUERY_HEAP::DECODE()
+				--------------------
 			*/
 			/*!
-				@brief Add the impact score to a bunch of accumulators
-				@param document_id [in] The document ID that the impact should be added to.
-				@details The first valid document id is 1, any calls with a document id of 0 will add to
-				the accumulator for document id 0, but since that is a non-existant document, the value is later
-				ignored.  So it IS safe to pad documet_ids with 0s.
+				@brief Decode a sequence of integers encoded with this codex.
+				@param decoded [out] The sequence of decoded integers.
+				@param integers_to_decode [in] The minimum number of integers to decode (it may decode more).
+				@param source [in] The encoded integers.
+				@param source_length [in] The length (in bytes) of the source buffer.
 			*/
-			forceinline void push_back(document_id::integer document_id)
+			virtual void decode(DOCID_TYPE *decoded, size_t integers_to_decode, const void *source, size_t source_length)
 				{
-				static_cast<CHILD_TYPE *>(this)->add_rsv(document_id, impact);
-				}
-
-			/*
-				QUERY::PUSH_BACK()
-				------------------
-			*/
-			/*!
-				@brief Add the impact score to a bunch of accumulators
-				@param document_ids [in] The document IDs that the impact should be added to.
-				@details The first valid document id is 1, any calls with a document id of 0 will add to
-				the accumulator for document id 0, but since that is a non-existant document, the value is later
-				ignored.  So it IS safe to pad documet_ids with 0s.
-			*/
-			forceinline void push_back(__m256i document_ids)
-				{
-				push_back(_mm256_extract_epi32(document_ids, 0));
-				push_back(_mm256_extract_epi32(document_ids, 1));
-				push_back(_mm256_extract_epi32(document_ids, 2));
-				push_back(_mm256_extract_epi32(document_ids, 3));
-				push_back(_mm256_extract_epi32(document_ids, 4));
-				push_back(_mm256_extract_epi32(document_ids, 5));
-				push_back(_mm256_extract_epi32(document_ids, 6));
-				push_back(_mm256_extract_epi32(document_ids, 7));
 				}
 		};
 	}

@@ -33,8 +33,8 @@ namespace JASS
 	class index_manager
 		{
 		private:
-			 document_id::integer highest_document_id;								///< The highest document_id seen so far (counts from 1).
-			 std::vector<document_id::integer> document_length_vector;		///< vector of document lengths.
+			 compress_integer::integer highest_document_id;								///< The highest document_id seen so far (counts from 1).
+			 std::vector<compress_integer::integer> document_length_vector;		///< vector of document lengths.
 
 		public:
 			/*
@@ -71,7 +71,7 @@ namespace JASS
 						@param document_ids [in] An array (of length document_frequency) of document ids.
 						@param term_frequencies [in] An array (of length document_frequency) of term frequencies (corresponding to document_ids).
 					*/
-					virtual void operator()(const slice &term, const index_postings &postings, document_id::integer document_frequency, document_id::integer *document_ids, index_postings_impact::impact_type *term_frequencies) = 0;
+					virtual void operator()(const slice &term, const index_postings &postings, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies) = 0;
 
 					/*
 						INDEX_MANAGER::DELEGATE::OPERATOR()()
@@ -120,7 +120,7 @@ namespace JASS
 						@param document_ids [in] An array (of length document_frequency) of document ids.
 						@param term_frequencies [in] An array (of length document_frequency) of term frequencies (corresponding to document_ids).
 					*/
-					virtual void operator()(delegate &callback, const slice &term, const index_postings &postings, document_id::integer document_frequency, document_id::integer *document_ids, index_postings_impact::impact_type *term_frequencies) = 0;
+					virtual void operator()(delegate &callback, const slice &term, const index_postings &postings, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies) = 0;
 
 					/*
 						INDEX_MANAGER::QUANTIZING_DELEGATE::OPERATOR()()
@@ -230,7 +230,7 @@ namespace JASS
 			/*!
 				@brief Tell this object that you've finished with the current document (and are about to move on to the next, or are completely finished).
 			*/
-			virtual void end_document(document_id::integer document_length)
+			virtual void end_document(compress_integer::integer document_length)
 				{
 				document_length_vector.push_back(document_length);
 				}
@@ -243,7 +243,7 @@ namespace JASS
 				@brief Return a reference to the document length vector.
 				@return The document length vector. This is only valid for as long as the index_manager object exists.
 			*/
-			virtual std::vector<document_id::integer> &get_document_length_vector(void)
+			virtual std::vector<compress_integer::integer> &get_document_length_vector(void)
 				{
 				return document_length_vector;
 				}
@@ -259,7 +259,7 @@ namespace JASS
 				case then the largest document number is set to the number of documents in new_lengths, and future calls to index
 				a single document will fail (the alternative is that documents in the middle get lengths of 0).
 			*/
-			virtual void set_document_length_vector(std::vector<document_id::integer> &new_lengths)
+			virtual void set_document_length_vector(std::vector<compress_integer::integer> &new_lengths)
 				{
 				document_length_vector = new_lengths;
 				highest_document_id = document_length_vector.size() - 1;		// if size() == 10 then the highest_document_id is 9 (documents have ids 0..9)
@@ -317,7 +317,7 @@ namespace JASS
 			/*!
 				@brief Return the number of documents that have been successfully indexed or are in the process of being indexed.
 			*/
-			 document_id::integer get_highest_document_id(void) const
+			 compress_integer::integer get_highest_document_id(void) const
 				{
 				return highest_document_id;
 				}
@@ -360,7 +360,7 @@ namespace JASS
 
 				struct delegate_test : public delegate
 					{
-					virtual void operator()(const slice &term, const index_postings &postings, document_id::integer document_frequency, document_id::integer *document_ids, index_postings_impact::impact_type *term_frequencies)
+					virtual void operator()(const slice &term, const index_postings &postings, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies)
 						{
 						/* Nothing */
 						}

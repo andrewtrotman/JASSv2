@@ -17,8 +17,7 @@
 
 namespace JASS
 	{
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	const typename compress_integer_carry_8b<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::selector compress_integer_carry_8b<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::selector_table[] =
+	const compress_integer_carry_8b::selector compress_integer_carry_8b::selector_table[] =
 		{
 			/* Selector in the 64-bit integer (60-bit payload) */
 		/*0*/   {"a60", 1, 255, 60},
@@ -93,8 +92,7 @@ namespace JASS
 		given the number of bits in the largest integer, what should the starting point in selector_table be?
 		Note, this must be the smaller of the 60-bit and 64-bit sub-tables from above.
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	const size_t compress_integer_carry_8b<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::base_table[] =
+	const size_t compress_integer_carry_8b::base_table[] =
 		{
 		0, 0, 0, 0, 0, 0, 0, 0,
 		0, 0, 0, 0, 0, 0, 0, 0,
@@ -111,8 +109,7 @@ namespace JASS
 	COMPRESS_INTEGER_CARRY_8B::PACK_ONE_WORD()
 	------------------------------------------
 */
-template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-size_t compress_integer_carry_8b<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::pack_one_word(size_t base, size_t highest, uint64_t *destination, const document_id::integer *source, size_t source_integers, size_t &next_selector_in_previous_word)
+size_t compress_integer_carry_8b::pack_one_word(size_t base, size_t highest, uint64_t *destination, const integer *source, size_t source_integers, size_t &next_selector_in_previous_word)
 	{
 	uint64_t selector = 0;
 
@@ -182,10 +179,9 @@ printf("Selector:%d (%d x %d-bits)\n", (int)(base + selector), (int)integers_to_
 		COMPRESS_INTEGER_CARRY_8B::ENCODE()
 		-----------------------------------
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	size_t compress_integer_carry_8b<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::encode(void *encoded, size_t destination_length, const document_id::integer *source, size_t source_integers)
+	size_t compress_integer_carry_8b::encode(void *encoded, size_t destination_length, const integer *source, size_t source_integers)
 		{
-		const auto *from = source;
+		const integer *from = source;
 		uint64_t *destination = static_cast<uint64_t *>(encoded);
 		uint64_t *end = destination + (destination_length >> 3);
 		size_t took;
@@ -205,8 +201,8 @@ printf("Selector:%d (%d x %d-bits)\n", (int)(base + selector), (int)integers_to_
 			We need to work out which parts of the Carryover table to use - which we do by finding the largest integers in the sequence and
 			seeing which part of the table is that bit-ness or smaller.
 		*/
-		document_id::integer largest = 0;
-		for (const auto *current = source; current < source + source_integers; current++)
+		integer largest = 0;
+		for (const integer *current = source; current < source + source_integers; current++)
 			largest = maths::maximum(largest, *current);
 		uint64_t base = base_table[maths::ceiling_log2(largest)];
 
@@ -271,10 +267,9 @@ printf("Selector:%d (%d x %d-bits)\n", (int)(base + selector), (int)integers_to_
 		COMPRESS_INTEGER_CARRY_8B::DECODE()
 		-----------------------------------
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	void compress_integer_carry_8b<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::decode(document_id::integer *destination, size_t integers_to_decode, const void *compressed, size_t compressed_size_in_bytes)
+	void compress_integer_carry_8b::decode(integer *destination, size_t integers_to_decode, const void *compressed, size_t compressed_size_in_bytes)
 		{
-		const auto *end = destination + integers_to_decode;
+		const integer *end = destination + integers_to_decode;
 		const uint64_t *source = static_cast<const uint64_t *>(compressed);
 
 		/*
@@ -623,7 +618,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					break;
 // LCOV_EXCL_START		// Can't test integers 2^32
 				case 20:			//		{"u60", 56, 1, 0}
-					*(destination + 0) = static_cast<document_id::integer>(payload >> 0 & 0xFFFFFFFFFFFFFF);
+					*(destination + 0) = static_cast<integer>(payload >> 0 & 0xFFFFFFFFFFFFFF);
 					destination += 1;
 
 					source++;
@@ -632,7 +627,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					base = sixty_start;
 					break;
 				case 21:			//		{"v60", 60, 1, 0}
-					*(destination + 0) = static_cast<document_id::integer>(payload >> 0 & 0x0FFFFFFFFFFFFFFF);
+					*(destination + 0) = static_cast<integer>(payload >> 0 & 0x0FFFFFFFFFFFFFFF);
 					destination += 1;
 
 					source++;
@@ -1299,8 +1294,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 		COMPRESS_INTEGER_CARRY_8B::UNITTEST_THIS()
 		------------------------------------------
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	void compress_integer_carry_8b<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::unittest_this(std::vector<document_id::integer> every_case)
+	void compress_integer_carry_8b::unittest_this(std::vector<integer> every_case)
 		{
 		/*
 			Check that encoding then decoding the input results in the input again.
@@ -1319,10 +1313,9 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 		COMPRESS_INTEGER_CARRY_8B::UNITTEST()
 		-------------------------------------
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	void compress_integer_carry_8b<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::unittest(void)
+	void compress_integer_carry_8b::unittest(void)
 		{
-		std::vector<document_id::integer> every_case;
+		std::vector<integer> every_case;
 		size_t instance;
 
 		/*
@@ -1565,7 +1558,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 		std::vector<uint32_t>compressed(every_case.size() * 2);
 		std::vector<uint32_t>decompressed(every_case.size() + 256);
 
-		document_id::integer one = 1;
+		integer one = 1;
 		auto size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &one, 0);
 		JASS_assert(size_once_compressed == 0);
 

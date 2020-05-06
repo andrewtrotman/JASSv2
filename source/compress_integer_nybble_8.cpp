@@ -19,8 +19,7 @@ namespace JASS
 		COMPRESS_INTEGER_NYBBLE_8::ENCODE()
 		-----------------------------------
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	size_t compress_integer_nybble_8<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::encode(void *encoded, size_t encoded_buffer_length, const document_id::integer *source, size_t source_integers)
+	size_t compress_integer_nybble_8::encode(void *encoded, size_t encoded_buffer_length, const integer *source, size_t source_integers)
 		{
 		uint8_t *destination = (uint8_t *)encoded;
 		uint8_t *end_of_destination = destination + encoded_buffer_length;
@@ -67,8 +66,7 @@ namespace JASS
 		COMPRESS_INTEGER_NYBBLE_8::DECODE()
 		-----------------------------------
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	void compress_integer_nybble_8<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::decode(document_id::integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
+	void compress_integer_nybble_8::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
 		{
 		uint32_t *into = (uint32_t *)decoded;
 		const uint8_t *source = (uint8_t *)source_as_void;
@@ -98,8 +96,7 @@ namespace JASS
 		COMPRESS_INTEGER_NYBBLE_8::UNITTEST_ONE()
 		-----------------------------------------
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	void compress_integer_nybble_8<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::unittest_one(const std::vector<uint32_t> &sequence)
+	void compress_integer_nybble_8::unittest_one(const std::vector<uint32_t> &sequence)
 		{
 		compress_integer_nybble_8 compressor;
 		std::vector<uint32_t>compressed(sequence.size() * 5);
@@ -115,8 +112,7 @@ namespace JASS
 		COMPRESS_INTEGER_NYBBLE_8::UNITTEST()
 		-------------------------------------
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	void compress_integer_nybble_8<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::unittest(void)
+	void compress_integer_nybble_8::unittest(void)
 		{
 		std::vector<uint32_t> every_case;
 		uint32_t instance;

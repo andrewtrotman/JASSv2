@@ -28,12 +28,8 @@ namespace JASS
 		@tparam MAX_DOCUMENTS The maximum number of documents that are ever going to exist in this collection
 		@tparam MAX_TOP_K The maximum top-k documents that are going to be asked for
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	class query_bucket : public query<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>
+	class query_bucket : public query
 		{
-		private:
-			typedef query<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> parent;
-
 		public:
 			/*
 				CLASS QUERY_BUCKET::ITERATOR
@@ -79,7 +75,7 @@ namespace JASS
 					};
 
 				public:
-					query_bucket<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent;	///< The query object that this is iterating over
+					query_bucket &parent;	///< The query object that this is iterating over
 					size_t where;																		///< Where in the results list we are
 
 				public:
@@ -92,7 +88,7 @@ namespace JASS
 						@param parent [in] The object we are iterating over
 						@param where [in] Where in the results list this iterator starts
 					*/
-					iterator(query_bucket<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent, size_t where) :
+					iterator(query_bucket &parent, size_t where) :
 						parent(parent),
 						where(where)
 						{
@@ -139,12 +135,11 @@ namespace JASS
 					docid_rsv_pair operator*()
 						{
 						size_t id = parent.accumulator_pointers[where] - parent.shadow_accumulator;
-						return docid_rsv_pair(id, parent.primary_keys[id], parent.shadow_accumulator[id]);
+						return docid_rsv_pair(id, (*parent.primary_keys)[id], parent.shadow_accumulator[id]);
 						}
 					};
 
 		private:
-			ACCUMULATOR_TYPE zero;														///< Constant zero used for pointer dereferenced comparisons
 			ACCUMULATOR_TYPE *accumulator_pointers[MAX_TOP_K];					///< Array of pointers to the top k accumulators
 			accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;	///< The accumulators, one per document in the collection
 			bool sorted;																	///< has heap and accumulator_pointers been sorted (false after rewind() true after sort())
@@ -152,8 +147,8 @@ namespace JASS
 			static constexpr size_t rounded_top_k = 1 << maths::ceiling_log2(MAX_TOP_K);
 			static constexpr size_t rounded_top_k_filter = rounded_top_k - 1;
 			compress_integer::integer bucket[std::numeric_limits<ACCUMULATOR_TYPE>::max()][rounded_top_k];	///< The array of buckets to use.
-			uint16_t bucket_depth[std::numeric_limits<ACCUMULATOR_TYPE>::max()];						///< The number of documents in the given bucket
 			ACCUMULATOR_TYPE largest_used_bucket;																///< The largest bucket used (to decrease cost of initialisation and search)
+			uint16_t bucket_depth[std::numeric_limits<ACCUMULATOR_TYPE>::max()];						///< The number of documents in the given bucket
 			ACCUMULATOR_TYPE shadow_accumulator[MAX_DOCUMENTS];											///< Used to deduplicate the top-k
 			size_t accumulator_pointers_used;																	///< The number of accumulator_pointers used (can be smaller than top_k)
 
@@ -168,14 +163,40 @@ namespace JASS
 				@param documents [in] The number of documents in the collection.
 				@param top_k [in]	The top-k documents to return from the query once executed.
 			*/
-			query_bucket(const std::vector<std::string> &primary_keys, size_t documents = 1024, size_t top_k = 10) :
-				parent(primary_keys, documents, top_k),
-				zero(0),
-				accumulators(documents),
+			query_bucket() :
+				query(),
 				largest_used_bucket(0)
 				{
-				std::fill(bucket_depth, bucket_depth + std::numeric_limits<ACCUMULATOR_TYPE>::max() + 1, 0);
+				std::fill(bucket_depth, bucket_depth + std::numeric_limits<ACCUMULATOR_TYPE>::max(), 0);
 				rewind();
+				}
+
+			/*
+				QUERY_BUCKET::~QUERY_BUCKET()
+				-----------------------------
+			*/
+			/*!
+				@brief Destructor
+			*/
+			virtual ~query_bucket()
+				{
+				}
+
+			/*
+				QUERY_BUCKET::INIT()
+				--------------------
+			*/
+			/*!
+				@brief Initialise the object. MUST be called before first use.
+				@param primary_keys [in] Vector of the document primary keys used to convert from internal document ids to external primary keys.
+				@param documents [in] The number of documents in the collection.
+				@param top_k [in]	The top-k documents to return from the query once executed.
+			*/
+			virtual void init(const std::vector<std::string> &primary_keys, size_t documents = 1024, size_t top_k = 10)
+				{
+				query::init(primary_keys, documents, top_k);
+				accumulators.init(documents);
+				rewind(std::numeric_limits<decltype(largest_used_bucket)>::max());
 				}
 
 			/*
@@ -213,15 +234,15 @@ namespace JASS
 				@brief Clear this object after use and ready for re-use
 				@param largest_possible_rsv [in] the largest possible rsv value (or larger that that)
 			*/
-			void rewind(size_t largest_possible_rsv = 0)
+			virtual void rewind(ACCUMULATOR_TYPE largest_possible_rsv = 0)
 				{
+				largest_used_bucket = largest_possible_rsv;
 				sorted = false;
 				accumulators.rewind();
 
-				largest_used_bucket = largest_possible_rsv;
-				std::fill(bucket_depth, bucket_depth + largest_used_bucket + 1, 0);
+				std::fill(bucket_depth, bucket_depth + largest_used_bucket, 0);
 
-				parent::rewind();
+				query::rewind();
 				}
 
 			/*
@@ -260,7 +281,7 @@ namespace JASS
 					/*
 						Sort on the top-k
 					*/
-					top_k_qsort::sort(accumulator_pointers, accumulator_pointers_used, this->top_k, parent::final_sort_cmp);
+					top_k_qsort::sort(accumulator_pointers, accumulator_pointers_used, top_k, query::final_sort_cmp);
 					sorted = true;
 					}
 				}
@@ -296,19 +317,20 @@ namespace JASS
 			static void unittest(void)
 				{
 				std::vector<std::string> keys = {"one", "two", "three", "four"};
-				query_heap<uint16_t, 1024, 10> query_object(keys, 1024, 2);
+				query_bucket *query_object = new query_bucket;
+				query_object->init(keys, 1024, 2);
 				std::ostringstream string;
 
 				/*
 					Check the rsv stuff
 				*/
-				query_object.add_rsv(2, 10);
-				query_object.add_rsv(3, 20);
-				query_object.add_rsv(2, 2);
-				query_object.add_rsv(1, 1);
-				query_object.add_rsv(1, 14);
+				query_object->add_rsv(2, 10);
+				query_object->add_rsv(3, 20);
+				query_object->add_rsv(2, 2);
+				query_object->add_rsv(1, 1);
+				query_object->add_rsv(1, 14);
 
-				for (const auto rsv : query_object)
+				for (const auto rsv : *query_object)
 					string << "<" << rsv.document_id << "," << rsv.rsv << ">";
 				JASS_assert(string.str() == "<3,20><1,15>");
 
@@ -316,8 +338,8 @@ namespace JASS
 					Check the parser
 				*/
 				size_t times = 0;
-				query_object.parse(std::string("one two three"));
-				for (const auto &term : query_object.terms())
+				query_object->parse(std::string("one two three"));
+				for (const auto &term : query_object->terms())
 					{
 					times++;
 					if (times == 1)
@@ -328,6 +350,7 @@ namespace JASS
 						JASS_assert(term.token() == "three");
 					}
 
+				delete query_object;
 				puts("query_bucket::PASSED");
 				}
 		};

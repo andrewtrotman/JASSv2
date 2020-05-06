@@ -48,8 +48,7 @@ namespace JASS
 		See:
 			V. Anh, A. Moffat (2010), Index compression using 64-bit words, Software Practive & Experience, pp 131-147
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	class compress_integer_simple_8b : public compress_integer<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>
+	class compress_integer_simple_8b : public compress_integer
 		{
 		protected:
 			static const size_t ints_packed_table[];			///< Number of integers packed into a 64-bit word, given its mask type
@@ -95,7 +94,7 @@ namespace JASS
 				@param source_integers [in] The length (in integers) of the source buffer.
 				@return The number of bytes used to encode the integer sequence, or 0 on error (i.e. overflow).
 			*/
-			virtual size_t encode(void *encoded, size_t encoded_buffer_length, const document_id::integer *source, size_t source_integers);
+			virtual size_t encode(void *encoded, size_t encoded_buffer_length, const integer *source, size_t source_integers);
 
 			/*
 				COMPRESS_INTEGER_SIMPLE_8B::DECODE()
@@ -108,7 +107,7 @@ namespace JASS
 				@param source [in] The encoded integers.
 				@param source_length [in] The length (in bytes) of the source buffer.
 			*/
-			virtual void decode(document_id::integer *decoded, size_t integers_to_decode, const void *source, size_t source_length);
+			virtual void decode(integer *decoded, size_t integers_to_decode, const void *source, size_t source_length);
 
 			/*
 				COMPRESS_INTEGER_SIMPLE_8B::UNITTEST()

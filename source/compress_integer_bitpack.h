@@ -39,8 +39,7 @@ namespace JASS
 				2 * 8 * 16-bit integers
 				1 * 8 * 32-bit integers
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	class compress_integer_bitpack : public compress_integer<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>
+	class compress_integer_bitpack : public compress_integer
 		{
 		private:
 			/*
@@ -93,11 +92,11 @@ namespace JASS
 				@return The number of bytes used to encode the integer sequence, or 0 on error (i.e. overflow).
 			*/
 			template <int32_t WIDTH_IN_BITS>
-			size_t encode(void *encoded, size_t encoded_buffer_length, const document_id::integer *array, size_t source_integers, const uint32_t *bits_to_use = bits_to_use_complete, const uint32_t *selector_to_use = selector_to_use_complete)
+			size_t encode(void *encoded, size_t encoded_buffer_length, const integer *array, size_t source_integers, const uint32_t *bits_to_use = bits_to_use_complete, const uint32_t *selector_to_use = selector_to_use_complete)
 				{
 				uint8_t *destination = (uint8_t *)encoded;
 				uint8_t *end_of_destination_buffer = destination + encoded_buffer_length;
-				const document_id::integer *end_of_source_buffer = array + source_integers;
+				const integer *end_of_source_buffer = array + source_integers;
 
 				while (1)
 					{

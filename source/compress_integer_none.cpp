@@ -19,8 +19,7 @@ namespace JASS
 		COMPRESS_INTEGER_NONE::ENCODE()
 		-------------------------------
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	size_t compress_integer_none<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::encode(void *encoded, size_t encoded_buffer_length, const document_id::integer *source, size_t source_integers)
+	size_t compress_integer_none::encode(void *encoded, size_t encoded_buffer_length, const integer *source, size_t source_integers)
 		{
 		size_t used = sizeof(*source) * source_integers;
 		if (used > encoded_buffer_length)
@@ -35,8 +34,7 @@ namespace JASS
 		COMPRESS_INTEGER_NONE::DECODE()
 		-------------------------------
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	void compress_integer_none<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::decode(document_id::integer *decoded, size_t integers_to_decode, const void *source, size_t source_length)
+	void compress_integer_none::decode(integer *decoded, size_t integers_to_decode, const void *source, size_t source_length)
 		{
 		::memcpy(decoded, source, source_length);
 		}
@@ -45,12 +43,11 @@ namespace JASS
 		COMPRESS_INTEGER_NONE::UNITTEST()
 		---------------------------------
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	void compress_integer_none<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::unittest(void)
+	void compress_integer_none::unittest(void)
 		{
 		compress_integer_none codex;											// so that encode() and decode() can be called
-		std::array<document_id::integer, 2048> encoded_buffer = {};					// sequences are encoded into this buffer
-		std::array<document_id::integer, 2048> decoded_buffer = {};					// sequences are decoded into this buffer
+		std::array<integer, 2048> encoded_buffer = {};					// sequences are encoded into this buffer
+		std::array<integer, 2048> decoded_buffer = {};					// sequences are decoded into this buffer
 		
 		/*
 			Generate a sequence of random integers and check they encode and decode correctly.  Yes, this is favouring large integers
@@ -58,8 +55,8 @@ namespace JASS
 		*/
 		std::random_device device;
 		std::mt19937 generator(device());
-		std::uniform_int_distribution<document_id::integer> distribution;
-		std::array<document_id::integer, 128> raw_buffer;
+		std::uniform_int_distribution<integer> distribution;
+		std::array<integer, 128> raw_buffer;
 		
 		for (auto &element : raw_buffer)
 			element = distribution(generator);

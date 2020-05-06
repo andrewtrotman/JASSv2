@@ -20,7 +20,7 @@ namespace JASS
 		SERIALISE_INTEGERS::OPERATOR()()
 		--------------------------------
 	*/
-	void serialise_integers::operator()(const slice &term, const index_postings &postings_list, document_id::integer document_frequency, document_id::integer *document_ids, index_postings_impact::impact_type *term_frequencies)
+	void serialise_integers::operator()(const slice &term, const index_postings &postings_list, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies)
 		{
 		/*
 			Impact order this postings list

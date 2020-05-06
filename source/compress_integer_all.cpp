@@ -35,37 +35,80 @@
 
 namespace JASS
 	{
+	/*
+		List of known compressors
+	*/
+	static compress_integer_none none;											///< identity compressor
+#ifdef NEVER
+	static compress_integer_carry_8b carry_8b;								///< Carry-8b compressor
+	static compress_integer_simple_9 simple_9;								///< Simple-9 compressor
+	static compress_integer_simple_8b simple_8b;								///< Simple-8b compressor
+	static compress_integer_simple_16 simple_16;								///< Simple-16 compressor
+	static compress_integer_bitpack_64 bitpack_64;							///< fixed width bin-packed into 64-bit integers
+	static compress_integer_elias_gamma elias_gamma;						///< Elias gamma using bit-extract instructions
+	static compress_integer_elias_delta elias_delta;						///< Elias gamma using bit-extract instructions
+#endif
+	static compress_integer_qmx_jass_v1 qmx_jass_v1;						///< QMX compressor compatile with JASS v1 (do not use)
+#ifdef NEVER
+	static compress_integer_bitpack_128 bitpack_128;						///< fixed width bin-packed into 128-bit integers
+	static compress_integer_bitpack_256 bitpack_256;						///< fixed width bin-packed into 256-bit integers
+	static compress_integer_relative_10 relative_10;						///< Relative-10 compressor
+	static compress_integer_carryover_12 carryover_12;						///< Carryover-12 compressor
+	static compress_integer_qmx_original qmx_original;						///< QMX compressor
+	static compress_integer_qmx_improved qmx_improved;						///< Improved QMX compressor
+	static compress_integer_stream_vbyte stream_vbyte;						///< Stream VByte compressor
+	static compress_integer_variable_byte variable_byte;					///< Variable Byte compressor
+	static compress_integer_simple_9_packed simple_9_packed;				///< Packed Simple-9 compressor
+	static compress_integer_elias_delta_simd elias_delta_simd;			///< Elias delta SIMD
+	static compress_integer_simple_16_packed simple_16_packed;			///< Packed Simple-16 compressor
+	static compress_integer_simple_8b_packed simple_8b_packed;			///< Packed Simple-8b compressor
+#endif
+	static compress_integer_elias_gamma_simd elias_gamma_simd;			///< elias gamma packed into SIMD regisers
+#ifdef NEVER
+	static compress_integer_bitpack_32_reduced bitpack_32_reduced;		///< fixed width bin-packed into 32-bit integers
+	static compress_integer_elias_gamma_bitwise elias_gamma_bitwise;	///< Elias gamma done with bit-wise instructions (slow)
+	static compress_integer_elias_delta_bitwise elias_delta_bitwise;	///< Elias delta done with bit-wise instructions (slow)
+#endif
+
 	/*!
 		@brief Table of known compressors and their command line parameter names and actual names
 	*/
 	std::array<compress_integer_all::details, compress_integer_all::compressors_size> compress_integer_all::compressors
 		{
 			{
-			{"-cc",    "--compress_carryover_12", "Carryover-12"},
-			{"-cC",    "--compress_carry_8b", "Carry-8b"},
-			{"-cd",    "--compress_elias_delta", "Elias delta"},
-			{"-cD",    "--compress_elias_delta_bitwise", "Elias delta with bit instuctions (slow)"},
-			{"-ce",    "--compress_elias_delta_SIMD", "Group Elias Delta SIMD"},
-			{"-cE",    "--compress_elias_gamma_SIMD", "Group Elias Gamma SIMD"},
-			{"-cg",    "--compress_elias_gamma", "Elias gamma"},
-			{"-cG",    "--compress_elias_gamma_bitwise", "Elias gamma with bit instuctions (slow)"},
-			{"-cn",    "--compress_none", "None"},
-			{"-cp",    "--compress_simple_9_packed", "Optimal Packed Simple-9"},
-			{"-cq",    "--compress_simple_16_packed", "Optimal Packed Simple-16"},
-			{"-cQ",    "--compress_simple_8b_packed", "Optimal Packed Simple-8b"},
-			{"-cr",    "--compress_relative_10", "Relative-10"},
-			{"-cs",    "--compress_simple_9", "Simple-9"},
-			{"-ct",    "--compress_simple_16", "Simple-16"},
-			{"-cT",    "--compress_simple_8b", "Simple-8b"},
-			{"-cv",    "--compress_vbyte", "Variable Byte"},
-			{"-cV",    "--compress_stream_vbyte", "Stream VByte"},
-			{"-cX",    "--compress_qmx_improved", "QMX Improved"},
-			{"-cx",    "--compress_qmx_original", "QMX Original"},
-			{"-cZ",    "--compress_qmx_jass_v1", "QMX JASS v1"},
-			{"-c128",  "--compress_128", "Binpack into 128-bit SIMD integers"},
-			{"-c256",  "--compress_256", "Binpack into 256-bit SIMD integers"},
-			{"-c32r",  "--compress_32", "Binpack into 32-bit integers with 8 selectors"},
-			{"-c64",   "--compress_64", "Binpack into 64-bit integers"},
+#ifdef NEVER
+			{"-cc",    "--compress_carryover_12", "Carryover-12", &carryover_12},
+			{"-cC",    "--compress_carry_8b", "Carry-8b", &carry_8b},
+			{"-cd",    "--compress_elias_delta", "Elias delta", &elias_delta},
+			{"-cD",    "--compress_elias_delta_bitwise", "Elias delta with bit instuctions (slow)", &elias_delta_bitwise},
+			{"-ce",    "--compress_elias_delta_SIMD", "Group Elias Delta SIMD", &elias_delta_simd},
+#endif
+			{"-cE",    "--compress_elias_gamma_SIMD", "Group Elias Gamma SIMD", &elias_gamma_simd},
+#ifdef NEVER
+			{"-cg",    "--compress_elias_gamma", "Elias gamma", &elias_gamma},
+			{"-cG",    "--compress_elias_gamma_bitwise", "Elias gamma with bit instuctions (slow)", &elias_gamma_bitwise},
+#endif
+			{"-cn",    "--compress_none", "None", &none},
+#ifdef NEVER
+			{"-cp",    "--compress_simple_9_packed", "Optimal Packed Simple-9", &simple_9_packed},
+			{"-cq",    "--compress_simple_16_packed", "Optimal Packed Simple-16", &simple_16_packed},
+			{"-cQ",    "--compress_simple_8b_packed", "Optimal Packed Simple-8b", &simple_8b_packed},
+			{"-cr",    "--compress_relative_10", "Relative-10", &relative_10},
+			{"-cs",    "--compress_simple_9", "Simple-9", &simple_9},
+			{"-ct",    "--compress_simple_16", "Simple-16", &simple_16},
+			{"-cT",    "--compress_simple_8b", "Simple-8b", &simple_8b},
+			{"-cv",    "--compress_vbyte", "Variable Byte", &variable_byte},
+			{"-cV",    "--compress_stream_vbyte", "Stream VByte", &stream_vbyte},
+			{"-cX",    "--compress_qmx_improved", "QMX Improved", &qmx_improved},
+			{"-cx",    "--compress_qmx_original", "QMX Original", &qmx_original},
+#endif
+			{"-cZ",    "--compress_qmx_jass_v1", "QMX JASS v1", &qmx_jass_v1},
+#ifdef NEVER
+			{"-c128",  "--compress_128", "Binpack into 128-bit SIMD integers", &bitpack_128},
+			{"-c256",  "--compress_256", "Binpack into 256-bit SIMD integers", &bitpack_256},
+			{"-c32r",  "--compress_32", "Binpack into 32-bit integers with 8 selectors", &bitpack_32_reduced},
+			{"-c64",   "--compress_64", "Binpack into 64-bit integers", &bitpack_64},
+#endif
 			}
 		};
 
@@ -84,7 +127,7 @@ namespace JASS
 		/*
 			Fake argc and argv[]
 		*/
-		const char *argv[] = {"program", "-cC"};
+		const char *argv[] = {"program", "-cE"};
 		
 		/*
 			Call the command line parser to get the selected option
@@ -109,9 +152,9 @@ namespace JASS
 		/*
 			Make sure we got the correct parameter selected
 		*/
-		JASS_assert(parameters[1] == true);
-		JASS_assert(name(parameters) == compressors[1].description);
-		JASS_assert(&compressor(parameters) == compressors[1].codex);
+		JASS_assert(parameters[0] == true);
+		JASS_assert(name(parameters) == compressors[0].description);
+		JASS_assert(&compressor(parameters) == compressors[0].codex);
 
 		/*
 			Check what happens if we don't have any parameters.

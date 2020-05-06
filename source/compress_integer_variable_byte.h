@@ -36,8 +36,7 @@ namespace JASS
 		\#define JASS_COMPRESS_INTEGER_BITS_PER_INTEGER 64
 		is set at compile time.
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	class compress_integer_variable_byte : public compress_integer<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>
+	class compress_integer_variable_byte : public compress_integer
 		{
 		public:
 			/*
@@ -76,7 +75,7 @@ namespace JASS
 				@param source_integers [in] The length (in integers) of the source buffer.
 				@return The number of bytes used to encode the integer sequence, or 0 on error (i.e. overflow).
 			*/
-			virtual size_t encode(void *encoded, size_t encoded_buffer_length, const document_id::integer *source, size_t source_integers);
+			virtual size_t encode(void *encoded, size_t encoded_buffer_length, const integer *source, size_t source_integers);
 			
 			/*
 				COMPRESS_INTEGER_VARIABLE_BYTE::DECODE()
@@ -89,7 +88,7 @@ namespace JASS
 				@param source [in] The encoded integers.
 				@param source_length [in] The length (in bytes) of the source buffer.
 			*/
-			virtual void decode(document_id::integer *decoded, size_t integers_to_decode, const void *source, size_t source_length)
+			virtual void decode(integer *decoded, size_t integers_to_decode, const void *source, size_t source_length)
 				{
 				/*
 					Call through to the static version of this function
@@ -108,10 +107,10 @@ namespace JASS
 				@param source_as_void [in] The encoded integers.
 				@param source_length [in] The length (in bytes) of the source buffer.
 			*/
-			static inline void static_decode(document_id::integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
+			static inline void static_decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
 				{
 				const uint8_t *source = static_cast<const uint8_t *>(source_as_void);
-				auto *end = decoded + integers_to_decode;		// compute the stopping condition
+				integer *end = decoded + integers_to_decode;		// compute the stopping condition
 
 				/*
 					Count how many integers should be decoded
@@ -132,7 +131,7 @@ namespace JASS
 				@param value [in] The value whose encoded size is being computed
 				@return the numner of bytes needed to store the enoding of value.
 			*/
-			static inline size_t bytes_needed_for(document_id::integer value)
+			static inline size_t bytes_needed_for(integer value)
 				{
 				/*
 					The size can be computed by compairing to a bunch of constants.
@@ -174,7 +173,7 @@ namespace JASS
 				@param value [in] The value to encode.
 			*/
 			template <typename DESTINATION>
-			static forceinline void compress_into(DESTINATION &destination, document_id::integer value)
+			static forceinline void compress_into(DESTINATION &destination, integer value)
 				{
 				/*
 					Work out how many bytes it'll take to encode
@@ -252,7 +251,7 @@ namespace JASS
 				@param source [in] The buffer to decode from.
 			*/
 			template <typename SOURCE>
-			static forceinline void decompress_into(document_id::integer *decoded, SOURCE &source)
+			static forceinline void decompress_into(integer *decoded, SOURCE &source)
 				{
 				/*
 					If the high bit is set the sequence is over, otherwise, in an unwound loop, decode the integers one at a time.

@@ -166,8 +166,7 @@ namespace JASS
 		------------------------------------------
 		write a sequence into the destination buffer
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	void compress_integer_qmx_improved<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::write_out(uint8_t **buffer, uint32_t *source, uint32_t raw_count, uint32_t size_in_bits, uint8_t **length_buffer)
+	void compress_integer_qmx_improved::write_out(uint8_t **buffer, uint32_t *source, uint32_t raw_count, uint32_t size_in_bits, uint8_t **length_buffer)
 		{
 		uint32_t current;
 		uint8_t *destination = *buffer;
@@ -398,8 +397,7 @@ namespace JASS
 		COMPRESS_INTEGER_QMX_IMPROVED::ENCODE()
 		---------------------------------------
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	size_t compress_integer_qmx_improved<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::encode(void *into_as_void, size_t encoded_buffer_length, const document_id::integer *source, size_t source_integers)
+	size_t compress_integer_qmx_improved::encode(void *into_as_void, size_t encoded_buffer_length, const integer *source, size_t source_integers)
 		{
 		uint32_t *into = static_cast<uint32_t *>(into_as_void);
 		const uint32_t WASTAGE = 512;
@@ -699,8 +697,7 @@ namespace JASS
 		COMPRESS_INTEGER_QMX_IMPROVED::UNITTEST_ONE()
 		---------------------------------------------
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	void compress_integer_qmx_improved<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::unittest_one(const std::vector<uint32_t> &sequence)
+	void compress_integer_qmx_improved::unittest_one(const std::vector<uint32_t> &sequence)
 		{
 		compress_integer_qmx_improved compressor;
 		std::vector<uint32_t>compressed(sequence.size() * 2);
@@ -716,8 +713,7 @@ namespace JASS
 		COMPRESS_INTEGER_QMX_IMPROVED::UNITTEST()
 		-----------------------------------------
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	void compress_integer_qmx_improved<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::unittest(void)
+	void compress_integer_qmx_improved::unittest(void)
 		{
 		/*
 			Start with an example sequence of integers.
@@ -899,17 +895,17 @@ namespace JASS
 		{
 		printf("namespace JASS\n");
 		printf("\t{\n");
-		printf("\talignas(16) static uint32_t qmxi_static_mask_21[]  = {0x1fffff, 0x1fffff, 0x1fffff, 0x1fffff};\n");
-		printf("\talignas(16) static uint32_t qmxi_static_mask_12[]  = {0xfff, 0xfff, 0xfff, 0xfff};\n");
-		printf("\talignas(16) static uint32_t qmxi_static_mask_10[] = {0x3ff, 0x3ff, 0x3ff, 0x3ff};\n");
-		printf("\talignas(16) static uint32_t qmxi_static_mask_9[]  = {0x1ff, 0x1ff, 0x1ff, 0x1ff};\n");
-		printf("\talignas(16) static uint32_t qmxi_static_mask_7[]  = {0x7f, 0x7f, 0x7f, 0x7f};\n");
-		printf("\talignas(16) static uint32_t qmxi_static_mask_6[]  = {0x3f, 0x3f, 0x3f, 0x3f};\n");
-		printf("\talignas(16) static uint32_t qmxi_static_mask_5[]  = {0x1f, 0x1f, 0x1f, 0x1f};\n");
-		printf("\talignas(16) static uint32_t qmxi_static_mask_4[]  = {0x0f, 0x0f, 0x0f, 0x0f};\n");
-		printf("\talignas(16) static uint32_t qmxi_static_mask_3[]  = {0x07, 0x07, 0x07, 0x07};\n");
-		printf("\talignas(16) static uint32_t qmxi_static_mask_2[]  = {0x03, 0x03, 0x03, 0x03};\n");
-		printf("\talignas(16) static uint32_t qmxi_static_mask_1[]  = {0x01, 0x01, 0x01, 0x01};\n");
+		printf("\talignas(16) static uint32_t static_mask_21[]  = {0x1fffff, 0x1fffff, 0x1fffff, 0x1fffff};\n");
+		printf("\talignas(16) static uint32_t static_mask_12[]  = {0xfff, 0xfff, 0xfff, 0xfff};\n");
+		printf("\talignas(16) static uint32_t static_mask_10[] = {0x3ff, 0x3ff, 0x3ff, 0x3ff};\n");
+		printf("\talignas(16) static uint32_t static_mask_9[]  = {0x1ff, 0x1ff, 0x1ff, 0x1ff};\n");
+		printf("\talignas(16) static uint32_t static_mask_7[]  = {0x7f, 0x7f, 0x7f, 0x7f};\n");
+		printf("\talignas(16) static uint32_t static_mask_6[]  = {0x3f, 0x3f, 0x3f, 0x3f};\n");
+		printf("\talignas(16) static uint32_t static_mask_5[]  = {0x1f, 0x1f, 0x1f, 0x1f};\n");
+		printf("\talignas(16) static uint32_t static_mask_4[]  = {0x0f, 0x0f, 0x0f, 0x0f};\n");
+		printf("\talignas(16) static uint32_t static_mask_3[]  = {0x07, 0x07, 0x07, 0x07};\n");
+		printf("\talignas(16) static uint32_t static_mask_2[]  = {0x03, 0x03, 0x03, 0x03};\n");
+		printf("\talignas(16) static uint32_t static_mask_1[]  = {0x01, 0x01, 0x01, 0x01};\n");
 		printf("\n");
 		printf("\tvoid compress_integer_qmx_improved::decode(integer *to, size_t destination_integers, const void *source, size_t len)\n");
 		printf("\t\t{\n");
@@ -918,17 +914,17 @@ namespace JASS
 		printf("\t\tuint8_t *keys = ((uint8_t *)source) + len - 1;\n");
 
 		printf("\n");
-		printf("\t\tmask_21 = _mm_loadu_si128((__m128i *)qmxi_static_mask_21);\n");
-		printf("\t\tmask_12 = _mm_loadu_si128((__m128i *)qmxi_static_mask_12);\n");
-		printf("\t\tmask_10 = _mm_loadu_si128((__m128i *)qmxi_static_mask_10);\n");
-		printf("\t\tmask_9 = _mm_loadu_si128((__m128i *)qmxi_static_mask_9);\n");
-		printf("\t\tmask_7 = _mm_loadu_si128((__m128i *)qmxi_static_mask_7);\n");
-		printf("\t\tmask_6 = _mm_loadu_si128((__m128i *)qmxi_static_mask_6);\n");
-		printf("\t\tmask_5 = _mm_loadu_si128((__m128i *)qmxi_static_mask_5);\n");
-		printf("\t\tmask_4 = _mm_loadu_si128((__m128i *)qmxi_static_mask_4);\n");
-		printf("\t\tmask_3 = _mm_loadu_si128((__m128i *)qmxi_static_mask_3);\n");
-		printf("\t\tmask_2 = _mm_loadu_si128((__m128i *)qmxi_static_mask_2);\n");
-		printf("\t\tmask_1 = _mm_loadu_si128((__m128i *)qmxi_static_mask_1);\n");
+		printf("\t\tmask_21 = _mm_loadu_si128((__m128i *)static_mask_21);\n");
+		printf("\t\tmask_12 = _mm_loadu_si128((__m128i *)static_mask_12);\n");
+		printf("\t\tmask_10 = _mm_loadu_si128((__m128i *)static_mask_10);\n");
+		printf("\t\tmask_9 = _mm_loadu_si128((__m128i *)static_mask_9);\n");
+		printf("\t\tmask_7 = _mm_loadu_si128((__m128i *)static_mask_7);\n");
+		printf("\t\tmask_6 = _mm_loadu_si128((__m128i *)static_mask_6);\n");
+		printf("\t\tmask_5 = _mm_loadu_si128((__m128i *)static_mask_5);\n");
+		printf("\t\tmask_4 = _mm_loadu_si128((__m128i *)static_mask_4);\n");
+		printf("\t\tmask_3 = _mm_loadu_si128((__m128i *)static_mask_3);\n");
+		printf("\t\tmask_2 = _mm_loadu_si128((__m128i *)static_mask_2);\n");
+		printf("\t\tmask_1 = _mm_loadu_si128((__m128i *)static_mask_1);\n");
 		printf("\n");
 
 		printf("\t\twhile (in <= keys)                      // <= because there can be a boundary case where the final key is 255*0 bit integers\n");
@@ -944,7 +940,7 @@ namespace JASS
 				/*
 					256 0-bit integers
 				*/
-				printf("\t\t\t\t\ttmp = _mm_loadu_si128((__m128i *)qmxi_static_mask_1);\n");
+				printf("\t\t\t\t\ttmp = _mm_loadu_si128((__m128i *)static_mask_1);\n");
 				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to, tmp);\n");
 				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 1, tmp);\n");
 				printf("\t\t\t\t\t_mm_storeu_si128((__m128i *)to + 2, tmp);\n");
@@ -1380,43 +1376,42 @@ namespace JASS
 	*/
 namespace JASS
 	{
-	alignas(16) static uint32_t qmxi_static_mask_21[]  = {0x1fffff, 0x1fffff, 0x1fffff, 0x1fffff};			///< AND mask for 21-bit integers
-	alignas(16) static uint32_t qmxi_static_mask_12[]  = {0xfff, 0xfff, 0xfff, 0xfff};							///< AND mask for 12-bit integers
-	alignas(16) static uint32_t qmxi_static_mask_10[] = {0x3ff, 0x3ff, 0x3ff, 0x3ff};							///< AND mask for 10-bit integers
-	alignas(16) static uint32_t qmxi_static_mask_9[]  = {0x1ff, 0x1ff, 0x1ff, 0x1ff};							///< AND mask for 9-bit integers
-	alignas(16) static uint32_t qmxi_static_mask_7[]  = {0x7f, 0x7f, 0x7f, 0x7f};								///< AND mask for 7-bit integers
-	alignas(16) static uint32_t qmxi_static_mask_6[]  = {0x3f, 0x3f, 0x3f, 0x3f};								///< AND mask for 6-bit integers
-	alignas(16) static uint32_t qmxi_static_mask_5[]  = {0x1f, 0x1f, 0x1f, 0x1f};								///< AND mask for 5-bit integers
-	alignas(16) static uint32_t qmxi_static_mask_4[]  = {0x0f, 0x0f, 0x0f, 0x0f};								///< AND mask for 4-bit integers
-	alignas(16) static uint32_t qmxi_static_mask_3[]  = {0x07, 0x07, 0x07, 0x07};								///< AND mask for 3-bit integers
-	alignas(16) static uint32_t qmxi_static_mask_2[]  = {0x03, 0x03, 0x03, 0x03};								///< AND mask for 2-bit integers
-	alignas(16) static uint32_t qmxi_static_mask_1[]  = {0x01, 0x01, 0x01, 0x01};								///< AND mask for 1-bit integers
+	alignas(16) static uint32_t static_mask_21[]  = {0x1fffff, 0x1fffff, 0x1fffff, 0x1fffff};			///< AND mask for 21-bit integers
+	alignas(16) static uint32_t static_mask_12[]  = {0xfff, 0xfff, 0xfff, 0xfff};							///< AND mask for 12-bit integers
+	alignas(16) static uint32_t static_mask_10[] = {0x3ff, 0x3ff, 0x3ff, 0x3ff};							///< AND mask for 10-bit integers
+	alignas(16) static uint32_t static_mask_9[]  = {0x1ff, 0x1ff, 0x1ff, 0x1ff};							///< AND mask for 9-bit integers
+	alignas(16) static uint32_t static_mask_7[]  = {0x7f, 0x7f, 0x7f, 0x7f};								///< AND mask for 7-bit integers
+	alignas(16) static uint32_t static_mask_6[]  = {0x3f, 0x3f, 0x3f, 0x3f};								///< AND mask for 6-bit integers
+	alignas(16) static uint32_t static_mask_5[]  = {0x1f, 0x1f, 0x1f, 0x1f};								///< AND mask for 5-bit integers
+	alignas(16) static uint32_t static_mask_4[]  = {0x0f, 0x0f, 0x0f, 0x0f};								///< AND mask for 4-bit integers
+	alignas(16) static uint32_t static_mask_3[]  = {0x07, 0x07, 0x07, 0x07};								///< AND mask for 3-bit integers
+	alignas(16) static uint32_t static_mask_2[]  = {0x03, 0x03, 0x03, 0x03};								///< AND mask for 2-bit integers
+	alignas(16) static uint32_t static_mask_1[]  = {0x01, 0x01, 0x01, 0x01};								///< AND mask for 1-bit integers
 
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	void compress_integer_qmx_improved<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::decode(document_id::integer *to, size_t destination_integers, const void *source, size_t len)
+	void compress_integer_qmx_improved::decode(integer *to, size_t destination_integers, const void *source, size_t len)
 		{
 		__m128i byte_stream, byte_stream_2, tmp, tmp2, mask_21, mask_12, mask_10, mask_9, mask_7, mask_6, mask_5, mask_4, mask_3, mask_2, mask_1;
 		uint8_t *in = (uint8_t *)source;
 		uint8_t *keys = ((uint8_t *)source) + len - 1;
 
-		mask_21 = _mm_loadu_si128((__m128i *)qmxi_static_mask_21);
-		mask_12 = _mm_loadu_si128((__m128i *)qmxi_static_mask_12);
-		mask_10 = _mm_loadu_si128((__m128i *)qmxi_static_mask_10);
-		mask_9 = _mm_loadu_si128((__m128i *)qmxi_static_mask_9);
-		mask_7 = _mm_loadu_si128((__m128i *)qmxi_static_mask_7);
-		mask_6 = _mm_loadu_si128((__m128i *)qmxi_static_mask_6);
-		mask_5 = _mm_loadu_si128((__m128i *)qmxi_static_mask_5);
-		mask_4 = _mm_loadu_si128((__m128i *)qmxi_static_mask_4);
-		mask_3 = _mm_loadu_si128((__m128i *)qmxi_static_mask_3);
-		mask_2 = _mm_loadu_si128((__m128i *)qmxi_static_mask_2);
-		mask_1 = _mm_loadu_si128((__m128i *)qmxi_static_mask_1);
+		mask_21 = _mm_loadu_si128((__m128i *)static_mask_21);
+		mask_12 = _mm_loadu_si128((__m128i *)static_mask_12);
+		mask_10 = _mm_loadu_si128((__m128i *)static_mask_10);
+		mask_9 = _mm_loadu_si128((__m128i *)static_mask_9);
+		mask_7 = _mm_loadu_si128((__m128i *)static_mask_7);
+		mask_6 = _mm_loadu_si128((__m128i *)static_mask_6);
+		mask_5 = _mm_loadu_si128((__m128i *)static_mask_5);
+		mask_4 = _mm_loadu_si128((__m128i *)static_mask_4);
+		mask_3 = _mm_loadu_si128((__m128i *)static_mask_3);
+		mask_2 = _mm_loadu_si128((__m128i *)static_mask_2);
+		mask_1 = _mm_loadu_si128((__m128i *)static_mask_1);
 
 		while (in <= keys)                      // <= because there can be a boundary case where the final key is 255*0 bit integers
 			{
 			switch (*keys--)
 				{
 				case 0x00:
-					tmp = _mm_loadu_si128((__m128i *)qmxi_static_mask_1);
+					tmp = _mm_loadu_si128((__m128i *)static_mask_1);
 					_mm_storeu_si128((__m128i *)to, tmp);
 					_mm_storeu_si128((__m128i *)to + 1, tmp);
 					_mm_storeu_si128((__m128i *)to + 2, tmp);
@@ -1483,7 +1478,7 @@ namespace JASS
 					_mm_storeu_si128((__m128i *)to + 63, tmp);
 					to += 256;
 				case 0x01:
-					tmp = _mm_loadu_si128((__m128i *)qmxi_static_mask_1);
+					tmp = _mm_loadu_si128((__m128i *)static_mask_1);
 					_mm_storeu_si128((__m128i *)to, tmp);
 					_mm_storeu_si128((__m128i *)to + 1, tmp);
 					_mm_storeu_si128((__m128i *)to + 2, tmp);
@@ -1550,7 +1545,7 @@ namespace JASS
 					_mm_storeu_si128((__m128i *)to + 63, tmp);
 					to += 256;
 				case 0x02:
-					tmp = _mm_loadu_si128((__m128i *)qmxi_static_mask_1);
+					tmp = _mm_loadu_si128((__m128i *)static_mask_1);
 					_mm_storeu_si128((__m128i *)to, tmp);
 					_mm_storeu_si128((__m128i *)to + 1, tmp);
 					_mm_storeu_si128((__m128i *)to + 2, tmp);
@@ -1617,7 +1612,7 @@ namespace JASS
 					_mm_storeu_si128((__m128i *)to + 63, tmp);
 					to += 256;
 				case 0x03:
-					tmp = _mm_loadu_si128((__m128i *)qmxi_static_mask_1);
+					tmp = _mm_loadu_si128((__m128i *)static_mask_1);
 					_mm_storeu_si128((__m128i *)to, tmp);
 					_mm_storeu_si128((__m128i *)to + 1, tmp);
 					_mm_storeu_si128((__m128i *)to + 2, tmp);
@@ -1684,7 +1679,7 @@ namespace JASS
 					_mm_storeu_si128((__m128i *)to + 63, tmp);
 					to += 256;
 				case 0x04:
-					tmp = _mm_loadu_si128((__m128i *)qmxi_static_mask_1);
+					tmp = _mm_loadu_si128((__m128i *)static_mask_1);
 					_mm_storeu_si128((__m128i *)to, tmp);
 					_mm_storeu_si128((__m128i *)to + 1, tmp);
 					_mm_storeu_si128((__m128i *)to + 2, tmp);
@@ -1751,7 +1746,7 @@ namespace JASS
 					_mm_storeu_si128((__m128i *)to + 63, tmp);
 					to += 256;
 				case 0x05:
-					tmp = _mm_loadu_si128((__m128i *)qmxi_static_mask_1);
+					tmp = _mm_loadu_si128((__m128i *)static_mask_1);
 					_mm_storeu_si128((__m128i *)to, tmp);
 					_mm_storeu_si128((__m128i *)to + 1, tmp);
 					_mm_storeu_si128((__m128i *)to + 2, tmp);
@@ -1818,7 +1813,7 @@ namespace JASS
 					_mm_storeu_si128((__m128i *)to + 63, tmp);
 					to += 256;
 				case 0x06:
-					tmp = _mm_loadu_si128((__m128i *)qmxi_static_mask_1);
+					tmp = _mm_loadu_si128((__m128i *)static_mask_1);
 					_mm_storeu_si128((__m128i *)to, tmp);
 					_mm_storeu_si128((__m128i *)to + 1, tmp);
 					_mm_storeu_si128((__m128i *)to + 2, tmp);
@@ -1885,7 +1880,7 @@ namespace JASS
 					_mm_storeu_si128((__m128i *)to + 63, tmp);
 					to += 256;
 				case 0x07:
-					tmp = _mm_loadu_si128((__m128i *)qmxi_static_mask_1);
+					tmp = _mm_loadu_si128((__m128i *)static_mask_1);
 					_mm_storeu_si128((__m128i *)to, tmp);
 					_mm_storeu_si128((__m128i *)to + 1, tmp);
 					_mm_storeu_si128((__m128i *)to + 2, tmp);
@@ -1952,7 +1947,7 @@ namespace JASS
 					_mm_storeu_si128((__m128i *)to + 63, tmp);
 					to += 256;
 				case 0x08:
-					tmp = _mm_loadu_si128((__m128i *)qmxi_static_mask_1);
+					tmp = _mm_loadu_si128((__m128i *)static_mask_1);
 					_mm_storeu_si128((__m128i *)to, tmp);
 					_mm_storeu_si128((__m128i *)to + 1, tmp);
 					_mm_storeu_si128((__m128i *)to + 2, tmp);
@@ -2019,7 +2014,7 @@ namespace JASS
 					_mm_storeu_si128((__m128i *)to + 63, tmp);
 					to += 256;
 				case 0x09:
-					tmp = _mm_loadu_si128((__m128i *)qmxi_static_mask_1);
+					tmp = _mm_loadu_si128((__m128i *)static_mask_1);
 					_mm_storeu_si128((__m128i *)to, tmp);
 					_mm_storeu_si128((__m128i *)to + 1, tmp);
 					_mm_storeu_si128((__m128i *)to + 2, tmp);
@@ -2086,7 +2081,7 @@ namespace JASS
 					_mm_storeu_si128((__m128i *)to + 63, tmp);
 					to += 256;
 				case 0x0a:
-					tmp = _mm_loadu_si128((__m128i *)qmxi_static_mask_1);
+					tmp = _mm_loadu_si128((__m128i *)static_mask_1);
 					_mm_storeu_si128((__m128i *)to, tmp);
 					_mm_storeu_si128((__m128i *)to + 1, tmp);
 					_mm_storeu_si128((__m128i *)to + 2, tmp);
@@ -2153,7 +2148,7 @@ namespace JASS
 					_mm_storeu_si128((__m128i *)to + 63, tmp);
 					to += 256;
 				case 0x0b:
-					tmp = _mm_loadu_si128((__m128i *)qmxi_static_mask_1);
+					tmp = _mm_loadu_si128((__m128i *)static_mask_1);
 					_mm_storeu_si128((__m128i *)to, tmp);
 					_mm_storeu_si128((__m128i *)to + 1, tmp);
 					_mm_storeu_si128((__m128i *)to + 2, tmp);
@@ -2220,7 +2215,7 @@ namespace JASS
 					_mm_storeu_si128((__m128i *)to + 63, tmp);
 					to += 256;
 				case 0x0c:
-					tmp = _mm_loadu_si128((__m128i *)qmxi_static_mask_1);
+					tmp = _mm_loadu_si128((__m128i *)static_mask_1);
 					_mm_storeu_si128((__m128i *)to, tmp);
 					_mm_storeu_si128((__m128i *)to + 1, tmp);
 					_mm_storeu_si128((__m128i *)to + 2, tmp);
@@ -2287,7 +2282,7 @@ namespace JASS
 					_mm_storeu_si128((__m128i *)to + 63, tmp);
 					to += 256;
 				case 0x0d:
-					tmp = _mm_loadu_si128((__m128i *)qmxi_static_mask_1);
+					tmp = _mm_loadu_si128((__m128i *)static_mask_1);
 					_mm_storeu_si128((__m128i *)to, tmp);
 					_mm_storeu_si128((__m128i *)to + 1, tmp);
 					_mm_storeu_si128((__m128i *)to + 2, tmp);
@@ -2354,7 +2349,7 @@ namespace JASS
 					_mm_storeu_si128((__m128i *)to + 63, tmp);
 					to += 256;
 				case 0x0e:
-					tmp = _mm_loadu_si128((__m128i *)qmxi_static_mask_1);
+					tmp = _mm_loadu_si128((__m128i *)static_mask_1);
 					_mm_storeu_si128((__m128i *)to, tmp);
 					_mm_storeu_si128((__m128i *)to + 1, tmp);
 					_mm_storeu_si128((__m128i *)to + 2, tmp);
@@ -2421,7 +2416,7 @@ namespace JASS
 					_mm_storeu_si128((__m128i *)to + 63, tmp);
 					to += 256;
 				case 0x0f:
-					tmp = _mm_loadu_si128((__m128i *)qmxi_static_mask_1);
+					tmp = _mm_loadu_si128((__m128i *)static_mask_1);
 					_mm_storeu_si128((__m128i *)to, tmp);
 					_mm_storeu_si128((__m128i *)to + 1, tmp);
 					_mm_storeu_si128((__m128i *)to + 2, tmp);

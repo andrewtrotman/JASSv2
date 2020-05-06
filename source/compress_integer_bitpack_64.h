@@ -37,8 +37,7 @@ namespace JASS
 				2 * 2 * 16-bit integers
 				1 * 2 * 32-bit integers
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	class compress_integer_bitpack_64: public compress_integer_bitpack<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>
+	class compress_integer_bitpack_64: public compress_integer_bitpack
 		{
 		public:
 			/*
@@ -53,9 +52,9 @@ namespace JASS
 				@param source_integers [in] The length (in integers) of the source buffer.
 				@return The number of bytes used to encode the integer sequence, or 0 on error (i.e. overflow).
 			*/
-			virtual size_t encode(void *encoded, size_t encoded_buffer_length, const document_id::integer *source, size_t source_integers)
+			virtual size_t encode(void *encoded, size_t encoded_buffer_length, const integer *source, size_t source_integers)
 				{
-				return compress_integer_bitpack<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::encode<64>(encoded, encoded_buffer_length, source, source_integers);
+				return compress_integer_bitpack::encode<64>(encoded, encoded_buffer_length, source, source_integers);
 				}
 
 			/*
@@ -69,7 +68,7 @@ namespace JASS
 				@param source [in] The encoded integers.
 				@param source_length [in] The length (in bytes) of the source buffer.
 			*/
-			virtual void decode(document_id::integer *decoded, size_t integers_to_decode, const void *source, size_t source_length);
+			virtual void decode(integer *decoded, size_t integers_to_decode, const void *source, size_t source_length);
 
 			/*
 				COMPRESS_INTEGER_BITPACK_64::UNITTEST()
@@ -80,7 +79,9 @@ namespace JASS
 			*/
 			static void unittest(void)
 				{
-				compress_integer<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::unittest(compress_integer_bitpack_64());
+				compress_integer_bitpack_64 *compressor = new compress_integer_bitpack_64;
+				compress_integer::unittest(*compressor);
+				delete compressor;
 				puts("compress_integer_bitpack_64::PASSED");
 				}
 		};

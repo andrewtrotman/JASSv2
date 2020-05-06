@@ -32,8 +32,7 @@ namespace JASS
 		The last 9 columns are points into the last 4 columns used to generate the
 		2-bit selectors during compression.
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	const typename compress_integer_relative_10<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::relative_10_lookup compress_integer_relative_10<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::relative10_table[10] =
+	const compress_integer_relative_10::relative_10_lookup compress_integer_relative_10::relative10_table[10] =
 		{    /* N Bits Mask        Transfer Table                      Decode Table */
 		/*0*/	{1, 30, 0x3FFFFFFF, {3, 2, 1, 0, 0, 0, 0, 0, 0, 0},		{3, 2, 1, 0}},
 		/*1*/	{2, 15, 0x7FFF,     {3, 2, 1, 0, 0, 0, 0, 0, 0, 0},		{3, 2, 1, 0}},
@@ -52,8 +51,7 @@ namespace JASS
 		-------------------------------------------
 		This is the number of bits that simple-9 will be used to store an integer of the given the number of bits in length
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	const uint32_t compress_integer_relative_10<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::bits_to_use10[] =
+	const uint32_t compress_integer_relative_10::bits_to_use10[] =
 		{
 		 1,  1,  2,  3,  4,  5,  6,  7,
 		10, 10, 10, 15, 15, 15, 15, 15,
@@ -70,8 +68,7 @@ namespace JASS
 		-----------------------------------------
 		This is the row of the table to use given the number of integers we can pack into the word
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	const uint32_t compress_integer_relative_10<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::table_row10[] =
+	const uint32_t compress_integer_relative_10::table_row10[] =
 		{
 		0, 1, 2, 3, 4, 5, 6, 6, 6,
 		7, 7, 7, 7, 7, 8, 8, 8, 8,
@@ -83,15 +80,14 @@ namespace JASS
 		COMPRESS_INTEGER_RELATIVE_10::ENCODE()
 		--------------------------------------
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	size_t compress_integer_relative_10<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::encode(void *destination, size_t destination_length, const document_id::integer *source, size_t source_integers)
+	size_t compress_integer_relative_10::encode(void *destination, size_t destination_length, const integer *source, size_t source_integers)
 		{
 		if (source_integers == 0)
 			return 0;
 		if (destination_length < 4)
 			return 0;
 			
-		const auto *from = source;
+		const integer *from = source;
 		uint64_t words_in_compressed_string;
 
 		/*
@@ -108,7 +104,7 @@ namespace JASS
 		uint32_t term;
 		for (term = 0; term < 28 && pos + term < source_integers; term++)
 			{
-			uint32_t needed_for_this_integer = compress_integer_simple_9<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::bits_to_use[maths::ceiling_log2(source[pos + term])];
+			uint32_t needed_for_this_integer = bits_to_use[maths::ceiling_log2(source[pos + term])];
 			if (needed_for_this_integer > 28 || needed_for_this_integer < 1)
 				return 0;					// we fail because there is an integer greater then 2^28 (or 0) and so we cannot pack it
 			if (needed_for_this_integer > needed)
@@ -117,9 +113,9 @@ namespace JASS
 				break;
 			}
 
-		uint32_t row = compress_integer_simple_9<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::table_row[term - 1];
-		pos = compress_integer_simple_9<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::simple9_table[row].numbers;
-		uint32_t bits_per_integer = compress_integer_simple_9<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::simple9_table[row].bits;
+		uint32_t row = table_row[term - 1];
+		pos = simple9_table[row].numbers;
+		uint32_t bits_per_integer = simple9_table[row].bits;
 
 		*into = row << 28;   //puts the row no. to the first 4 bits.
 		for (term = 0; from < source + pos; term++)
@@ -163,14 +159,13 @@ namespace JASS
 		COMPRESS_INTEGER_RELATIVE_10::DECODE()
 		--------------------------------------
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	void compress_integer_relative_10<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::decode(document_id::integer *destination, size_t destination_integers, const void *source, size_t source_length)
+	void compress_integer_relative_10::decode(integer *destination, size_t destination_integers, const void *source, size_t source_length)
 		{
 		long long numbers;
 		long mask, bits;
 		uint32_t *compressed_sequence = (uint32_t *)source;
 		uint32_t value, row;
-		auto *end = destination + destination_integers;
+		integer *end = destination + destination_integers;
 
 		/*
 			The first word is encoded in Simple-9
@@ -179,9 +174,9 @@ namespace JASS
 		row = value >> 28;
 		value &= 0x0fffffff;
 
-		bits = compress_integer_simple_9<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::simple9_table[row].bits;
-		mask = compress_integer_simple_9<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::simple9_table[row].mask;
-		numbers = compress_integer_simple_9<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::simple9_table[row].numbers;
+		bits = simple9_table[row].bits;
+		mask = simple9_table[row].mask;
+		numbers = simple9_table[row].numbers;
 
 		while (numbers-- > 0)
 			{
@@ -313,10 +308,9 @@ namespace JASS
 		COMPRESS_INTEGER_RELATIVE_10::UNITTEST()
 		----------------------------------------
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	void compress_integer_relative_10<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::unittest(void)
+	void compress_integer_relative_10::unittest(void)
 		{
-		std::vector<document_id::integer> every_case;
+		std::vector<integer> every_case;
 
 		/*
 			start with the largest possible Simple-9 value
@@ -373,7 +367,7 @@ namespace JASS
 		compressor.decode(&decompressed[0], 1, &compressed[0], size_once_compressed);
 		JASS_assert(decompressed[0] == every_case[0]);
 
-		document_id::integer one = 1;
+		integer one = 1;
 		size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &one, 0);
 		JASS_assert(size_once_compressed == 0);
 

@@ -29,8 +29,7 @@ namespace JASS
 		differently from normal.
 		@deprecated DO NOT USE EXCEPT FOR JASS VERISON 1 COMPATIBILITY
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	class compress_integer_qmx_jass_v1 : public compress_integer<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>
+	class compress_integer_qmx_jass_v1 : public compress_integer
 		{
 		private:
 			uint8_t *length_buffer;					///< Stores the number of bits needed to compress each integer
@@ -45,12 +44,7 @@ namespace JASS
 				@brief Constructor
 				@deprecated DO NOT USE EXCEPT FOR JASS VERISON 1 COMPATIBILITY
 			*/
-			compress_integer_qmx_jass_v1(const std::vector<std::string> &primary_keys, size_t documents = 1024, size_t top_k = 10):
-				compress_integer<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>(primary_keys, documents, top_k)
-				{
-				length_buffer = NULL;
-				length_buffer_length = 0;
-				}
+			compress_integer_qmx_jass_v1();
 
 			/*
 				COMPRESS_INTEGER_QMX_JASS_V1::~COMPRESS_INTEGER_QMX_JASS_V1()
@@ -60,11 +54,7 @@ namespace JASS
 				@brief Destructor
 				@deprecated DO NOT USE EXCEPT FOR JASS VERISON 1 COMPATIBILITY
 			*/
-			virtual ~compress_integer_qmx_jass_v1()
-			{
-			delete [] length_buffer;
-			}
-
+			virtual ~compress_integer_qmx_jass_v1();
 
 			/*
 				COMPRESS_INTEGER_QMX_JASS_V1::ENCODE()
@@ -79,7 +69,7 @@ namespace JASS
 				@return The number of bytes used to encode the integer sequence, or 0 on error (i.e. overflow).
 				@deprecated DO NOT USE EXCEPT FOR JASS VERISON 1 COMPATIBILITY
 			*/
-			virtual size_t encode(void *encoded, size_t encoded_buffer_length, const document_id::integer *source, size_t source_integers);
+			virtual size_t encode(void *encoded, size_t encoded_buffer_length, const integer *source, size_t source_integers);
 
 			/*
 				COMPRESS_INTEGER_QMX_JASS_V1::DECODE()
@@ -93,7 +83,7 @@ namespace JASS
 				@param source_length [in] The length (in bytes) of the source buffer.
 				@deprecated DO NOT USE EXCEPT FOR JASS VERISON 1 COMPATIBILITY
 			*/
-			virtual void decode(document_id::integer *decoded, size_t integers_to_decode, const void *source, size_t source_length);
+			virtual void decode(integer *decoded, size_t integers_to_decode, const void *source, size_t source_length);
 
 
 			/*

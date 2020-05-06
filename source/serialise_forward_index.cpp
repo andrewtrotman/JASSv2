@@ -61,11 +61,11 @@ namespace JASS
 		SERIALISE_FORWARD_INDEX::OPERATOR()()
 		-------------------------------------
 	*/
-	void serialise_forward_index::operator()(const slice &term, const index_postings &postings, document_id::integer document_frequency, document_id::integer *document_ids, index_postings_impact::impact_type *term_frequencies)
+	void serialise_forward_index::operator()(const slice &term, const index_postings &postings, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies)
 		{
 		auto end = document_ids + document_frequency;
 		auto current_tf = term_frequencies;
-		for (auto *current_id = document_ids; current_id < end; current_id++, current_tf++)
+		for (compress_integer::integer *current_id = document_ids; current_id < end; current_id++, current_tf++)
 			document[*current_id] << term << ":" << static_cast<int>(*current_tf) << " ";
 		}
 		

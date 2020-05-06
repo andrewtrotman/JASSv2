@@ -74,7 +74,7 @@ namespace JASS
 		SERIALISE_CI::OPERATOR()()
 		--------------------------
 	*/
-	void serialise_ci::operator()(const slice &term, const index_postings &postings, document_id::integer document_frequency, document_id::integer *document_ids, index_postings_impact::impact_type *term_frequencies)
+	void serialise_ci::operator()(const slice &term, const index_postings &postings, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies)
 		{
 		std::ostringstream code;
 
@@ -89,7 +89,7 @@ namespace JASS
 		*/
 		auto end = document_ids + document_frequency;
 		auto current_tf = term_frequencies;
-		for (auto *current_id = document_ids; current_id < end; current_id++, current_tf++)
+		for (compress_integer::integer *current_id = document_ids; current_id < end; current_id++, current_tf++)
 			code << "q.add_rsv(" << *current_id << ',' << (size_t)*current_tf << ");\n";
 		code << "}\n";
 

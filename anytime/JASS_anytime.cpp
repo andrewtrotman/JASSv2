@@ -15,7 +15,7 @@
 #include "file.h"
 #include "timer.h"
 #include "threads.h"
-//#include "decode_d0.h"
+#include "decode_d0.h"
 #include "query_heap.h"
 #include "run_export.h"
 #include "decode_none.h"
@@ -30,13 +30,8 @@
 //#include "query_maxblock_heap.h"
 #include "deserialised_jass_v1.h"
 #include "compress_integer_all.h"
-#include "compress_integer_none.h"
-#include "compress_integer_special.h"
+#include "compress_integer_qmx_jass_v1.h"
 #include "JASS_anytime_thread_result.h"
-
-
-#define SPECIAL
-
 
 constexpr size_t MAX_QUANTUM = 0x0FFF;
 constexpr size_t MAX_TERMS_PER_QUERY = 1024;
@@ -70,25 +65,8 @@ auto parameters = std::make_tuple						///< The  command line parameter block
 	ANYTIME()
 	---------
 */
-template <typename DECODER>
 void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v1 &index, std::vector<JASS_anytime_query> &query_list, size_t postings_to_process, size_t top_k)
 	{
-	/*
-		Extract the compression scheme from the index
-	*/
-#ifdef SPECIAL
-	std::string codex_name;
-	int32_t d_ness;
-	JASS::compress_integer &decompressor = index.codex(codex_name, d_ness);
-	std::cout << "Index compressed with " << codex_name << "-D" << d_ness << "\n";
-#else
-	std::string codex_name;
-	int32_t d_ness;
-	JASS::compress_integer &decompressor = index.codex(codex_name, d_ness);
-//	JASS::compress_integer &decompressor = * new JASS::compress_integer_special<uint16_t, MAX_DOCUMENTS, MAX_TOP_K>(index.primary_keys(), index.document_count(), top_k);
-	auto decoder = new DECODER(index.document_count() + 4096);				// Some decoders write past the end of the output buffer (e.g. GroupVarInt) so we allocate enough space for the overflow
-#endif
-
 	/*
 		Allocate the Score-at-a-Time table
 	*/
@@ -97,11 +75,10 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 	/*
 		Allocate a JASS query object
 	*/
-#ifdef SPECIAL
-	typedef JASS::compress_integer_special<uint16_t, MAX_DOCUMENTS, MAX_TOP_K> QUERY_TYPE;
-#else
+	typedef JASS::compress_integer_qmx_jass_v1 QUERY_TYPE;
+#ifdef NEVER
 //	typedef JASS::query_maxblock<uint16_t, MAX_DOCUMENTS, MAX_TOP_K> QUERY_TYPE;
-	typedef JASS::query_heap<uint16_t, MAX_DOCUMENTS, MAX_TOP_K, JASS::compress_integer_special<uint16_t, MAX_DOCUMENTS, MAX_TOP_K>> QUERY_TYPE;
+	typedef JASS::query_heap QUERY_TYPE;
 //	typedef JASS::query_bucket<uint16_t, MAX_DOCUMENTS, MAX_TOP_K> QUERY_TYPE;
 //	typedef JASS::query_maxblock_heap<uint16_t, MAX_DOCUMENTS, MAX_TOP_K> QUERY_TYPE;
 #endif
@@ -109,7 +86,8 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 	QUERY_TYPE *jass_query;
 	try
 		{
-		jass_query = new QUERY_TYPE(index.primary_keys(), index.document_count(), top_k);
+		jass_query = new QUERY_TYPE;
+		jass_query->init(index.primary_keys(), index.document_count(), top_k);
 		}
 	catch (std::bad_array_new_length &)
 		{
@@ -234,11 +212,7 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 				Process the postings
 			*/
 			uint16_t impact = header.impact;
-#ifdef SPECIAL
 			jass_query->decode_and_process(impact, header.segment_frequency, index.postings() + header.offset, header.end - header.offset);
-#else
-			decoder->decode_and_process(impact, *jass_query, decompressor, header.segment_frequency, index.postings() + header.offset, header.end - header.offset);
-#endif
 			}
 
 		jass_query->sort();
@@ -269,9 +243,6 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 	*/
 	delete jass_query;
 	delete [] segment_order;
-#ifndef SPECIAL
-	delete decoder;
-#endif
 	}
 
 /*
@@ -387,15 +358,12 @@ std::cout << "Maximum number of postings to process:" << postings_to_process << 
 	output.resize(parameter_threads);
 
 	/*
-		Start the work
+		Extract the compression scheme from the index
 	*/
 	std::string codex_name;
 	int32_t d_ness;
 	index.codex(codex_name, d_ness);
-
-#ifndef SPECIAL
-d_ness = 1;
-#endif
+	std::cout << "Index compressed with " << codex_name << "-D" << d_ness << "\n";
 
 	/*
 		Start the work
@@ -403,21 +371,7 @@ d_ness = 1;
 	auto total_search_time = JASS::timer::start();
 	if (parameter_threads == 1)
 		{
-		/*
-			We have only 1 thread so don't bother to start a thread to do the work
-		*/
-		switch (d_ness)
-			{
-			case 0:
-				anytime<JASS::decoder_d0>(output[0], index, query_list, postings_to_process, parameter_top_k);
-				break;
-			case 1:
-				anytime<JASS::decoder_d1>(output[0], index, query_list, postings_to_process, parameter_top_k);
-				break;
-			default:
-				JASS_assert("Unknown decoder, must be D0, D1, or D_none");
-				break;
-			}
+		anytime(output[0], index, query_list, postings_to_process, parameter_top_k);
 		}
 	else
 		{
@@ -425,18 +379,7 @@ d_ness = 1;
 			Multiple threads, so start each worker
 		*/
 		for (size_t which = 0; which < parameter_threads ; which++)
-			switch (d_ness)
-				{
-				case 0:
-					thread_pool.push_back(JASS::thread(anytime<JASS::decoder_d0>, std::ref(output[which]), std::ref(index), std::ref(query_list), postings_to_process, parameter_top_k));
-					break;
-				case 1:
-					thread_pool.push_back(JASS::thread(anytime<JASS::decoder_d1>, std::ref(output[which]), std::ref(index), std::ref(query_list), postings_to_process, parameter_top_k));
-					break;
-				default:
-					JASS_assert("Unknown decoder, must be D0, D1, or D_none");
-					break;
-				}
+			thread_pool.push_back(JASS::thread(anytime, std::ref(output[which]), std::ref(index), std::ref(query_list), postings_to_process, parameter_top_k));
 		/*
 			Wait until they're all done (blocking on the completion of each thread in turn)
 		*/

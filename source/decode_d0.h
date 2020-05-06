@@ -140,7 +140,8 @@ namespace JASS
 				std::vector<uint32_t>integer_sequence = {2, 3, 5, 7, 11, 13, 17, 19};
 				std::vector<std::string>primary_keys = {"zero" "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty"};
 				compress_integer_none identity;
-				query_heap<uint16_t, 100, 100, compress_integer_none> jass_query(primary_keys, 20, 5);
+				query_heap jass_query;
+				jass_query.init(primary_keys, 20, 5);
 				std::ostringstream result;
 
 				decoder_d0 decoder(20);

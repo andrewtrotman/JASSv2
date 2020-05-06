@@ -100,13 +100,9 @@ set(JASSlib_FILES
 	compress_integer_stream_vbyte.cpp
 	compress_integer_variable_byte.h
 	compress_integer_variable_byte.cpp
-	decode_d0.h
-	decode_d1.h
-	decode_none.h
 	deserialised_jass_v1.h
 	deserialised_jass_v1.cpp
 	document.h
-	document_id.h
 	dynamic_array.h
 	evaluate.h
 	evaluate.cpp

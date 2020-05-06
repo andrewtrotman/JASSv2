@@ -163,15 +163,28 @@ namespace JASS
 			/*!
 				@brief Constructor
 				@param array [in] The array to maintain the heap over
-				@param size [in] The maximum number of elements in te array (the size of the heap)
+				@param size [in] The maximum number of elements in the array (the size of the heap)
 				@param compare [in] The comparison functor
 			*/
-			heap(TYPE &array, size_t size, const COMPARE &compare = COMPARE()) :
+			heap(TYPE &array, size_t size = 0, const COMPARE &compare = COMPARE()) :
 				array(&array),
 				size(size),
 				compare(compare)
 				{
 				/* Nothing */
+				}
+
+			/*
+				HEAP::SET_TOP_K()
+				-----------------
+			*/
+			/*!
+				@brief change maximum number of elements in the array
+				@param size [in] The maximum number of elements in the array (the size of the heap)
+			*/
+			void set_top_k(size_t size)
+				{
+				this->size = size;
 				}
 
 			/*

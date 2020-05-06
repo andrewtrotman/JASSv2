@@ -28,18 +28,16 @@ namespace JASS
 		COMPRESS_INTEGER_STREAM_VBYTE::ENCODE()
 		---------------------------------------
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	size_t compress_integer_stream_vbyte<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::encode(void *encoded_as_void, size_t encoded_buffer_length, const document_id::integer *source, size_t source_integers)
+	size_t compress_integer_stream_vbyte::encode(void *encoded_as_void, size_t encoded_buffer_length, const integer *source, size_t source_integers)
 		{
-		return streamvbyte::streamvbyte_encode(const_cast<document_id::integer *>(source), static_cast<uint32_t>(source_integers), static_cast<uint8_t *>(encoded_as_void));
+		return streamvbyte::streamvbyte_encode(const_cast<integer *>(source), static_cast<uint32_t>(source_integers), static_cast<uint8_t *>(encoded_as_void));
 		}
 
 	/*
 		COMPRESS_INTEGER_STREAM_VBYTE::DECODE()
 		---------------------------------------
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	void compress_integer_stream_vbyte<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::decode(document_id::integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
+	void compress_integer_stream_vbyte::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
 		{
 		streamvbyte::streamvbyte_decode(reinterpret_cast<uint8_t *>(const_cast<void *>(source_as_void)), decoded, static_cast<uint32_t>(integers_to_decode));
 		}
@@ -48,8 +46,7 @@ namespace JASS
 		COMPRESS_INTEGER_STREAM_VBYTE::UNITTEST()
 		-----------------------------------------
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	void compress_integer_stream_vbyte<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::unittest(void)
+	void compress_integer_stream_vbyte::unittest(void)
 		{
 		compress_integer_stream_vbyte compressor;
 		std::vector<uint32_t> sequence;

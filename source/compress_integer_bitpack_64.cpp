@@ -19,8 +19,7 @@ namespace JASS
 		COMPRESS_INTEGER_BITPACK_64::DECODE()
 		-------------------------------------
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	void compress_integer_bitpack_64<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::decode(document_id::integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
+	void compress_integer_bitpack_64::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
 		{
 		uint64_t *into = (uint64_t *)decoded;
 		const uint8_t *source = (uint8_t *)source_as_void;

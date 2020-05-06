@@ -27,12 +27,8 @@ namespace JASS
 		@tparam MAX_DOCUMENTS The maximum number of documents that are ever going to exist in this collection
 		@tparam MAX_TOP_K The maximum top-k documents that are going to be asked for
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	class query_maxblock : public query<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>
+	class query_maxblock : public query
 		{
-		private:
-			typedef query<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> parent;
-
 		public:
 			/*
 				CLASS QUERY_MAXBLOCK::ITERATOR
@@ -78,7 +74,7 @@ namespace JASS
 					};
 
 				public:
-					query_maxblock<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent;	///< The query object that this is iterating over
+					query_maxblock &parent;	///< The query object that this is iterating over
 					size_t where;																		///< Where in the results list we are
 
 				public:
@@ -91,7 +87,7 @@ namespace JASS
 						@param parent [in] The object we are iterating over
 						@param where [in] Where in the results list this iterator starts
 					*/
-					iterator(query_maxblock<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &parent, size_t where) :
+					iterator(query_maxblock &parent, size_t where) :
 						parent(parent),
 						where(where)
 						{
@@ -137,9 +133,8 @@ namespace JASS
 					*/
 					docid_rsv_pair operator*()
 						{
-//						size_t id = parent.accumulator_pointers[where] - &parent.accumulators[0];
 						size_t id = parent.accumulators.get_index(parent.accumulator_pointers[where]);
-						return docid_rsv_pair(id, parent.primary_keys[id], parent.accumulators[id]);
+						return docid_rsv_pair(id, (*parent.primary_keys)[id], parent.accumulators[id]);
 						}
 					};
 
@@ -161,11 +156,36 @@ namespace JASS
 				@param documents [in] The number of documents in the collection.
 				@param top_k [in]	The top-k documents to return from the query once executed.
 			*/
-			query_maxblock (const std::vector<std::string> &primary_keys, size_t documents = 1024, size_t top_k = 10) :
-				parent(primary_keys, documents, top_k),
-				accumulators(documents)
+			query_maxblock()
 				{
 				rewind();
+				}
+
+			/*
+				QUERY_MAXBLOCK::~QUERY_MAXBLOCK()
+				---------------------------------
+			*/
+			/*!
+				@brief Destructor
+			*/
+			virtual ~query_maxblock()
+				{
+				}
+
+			/*
+				QUERY_MAXBLOCK::INIT()
+				----------------------
+			*/
+			/*!
+				@brief Initialise the object. MUST be called before first use.
+				@param primary_keys [in] Vector of the document primary keys used to convert from internal document ids to external primary keys.
+				@param documents [in] The number of documents in the collection.
+				@param top_k [in]	The top-k documents to return from the query once executed.
+			*/
+			virtual void init(const std::vector<std::string> &primary_keys, size_t documents = 1024, size_t top_k = 10)
+				{
+				query::init(primary_keys, documents, top_k);
+				accumulators.init(documents);
 				}
 
 			/*
@@ -202,13 +222,13 @@ namespace JASS
 			/*!
 				@brief Clear this object after use and ready for re-use
 			*/
-			void rewind(size_t largest_possible_rsv = 0)
+			virtual void rewind(ACCUMULATOR_TYPE largest_possible_rsv = 0)
 				{
 				sorted = false;
 				accumulators.rewind();
 				non_zero_accumulators = 0;
 //				std::fill(page_maximum, page_maximum + accumulators.number_of_clean_flags, 0);
-				parent::rewind();
+				query::rewind();
 				}
 
 			/*
@@ -238,8 +258,8 @@ namespace JASS
 					/*
 						We now sort the array over which the heap is built so that we have a sorted list of docids from highest to lowest rsv.
 					*/
-					top_k_qsort::sort(accumulator_pointers, non_zero_accumulators, this->top_k, parent::final_sort_cmp);
-					non_zero_accumulators = maths::minimum(non_zero_accumulators, this->top_k);
+					top_k_qsort::sort(accumulator_pointers, non_zero_accumulators, top_k, query::final_sort_cmp);
+					non_zero_accumulators = maths::minimum(non_zero_accumulators, top_k);
 
 					sorted = true;
 					}
@@ -276,22 +296,24 @@ namespace JASS
 			static void unittest(void)
 				{
 				std::vector<std::string> keys = {"one", "two", "three", "four"};
-				query_maxblock<uint16_t, 1024, 10> query_object(keys, 1024, 2);
+				query_maxblock *query_object = new query_maxblock;
+				query_object->init(keys, 1024, 2);
 				std::ostringstream string;
 
 				/*
 					Check the rsv stuff
 				*/
-				query_object.add_rsv(2, 10);
-				query_object.add_rsv(3, 20);
-				query_object.add_rsv(2, 2);
-				query_object.add_rsv(1, 1);
-				query_object.add_rsv(1, 14);
+				query_object->add_rsv(2, 10);
+				query_object->add_rsv(3, 20);
+				query_object->add_rsv(2, 2);
+				query_object->add_rsv(1, 1);
+				query_object->add_rsv(1, 14);
 
-				for (const auto rsv : query_object)
+				for (const auto rsv : *query_object)
 					string << "<" << rsv.document_id << "," << rsv.rsv << ">";
 				JASS_assert(string.str() == "<3,20><1,15>");
 
+				delete query_object;
 				puts("query_maxblock::PASSED");
 				}
 		};

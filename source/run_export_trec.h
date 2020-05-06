@@ -75,14 +75,13 @@ namespace JASS
 				{
 				std::vector<uint32_t>integer_sequence = {1, 1, 1, 1, 1, 1};
 				std::vector<std::string>primary_keys = {"zero", "one", "two", "three", "four", "five", "six"};
-				compress_integer_none identity;
-				query_heap<uint16_t, 100, 100, compress_integer_none> query(primary_keys, 10, 5);
+				compress_integer_none *identity = new compress_integer_none;
+				identity->init(primary_keys, 10, 5);
 				std::ostringstream result;
 
-				decoder_d1 decoder(20);
-				decoder.decode_and_process(1, query, identity, integer_sequence.size(), integer_sequence.data(), sizeof(integer_sequence[0]) * integer_sequence.size());
+				identity->decode_and_process(1, integer_sequence.size(), integer_sequence.data(), sizeof(integer_sequence[0]) * integer_sequence.size());
 
-				run_export_trec(result, "qid", query, "unittest", true);
+				run_export_trec(result, "qid", *identity, "unittest", true);
 
 				std::string correct_answer =
 					"qid Q0 six 1 1 unittest(ID:6->1)\n"

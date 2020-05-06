@@ -22,8 +22,7 @@ namespace JASS
 		happens when, for example, you can get away with 9 bits, but since 9 * 3 = 27 and 10 * 3 = 30, you
 		may as well use 10 bits.
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	const uint32_t compress_integer_bitpack_32_reduced<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::bits_to_use_complete[] =			///< bits to use (column 1 ) for bits in integer (right column)
+	const uint32_t compress_integer_bitpack_32_reduced::bits_to_use_complete[] =			///< bits to use (column 1 ) for bits in integer (right column)
 		{
 		1, //0
 		1, //1
@@ -66,8 +65,7 @@ namespace JASS
 		Given the width in bits, which selector should be used?  This is used to ensure
 		a switch() statement has all the entries 0..n with no gaps.
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	const uint32_t compress_integer_bitpack_32_reduced<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::selector_to_use_complete[] =			///< selector to use (column 1 ) for bits in integer (right column)
+	const uint32_t compress_integer_bitpack_32_reduced::selector_to_use_complete[] =			///< selector to use (column 1 ) for bits in integer (right column)
 		{
 		0, //0
 		0, //1
@@ -107,8 +105,7 @@ namespace JASS
 		COMPRESS_INTEGER_BITPACK_32_REDUCED::DECODE()
 		---------------------------------------------
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	void compress_integer_bitpack_32_reduced<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::decode(document_id::integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
+	void compress_integer_bitpack_32_reduced::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
 		{
 		uint32_t *into = (uint32_t *)decoded;
 		const uint8_t *source = (uint8_t *)source_as_void;

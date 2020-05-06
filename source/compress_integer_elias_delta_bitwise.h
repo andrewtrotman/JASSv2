@@ -25,8 +25,7 @@ namespace JASS
 	/*!
 		@brief Elias delta encoding using bit-by-bit encoding and decoding (slow)
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	class compress_integer_elias_delta_bitwise : public compress_integer_elias_gamma_bitwise<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>
+	class compress_integer_elias_delta_bitwise : public compress_integer_elias_gamma_bitwise
 		{
 		protected:
 			/*
@@ -37,12 +36,12 @@ namespace JASS
 				@brief encode (and push) one integer
 				@param val [in] The integer to encode
 			*/
-			inline void encode(document_id::integer val)
+			inline void encode(integer val)
 				{
 				uint32_t exp = maths::floor_log2(val);
 
-				compress_integer_elias_gamma_bitwise<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::encode(exp + 1);
-				this->bitstream.push_bits(val, exp);
+				compress_integer_elias_gamma_bitwise::encode(exp + 1);
+				bitstream.push_bits(val, exp);
 				}
 
 			/*
@@ -53,11 +52,11 @@ namespace JASS
 				@brief Decode (and pull) one integer from the stream
 				@return The next integer in the stream
 			*/
-			inline document_id::integer decode(void)
+			inline integer decode(void)
 				{
-				document_id::integer exp = (document_id::integer)compress_integer_elias_gamma_bitwise<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::decode() - 1;
+				integer exp = (integer)compress_integer_elias_gamma_bitwise::decode() - 1;
 
-				return (document_id::integer)((1ULL << exp) | this->bitstream.get_bits(exp));
+				return (integer)((1ULL << exp) | bitstream.get_bits(exp));
 				}
 
 		public:
@@ -97,12 +96,12 @@ namespace JASS
 				@param source_integers [in] The length (in integers) of the source buffer.
 				@return The number of bytes used to encode the integer sequence, or 0 on error (i.e. overflow).
 			*/
-			virtual size_t encode(void *encoded, size_t encoded_buffer_length, const document_id::integer *source, size_t source_integers)
+			virtual size_t encode(void *encoded, size_t encoded_buffer_length, const integer *source, size_t source_integers)
 				{
-				this->bitstream.rewind(encoded, encoded_buffer_length);
+				bitstream.rewind(encoded, encoded_buffer_length);
 				while (source_integers-- > 0)
 					encode(*source++);
-				return this->eof();
+				return eof();
 				}
 
 			/*
@@ -116,9 +115,9 @@ namespace JASS
 				@param source [in] The encoded integers.
 				@param source_length [in] The length (in bytes) of the source buffer.
 			*/
-			virtual void decode(document_id::integer *decoded, size_t integers_to_decode, const void *source, size_t source_length)
+			virtual void decode(integer *decoded, size_t integers_to_decode, const void *source, size_t source_length)
 				{
-				this->bitstream.rewind(const_cast<void *>(source));
+				bitstream.rewind(const_cast<void *>(source));
 				while (integers_to_decode-- > 0)
 					*decoded++ = decode();
 				}
@@ -132,7 +131,9 @@ namespace JASS
 			*/
 			static void unittest(void)
 				{
-				compress_integer<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::unittest(compress_integer_elias_delta_bitwise(), 1);
+				compress_integer_elias_delta_bitwise *compressor = new compress_integer_elias_delta_bitwise;
+				compress_integer::unittest(*compressor, 1);
+				delete compressor;
 				puts("compress_integer_elias_delta_bitwise::PASSED");
 				}
 		};

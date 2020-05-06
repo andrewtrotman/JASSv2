@@ -18,8 +18,7 @@ namespace JASS
 		COMPRESS_INTEGER::UNITTEST_ONE()
 		--------------------------------
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	void compress_integer<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::unittest_one(compress_integer<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &compressor, const std::vector<uint32_t> &sequence)
+	void compress_integer::unittest_one(compress_integer &compressor, const std::vector<uint32_t> &sequence)
 		{
 		std::vector<uint32_t>compressed(sequence.size() * 4);
 		std::vector<uint32_t>decompressed(sequence.size() + 1024);
@@ -40,10 +39,9 @@ namespace JASS
 		COMPRESS_INTEGER::UNITTEST()
 		----------------------------
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	void compress_integer<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::unittest(compress_integer<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K> &&compressor, uint32_t starting_at)
+	void compress_integer::unittest(compress_integer &compressor, uint32_t starting_at)
 		{
-		std::vector<document_id::integer> every_case;
+		std::vector<integer> every_case;
 		size_t instance;
 
 		/*
@@ -53,7 +51,7 @@ namespace JASS
 			{
 			every_case.clear();
 			for (instance = 0; instance < 1024; instance++)
-				every_case.push_back(static_cast<document_id::integer>((1LL << bitness) - 1));
+				every_case.push_back(static_cast<integer>((1LL << bitness) - 1));
 			unittest_one(compressor, every_case);
 			}
 
@@ -61,10 +59,10 @@ namespace JASS
 			Test the delta (d-gap) encoder.
 		*/
 		every_case = {4, 5, 7, 9, 12};
-		std::vector<document_id::integer> d1_answer = {4, 1, 2, 2, 3};
+		std::vector<integer> d1_answer = {4, 1, 2, 2, 3};
 
-		std::vector<document_id::integer> every_encoded;
-		std::vector<document_id::integer> every_decoded;
+		std::vector<integer> every_encoded;
+		std::vector<integer> every_decoded;
 
 		every_encoded.resize(every_case.size());
 		auto got = d1_encode(&every_encoded[0], &every_case[0], every_case.size());
@@ -79,7 +77,7 @@ namespace JASS
 		/*
 			Check Dn-encoding (where n == 2)
 		*/
-		std::vector<document_id::integer> d2_answer = {4, 5, 3, 4, 5};
+		std::vector<integer> d2_answer = {4, 5, 3, 4, 5};
 		every_encoded.resize(0);
 		every_encoded.resize(every_case.size());
 		got = dn_encode(&every_encoded[0], &every_case[0], every_case.size(), 2);

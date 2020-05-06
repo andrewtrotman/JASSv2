@@ -19,8 +19,6 @@
 #include "checksum.h"
 #include "quantize.h"
 #include "bitstream.h"
-#include "decode_d0.h"
-#include "decode_d1.h"
 #include "bitstring.h"
 #include "query_heap.h"
 #include "statistics.h"
@@ -106,7 +104,6 @@
 #include "compress_integer_bitpack_32_reduced.h"
 #include "compress_integer_elias_gamma_bitwise.h"
 #include "compress_integer_elias_delta_bitwise.h"
-#include "compress_integer_gather_elias_gamma_simd.h"
 
 /*
 	MAIN()
@@ -132,17 +129,18 @@ int main(void)
 		JASS::hardware_support hardware;
 		if (hardware.AVX2)
 			{
+#ifdef NEVER
 			puts("compress_integer_bitpack_256");
 			JASS::compress_integer_bitpack_256::unittest();
+#endif
 
 			puts("compress_integer_elias_gamma_simd");
 			JASS::compress_integer_elias_gamma_simd::unittest();
 
-			puts("compress_integer_gather_elias_gamma_simd");
-			JASS::compress_integer_gather_elias_gamma_simd::unittest();
-
+#ifdef NEVER
 			puts("compress_integer_elias_delta_simd");
 			JASS::compress_integer_elias_delta_simd::unittest();
+#endif
 			}
 		else
 			{
@@ -156,11 +154,13 @@ int main(void)
 
 		if (hardware.BMI1)
 			{
+#ifdef NEVER
 			puts("compress_integer_elias_gamma");
 			JASS::compress_integer_elias_gamma::unittest();
 
 			puts("compress_integer_elias_delta");
 			JASS::compress_integer_elias_delta::unittest();
+#endif
 			}
 		else
 			{
@@ -186,12 +186,6 @@ int main(void)
 		
 		puts("bitstream");
 		JASS::bitstream::unittest();
-
-		puts("compress_integer_elias_gamma_bitwise");
-		JASS::compress_integer_elias_gamma_bitwise::unittest();
-
-		puts("compress_integer_elias_delta_bitwise");
-		JASS::compress_integer_elias_delta_bitwise::unittest();
 
 		puts("ranking_function_atire_bm25");
 		JASS::ranking_function_atire_bm25::unittest();
@@ -378,6 +372,13 @@ int main(void)
 		puts("serialise_forward_index");
 		JASS::serialise_forward_index::unittest();
 
+#ifdef NEVER
+		puts("compress_integer_elias_gamma_bitwise");
+		JASS::compress_integer_elias_gamma_bitwise::unittest();
+
+		puts("compress_integer_elias_delta_bitwise");
+		JASS::compress_integer_elias_delta_bitwise::unittest();
+
 		puts("compress_integer_none");
 		JASS::compress_integer_none::unittest();
 
@@ -392,10 +393,10 @@ int main(void)
 
 		puts("compress_integer_qmx_improved");
 		JASS::compress_integer_qmx_improved::unittest();
-
+#endif
 		puts("compress_integer_qmx_jass_v1");
 		JASS::compress_integer_qmx_jass_v1::unittest();
-
+#ifdef NEVER
 		puts("compress_integer_simple_9");
 		JASS::compress_integer_simple_9::unittest();
 
@@ -431,7 +432,7 @@ int main(void)
 
 		puts("compress_integer_bitpack_128");
 		JASS::compress_integer_bitpack_128::unittest();
-
+#endif
 		puts("accumulator_2d");
 		JASS::accumulator_2d<uint32_t, 1>::unittest();
 
@@ -445,22 +446,16 @@ int main(void)
 		JASS::top_k_heap<int>::unittest();
 
 		puts("query_heap");
-		JASS::query_heap<uint16_t, 1, 1>::unittest();
+		JASS::query_heap::unittest();
 
 		puts("query_maxblock");
-		JASS::query_maxblock<uint16_t, 1, 1>::unittest();
+		JASS::query_maxblock::unittest();
 
 		puts("query_maxblock_heap");
-		JASS::query_maxblock_heap<uint16_t, 1, 1>::unittest();
+		JASS::query_maxblock_heap::unittest();
 
 		puts("query_bucket");
-		JASS::query_bucket<uint16_t, 1, 1>::unittest();
-
-		puts("decode_d0");
-		JASS::decoder_d0::unittest();
-
-		puts("decode_d1");
-		JASS::decoder_d1::unittest();
+		JASS::query_bucket::unittest();
 
 		puts("run_export_trec");
 		JASS::run_export_trec::unittest();

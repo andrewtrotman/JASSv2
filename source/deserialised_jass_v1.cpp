@@ -179,7 +179,7 @@ namespace JASS
 		DESERIALISED_JASS_V1::CODEX()
 		-----------------------------
 	*/
-	compress_integer_t &deserialised_jass_v1::codex(std::string &name, int32_t &d_ness) const
+	compress_integer &deserialised_jass_v1::codex(std::string &name, int32_t &d_ness) const
 		{
 		if (postings_memory.size() == 0)
 			{

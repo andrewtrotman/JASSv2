@@ -65,8 +65,7 @@ namespace JASS
 	the buffer to be encoded, and an edge case at end of encoded string), and it has been changed to remove SIMD-word
 	alignment requirement.
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	class compress_integer_qmx_original : public compress_integer<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>
+	class compress_integer_qmx_original : public compress_integer
 		{
 		private:
 			uint8_t *length_buffer;					///< Stores the number of bits needed to compress each integer
@@ -131,7 +130,7 @@ namespace JASS
 				@param source_integers [in] The length (in integers) of the source buffer.
 				@return The number of bytes used to encode the integer sequence, or 0 on error (i.e. overflow).
 			*/
-			virtual size_t encode(void *encoded, size_t encoded_buffer_length, const document_id::integer *source, size_t source_integers);
+			virtual size_t encode(void *encoded, size_t encoded_buffer_length, const integer *source, size_t source_integers);
 
 			/*
 				COMPRESS_INTEGER_QMX_ORIGINAL::DECODE()
@@ -144,7 +143,7 @@ namespace JASS
 				@param source [in] The encoded integers.
 				@param source_length [in] The length (in bytes) of the source buffer.
 			*/
-			virtual void decode(document_id::integer *decoded, size_t integers_to_decode, const void *source, size_t source_length);
+			virtual void decode(integer *decoded, size_t integers_to_decode, const void *source, size_t source_length);
 
 			/*
 				COMPRESS_INTEGER_QMX_ORIGINAL::UNITTEST_ONE()

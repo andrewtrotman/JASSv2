@@ -19,8 +19,6 @@
 
 #include "asserts.h"
 #include "query_heap.h"
-#include "document_id.h"
-
 
 namespace JASS
 	{
@@ -34,11 +32,14 @@ namespace JASS
 		methods, encode() and decode().  As those methods are virtual, an object of the given subclass
 		is needed in order to encode or decode integer sequences.
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	class compress_integer : public query_heap<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K, compress_integer<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>>
+	class compress_integer : public query_heap
 		{
 		private:
 			static constexpr int MAX_D_GAP = 64;				///< this is the maximum D-ness that this code supports, it can be changes to anything that won't reuslt in stack overflow.  It is unlikely to exceed 16 for years (from 2019).
+
+		public:
+			typedef uint32_t integer;									///< This class and descendants will work on integers of this size.  Do not change without also changing JASS_COMPRESS_INTEGER_BITS_PER_INTEGER
+			#define JASS_COMPRESS_INTEGER_BITS_PER_INTEGER 32	///< The number of bits in compress_integer::integer (either 32 or 64). This must remain in sync with compress_integer::integer (and a hard coded value to be used in \#if statements)
 
 		public:
 			/*
@@ -48,8 +49,8 @@ namespace JASS
 			/*!
 				@brief Constructor.
 			*/
-			compress_integer(const std::vector<std::string> &primary_keys, size_t documents = 1024, size_t top_k = 10) :
-				query_heap<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K, compress_integer>(primary_keys, documents, top_k)
+			compress_integer() :
+				query_heap()
 				{
 				/* Nothing */
 				}
@@ -76,17 +77,17 @@ namespace JASS
 				@param source_integers [in] The number of integers in the list.
 				@return The number of integers encoded.
 			*/
-			static size_t d1_encode(document_id::integer *encoded, const document_id::integer *source, size_t source_integers)
+			static size_t d1_encode(integer *encoded, const integer *source, size_t source_integers)
 				{
-				document_id::integer prior = 0;
-				const auto *end = source + source_integers;
+				integer prior = 0;
+				const integer *end = source + source_integers;
 
-				for (const auto *current = source; current < end; current++)
+				for (const integer *current = source; current < end; current++)
 					{
 					/*
 						This is done in this order so that the encoded and source buffers can be the same array.
 					*/
-					auto d1 = *current - prior;
+					integer d1 = *current - prior;
 					prior = *current;
 					*encoded++ = d1;
 					}
@@ -104,12 +105,12 @@ namespace JASS
 				@param source_integers [in] The number of integers in the list.
 				@return The number of integers encoded.
 			*/
-			static size_t d1_decode(document_id::integer *decoded, const document_id::integer *source, size_t source_integers)
+			static size_t d1_decode(integer *decoded, const integer *source, size_t source_integers)
 				{
-				auto sum = 0;
-				const auto *end = source + source_integers;
+				integer sum = 0;
+				const integer *end = source + source_integers;
 
-				for (const auto *current = source; current < end; current++)
+				for (const integer *current = source; current < end; current++)
 					{
 					sum += *current;
 					*decoded++ = sum;
@@ -130,10 +131,10 @@ namespace JASS
 				@param n [in] The encoding distance (normally 1, but can be any inteter up-to MAX_D_GAP).
 				@return The number of integers encoded.
 			*/
-			static size_t dn_encode(document_id::integer *encoded, const document_id::integer *source, size_t source_integers, size_t n = 1)
+			static size_t dn_encode(integer *encoded, const integer *source, size_t source_integers, size_t n = 1)
 				{
 				JASS_assert(n < MAX_D_GAP);		// Verify that n isn't too large.
-				document_id::integer prior[MAX_D_GAP];	// temporary buffer of unencoded values stored so that source cab equal encoded (the pointers, that is)
+				integer prior[MAX_D_GAP];	// temporary buffer of unencoded values stored so that source cab equal encoded (the pointers, that is)
 
 				/*
 					The first n are not encoded, so write then directly into the output buffer
@@ -148,14 +149,14 @@ namespace JASS
 				/*
 					The remainder are differences.  We'll use two pointers to keep track of the sum and one for where we write into.
 				*/
-				auto *into = encoded + n;
-				const auto *current = source + n;
+				integer *into = encoded + n;
+				const integer *current = source + n;
 				size_t where = 0;
 
-				const auto *end = source + source_integers;
+				const integer *end = source + source_integers;
 				while (current < end)
 					{
-					auto difference = *current - prior[where];
+					integer difference = *current - prior[where];
 					prior[where] = *current;
 					*into = difference;
 					into++;
@@ -178,7 +179,7 @@ namespace JASS
 				@param n [in] The encoding distance (normally 1, but can be any inteter up-to source_integers).
 				@return The number of integers encoded.
 			*/
-			static size_t dn_decode(document_id::integer *decoded, const document_id::integer *source, size_t source_integers, size_t n = 1)
+			static size_t dn_decode(integer *decoded, const integer *source, size_t source_integers, size_t n = 1)
 				{
 				/*
 					The first n are not encoded, so write then directly into the output buffer
@@ -188,11 +189,11 @@ namespace JASS
 				/*
 					The remainder are encoded so decode them
 				*/
-				auto *into = decoded + n;
-				auto *previous = decoded;
-				const auto *current = source + n;
+				integer *into = decoded + n;
+				integer *previous = decoded;
+				const integer *current = source + n;
 
-				const auto *end = decoded + source_integers;
+				const integer *end = decoded + source_integers;
 				while (into < end)
 					*into++ = *previous++ + *current++;
 
@@ -211,7 +212,7 @@ namespace JASS
 				@param source_integers [in] The length (in integers) of the source buffer.
 				@return The number of bytes used to encode the integer sequence, or 0 on error (i.e. overflow).
 			*/
-			virtual size_t encode(void *encoded, size_t encoded_buffer_length, const document_id::integer *source, size_t source_integers) = 0;
+			virtual size_t encode(void *encoded, size_t encoded_buffer_length, const integer *source, size_t source_integers) = 0;
 			
 			/*
 				COMPRESS_INTEGER::DECODE()
@@ -224,24 +225,7 @@ namespace JASS
 				@param source [in] The encoded integers.
 				@param source_length [in] The length (in bytes) of the source buffer.
 			*/
-			virtual void decode(document_id::integer *decoded, size_t integers_to_decode, const void *source, size_t source_length) = 0;
-
-			/*
-				COMPRESS_INTEGER::DECODE_WITH_WRITER()
-				--------------------------------------
-			*/
-			/*!
-				@brief Decode a sequence of integers calling the writer to process them
-				@param integers_to_decode [in] The minimum number of integers to decode (it may decode more).
-				@param source [in] The encoded integers.
-				@param source_length [in] The length (in bytes) of the source buffer.
-			*/
-			virtual void decode_with_writer(size_t integers_to_decode, const void *source, size_t source_length)
-				{
-				/*
-					Nothing
-				*/
-				}
+			virtual void decode(integer *decoded, size_t integers_to_decode, const void *source, size_t source_length) = 0;
 
 			/*
 				COMPRESS_INTEGER::UNITTEST_ONE()
@@ -263,12 +247,6 @@ namespace JASS
 				@param compressor [in] a compressor
 				@param staring_from [in] normally 0.  The bitness to start testing from (some schemes cannot encode a 0 (e.g. Elias gama) so use 1 in those cases).
 			*/
-			static void unittest(compress_integer &&compressor, uint32_t staring_from = 0);
+			static void unittest(compress_integer &compressor, uint32_t staring_from = 0);
 		} ;
-
-	/*
-		TYPEDEF COMPRESS_INTEGER_T
-		--------------------------
-	*/
-	typedef compress_integer<uint16_t, 1, 1> compress_integer_t;
 	}

@@ -33,8 +33,7 @@ namespace JASS
 		See:
 			V. Anh, A. Moffat (2010), Index compression using 64-bit words, Software Practive & Experience, pp 131-147
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	class compress_integer_carry_8b : public compress_integer_simple_9<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>
+	class compress_integer_carry_8b : public compress_integer_simple_9
 		{
 		private:
 			/*
@@ -72,7 +71,7 @@ namespace JASS
 				@param next_selector_in_previous_word [in] Should the compressor pack the selector in the previous word?
 				@return the number of integers that were encoded (or 0 on failure to encode)
 			*/
-			size_t pack_one_word(size_t base, size_t highest, uint64_t *destination, const document_id::integer *source, size_t source_integers, size_t &next_selector_in_previous_word);
+			size_t pack_one_word(size_t base, size_t highest, uint64_t *destination, const integer *source, size_t source_integers, size_t &next_selector_in_previous_word);
 
 		public:
 			/*
@@ -111,7 +110,7 @@ namespace JASS
 				@param source_integers [in] The length (in integers) of the source buffer.
 				@return The number of bytes used to encode the integer sequence, or 0 on error (i.e. overflow).
 			*/
-			virtual size_t encode(void *encoded, size_t encoded_buffer_length, const document_id::integer *source, size_t source_integers);
+			virtual size_t encode(void *encoded, size_t encoded_buffer_length, const integer *source, size_t source_integers);
 
 			/*
 				COMPRESS_INTEGER_CARRY_8B::DECODE()
@@ -124,7 +123,7 @@ namespace JASS
 				@param source [in] The encoded integers.
 				@param source_length [in] The length (in bytes) of the source buffer.
 			*/
-			virtual void decode(document_id::integer *decoded, size_t integers_to_decode, const void *source, size_t source_length);
+			virtual void decode(integer *decoded, size_t integers_to_decode, const void *source, size_t source_length);
 
 			/*
 				COMPRESS_INTEGER_CARRY_8B::UNITTEST_THIS()
@@ -134,7 +133,7 @@ namespace JASS
 				@brief Unit test one sequence of integers - assert on failure.
 				@param every_case [in] the sequence to test
 			*/
-			static void unittest_this(std::vector<document_id::integer> every_case);
+			static void unittest_this(std::vector<integer> every_case);
 
 			/*
 				COMPRESS_INTEGER_CARRY_8B::UNITTEST()

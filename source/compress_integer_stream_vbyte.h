@@ -25,8 +25,7 @@ namespace JASS
 		@details A byte-aligned encoding scheme that places the selectors before the payloads and uses SIMD instructions to decode.  See:
 			D. Lemire, N. Kurz, C. Rupp (2018), Stream VByte: Faster byte-oriented integer compression, Information Processing Letters 130:(1-6)
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	class compress_integer_stream_vbyte : public compress_integer<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>
+	class compress_integer_stream_vbyte : public compress_integer
 		{
 		public:
 			/*
@@ -65,7 +64,7 @@ namespace JASS
 				@param source_integers [in] The length (in integers) of the source buffer.
 				@return The number of bytes used to encode the integer sequence, or 0 on error (i.e. overflow).
 			*/
-			virtual size_t encode(void *encoded, size_t encoded_buffer_length, const document_id::integer *source, size_t source_integers);
+			virtual size_t encode(void *encoded, size_t encoded_buffer_length, const integer *source, size_t source_integers);
 
 			/*
 				COMPRESS_INTEGER_STREAM_VBYTE::DECODE()
@@ -78,7 +77,7 @@ namespace JASS
 				@param source [in] The encoded integers.
 				@param source_length [in] The length (in bytes) of the source buffer.
 			*/
-			virtual void decode(document_id::integer *decoded, size_t integers_to_decode, const void *source, size_t source_length);
+			virtual void decode(integer *decoded, size_t integers_to_decode, const void *source, size_t source_length);
 
 
 			/*

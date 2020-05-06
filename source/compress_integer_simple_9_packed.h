@@ -30,8 +30,7 @@ namespace JASS
 		See:
 			Trotman A, Albert M, Burgess B (2015), Optimal Packing in Simple-Family Codecs, Proceedings of the 2015 International Conference on The Theory of Information Retrieval (ICTIR 2015), pp. 337-340
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	class compress_integer_simple_9_packed : public compress_integer<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>
+	class compress_integer_simple_9_packed : public compress_integer
 		{
 		protected:
 			/*
@@ -88,7 +87,7 @@ namespace JASS
 				@param source_integers [in] The length (in integers) of the source buffer.
 				@return The number of bytes used to encode the integer sequence, or 0 on error (i.e. overflow).
 			*/
-			virtual size_t encode(void *encoded, size_t encoded_buffer_length, const document_id::integer *source, size_t source_integers);
+			virtual size_t encode(void *encoded, size_t encoded_buffer_length, const integer *source, size_t source_integers);
 
 			/*
 				COMPRESS_INTEGER_SIMPLE_9_PACKED::DECODE()
@@ -101,7 +100,7 @@ namespace JASS
 				@param source [in] The encoded integers.
 				@param source_length [in] The length (in bytes) of the source buffer.
 			*/
-			virtual void decode(document_id::integer *decoded, size_t integers_to_decode, const void *source, size_t source_length);
+			virtual void decode(integer *decoded, size_t integers_to_decode, const void *source, size_t source_length);
 
 			/*
 				COMPRESS_INTEGER_SIMPLE_9_PACKED::UNITTEST()

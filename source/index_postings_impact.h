@@ -53,8 +53,8 @@ namespace JASS
 				{
 				public:
 					impact_type impact_score;								///< The impact score.
-					document_id::integer  *start;					///< Pointer into the postings of the start of the document list for this impact score.
-					document_id::integer  *finish;					///< Pointer into the postings of the end of the document list for this impact score.
+					compress_integer::integer  *start;					///< Pointer into the postings of the start of the document list for this impact score.
+					compress_integer::integer  *finish;					///< Pointer into the postings of the end of the document list for this impact score.
 
 					/*
 						INDEX_POSTINGS_IMPACT::IMPACT::IMPACT
@@ -80,7 +80,7 @@ namespace JASS
 						@brief Return a pointer to the start of the document identifiers array (for use as an iterator).
 						@return Pointer to first document id.
 					*/
-					document_id::integer *begin(void) const
+					compress_integer::integer *begin(void) const
 						{
 						return start;
 						}
@@ -93,7 +93,7 @@ namespace JASS
 						@brief Return a pointer to the end of the document identifiers array (for use as an iterator).
 						@return Pointer to the element immediately after the last document id.
 					*/
-					document_id::integer *end(void) const
+					compress_integer::integer *end(void) const
 						{
 						return finish;
 						}
@@ -106,9 +106,9 @@ namespace JASS
 						@brief Return the numner of postings with this impact score.
 						@return number of postings with this impact score.
 					*/
-					document_id::integer size(void) const
+					compress_integer::integer size(void) const
 						{
-						return static_cast<document_id::integer>(finish - start);
+						return static_cast<compress_integer::integer>(finish - start);
 						}
 				};
 
@@ -185,8 +185,8 @@ namespace JASS
 			size_t number_of_impacts;					///< The number of impact objects in the impacts array.
 			impact impacts[largest_impact + 1];		///< List of impact pointers (the impact header).
 			size_t number_of_postings;					///< The length of the pistings array measured in size_t.
-			document_id::integer *postings;	///< The list of document IDs, strung together for each postings segment.
-			document_id::integer *document_ids;					///< The re-used buffer storing decoded document ids - used while impact ordering
+			compress_integer::integer *postings;	///< The list of document IDs, strung together for each postings segment.
+			compress_integer::integer *document_ids;					///< The re-used buffer storing decoded document ids - used while impact ordering
 			index_postings_impact::impact_type *term_frequencies;	///< The re-used buffer storing the term frequencies - used while impact ordering
 			size_t temporary_size;											///< The number of bytes in temporary
 			uint8_t *temporary;												///< Temporary buffer - cannot be used to store anything between calls
@@ -238,7 +238,7 @@ namespace JASS
 				@brief Return a pointer to the buffer containing the postings
 				@details This method should only be called by a method that builds one of these objects.
 			*/
-			document_id::integer *get_postings(void)
+			compress_integer::integer *get_postings(void)
 				{
 				return postings;
 				}
@@ -254,7 +254,7 @@ namespace JASS
 				then posting[0] will be the impact score.
 				@return a reference to the size_t at postng[index].
 			*/
-			document_id::integer &operator[](size_t index) const
+			compress_integer::integer &operator[](size_t index) const
 				{
 				return postings[index];
 				}
@@ -271,7 +271,7 @@ namespace JASS
 				@param postings_end [in] The end of the range if postings that share this impact score
 
 			*/
-			void header(size_t index, size_t score, document_id::integer *postings_start, document_id::integer *postings_end)
+			void header(size_t index, size_t score, compress_integer::integer *postings_start, compress_integer::integer *postings_end)
 				{
 				impacts[index].impact_score = score;
 				impacts[index].start = postings_start;
@@ -399,7 +399,7 @@ namespace JASS
 				/*
 					Check the data got into the right places.
 				*/
-				const document_id::integer answer[] = {255, 10, 0, 128, 2, 5, 0};
+				const compress_integer::integer answer[] = {255, 10, 0, 128, 2, 5, 0};
 				JASS_assert(memcmp(&postings[0], answer, sizeof(answer)) == 0);
 
 				JASS_assert(postings.impacts[0].impact_score == 255);

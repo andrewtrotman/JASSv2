@@ -19,8 +19,7 @@
 
 namespace JASS
 	{
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	const uint32_t compress_integer_elias_gamma_simd<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::high_bits[] =
+	static const uint32_t high_bits[] =
 		{
 		0b00000000000000000000000000000000,
 		0b10000000000000000000000000000000,
@@ -61,8 +60,7 @@ namespace JASS
 		COMPRESS_INTEGER_ELIAS_GAMMA_SIMD::COMPUTE_SELECTOR()
 		-----------------------------------------------------
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	uint32_t compress_integer_elias_gamma_simd<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::compute_selector(const uint8_t *encodings)
+	uint32_t compress_integer_elias_gamma_simd::compute_selector(const uint8_t *encodings)
 		{
 		uint32_t value = 0;
 		int current;
@@ -88,8 +86,7 @@ namespace JASS
 		COMPRESS_INTEGER_ELIAS_GAMMA_SIMD::ENCODE()
 		-------------------------------------------
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	size_t compress_integer_elias_gamma_simd<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::encode(void *encoded, size_t encoded_buffer_length, const document_id::integer *array, size_t elements)
+	size_t compress_integer_elias_gamma_simd::encode(void *encoded, size_t encoded_buffer_length, const integer *array, size_t elements)
 		{
 		uint8_t encodings[33] = {0};
 		uint32_t *destination = (uint32_t *)encoded;
@@ -207,8 +204,7 @@ namespace JASS
 		return  (uint8_t *)destination - (uint8_t *)encoded;
 		}
 
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	alignas(64)  const uint32_t compress_integer_elias_gamma_simd<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::mask_set[33][16]=
+	alignas(64)  const uint32_t compress_integer_elias_gamma_simd::mask_set[33][16]=
 		{
 		{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},								///< Sentinal as the selector cannot be 0.
 		{0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01},								///< AND mask for 1-bit integers
@@ -251,8 +247,7 @@ namespace JASS
 			COMPRESS_INTEGER_ELIAS_GAMMA_SIMD::DECODE()
 			-------------------------------------------
 		*/
-		template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-		void compress_integer_elias_gamma_simd<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
+		void compress_integer_elias_gamma_simd::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
 			{
 			__m512i mask;
 			const uint8_t *source = (const uint8_t *)source_as_void;
@@ -314,8 +309,7 @@ namespace JASS
 		COMPRESS_INTEGER_ELIAS_GAMMA_SIMD::DECODE()
 		-------------------------------------------
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	void compress_integer_elias_gamma_simd<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::decode(document_id::integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
+	void compress_integer_elias_gamma_simd::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
 		{
 		__m256i mask;
 		const uint8_t *source = (const uint8_t *)source_as_void;
@@ -388,12 +382,12 @@ namespace JASS
 		COMPRESS_INTEGER_ELIAS_GAMMA_SIMD::UNITTEST()
 		---------------------------------------------
 	*/
-	template <typename ACCUMULATOR_TYPE, size_t MAX_DOCUMENTS, size_t MAX_TOP_K>
-	void compress_integer_elias_gamma_simd<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::unittest(void)
+	void compress_integer_elias_gamma_simd::unittest(void)
 		{
-		compress_integer_elias_gamma_simd compressor;
+		compress_integer_elias_gamma_simd *compressor = new compress_integer_elias_gamma_simd;
 
-		compress_integer<ACCUMULATOR_TYPE, MAX_DOCUMENTS, MAX_TOP_K>::unittest(compress_integer_elias_gamma_simd());
+
+		compress_integer::unittest(*compressor);
 
 		std::vector<uint32_t> broken_sequence =
 			{
@@ -426,7 +420,7 @@ namespace JASS
 			25,9,6,9,6,3,41,17,15,11,33,8,1,1,1,1			// 6 bits
 			};
 
-		unittest_one(compressor, broken_sequence);
+		unittest_one(*compressor, broken_sequence);
 
 		std::vector<uint32_t> second_broken_sequence =
 			{
@@ -439,7 +433,7 @@ namespace JASS
 			6, 2, 1, 1, 3, 3, 7, 3, 2, 1, 2, 4, 3, 1, 2, 1,			// 3 bits <31 bits>, carryover 1 from next line
 			6, 2, 2, 1															// 3 bits
 			};
-		unittest_one(compressor, second_broken_sequence);
+		unittest_one(*compressor, second_broken_sequence);
 
 		puts("compress_integer_elias_gamma_simd::PASSED");
 		}
