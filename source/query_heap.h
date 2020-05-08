@@ -150,6 +150,7 @@ namespace JASS
 			size_t needed_for_top_k;													///< The number of results we still need in order to fill the top-k
 			heap<ACCUMULATOR_TYPE *, typename query::add_rsv_compare> top_results;			///< Heap containing the top-k results
 			bool sorted;																	///< has heap and accumulator_pointers been sorted (false after rewind() true after sort())
+			DOCID_TYPE d1_cumulative_sum;
 
 		public:
 			/*
@@ -237,6 +238,7 @@ namespace JASS
 				accumulators.rewind();
 				needed_for_top_k = this->top_k;
 				query::rewind(largest_possible_rsv);
+				d1_cumulative_sum = 0;
 				}
 
 			/*
@@ -301,6 +303,49 @@ namespace JASS
 							top_results.promote(which);				// we're already in the heap so promote this document
 						}
 					}
+				}
+
+			/*
+				QUERY_HEAP::INIT_ADD_RSV()
+				--------------------------
+			*/
+			/*!
+				@brief Set the d1_cumulative_sum to zero
+			*/
+			void init_add_rsv()
+				{
+				d1_cumulative_sum = 0;
+				}
+
+			/*
+				QUERY_HEAP::ADD_RSV()
+				---------------------
+			*/
+			/*!
+				@brief Add weight to the rsv for document docuument_id
+				@param document_ids [in] which document to increment
+				@param score [in] the amount of weight to add
+			*/
+			forceinline void add_rsv(__m256i document_ids)
+				{
+				DOCID_TYPE extracted;
+
+				if ((extracted = _mm256_extract_epi32(document_ids, 0)) != 0)
+					add_rsv(d1_cumulative_sum += extracted, impact);
+				if ((extracted = _mm256_extract_epi32(document_ids, 1)) != 0)
+					add_rsv(d1_cumulative_sum += extracted, impact);
+				if ((extracted = _mm256_extract_epi32(document_ids, 2)) != 0)
+					add_rsv(d1_cumulative_sum += extracted, impact);
+				if ((extracted = _mm256_extract_epi32(document_ids, 3)) != 0)
+					add_rsv(d1_cumulative_sum += extracted, impact);
+				if ((extracted = _mm256_extract_epi32(document_ids, 4)) != 0)
+					add_rsv(d1_cumulative_sum += extracted, impact);
+				if ((extracted = _mm256_extract_epi32(document_ids, 5)) != 0)
+					add_rsv(d1_cumulative_sum += extracted, impact);
+				if ((extracted = _mm256_extract_epi32(document_ids, 6)) != 0)
+					add_rsv(d1_cumulative_sum += extracted, impact);
+				if ((extracted = _mm256_extract_epi32(document_ids, 7)) != 0)
+					add_rsv(d1_cumulative_sum += extracted, impact);
 				}
 
 			/*

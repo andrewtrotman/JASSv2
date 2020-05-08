@@ -52,7 +52,6 @@ int main(int argc, const char *argv[])
 		set up the indexer
 	*/
 	JASS::index_manager_sequential index;
-	size_t total_documents = 0;
 
 	/*
 		read the postings lists
@@ -72,10 +71,11 @@ int main(int argc, const char *argv[])
 	std::cout << "PROCESS THE POSTINGS LISTS\n";
 	size_t term_count = 0;
 	size_t total_terms = source.get_header().num_postings_lists;
+	size_t total_documents = source.get_header().total_docs;
 	size_t percent_threshold = total_terms / 100;
 	for (auto &posting : source.postings())
 		{
-		++term_count;
+		term_count++;
 		if (((term_count % (percent_threshold * 5)) == 0) || (term_count == total_terms - 1))
 			{
 			std::cout << term_count << "/" << total_terms << " " << (term_count * 100) / total_terms << "% : ";
@@ -84,16 +84,10 @@ int main(int argc, const char *argv[])
 			}
 
 		/*
-			CIFF counts from documentID = 0, but JASS indexing counts from documentID = 1, so we increment the fist docid (as the others are d-gaps).
+			CIFF counts from documentID = 0, but JASS indexing counts from documentID = 1,
+			so we increment the first docid (as the others are d-gaps).
 		*/
 		posting.postings[0].docid++;
-		size_t cumulative_total = 0;
-
-		for (const auto &pair : posting.postings)
-			{
-			cumulative_total += pair.docid;
-			total_documents = JASS::maths::maximum(cumulative_total, total_documents);
-			}
 
 		JASS::parser::token term;
 		term.set(posting.term);

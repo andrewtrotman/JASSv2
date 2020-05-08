@@ -151,6 +151,7 @@ namespace JASS
 				{
 				/*
 					Make sure the user isn't mixing push_back(docid) and push_back(postings_lists) calls.
+					But note that it does set highest_document correctly at the end.
 				*/
 				JASS_assert(highest_document == 0);
 
@@ -163,6 +164,7 @@ namespace JASS
 					/*
 						Compress into the temporary buffer then copy into the postings
 					*/
+					highest_document += data[current].docid;
 					compress_integer_variable_byte::compress_into(ending, data[current].docid);
 					for (uint8_t *byte = space; byte < ending; byte++)
 						document_ids.push_back(*byte);
