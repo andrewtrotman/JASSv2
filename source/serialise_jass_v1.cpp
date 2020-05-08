@@ -239,7 +239,6 @@ namespace JASS
 			}
 		}
 
-
 	/*
 		SERIALISE_JASS_V1::UNITTEST()
 		-----------------------------
