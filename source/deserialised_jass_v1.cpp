@@ -8,6 +8,7 @@
 
 #include "file.h"
 #include "slice.h"
+#include "serialise_jass_v1.h"
 #include "compress_integer_all.h"
 #include "deserialised_jass_v1.h"
 
@@ -188,31 +189,6 @@ namespace JASS
 			return compress_integer_all::get_by_name("None");
 			}
 		else
-			switch (postings_memory[0])
-				{
-				case 'D':
-					name = "Group Elias Delta SIMD";
-					d_ness = 1;
-					return compress_integer_all::get_by_name("Group Elias Delta SIMD");
-				case 'G':
-					name = "Group Elias Gamma SIMD";
-					d_ness = 1;
-					return compress_integer_all::get_by_name("Group Elias Gamma SIMD");
-				case 'q':
-					name = "QMX JASS v1";
-					d_ness = 1;
-					return compress_integer_all::get_by_name("QMX JASS v1");
-				case 's':
-					name = "None";
-					d_ness = 1;
-					return compress_integer_all::get_by_name("None");
-				default:
-					exit(printf("Unknown index format\n"));
-					/*
-						// This can't happen because of the exit() above, and cppcheck warns about it.
-						name = "None";
-						return compress_integer_all::get_by_name("None");
-					*/
-				}
+			return serialise_jass_v1::get_compressor(static_cast<serialise_jass_v1::jass_v1_codex>(postings_memory[0]), name, d_ness);
 		}
 	}

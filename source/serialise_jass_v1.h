@@ -18,6 +18,7 @@
 #include "index_postings.h"
 #include "index_manager.h"
 #include "compress_integer_qmx_jass_v1.h"
+#include "compress_integer_elias_gamma_simd.h"
 
 namespace JASS
 	{
@@ -70,23 +71,6 @@ namespace JASS
 		{
 		private:
 			/*
-				ENUM CLASS JASS_V1_CODEX
-				------------------------
-			*/
-			/*!
-				@brief The compression scheme that is active
-			*/
-			enum class jass_v1_codex
-				{
-				uncompressed = 's',				///< Postings are not compressed.
-				variable_byte = 'c',				///< Postings are compressed using ATIRE's variable byte encoding.
-				simple_8b = '8',					///< Postings are compressed using ATIRE's simple-8b encoding.
-				qmx = 'q',							///< Postings are compressed using JASS v1's variant of QMX (with difference (D1) encoding).
-				qmx_d4 = 'Q',						///< Postings are compressed using QMX with Lemire's D4 delta encoding.
-				qmx_d0 = 'R'						///< Postings are compressed using QMX without delta encoding.
-				};
-
-			/*
 				CLASS SERIALISE_JASS_V1::VOCAB_TRIPPLE
 				--------------------------------------
 			*/
@@ -136,7 +120,27 @@ namespace JASS
 						return slice::strict_weak_order_less_than(token, other.token);
 						}
 				};
-			
+
+		public:
+			/*
+				ENUM JASS_V1_CODEX
+				------------------
+			*/
+			/*!
+				@brief The compression scheme that is active
+			*/
+			enum  jass_v1_codex
+				{
+				uncompressed = 's',				///< Postings are not compressed.
+				variable_byte = 'c',				///< Postings are compressed using ATIRE's variable byte encoding.
+				simple_8b = '8',					///< Postings are compressed using ATIRE's simple-8b encoding.
+				qmx = 'q',							///< Postings are compressed using JASS v1's variant of QMX (with difference (D1) encoding).
+				qmx_d4 = 'Q',						///< Postings are compressed using QMX with Lemire's D4 delta encoding.
+				qmx_d0 = 'R',						///< Postings are compressed using QMX without delta encoding.
+				elias_gamma_simd = 'G',			///< Postings are compressed using Elias gamma SIMD encoding.
+				elias_delta_simd = 'D'			///< Postings are compressed using Elias delta SIMD encoding.
+				};
+
 		private:
 			file vocabulary_strings;							///< The concatination of UTS-8 encoded unique tokens in the collection.
 			file vocabulary;										///< Details about the term (including a pointer to the term, a pointer to the postings, and the quantum count.
@@ -146,7 +150,9 @@ namespace JASS
 			std::vector<uint64_t> primary_key_offsets;	///< A list of locations (on disk) of each primary key.
 			allocator_pool memory;								///< Memory used to store the impact-ordered postings list.
 			index_postings_impact impact_ordered;			///< The re-used impact ordered postings list.
-			std::shared_ptr<compress_integer> encoder;	///< The integer encoder used to compress postings lists.
+			std::string compressor_name;						///< The name of the compresson algorithm
+			int compressor_d_ness;								///< The d-ness of the compression algorithm
+			compress_integer &encoder;							///< The integer encoder used to compress postings lists.
 			allocator_cpp<uint8_t> allocator;				///< C++ allocator between memory object and std::vector object
 			std::vector<uint8_t, allocator_cpp<uint8_t>> compressed_buffer;		///< The buffer used to compress postings into.
 			std::vector<slice, allocator_cpp<slice>> compressed_segments;			///< vector of pointers (and lengths) to the compressed postings.
@@ -179,14 +185,14 @@ namespace JASS
 				@param encoder [in] An shared pointer to a codex responsible for performing the compression of postings lists (default = compress_integer_QMX_jass_v1()).
 				@param alignment [in] The start address of a postings list is padded to start on these boundaries (needed for compress_integer_QMX_jass_v1 (use 16), and others).  Default = 0.
 			*/
-			serialise_jass_v1(size_t documents, std::shared_ptr<compress_integer> encoder = std::make_shared<compress_integer_qmx_jass_v1>(), int8_t alignment = 16) :
+			serialise_jass_v1(size_t documents, jass_v1_codex codex = jass_v1_codex::elias_gamma_simd, int8_t alignment = 1) :
 				vocabulary_strings("CIvocab_terms.bin", "w+b"),
 				vocabulary("CIvocab.bin", "w+b"),
 				postings("CIpostings.bin", "w+b"),
 				primary_keys("CIdoclist.bin", "w+b"),
 				memory(1024 * 1024),								///< The allocation block size is currently 1MB, big enough for most postings lists (but it'll grow for larger ones).
 				impact_ordered(documents, memory),
-				encoder(encoder),
+				encoder(get_compressor(codex, compressor_name, compressor_d_ness)),
 				allocator(memory),
 				compressed_buffer(allocator),
 				compressed_segments(allocator),
@@ -199,10 +205,8 @@ namespace JASS
 				compressed_buffer.resize((documents + 1024) * sizeof(compress_integer::integer));
 				compressed_segments.reserve(index_postings_impact::largest_impact);
 
-				/*
-					Postings are compressed using compress_integer_qmx_jass_v1, the best that JASS v1 supported.
-				*/
-				uint8_t codex = static_cast<uint8_t>(jass_v1_codex::qmx);
+// std::cout << compressor_name << "-D" << compressor_d_ness << "\n";
+
 				postings.write(&codex, 1);
 				}
 
@@ -239,6 +243,20 @@ namespace JASS
 				@param primary_key [in] This document's primary key (external document identifier).
 			*/
 			virtual void operator()(size_t document_id, const slice &primary_key);
+
+
+			/*
+				SERIALISE_JASS_V1::GET_COMPRESSOR()
+				-----------------------------------
+			*/
+			/*!
+				@brief Return a reference to a compressor/decompressor that can be used with this index
+				@param codex [in] The codex to use
+				@param name [out] The name of the compression codex
+				@param d_ness [out] Whether the codex requires D0, D1, etc decoding (-1 if it supports decode_and_process via decode_none)
+				@return A reference to a compress_integer that can decode the given codex
+			*/
+			static compress_integer &get_compressor(jass_v1_codex codex, std::string &name, int32_t &d_ness);
 
 			/*
 				SERIALISE_JASS_V1::~UNITTEST()

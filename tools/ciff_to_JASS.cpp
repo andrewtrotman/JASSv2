@@ -31,7 +31,7 @@
 #include "ciff_lin.h"
 #include "quantize.h"
 #include "compress_integer.h"
-#include "compress_integer_special.h"
+#include "compress_integer_elias_gamma_simd.h"
 #include "serialise_jass_v1.h"
 #include "index_manager_sequential.h"
 #include "ranking_function_atire_bm25.h"
@@ -145,7 +145,7 @@ int main(int argc, const char *argv[])
 	*/
 	std::cout << "WRITE THE INDEX TO DISK\n";
 	std::vector<std::unique_ptr<JASS::index_manager::delegate>> exporters;
-	exporters.push_back(std::make_unique<JASS::serialise_jass_v1>(total_documents, std::make_shared<JASS::compress_integer_special>(), 1));
+	exporters.push_back(std::make_unique<JASS::serialise_jass_v1>(total_documents, JASS::serialise_jass_v1::jass_v1_codex::elias_gamma_simd, 1));
 	quantizer.serialise_index(index, exporters);
 
 	std::cout << "DONE\n";

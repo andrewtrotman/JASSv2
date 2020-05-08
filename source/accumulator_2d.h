@@ -19,7 +19,8 @@
 #include "maths.h"
 #include "forceinline.h"
 
-#define USE_QUERY_IDS 1
+//#define USE_QUERY_IDS 1
+//#define DYNAMIC_BUFFERS 1
 
 namespace JASS
 	{
@@ -67,8 +68,19 @@ namespace JASS
 		private:
 			static constexpr size_t maximum_number_of_accumulators_allocated = maximum_width * maximum_number_of_clean_flags;			///< The numner of accumulators that were actually allocated (recall that this is a 2D array)
 		public:
-			flag_type clean_flag[maximum_number_of_clean_flags];																								///< The clean flags are kept as bytes for faster lookup
-			ELEMENT accumulator[maximum_number_of_accumulators_allocated];																				///< The accumulators are kept in an array
+#ifdef DYNAMIC_BUFFERS
+			typedef std::array<flag_type, maximum_number_of_clean_flags> clean_flag_t;
+			clean_flag_t &clean_flag;																								///< The clean flags are kept as bytes for faster lookup
+			typedef std::array<ELEMENT, maximum_number_of_accumulators_allocated> accumulator_t;																				///< The accumulators are kept in an array
+			accumulator_t &accumulator;																							///< The accumulators are kept in an array
+#else
+			typedef std::array<flag_type, maximum_number_of_clean_flags> clean_flag_t;
+			clean_flag_t clean_flag;																								///< The clean flags are kept as bytes for faster lookup
+			typedef std::array<ELEMENT, maximum_number_of_accumulators_allocated> accumulator_t;																				///< The accumulators are kept in an array
+			accumulator_t accumulator;																							///< The accumulators are kept in an array
+//			flag_type clean_flag[maximum_number_of_clean_flags];																								///< The clean flags are kept as bytes for faster lookup
+//			ELEMENT accumulator[maximum_number_of_accumulators_allocated];																							///< The accumulators are kept in an array
+#endif
 
 #ifdef USE_QUERY_IDS
 			flag_type query_id;
@@ -92,14 +104,38 @@ namespace JASS
 				@brief Constructor.
 			*/
 			accumulator_2d()
+#ifdef DYNAMIC_BUFFERS
+			 :
+				clean_flag(* new clean_flag_t),
+				accumulator(* new accumulator_t)
+#endif
+
 #ifdef USE_QUERY_IDS
+	#ifdef DYNAMIC_BUFFERS
+				,
+	#else
 				:
+	#endif
 				query_id(std::numeric_limits<decltype(query_id)>::max())
 #endif
 				{
 				/* Nothing */
 				}
 
+			/*
+				ACCUMULATOR_2D::~ACCUMULATOR_2D()
+				---------------------------------
+			*/
+			/*!
+				@brief Destructor.
+			*/
+			virtual ~accumulator_2d()
+				{
+#ifdef DYNAMIC_BUFFERS
+				delete &clean_flag;
+				delete &accumulator;
+#endif
+				}
 
 			/*
 				ACCUMULATOR_2D::INIT()
@@ -176,14 +212,13 @@ namespace JASS
 #ifdef USE_QUERY_IDS
 				if (clean_flag[flag] != query_id)
 					{
-					::memset(accumulator + flag * width, 0, width * sizeof(*accumulator));
+					::memset(&accumulator[0] + flag * width, 0, width * sizeof(accumulator[0]));
 					clean_flag[flag] = query_id;
 					}
 #else
 				if (!clean_flag[flag])
 					{
-//					std::fill(&accumulator[flag * width], &accumulator[flag * width + width], fALSE);
-					::memset(accumulator + flag * width, 0, width * sizeof(*accumulator));
+					::memset(&accumulator[0] + flag * width, 0, width * sizeof(accumulator[0]));
 					clean_flag[flag] = true;
 					}
 #endif
@@ -201,7 +236,7 @@ namespace JASS
 			*/
 			forceinline size_t get_index(ELEMENT *pointer)
 				{
-				return pointer - accumulator;
+				return pointer - &accumulator[0];
 				}
 
 			/*
@@ -231,13 +266,13 @@ namespace JASS
 #ifdef USE_QUERY_IDS
 				if (query_id == std::numeric_limits<decltype(query_id)>::max())
 					{
-					::memset(clean_flag, 0, number_of_clean_flags * sizeof(*clean_flag));
+					::memset(&clean_flag[0], 0, number_of_clean_flags * sizeof(clean_flag[0]));
 					query_id = 0;
 					}
 				query_id++;
 #else
 //				std::fill(clean_flag, clean_flag + number_of_clean_flags, false);
-				::memset(clean_flag, 0, number_of_clean_flags * sizeof(*clean_flag));
+				::memset(&clean_flag[0], 0, number_of_clean_flags * sizeof(clean_flag[0]));
 #endif
 				}
 

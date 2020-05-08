@@ -10,7 +10,7 @@
 #include "checksum.h"
 #include "allocator.h"
 #include "serialise_jass_v1.h"
-#include "compress_integer_none.h"
+#include "compress_integer_all.h"
 #include "index_manager_sequential.h"
 
 namespace JASS
@@ -108,7 +108,7 @@ namespace JASS
 			*/
 			compress_integer::d1_encode(header.begin(), header.begin(), header.size());
 			*header.begin() -= 1;			// JASS v1 counts documents from 0.
-			auto took = encoder->encode(compress_into, compress_into_size, header.begin(), header.size());
+			auto took = encoder.encode(compress_into, compress_into_size, header.begin(), header.size());
 			if (took <= 0)
 				{
 				/*
@@ -209,6 +209,36 @@ namespace JASS
 		primary_keys.write(primary_key.address(), primary_key.size());
 		primary_keys.write("\0", 1);
 		}
+
+	/*
+		SERIALISE_JASS_V1::GET_COMPRESSOR()
+		-----------------------------------
+	*/
+	compress_integer &serialise_jass_v1::get_compressor(jass_v1_codex codex, std::string &name, int32_t &d_ness)
+		{
+		switch (codex)
+			{
+			case serialise_jass_v1::jass_v1_codex::elias_delta_simd:
+				name = "Group Elias Delta SIMD";
+				d_ness = 1;
+				return compress_integer_all::get_by_name("Group Elias Delta SIMD");
+			case serialise_jass_v1::jass_v1_codex::elias_gamma_simd:
+				name = "Group Elias Gamma SIMD";
+				d_ness = 1;
+				return compress_integer_all::get_by_name("Group Elias Gamma SIMD");
+			case serialise_jass_v1::jass_v1_codex::qmx:
+				name = "QMX JASS v1";
+				d_ness = 1;
+				return compress_integer_all::get_by_name("QMX JASS v1");
+			case serialise_jass_v1::jass_v1_codex::uncompressed:
+				name = "None";
+				d_ness = 0;
+				return compress_integer_all::get_by_name("None");
+			default:
+				exit(printf("Unknown index format\n"));
+			}
+		}
+
 
 	/*
 		SERIALISE_JASS_V1::UNITTEST()
