@@ -375,6 +375,7 @@ namespace JASS
 			}
 		}
 
+#ifdef IMPACT_SENTINALS
 	/*
 		COMPRESS_INTEGER_ELIAS_GAMMA_SIMD::DECODE_WITH_WRITER()
 		-------------------------------------------------------
@@ -446,6 +447,7 @@ namespace JASS
 				}
 			}
 		}
+#endif
 
 #else
 	#error "Must have either AVX2 or AVX512"

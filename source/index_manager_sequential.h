@@ -246,6 +246,20 @@ namespace JASS
 				}
 
 			/*
+				INDEX_MANAGER_SEQUENTIAL::TERM()
+				--------------------------------
+			*/
+			/*!
+				@brief Hand a new term with a pre-computed postings list to this object.
+				@param term [in] The term from the token stream.
+				@param docid [in] The docid to shove on the end of of the list (with tf=1).
+			*/
+			virtual void term(const parser::token &term, compress_integer::integer docid)
+				{
+				index[term.lexeme].push_back(docid);
+				}
+
+			/*
 				INDEX_MANAGER_SEQUENTIAL::TEXT_RENDER()
 				---------------------------------------
 			*/

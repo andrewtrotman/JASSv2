@@ -258,7 +258,7 @@ namespace JASS
 			void impact_order(index_postings_impact &postings_list, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies) const
 				{
 				std::array<compress_integer::integer, index_postings_impact::largest_impact + 1> frequencies = {};			// +1 because it counts from 0.
-				size_t number_of_postings = 0;
+//				size_t number_of_postings = 0;
 				index_postings_impact::impact_type highest_impact = 0;
 				index_postings_impact::impact_type lowest_impact = std::numeric_limits<decltype(lowest_impact)>::max();
 
@@ -280,7 +280,7 @@ namespace JASS
 						Count the number of times each frequency is seen
 					*/
 					frequencies[*current_tf]++;
-					number_of_postings++;
+//					number_of_postings++;
 					}
 
 				/*
@@ -289,7 +289,14 @@ namespace JASS
 				size_t number_of_impacts = 0;
 				for (size_t which = lowest_impact; which <= highest_impact; which++)
 					if (frequencies[which] != 0)
+						{
 						number_of_impacts++;
+//#define IMPACT_SENTINALS 1
+#define SENTINAL 20'000'000
+#ifdef IMPACT_SENTINALS
+						frequencies[which]++;			// Include room for the sentinal
+#endif
+						}
 				postings_list.set_impact_count(number_of_impacts);
 
 				/*
@@ -330,6 +337,14 @@ namespace JASS
 					frequencies[*current_tf]++;
 					current_id++;
 					}
+#ifdef IMPACT_SENTINALS
+				/*
+					Put the sentinals in place.
+				*/
+				for (size_t which = lowest_impact; which <= highest_impact; which++)
+					if (frequencies[which] != 0)
+						postings_list.get_postings()[frequencies[which]] = SENTINAL;
+#endif
 				}
 
 			/*

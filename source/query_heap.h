@@ -276,6 +276,12 @@ namespace JASS
 				*which += score;
 				if (this->cmp(which, accumulator_pointers[0]) >= 0)			// ==0 is the case where we're the current bottom of heap so might need to be promoted
 					{
+//#define IMPACT_SENTINALS 1
+#ifdef IMPACT_SENTINALS
+constexpr DOCID_TYPE SENTINAL = (20'000'000 - 1);
+if (document_id == SENTINAL)
+	return;
+#endif
 					/*
 						We end up in the top-k, now to work out why.  As this is a rare occurence, we've got a little bit of time on our hands
 					*/
@@ -330,21 +336,36 @@ namespace JASS
 				{
 				DOCID_TYPE extracted;
 
-				if ((extracted = _mm256_extract_epi32(document_ids, 0)) != 0)
+				extracted = _mm256_extract_epi32(document_ids, 0);
+				if (extracted != 0)
 					add_rsv(d1_cumulative_sum += extracted, impact);
-				if ((extracted = _mm256_extract_epi32(document_ids, 1)) != 0)
+
+				extracted = _mm256_extract_epi32(document_ids, 1);
+				if (extracted != 0)
 					add_rsv(d1_cumulative_sum += extracted, impact);
-				if ((extracted = _mm256_extract_epi32(document_ids, 2)) != 0)
+
+				extracted = _mm256_extract_epi32(document_ids, 2);
+				if (extracted != 0)
 					add_rsv(d1_cumulative_sum += extracted, impact);
-				if ((extracted = _mm256_extract_epi32(document_ids, 3)) != 0)
+
+				extracted = _mm256_extract_epi32(document_ids, 3);
+				if (extracted != 0)
 					add_rsv(d1_cumulative_sum += extracted, impact);
-				if ((extracted = _mm256_extract_epi32(document_ids, 4)) != 0)
+
+				extracted = _mm256_extract_epi32(document_ids, 4);
+				if (extracted != 0)
 					add_rsv(d1_cumulative_sum += extracted, impact);
-				if ((extracted = _mm256_extract_epi32(document_ids, 5)) != 0)
+
+				extracted = _mm256_extract_epi32(document_ids, 5);
+				if (extracted != 0)
 					add_rsv(d1_cumulative_sum += extracted, impact);
-				if ((extracted = _mm256_extract_epi32(document_ids, 6)) != 0)
+
+				extracted = _mm256_extract_epi32(document_ids, 6);
+				if (extracted != 0)
 					add_rsv(d1_cumulative_sum += extracted, impact);
-				if ((extracted = _mm256_extract_epi32(document_ids, 7)) != 0)
+
+				extracted = _mm256_extract_epi32(document_ids, 7);
+				if (extracted != 0)
 					add_rsv(d1_cumulative_sum += extracted, impact);
 				}
 
