@@ -4,6 +4,7 @@
 	Copyright (c) 2016-2019 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
+#include "simd.h"
 #include "file.h"
 #include "heap.h"
 #include "ascii.h"
@@ -129,6 +130,9 @@ int main(void)
 		JASS::hardware_support hardware;
 		if (hardware.AVX2)
 			{
+			puts("simd");
+			JASS::simd::unittest();
+
 #ifdef NEVER
 			puts("compress_integer_bitpack_256");
 			JASS::compress_integer_bitpack_256::unittest();
@@ -144,12 +148,16 @@ int main(void)
 			}
 		else
 			{
-	// LCOV_EXCL_START
+// LCOV_EXCL_START
+			puts("simd");
+			puts("Cannot test as no 256-bit SIMD instructions on this CPU");
+
 			puts("compress_integer_bitpack_256");
 			puts("Cannot test as no 256-bit SIMD instructions on this CPU");
+
 			puts("compress_integer_elias_gamma_simd");
 			puts("Cannot test as no 256-bit SIMD instructions on this CPU");
-	// LCOV_EXCL_STOP
+// LCOV_EXCL_STOP
 			}
 
 		if (hardware.BMI1)
@@ -164,12 +172,13 @@ int main(void)
 			}
 		else
 			{
-	// LCOV_EXCL_START
+// LCOV_EXCL_START
 			puts("compress_integer_elias_gamma");
 			puts("Cannot test as no BMI1 instructions on this CPU");
+
 			puts("compress_integer_elias_delta");
 			puts("Cannot test as no BMI1 instructions on this CPU");
-	// LCOV_EXCL_STOP
+// LCOV_EXCL_STOP
 			}
 
 		puts("accumulator_counter");

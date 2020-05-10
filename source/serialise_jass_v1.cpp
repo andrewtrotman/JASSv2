@@ -255,7 +255,7 @@ namespace JASS
 			Serialise the index.
 		*/
 		{
-		serialise_jass_v1 serialiser(index.get_highest_document_id());
+		serialise_jass_v1 serialiser(index.get_highest_document_id(), jass_v1_codex::qmx, 16);
 		index.iterate(serialiser);
 		}
 
@@ -263,15 +263,19 @@ namespace JASS
 			Checksum the index to make sure its correct.
 		*/
 		auto checksum = checksum::fletcher_16_file("CIvocab.bin");
+//std::cout << "CIvocab.bin checksum:" << checksum << "\n";
 		JASS_assert(checksum == 10231);
 
 		checksum = checksum::fletcher_16_file("CIvocab_terms.bin");
+//std::cout << "CIvocab_terms.bin checksum:" << checksum << "\n";
 		JASS_assert(checksum == 25057);
 
 		checksum = checksum::fletcher_16_file("CIpostings.bin");
+//std::cout << "CIpostings.bin checksum:" << checksum << "\n";
 		JASS_assert(checksum == 43058);
 
 		checksum = checksum::fletcher_16_file("CIdoclist.bin");
+//std::cout << "CIdoclist.bin checksum:" << checksum << "\n";
 		JASS_assert(checksum == 3045);
 
 		puts("serialise_jass_v1::PASSED");

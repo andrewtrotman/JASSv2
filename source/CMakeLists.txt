@@ -188,6 +188,7 @@ set(JASSlib_FILES
 	serialise_jass_v1.h
 	serialise_forward_index.h
 	serialise_forward_index.cpp
+	simd.h
 	slice.h
 	statistics.h
 	statistics.cpp

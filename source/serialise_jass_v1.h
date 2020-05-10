@@ -259,8 +259,8 @@ namespace JASS
 			static compress_integer &get_compressor(jass_v1_codex codex, std::string &name, int32_t &d_ness);
 
 			/*
-				SERIALISE_JASS_V1::~UNITTEST()
-				------------------------------
+				SERIALISE_JASS_V1::UNITTEST()
+				-----------------------------
 			*/
 			/*!
 				@brief Unit test this class
