@@ -22,6 +22,13 @@
 
 namespace JASS
 	{
+	/*
+		CLASS STATISTICS
+		----------------
+	*/
+	/*!
+		@brief Set of useful statistical methods
+	*/
 	class statistics
 		{
 		public:
