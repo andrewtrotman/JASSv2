@@ -186,6 +186,7 @@ namespace JASS
 				@param alignment [in] The start address of a postings list is padded to start on these boundaries (needed for compress_integer_QMX_jass_v1 (use 16), and others).  Default = 0.
 			*/
 			serialise_jass_v1(size_t documents, jass_v1_codex codex = jass_v1_codex::elias_gamma_simd, int8_t alignment = 1) :
+				index_manager::delegate(documents),
 				vocabulary_strings("CIvocab_terms.bin", "w+b"),
 				vocabulary("CIvocab.bin", "w+b"),
 				postings("CIpostings.bin", "w+b"),

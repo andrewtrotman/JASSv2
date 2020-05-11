@@ -46,9 +46,10 @@ namespace JASS
 			*/
 			/*!
 				@brief Constructor
-				@param documents [in] the number of documents in the collection
+				@param documents_in_collection [in] The number of documents in the collection
 			*/
-			serialise_integers(size_t documents) :
+			serialise_integers(size_t documents_in_collection) :
+				index_manager::delegate(documents_in_collection),
 				postings_file("postings.bin", "w+b"),
 				impact_ordered(documents, memory)
 				{

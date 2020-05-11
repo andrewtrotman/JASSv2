@@ -71,10 +71,12 @@ namespace JASS
 					*/
 					/*!
 						@brief Constructor
+						@param documents_in_collection [in] The total number of documents in the collection
 						@param postings [out] data is written into this object.
 						@param primary_keys [in] primary key data is ertten into this object.
 					*/
-					delegate(std::ostream &postings, std::ostream &primary_keys) :
+					delegate(size_t documents_in_collection, std::ostream &postings, std::ostream &primary_keys) :
+						index_manager::delegate(documents_in_collection),
 						postings_out(postings),
 						primary_keys_out(primary_keys)
 						{
@@ -492,7 +494,7 @@ namespace JASS
 				*/
 				std::ostringstream postings_result;
 				std::ostringstream primary_key_result;
-				delegate callback(postings_result, primary_key_result);
+				delegate callback(10, postings_result, primary_key_result);
 				index.iterate(callback);
 
 				JASS_assert(postings_result.str() == answer);

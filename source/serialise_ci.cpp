@@ -20,6 +20,7 @@ namespace JASS
 		----------------------------
 	*/
 	serialise_ci::serialise_ci(size_t documents) :
+		index_manager::delegate(documents),
 		postings_file("JASS_postings.cpp", "w+b"),
 		postings_header_file("JASS_postings.h", "w+b"),
 		vocab_file("JASS_vocabulary.cpp", "w+b"),
@@ -81,7 +82,7 @@ namespace JASS
 		/*
 			Construct the method and write it out
 		*/
-		code << "void T_" << term << "(query_heap<uint16_t, 10'000'000, 10> &q)\n";
+		code << "void T_" << term << "(query_heap &q)\n";
 		code << "{\n";
 
 		/*
@@ -109,7 +110,7 @@ namespace JASS
 		*/
 		postings_header_file.write("void T_");
 		postings_header_file.write(term.address(), term.size());
-		postings_header_file.write("(query_heap<uint16_t, 10'000'000, 10>&);\n");
+		postings_header_file.write("(query_heap &);\n");
 
 		terms++;
 		}

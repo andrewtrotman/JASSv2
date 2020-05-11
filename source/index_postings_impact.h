@@ -184,7 +184,7 @@ namespace JASS
 			allocator &memory;							///< All allocation  happens in this arena.
 			size_t number_of_impacts;					///< The number of impact objects in the impacts array.
 			impact impacts[largest_impact + 1];		///< List of impact pointers (the impact header).
-			size_t number_of_postings;					///< The length of the pistings array measured in size_t.
+			size_t number_of_postings;					///< The length of the postings array measured in size_t.
 			compress_integer::integer *postings;	///< The list of document IDs, strung together for each postings segment.
 			compress_integer::integer *document_ids;					///< The re-used buffer storing decoded document ids - used while impact ordering
 			index_postings_impact::impact_type *term_frequencies;	///< The re-used buffer storing the term frequencies - used while impact ordering
@@ -360,10 +360,14 @@ namespace JASS
 					for (const auto posting : header)
 						stream << posting << " ";
 					}
+#ifdef NEVER
 				stream << "]\n[";
 				for (size_t index = 0; index < number_of_postings; index++)
 					stream << postings[index] << " ";
 				stream << "]}";
+#else
+				stream << "]}";
+#endif
 				}
 
 			/*

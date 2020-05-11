@@ -20,6 +20,7 @@ namespace JASS
 		--------------------------------------------------
 	*/
 	serialise_forward_index::serialise_forward_index(size_t documents) :
+		index_manager::delegate(documents),
 		document(documents + 1)
 		{
 		}

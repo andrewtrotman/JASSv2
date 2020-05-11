@@ -59,6 +59,7 @@ namespace JASS
 				@param ranker [in] The ranking function used for quantization.
 			*/
 			quantize(size_t documents, std::shared_ptr<RANKER> ranker) :
+				index_manager::delegate(documents),
 				largest_rsv(std::numeric_limits<decltype(largest_rsv)>::min()),
 				smallest_rsv(std::numeric_limits<decltype(smallest_rsv)>::max()),
 				ranker(ranker),

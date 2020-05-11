@@ -236,12 +236,13 @@ namespace JASS
 			*/
 			/*!
 				@brief Return the postings list impact ordered postings list with impact headers.
+				@param documents_in_collection [in] The number of documents in the collection,
 				@param postings_list [in / out] The constructed impact ordered postings list.
 			*/
-			void impact_order(index_postings_impact &postings_list) const
+			void impact_order(size_t documents_in_collection, index_postings_impact &postings_list) const
 				{
 				auto document_frequency = linearize(postings_list.temporary, postings_list.temporary_size, postings_list.document_ids, postings_list.term_frequencies, postings_list.number_of_postings);
-				impact_order(postings_list, document_frequency, postings_list.document_ids, postings_list.term_frequencies);
+				impact_order(documents_in_collection, postings_list, document_frequency, postings_list.document_ids, postings_list.term_frequencies);
 				}
 
 			/*
@@ -250,13 +251,21 @@ namespace JASS
 			*/
 			/*!
 				@brief Return the postings list impact ordered postings list with impact headers.
-				@param postings_list [in / out] The constructed impact ordered postings list.
+				@param documents_in_collection [in] The number of documents in the collection,
+				@param postings_list [out] The constructed impact ordered postings list.
 				@param document_frequency [in] the document frequency of this term (the length of id_list and tf_list).
 				@param document_ids [in] The list of document ids.
 				@param term_frequencies [in] The list of term frequencies.
 			*/
-			void impact_order(index_postings_impact &postings_list, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies) const
+			void impact_order(size_t documents_in_collection, index_postings_impact &postings_list, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies) const
 				{
+//#define IMPACT_SENTINALS 1
+#ifdef IMPACT_SENTINALS
+#define SENTINAL (documents_in_collection + 1)
+std::ostream &operator<<(std::ostream &stream, const index_postings &data);
+//if (document_frequency < 10)
+//	std::cout << "DocOrder:" << *this << "\n";
+#endif
 				std::array<compress_integer::integer, index_postings_impact::largest_impact + 1> frequencies = {};			// +1 because it counts from 0.
 //				size_t number_of_postings = 0;
 				index_postings_impact::impact_type highest_impact = 0;
@@ -291,8 +300,6 @@ namespace JASS
 					if (frequencies[which] != 0)
 						{
 						number_of_impacts++;
-//#define IMPACT_SENTINALS 1
-#define SENTINAL 20'000'000
 #ifdef IMPACT_SENTINALS
 						frequencies[which]++;			// Include room for the sentinal
 #endif
@@ -344,6 +351,9 @@ namespace JASS
 				for (size_t which = lowest_impact; which <= highest_impact; which++)
 					if (frequencies[which] != 0)
 						postings_list.get_postings()[frequencies[which]] = SENTINAL;
+
+//if (document_frequency < 10)
+//	std::cout << "ImpOrder:" << postings_list << "\n";
 #endif
 				}
 
@@ -376,7 +386,6 @@ namespace JASS
 				auto current_tf = tf_list.get();
 				for (compress_integer::integer *current_id = id_list.get(); current_id < end; current_id++, current_tf++)
 					stream << '<' << *current_id << ',' << (size_t)*current_tf << '>';
-
 				}
 			
 			/*

@@ -347,18 +347,32 @@ namespace JASS
 				@brief Serialise the dynamic array into a single linear sequence.
 				@param into [out] pointer to the buffer to serialise (at most size_of_into elements) into.
 				@param size_of_into [in] the amount of space (in TYPE elements) available in into (so for long[1] it would be 1).
-				@return The amount of space it would take to store the entire serialised array.
+				@return The amount of space it would take to store the entire serialised array in TYPE elements.
 			*/
 			size_t serialise(TYPE *into, size_t size_of_into) const
 				{
 				size_t would_take = 0;
 
-				for (node *current = head; current != nullptr; current = current->next)
+				if (into == nullptr)
 					{
-					std::copy(current->data, current->data + (current->used <= size_of_into ? current->used.load() : size_of_into), into);
-					size_of_into -= current->used;
-					would_take += current->used;
-					into += current->used;
+					/*
+						Just compute the length (but do not serialise).
+					*/
+					for (node *current = head; current != nullptr; current = current->next)
+						would_take += current->used;
+					}
+				else
+					{
+					/*
+						Compute the length and do the copy.
+					*/
+					for (node *current = head; current != nullptr; current = current->next)
+						{
+						std::copy(current->data, current->data + (current->used <= size_of_into ? current->used.load() : size_of_into), into);
+						size_of_into -= current->used;
+						would_take += current->used;
+						into += current->used;
+						}
 					}
 				return would_take;
 				}

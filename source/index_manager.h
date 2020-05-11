@@ -47,6 +47,22 @@ namespace JASS
 			class delegate
 				{
 				public:
+					size_t documents;			///< The number of documents in the collection
+
+				public:
+				/*
+					INDEX_MANAGER::DELEGATE::DELEGATE()
+					------------------------------------
+				*/
+				/*!
+					@brief Destructor.
+				*/
+				delegate(size_t documents) :
+					documents(documents)
+					{
+					/* Nothing */
+					}
+
 					/*
 						INDEX_MANAGER::DELEGATE::~DELEGATE()
 						------------------------------------
@@ -360,6 +376,10 @@ namespace JASS
 
 				struct delegate_test : public delegate
 					{
+					delegate_test(size_t documents_in_collection) : delegate(documents_in_collection)
+						{
+						/* Nothing */
+						}
 					virtual void operator()(const slice &term, const index_postings &postings, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies)
 						{
 						/* Nothing */
@@ -369,7 +389,7 @@ namespace JASS
 						/* Nothing */
 						}
 					};
-				delegate_test callback;
+				delegate_test callback(index.get_highest_document_id());
 				index.iterate(callback);
 
 				/*

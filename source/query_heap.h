@@ -278,8 +278,8 @@ namespace JASS
 					{
 //#define IMPACT_SENTINALS 1
 #ifdef IMPACT_SENTINALS
-constexpr DOCID_TYPE SENTINAL = (20'000'000 - 1);
-if (document_id == SENTINAL)
+DOCID_TYPE SENTINAL = documents;
+if (document_id >= SENTINAL)
 	return;
 #endif
 					/*
@@ -337,36 +337,28 @@ if (document_id == SENTINAL)
 				DOCID_TYPE extracted;
 
 				extracted = _mm256_extract_epi32(document_ids, 0);
-				if (extracted != 0)
-					add_rsv(d1_cumulative_sum += extracted, impact);
+				add_rsv(d1_cumulative_sum += extracted, impact);
 
 				extracted = _mm256_extract_epi32(document_ids, 1);
-				if (extracted != 0)
-					add_rsv(d1_cumulative_sum += extracted, impact);
+				add_rsv(d1_cumulative_sum += extracted, impact);
 
 				extracted = _mm256_extract_epi32(document_ids, 2);
-				if (extracted != 0)
-					add_rsv(d1_cumulative_sum += extracted, impact);
+				add_rsv(d1_cumulative_sum += extracted, impact);
 
 				extracted = _mm256_extract_epi32(document_ids, 3);
-				if (extracted != 0)
-					add_rsv(d1_cumulative_sum += extracted, impact);
+				add_rsv(d1_cumulative_sum += extracted, impact);
 
 				extracted = _mm256_extract_epi32(document_ids, 4);
-				if (extracted != 0)
-					add_rsv(d1_cumulative_sum += extracted, impact);
+				add_rsv(d1_cumulative_sum += extracted, impact);
 
 				extracted = _mm256_extract_epi32(document_ids, 5);
-				if (extracted != 0)
-					add_rsv(d1_cumulative_sum += extracted, impact);
+				add_rsv(d1_cumulative_sum += extracted, impact);
 
 				extracted = _mm256_extract_epi32(document_ids, 6);
-				if (extracted != 0)
-					add_rsv(d1_cumulative_sum += extracted, impact);
+				add_rsv(d1_cumulative_sum += extracted, impact);
 
 				extracted = _mm256_extract_epi32(document_ids, 7);
-				if (extracted != 0)
-					add_rsv(d1_cumulative_sum += extracted, impact);
+				add_rsv(d1_cumulative_sum += extracted, impact);
 				}
 
 			/*

@@ -59,7 +59,7 @@ namespace JASS
 		/*
 			Impact order the postings list.
 		*/
-		postings_list.impact_order(impact_ordered, document_frequency, document_ids, term_frequencies);
+		postings_list.impact_order(documents, impact_ordered, document_frequency, document_ids, term_frequencies);
 
 		/*
 			Compute the number of impact headers we're going to see.
