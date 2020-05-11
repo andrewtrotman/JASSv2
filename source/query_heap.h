@@ -12,6 +12,7 @@
 */
 #pragma once
 
+#include "simd.h"
 #include "heap.h"
 #include "query.h"
 #include "accumulator_2d.h"
@@ -334,6 +335,10 @@ if (document_id >= SENTINAL)
 			*/
 			forceinline void add_rsv(__m256i document_ids)
 				{
+#ifdef NEVER
+				/*
+					Extract and comput the cumulative sum one at a time
+				*/
 				DOCID_TYPE extracted;
 
 				extracted = _mm256_extract_epi32(document_ids, 0);
@@ -359,6 +364,23 @@ if (document_id >= SENTINAL)
 
 				extracted = _mm256_extract_epi32(document_ids, 7);
 				add_rsv(d1_cumulative_sum += extracted, impact);
+#else
+				/*
+					Compute the cumulative sum using SIMD then process
+				*/
+				document_ids = simd::cumulative_sum(document_ids);
+				_mm256_add_epi32(document_ids, _mm256_set1_epi32(d1_cumulative_sum));
+
+				add_rsv(_mm256_extract_epi32(document_ids, 0), impact);
+				add_rsv(_mm256_extract_epi32(document_ids, 1), impact);
+				add_rsv(_mm256_extract_epi32(document_ids, 2), impact);
+				add_rsv(_mm256_extract_epi32(document_ids, 3), impact);
+				add_rsv(_mm256_extract_epi32(document_ids, 4), impact);
+				add_rsv(_mm256_extract_epi32(document_ids, 5), impact);
+				add_rsv(_mm256_extract_epi32(document_ids, 6), impact);
+				d1_cumulative_sum = _mm256_extract_epi32(document_ids, 7);
+				add_rsv(d1_cumulative_sum, impact);
+#endif
 				}
 
 			/*
@@ -376,6 +398,10 @@ if (document_id >= SENTINAL)
 				auto buffer = decompress_buffer.data();
 				decode(buffer, integers, compressed, compressed_size);
 
+#ifdef NEVER
+				/*
+					D1-decode into a variable one at a time
+				*/
 				DOCID_TYPE id = 0;
 				DOCID_TYPE *end = buffer + integers;
 				for (auto *current = buffer; current < end; current++)
@@ -383,6 +409,15 @@ if (document_id >= SENTINAL)
 					id += *current;
 					add_rsv(id, impact);
 					}
+#else
+				/*
+					D1-decode inplace with SIMD instructions the process one at a time
+				*/
+				simd::cumulative_sum(buffer, integers);
+				DOCID_TYPE *end = buffer + integers;
+				for (auto *current = buffer; current < end; current++)
+					add_rsv(*current, impact);
+#endif
 				}
 
 			/*
@@ -391,6 +426,7 @@ if (document_id >= SENTINAL)
 			*/
 			/*!
 				@brief Given the integer decoder, the number of integes to decode, and the compressed sequence, decompress (but do not process).
+				@details Typically used to export an index, not used to process queries.
 				@param integers [in] The number of integers that are compressed.
 				@param compressed [in] The compressed sequence.
 				@param compressed_size [in] The length of the compressed sequence.
