@@ -38,6 +38,54 @@ namespace JASS
 				--------
 			*/
 			/*!
+				@brief Gather 8 x 8 bit values into an 8 x 32-bit integer register.
+				@param array [in] The base address of the array to read from.
+				@param vindex [in] The indexes into the array to read from.
+				@param a [in] The value to split and scatter.
+				@return The 8 integers
+			*/
+			forceinline static __m256i gather(const uint8_t *array, __m256i vindex)
+				{
+				return _mm256_set_epi32
+					(
+					array[_mm256_extract_epi32(vindex, 7)],
+					array[_mm256_extract_epi32(vindex, 6)],
+					array[_mm256_extract_epi32(vindex, 5)],
+					array[_mm256_extract_epi32(vindex, 4)],
+					array[_mm256_extract_epi32(vindex, 3)],
+					array[_mm256_extract_epi32(vindex, 2)],
+					array[_mm256_extract_epi32(vindex, 1)],
+					array[_mm256_extract_epi32(vindex, 0)]
+					);
+				}
+
+			/*
+				SCATTER()
+				---------
+			*/
+			/*!
+				@brief Scatter 8-bit integers
+				@param array [in] The base address of the array
+				@param vindex [in] The indexes into the array to write into
+				@param a [in] The value to split and scatter (8 x 32-bit integers written as 8 x 16-bit integers)
+			*/
+			forceinline static void scatter(uint8_t *array, __m256i vindex, __m256i a)
+				{
+				array[_mm256_extract_epi32(vindex, 0)] = _mm256_extract_epi16(a, 0);
+				array[_mm256_extract_epi32(vindex, 1)] = _mm256_extract_epi16(a, 2);
+				array[_mm256_extract_epi32(vindex, 2)] = _mm256_extract_epi16(a, 4);
+				array[_mm256_extract_epi32(vindex, 3)] = _mm256_extract_epi16(a, 6);
+				array[_mm256_extract_epi32(vindex, 4)] = _mm256_extract_epi16(a, 8);
+				array[_mm256_extract_epi32(vindex, 5)] = _mm256_extract_epi16(a, 10);
+				array[_mm256_extract_epi32(vindex, 6)] = _mm256_extract_epi16(a, 12);
+				array[_mm256_extract_epi32(vindex, 7)] = _mm256_extract_epi16(a, 14);
+				}
+
+			/*
+				GATHER()
+				--------
+			*/
+			/*!
 				@brief Gather 8 x 16 bit values into an 8 x 32-bit integer register.
 				@param array [in] The base address of the array to read from.
 				@param vindex [in] The indexes into the array to read from.

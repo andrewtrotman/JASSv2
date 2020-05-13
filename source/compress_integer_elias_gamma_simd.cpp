@@ -375,7 +375,7 @@ namespace JASS
 			}
 		}
 
-#ifdef IMPACT_SENTINALS
+#ifdef SIMD_JASS
 	/*
 		COMPRESS_INTEGER_ELIAS_GAMMA_SIMD::DECODE_WITH_WRITER()
 		-------------------------------------------------------

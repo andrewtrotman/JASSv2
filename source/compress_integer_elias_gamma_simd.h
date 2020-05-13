@@ -97,8 +97,8 @@ namespace JASS
 				@param source [in] The encoded integers.
 				@param source_length [in] The length (in bytes) of the source buffer.
 			*/
-// #define IMPACT_SENTINALS 1
-#ifdef IMPACT_SENTINALS
+// #define SIMD_JASS 1
+#ifdef SIMD_JASS
 			virtual void decode_with_writer(size_t integers_to_decode, const void *source, size_t source_length);
 #endif
 			/*

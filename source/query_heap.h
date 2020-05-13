@@ -1,3 +1,4 @@
+//#define SIMD_JASS_GROUP_ADD_RSV 1
 /*
 	QUERY_HEAP.H
 	------------
@@ -152,6 +153,9 @@ namespace JASS
 			heap<ACCUMULATOR_TYPE *, typename query::add_rsv_compare> top_results;			///< Heap containing the top-k results
 			bool sorted;																	///< has heap and accumulator_pointers been sorted (false after rewind() true after sort())
 			DOCID_TYPE d1_cumulative_sum;
+#ifdef SIMD_JASS_GROUP_ADD_RSV
+			__m256i lowest_in_heap;														///< vector of the smallest values in the heap
+#endif
 
 		public:
 			/*
@@ -240,6 +244,9 @@ namespace JASS
 				needed_for_top_k = this->top_k;
 				query::rewind(largest_possible_rsv);
 				d1_cumulative_sum = 0;
+#ifdef SIMD_JASS
+				lowest_in_heap = _mm256_setzero_si256();
+#endif
 				}
 
 			/*
@@ -277,8 +284,8 @@ namespace JASS
 				*which += score;
 				if (this->cmp(which, accumulator_pointers[0]) >= 0)			// ==0 is the case where we're the current bottom of heap so might need to be promoted
 					{
-//#define IMPACT_SENTINALS 1
-#ifdef IMPACT_SENTINALS
+//#define SIMD_JASS 1
+#ifdef SIMD_JASS
 DOCID_TYPE SENTINAL = documents;
 if (document_id >= SENTINAL)
 	return;
@@ -325,6 +332,48 @@ if (document_id >= SENTINAL)
 				}
 
 			/*
+				QUERY_HEAP::INSERT_INTO_HEAP()
+				------------------------------
+			*/
+			/*!
+				@brief Knowing that the docid most probably should enter the heap, add it if it should.
+			*/
+			void insert_into_heap(DOCID_TYPE document_id, ACCUMULATOR_TYPE score)
+				{
+				ACCUMULATOR_TYPE *which = &accumulators.accumulator[document_id];
+
+				if (this->cmp(which, accumulator_pointers[0]) >= 0)			// ==0 is the case where we're the current bottom of heap so might need to be promoted
+					{
+					/*
+						We end up in the top-k, now to work out why.  As this is a rare occurence, we've got a little bit of time on our hands
+					*/
+					if (needed_for_top_k > 0)
+						{
+						/*
+							the heap isn't full yet - so change only happens if we're a new addition (i.e. the old value was a 0)
+						*/
+						if (*which == score)
+							{
+							accumulator_pointers[--needed_for_top_k] = which;
+							if (needed_for_top_k == 0)
+								top_results.make_heap();
+							}
+						}
+					else
+						{
+						*which -= score;
+						int prior_compare = this->cmp(which, accumulator_pointers[0]);
+						*which += score;
+
+						if (prior_compare < 0)
+							top_results.push_back(which);				// we're not in the heap so add this accumulator to the heap
+						else
+							top_results.promote(which);				// we're already in the heap so promote this document
+						}
+					}
+				}
+
+			/*
 				QUERY_HEAP::ADD_RSV()
 				---------------------
 			*/
@@ -335,42 +384,55 @@ if (document_id >= SENTINAL)
 			*/
 			forceinline void add_rsv(__m256i document_ids)
 				{
-#ifdef NEVER
 				/*
-					Extract and comput the cumulative sum one at a time
-				*/
-				DOCID_TYPE extracted;
-
-				extracted = _mm256_extract_epi32(document_ids, 0);
-				add_rsv(d1_cumulative_sum += extracted, impact);
-
-				extracted = _mm256_extract_epi32(document_ids, 1);
-				add_rsv(d1_cumulative_sum += extracted, impact);
-
-				extracted = _mm256_extract_epi32(document_ids, 2);
-				add_rsv(d1_cumulative_sum += extracted, impact);
-
-				extracted = _mm256_extract_epi32(document_ids, 3);
-				add_rsv(d1_cumulative_sum += extracted, impact);
-
-				extracted = _mm256_extract_epi32(document_ids, 4);
-				add_rsv(d1_cumulative_sum += extracted, impact);
-
-				extracted = _mm256_extract_epi32(document_ids, 5);
-				add_rsv(d1_cumulative_sum += extracted, impact);
-
-				extracted = _mm256_extract_epi32(document_ids, 6);
-				add_rsv(d1_cumulative_sum += extracted, impact);
-
-				extracted = _mm256_extract_epi32(document_ids, 7);
-				add_rsv(d1_cumulative_sum += extracted, impact);
-#else
-				/*
-					Compute the cumulative sum using SIMD then process
+					Compute the cumulative sum using SIMD (and add the previous cumulative sum)
 				*/
 				document_ids = simd::cumulative_sum(document_ids);
 				_mm256_add_epi32(document_ids, _mm256_set1_epi32(d1_cumulative_sum));
+				d1_cumulative_sum = _mm256_extract_epi32(document_ids, 7);
 
+#ifdef SIMD_JASS_GROUP_ADD_RSV
+				/*
+					Save the cumulative sum
+				*/
+				d1_cumulative_sum = _mm256_extract_epi32(document_ids, 7);
+
+				/*
+					Add to the accumulators
+				*/
+				__m256i values = accumulators[document_ids];			// set the dirty flags and gather() the rsv values
+				values = _mm256_add_epi32(values, impacts);			// add the impact scores
+				simd::scatter(&accumulators.accumulator[0], document_ids, values);		// write them back to the accumulators
+
+				/*
+					Compare and turn that into a bit patern.. If a > b then 0xFFFF else 0x0000
+				*/
+				__m256i cmp_greater = _mm256_cmpgt_epi32(values, lowest_in_heap);
+				__m256i cmp_equal = _mm256_cmpgt_epi32(values, lowest_in_heap);
+				__m256i cmp = _mm256_or_si256(cmp_greater, cmp_equal);
+				/*
+					Check that we got all zeros.  If not then we need to do an insert.
+				*/
+				if (!_mm256_testz_si256(cmp,cmp))
+					{
+					DOCID_TYPE SENTINAL = documents;
+
+					DOCID_TYPE docid;
+					ACCUMULATOR_TYPE score = _mm256_extract_epi32(impacts, 0);
+
+					if ((docid = _mm256_extract_epi32(document_ids, 0)) >= SENTINAL) return; else insert_into_heap(docid, score);
+					if ((docid = _mm256_extract_epi32(document_ids, 1)) >= SENTINAL) return; else insert_into_heap(docid, score);
+					if ((docid = _mm256_extract_epi32(document_ids, 2)) >= SENTINAL) return; else insert_into_heap(docid, score);
+					if ((docid = _mm256_extract_epi32(document_ids, 3)) >= SENTINAL) return; else insert_into_heap(docid, score);
+					if ((docid = _mm256_extract_epi32(document_ids, 4)) >= SENTINAL) return; else insert_into_heap(docid, score);
+					if ((docid = _mm256_extract_epi32(document_ids, 5)) >= SENTINAL) return; else insert_into_heap(docid, score);
+					if ((docid = _mm256_extract_epi32(document_ids, 6)) >= SENTINAL) return; else insert_into_heap(docid, score);
+					if ((docid = _mm256_extract_epi32(document_ids, 7)) >= SENTINAL) return; else insert_into_heap(docid, score);
+
+
+					lowest_in_heap = _mm256_set1_epi32(*accumulator_pointers[0]);
+					}
+#else
 				add_rsv(_mm256_extract_epi32(document_ids, 0), impact);
 				add_rsv(_mm256_extract_epi32(document_ids, 1), impact);
 				add_rsv(_mm256_extract_epi32(document_ids, 2), impact);
@@ -398,18 +460,6 @@ if (document_id >= SENTINAL)
 				auto buffer = decompress_buffer.data();
 				decode(buffer, integers, compressed, compressed_size);
 
-#ifdef NEVER
-				/*
-					D1-decode into a variable one at a time
-				*/
-				DOCID_TYPE id = 0;
-				DOCID_TYPE *end = buffer + integers;
-				for (auto *current = buffer; current < end; current++)
-					{
-					id += *current;
-					add_rsv(id, impact);
-					}
-#else
 				/*
 					D1-decode inplace with SIMD instructions the process one at a time
 				*/
@@ -417,7 +467,6 @@ if (document_id >= SENTINAL)
 				DOCID_TYPE *end = buffer + integers;
 				for (auto *current = buffer; current < end; current++)
 					add_rsv(*current, impact);
-#endif
 				}
 
 			/*
@@ -445,7 +494,6 @@ if (document_id >= SENTINAL)
 					writer.add_rsv(id, impact);
 					}
 				}
-
 
 			/*
 				QUERY_HEAP::UNITTEST()

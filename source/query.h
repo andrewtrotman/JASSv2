@@ -96,7 +96,11 @@ namespace JASS
 				};
 
 		protected:
-			ACCUMULATOR_TYPE impact;													///< The impact score to be added on a call to push_back()
+#ifdef SIMD_JASS_GROUP_ADD_RSV
+			__m256i impacts;																///< The impact score to be added on a call to add_rsv()
+#endif
+			ACCUMULATOR_TYPE impact;													///< The impact score to be added on a call to add_rsv()
+
 			allocator_pool memory;														///< All memory allocation happens in this "arena"
 			std::vector<uint32_t> decompress_buffer;								///< The delta-encoded decopressed integer sequence.
 			DOCID_TYPE documents;														///< The numnber of documents this index contains
@@ -208,7 +212,11 @@ namespace JASS
 			*/
 			forceinline void set_impact(ACCUMULATOR_TYPE score)
 				{
+#ifdef SIMD_JASS_GROUP_ADD_RSV
+				impacts = _mm256_set1_epi32(score);
+#else
 				impact = score;
+#endif
 				}
 
 			/*

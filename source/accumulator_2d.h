@@ -6,16 +6,18 @@
 */
 #pragma once
 
+#include <math.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <immintrin.h>
+
 #include <new>
 #include <vector>
 #include <random>
 #include <numeric>
 #include <algorithm>
 
-#include <math.h>
-#include <stdint.h>
-#include <stdio.h>
-
+#include "simd.h"
 #include "maths.h"
 #include "forceinline.h"
 
@@ -224,6 +226,88 @@ namespace JASS
 #endif
 
 				return accumulator[which];
+				}
+
+			/*
+				ACCUMULATOR_2D::WHICH_CLEAN_FLAG()
+				----------------------------------
+			*/
+			/*!
+				@brief Return the id of the clean flag to use.
+				@param element [in] The accumulator number.
+				@return The clean flag number.
+			*/
+			forceinline __m256 which_clean_flag(__m256 element) const
+				{
+				return _mm256_srli_epi32(element, shift);
+				}
+
+			/*
+				ACCUMULATOR_2D::OPERATOR[]()
+				----------------------------
+			*/
+			/*!
+				@brief Return a reference to the given accumulator
+				@details The only valid way to access the accumulators is through this interface.  It ensures the accumulator has been initialised before thr first
+				time it is returned to the caller.
+				@param which [in] The accumulator to return.
+			*/
+			forceinline __m256 operator[](__m256 which)
+				{
+				__m256i indexes = which_clean_flag(which);
+				__m256i flags = simd::gather(&clean_flag[0], indexes);
+				uint32_t got = _mm256_movemask_epi8(flags);
+
+				if (got != 0x11111111)
+					{
+					uint32_t single_flag;
+					/*
+						At least one of the rows is unclean.  It might be that two
+						bits represent the same row so we must check for that
+					*/
+					if (!clean_flag[single_flag = _mm256_extract_epi32(flags, 0)])
+						{
+						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
+						clean_flag[single_flag] = 0xFF;
+						}
+					if (!clean_flag[single_flag = _mm256_extract_epi32(flags, 1)])
+						{
+						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
+						clean_flag[single_flag] = 0xFF;
+						}
+					if (!clean_flag[single_flag = _mm256_extract_epi32(flags, 2)])
+						{
+						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
+						clean_flag[single_flag] = 0xFF;
+						}
+					if (!clean_flag[single_flag = _mm256_extract_epi32(flags, 3)])
+						{
+						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
+						clean_flag[single_flag] = 0xFF;
+						}
+					if (!clean_flag[single_flag = _mm256_extract_epi32(flags, 4)])
+						{
+						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
+						clean_flag[single_flag] = 0xFF;
+						}
+					if (!clean_flag[single_flag = _mm256_extract_epi32(flags, 5)])
+						{
+						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
+						clean_flag[single_flag] = 0xFF;
+						}
+					if (!clean_flag[single_flag = _mm256_extract_epi32(flags, 6)])
+						{
+						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
+						clean_flag[single_flag] = 0xFF;
+						}
+					if (!clean_flag[single_flag = _mm256_extract_epi32(flags, 7)])
+						{
+						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
+						clean_flag[single_flag] = 0xFF;
+						}
+					}
+
+				return simd::gather(&accumulator[0], which);
 				}
 
 			/*
