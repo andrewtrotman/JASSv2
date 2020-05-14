@@ -215,7 +215,7 @@ namespace JASS
 				@param element [in] The accumulator numbers.
 				@return The clean flag numbers.
 			*/
-			forceinline __m256 which_clean_flag(__m256 element) const
+			forceinline __m256i which_clean_flag(__m256i element) const
 				{
 				return _mm256_srli_epi32(element, shift);
 				}
@@ -232,7 +232,7 @@ namespace JASS
 				@param which [in] The accumulators to return.
 				@return The values of the accumulators.
 			*/
-			forceinline __m256 operator[](__m256i which)
+			forceinline __m256i operator[](__m256i which)
 				{
 				__m256i indexes = which_clean_flag(which);
 				__m256i flags = simd::gather(&clean_flag[0], indexes);
