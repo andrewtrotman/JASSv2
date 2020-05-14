@@ -1,3 +1,4 @@
+#define SIMD_JASS 1
 /*
 	INDEX_POSTINGS.H
 	----------------
@@ -259,7 +260,6 @@ namespace JASS
 			*/
 			void impact_order(size_t documents_in_collection, index_postings_impact &postings_list, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies) const
 				{
-//#define SIMD_JASS 1
 #ifdef SIMD_JASS
 #define SENTINAL (documents_in_collection + 1)
 std::ostream &operator<<(std::ostream &stream, const index_postings &data);

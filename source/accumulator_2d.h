@@ -22,7 +22,6 @@
 #include "forceinline.h"
 
 //#define USE_QUERY_IDS 1
-//#define DYNAMIC_BUFFERS 1
 
 namespace JASS
 	{
@@ -52,7 +51,7 @@ namespace JASS
 
 		private:
 #ifdef USE_QUERY_IDS
-			typedef uint32_t flag_type;
+			typedef uint16_t flag_type;
 #else
 			typedef uint8_t flag_type;
 #endif
@@ -70,19 +69,12 @@ namespace JASS
 		private:
 			static constexpr size_t maximum_number_of_accumulators_allocated = maximum_width * maximum_number_of_clean_flags;			///< The numner of accumulators that were actually allocated (recall that this is a 2D array)
 		public:
-#ifdef DYNAMIC_BUFFERS
-			typedef std::array<flag_type, maximum_number_of_clean_flags> clean_flag_t;
-			clean_flag_t &clean_flag;																								///< The clean flags are kept as bytes for faster lookup
-			typedef std::array<ELEMENT, maximum_number_of_accumulators_allocated> accumulator_t;																				///< The accumulators are kept in an array
-			accumulator_t &accumulator;																							///< The accumulators are kept in an array
-#else
 			typedef std::array<flag_type, maximum_number_of_clean_flags> clean_flag_t;
 			clean_flag_t clean_flag;																								///< The clean flags are kept as bytes for faster lookup
 			typedef std::array<ELEMENT, maximum_number_of_accumulators_allocated> accumulator_t;																				///< The accumulators are kept in an array
 			accumulator_t accumulator;																							///< The accumulators are kept in an array
 //			flag_type clean_flag[maximum_number_of_clean_flags];																								///< The clean flags are kept as bytes for faster lookup
 //			ELEMENT accumulator[maximum_number_of_accumulators_allocated];																							///< The accumulators are kept in an array
-#endif
 
 #ifdef USE_QUERY_IDS
 			flag_type query_id;
@@ -106,18 +98,8 @@ namespace JASS
 				@brief Constructor.
 			*/
 			accumulator_2d()
-#ifdef DYNAMIC_BUFFERS
-			 :
-				clean_flag(* new clean_flag_t),
-				accumulator(* new accumulator_t)
-#endif
-
 #ifdef USE_QUERY_IDS
-	#ifdef DYNAMIC_BUFFERS
-				,
-	#else
 				:
-	#endif
 				query_id(std::numeric_limits<decltype(query_id)>::max())
 #endif
 				{
@@ -133,10 +115,6 @@ namespace JASS
 			*/
 			virtual ~accumulator_2d()
 				{
-#ifdef DYNAMIC_BUFFERS
-				delete &clean_flag;
-				delete &accumulator;
-#endif
 				}
 
 			/*
@@ -233,9 +211,9 @@ namespace JASS
 				----------------------------------
 			*/
 			/*!
-				@brief Return the id of the clean flag to use.
-				@param element [in] The accumulator number.
-				@return The clean flag number.
+				@brief Return the ids of the clean flags to use.
+				@param element [in] The accumulator numbers.
+				@return The clean flag numbers.
 			*/
 			forceinline __m256 which_clean_flag(__m256 element) const
 				{
@@ -247,17 +225,19 @@ namespace JASS
 				----------------------------
 			*/
 			/*!
-				@brief Return a reference to the given accumulator
-				@details The only valid way to access the accumulators is through this interface.  It ensures the accumulator has been initialised before thr first
+				@brief Return a set of acumulators
+				@details The only valid way to access the accumulators is through this interface.
+				It ensures the accumulator has been initialised before the first
 				time it is returned to the caller.
-				@param which [in] The accumulator to return.
+				@param which [in] The accumulators to return.
+				@return The values of the accumulators.
 			*/
-			forceinline __m256 operator[](__m256 which)
+			forceinline __m256 operator[](__m256i which)
 				{
 				__m256i indexes = which_clean_flag(which);
 				__m256i flags = simd::gather(&clean_flag[0], indexes);
-				uint32_t got = _mm256_movemask_epi8(flags);
 
+				uint32_t got = _mm256_movemask_epi8(flags);
 				if (got != 0x11111111)
 					{
 					uint32_t single_flag;
@@ -265,42 +245,42 @@ namespace JASS
 						At least one of the rows is unclean.  It might be that two
 						bits represent the same row so we must check for that
 					*/
-					if (!clean_flag[single_flag = _mm256_extract_epi32(flags, 0)])
+					if (!clean_flag[single_flag = _mm256_extract_epi32(indexes, 0)])
 						{
 						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
 						clean_flag[single_flag] = 0xFF;
 						}
-					if (!clean_flag[single_flag = _mm256_extract_epi32(flags, 1)])
+					if (!clean_flag[single_flag = _mm256_extract_epi32(indexes, 1)])
 						{
 						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
 						clean_flag[single_flag] = 0xFF;
 						}
-					if (!clean_flag[single_flag = _mm256_extract_epi32(flags, 2)])
+					if (!clean_flag[single_flag = _mm256_extract_epi32(indexes, 2)])
 						{
 						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
 						clean_flag[single_flag] = 0xFF;
 						}
-					if (!clean_flag[single_flag = _mm256_extract_epi32(flags, 3)])
+					if (!clean_flag[single_flag = _mm256_extract_epi32(indexes, 3)])
 						{
 						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
 						clean_flag[single_flag] = 0xFF;
 						}
-					if (!clean_flag[single_flag = _mm256_extract_epi32(flags, 4)])
+					if (!clean_flag[single_flag = _mm256_extract_epi32(indexes, 4)])
 						{
 						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
 						clean_flag[single_flag] = 0xFF;
 						}
-					if (!clean_flag[single_flag = _mm256_extract_epi32(flags, 5)])
+					if (!clean_flag[single_flag = _mm256_extract_epi32(indexes, 5)])
 						{
 						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
 						clean_flag[single_flag] = 0xFF;
 						}
-					if (!clean_flag[single_flag = _mm256_extract_epi32(flags, 6)])
+					if (!clean_flag[single_flag = _mm256_extract_epi32(indexes, 6)])
 						{
 						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
 						clean_flag[single_flag] = 0xFF;
 						}
-					if (!clean_flag[single_flag = _mm256_extract_epi32(flags, 7)])
+					if (!clean_flag[single_flag = _mm256_extract_epi32(indexes, 7)])
 						{
 						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
 						clean_flag[single_flag] = 0xFF;

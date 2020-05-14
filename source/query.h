@@ -1,3 +1,5 @@
+//#define SIMD_JASS_GROUP_ADD_RSV 1
+#define SIMD_JASS 1
 /*
 	QUERY.H
 	-------
@@ -214,9 +216,8 @@ namespace JASS
 				{
 #ifdef SIMD_JASS_GROUP_ADD_RSV
 				impacts = _mm256_set1_epi32(score);
-#else
-				impact = score;
 #endif
+				impact = score;
 				}
 
 			/*
