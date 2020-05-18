@@ -216,8 +216,9 @@ namespace JASS
 				{
 #ifdef SIMD_JASS_GROUP_ADD_RSV
 				impacts = _mm256_set1_epi32(score);
-#endif
+#else
 				impact = score;
+#endif
 				}
 
 			/*
@@ -234,7 +235,6 @@ namespace JASS
 			forceinline void decode_and_process(ACCUMULATOR_TYPE impact, size_t integers, const void *compressed, size_t compressed_size)
 				{
 				set_impact(impact);
-//std::cout << "\n[" << impact << "]";
 				decode_with_writer(integers, compressed, compressed_size);
 				}
 

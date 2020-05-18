@@ -177,7 +177,7 @@ int main(int argc, const char *argv[])
 	*/
 	std::string codex_name;
 	int32_t d_ness;
-	JASS::compress_integer &decompressor = index.codex(codex_name, d_ness);
+	std::unique_ptr<JASS::compress_integer> decompressor = index.codex(codex_name, d_ness);
 
 	if (!parameter_look_like_atire)
 		{
@@ -190,7 +190,7 @@ int main(int argc, const char *argv[])
 	/*
 		Print the postings lists
 	*/
-	walk_index(index, decompressor);
+	walk_index(index, *decompressor);
 
 	/*
 		Print the primary key list

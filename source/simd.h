@@ -1,14 +1,14 @@
 /*
-	SLICE.H
+	SIMD.H
 	-------
 	Copyright (c) 2016 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 /*!
 	@file
-	@brief Slices (also known as string-descriptors) for C++.
+	@brief Helpful SIMD methods
 	@author Andrew Trotman
-	@copyright 2016 Andrew Trotman
+	@copyright 2020 Andrew Trotman
 */
 
 #pragma once
@@ -29,7 +29,7 @@ namespace JASS
 		----------
 	*/
 	/*!
-		@bried Helpful SIMD methods
+		@brief Helpful SIMD methods
 	*/
 	class simd
 		{
@@ -247,7 +247,7 @@ namespace JASS
 					current_set = cumulative_sum(current_set);
 
 					/*
-						add theprevious maximum to each of them
+						add the previous maximum to each of them
 					*/
 					current_set = _mm256_add_epi32(current_set, previous_max);
 

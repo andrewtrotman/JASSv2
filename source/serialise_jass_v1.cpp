@@ -108,7 +108,7 @@ namespace JASS
 			*/
 			compress_integer::d1_encode(header.begin(), header.begin(), header.size());
 			*header.begin() -= 1;			// JASS v1 counts documents from 0.
-			auto took = encoder.encode(compress_into, compress_into_size, header.begin(), header.size());
+			auto took = encoder->encode(compress_into, compress_into_size, header.begin(), header.size());
 			if (took <= 0)
 				{
 				/*
@@ -214,7 +214,7 @@ namespace JASS
 		SERIALISE_JASS_V1::GET_COMPRESSOR()
 		-----------------------------------
 	*/
-	compress_integer &serialise_jass_v1::get_compressor(jass_v1_codex codex, std::string &name, int32_t &d_ness)
+	std::unique_ptr<compress_integer> serialise_jass_v1::get_compressor(jass_v1_codex codex, std::string &name, int32_t &d_ness)
 		{
 		switch (codex)
 			{

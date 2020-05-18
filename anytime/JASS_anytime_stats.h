@@ -27,6 +27,7 @@ class JASS_anytime_stats
 		size_t number_of_queries;					///< The number of queries that have been processed
 		size_t wall_time_in_ns;						///< Total wall time to do all the search (in nanoseconds)
 		size_t sum_of_CPU_time_in_ns;				///< Sum of the indivivual thread total timers (multi-threaded can be larger than wall_time_in_ns)
+		size_t total_run_time_in_ns;				///< includes I/O and everything (start main() to end of main()).
 
 	public:
 		/*
@@ -60,12 +61,13 @@ class JASS_anytime_stats
 std::ostream &operator<<(std::ostream &output, JASS_anytime_stats &data)
 	{
 	output << "-------------------\n";
-	output << "Threads                                : " << data.threads << '\n';
-	output << "Queries                                : " << data.number_of_queries << '\n';
-	output << "Documents                              : " << data.number_of_documents << '\n';
-	output << "Total wall time                        : " << data.wall_time_in_ns << " ns\n";
-	output << "Total CPU wall time searching          : " << data.sum_of_CPU_time_in_ns << " ns\n";
-	output << "Total time excluding I/O (per query)   : " << data.sum_of_CPU_time_in_ns / ((data.number_of_queries == 0) ? 1 : data.number_of_queries) << " ns\n";
+	output << "Threads                                          : " << data.threads << '\n';
+	output << "Queries                                          : " << data.number_of_queries << '\n';
+	output << "Documents                                        : " << data.number_of_documents << '\n';
+	output << "Total wall time for all queries (main loop time) : " << data.wall_time_in_ns << " ns\n";
+	output << "Total CPU wall time searching (sum of threads)   : " << data.sum_of_CPU_time_in_ns << " ns\n";
+	output << "Total time excluding I/O (per query)             : " << data.sum_of_CPU_time_in_ns / ((data.number_of_queries == 0) ? 1 : data.number_of_queries) << " ns\n";
+	output << "Total wall clock run time (inc I/O and search)   : " << data.total_run_time_in_ns << " ns\n";
 	output << "-------------------\n";
 	return output;
 	}

@@ -113,6 +113,74 @@ namespace JASS
 		};
 
 	/*
+		COMPRESS_INTEGER_ALL::REPLICATE()
+		---------------------------------
+	*/
+	std::unique_ptr<compress_integer>compress_integer_all::replicate(compress_integer *codex)
+		{
+		if (codex == &none)
+			return std::make_unique<compress_integer_none>();
+	#ifdef NEVER
+		if (codex == &carry_8b)
+			return std::make_unique<compress_integer_carry_8b>();
+		if (codex == &simple_9)
+			return std::make_unique<compress_integer_simple_9>();
+		if (codex == &simple_8b)
+			return std::make_unique<compress_integer_simple_8b>();
+		if (codex == &simple_16)
+			return std::make_unique<compress_integer_simple_16>();
+		if (codex == &bitpack_64)
+			return std::make_unique<compress_integer_bitpack_64>();
+		if (codex == &elias_gamma)
+			return std::make_unique<compress_integer_elias_gamma>();
+		if (codex == &elias_delta)
+			return std::make_unique<compress_integer_elias_delta>();
+	#endif
+		if (codex == &qmx_jass_v1)
+			return std::make_unique<compress_integer_qmx_jass_v1>();
+	#ifdef NEVER
+		if (codex == &bitpack_128)
+			return std::make_unique<compress_integer_bitpack_128>();
+		if (codex == &bitpack_256)
+			return std::make_unique<compress_integer_bitpack_256>();
+		if (codex == &relative_10)
+			return std::make_unique<compress_integer_relative_10>();
+		if (codex == &carryover_12)
+			return std::make_unique<compress_integer_carryover_12>();
+		if (codex == &qmx_original)
+			return std::make_unique<compress_integer_qmx_original>();
+		if (codex == &qmx_improved)
+			return std::make_unique<compress_integer_qmx_improved>();
+		if (codex == &stream_vbyte)
+			return std::make_unique<compress_integer_stream_vbyte>();
+		if (codex == &variable_byte)
+			return std::make_unique<compress_integer_variable_byte>();
+		if (codex == &simple_9_packed)
+			return std::make_unique<compress_integer_simple_9_packed>();
+		if (codex == &elias_delta_simd)
+			return std::make_unique<compress_integer_elias_delta_simd>();
+		if (codex == &simple_16_packed)
+			return std::make_unique<compress_integer_simple_16_packed>();
+		if (codex == &simple_8b_packed)
+			return std::make_unique<compress_integer_simple_8b_packed>();
+	#endif
+		if (codex == &elias_gamma_simd)
+			return std::make_unique<compress_integer_elias_gamma_simd>();
+	#ifdef NEVER
+		if (codex == &bitpack_32_reduced)
+			return std::make_unique<compress_integer_bitpack_32_reduced>();
+		if (codex == &elias_gamma_bitwise)
+			return std::make_unique<compress_integer_elias_gamma_bitwise>();
+		if (codex == &elias_delta_bitwise)
+			return std::make_unique<compress_integer_elias_delta_bitwise>();
+	#endif
+
+		assert(0);	// Unknown compressor;
+		return nullptr;
+		}
+
+
+	/*
 		COMPRESS_INTEGER_ALL::UNITTEST()
 		--------------------------------
 	*/
@@ -154,7 +222,7 @@ namespace JASS
 		*/
 		JASS_assert(parameters[0] == true);
 		JASS_assert(name(parameters) == compressors[0].description);
-		JASS_assert(&compressor(parameters) == compressors[0].codex);
+//		JASS_assert(&compressor(parameters) == compressors[0].codex);
 
 		/*
 			Check what happens if we don't have any parameters.
@@ -169,7 +237,7 @@ namespace JASS
 				parameters_selected++;					// LCOV_EXCL_LINE		// if the unit test is successful then this should not be called.
 		JASS_assert(parameters_selected == 0);
 		JASS_assert(name(parameters) == "None");
-		JASS_assert(&compressor(parameters) == compressors[default_compressor].codex);
+//		JASS_assert(&compressor(parameters) == compressors[default_compressor].codex);
 
 		puts("compress_integer_all::PASSED");
 		}

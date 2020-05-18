@@ -91,7 +91,19 @@ namespace JASS
 				{
 				return std::tuple_cat(make_commandline<I - 1>(option), std::make_tuple(commandline::parameter(compress_integer_all::compressors[I].shortname, compress_integer_all::compressors[I].longname, compress_integer_all::compressors[I].description, option[I])));
 				}
-		
+
+			/*
+				COMPRESS_INTEGER_ALL::REPLICATE()
+				---------------------------------
+			*/
+			/*!
+
+				@brief Turn a static reference to an obect into a dynamically allocated object
+				@param codex [in] one of the objects in compress_integer_all::compressors[]
+				@return A dynamically allocated object of the same type
+			*/
+			static std::unique_ptr<compress_integer> replicate(compress_integer *codex);
+
 		public:
 			/*
 				COMPRESS_INTEGER_ALL::PARAMETERLIST()
@@ -114,15 +126,15 @@ namespace JASS
 			/*!
 				@brief Turn the first selected compressor (according to option) into a compressor
 				@param option [in] An array (one per compressor) with (preferably) one set to true.
-				@return An integer compressor, or the default integer compressor if each member of option is set to false.
+				@return A pointer to an integer compressor (caller to free), or the default integer compressor if each member of option is set to false.
 			*/
-			static compress_integer &compressor(const std::array<bool, compressors_size> &option)
+			static std::unique_ptr<compress_integer> compressor(const std::array<bool, compressors_size> &option)
 				{
 				for (size_t which = 0; which < compressors_size; which++)
 					if (option[which])
-						return *compressors[which].codex;
+						return replicate(compressors[which].codex);
 					
-				return *compressors[default_compressor].codex;
+				return replicate(compressors[default_compressor].codex);
 				}
 			
 			/*
@@ -150,15 +162,15 @@ namespace JASS
 			/*!
 				@brief Given the name of a compressor, return a reference to an object that is that kind of compressor.
 				@param name [in] The name of the compressor.
-				@return A reference to a compressor that can encode and decode data using the codex of the given name (or a "null" compressor on error)
+				@return A poionter to a compressor (caller to free) that can encode and decode data using the codex of the given name (or a "null" compressor on error)
 			*/
-			static compress_integer &get_by_name(const std::string &name)
+			static std::unique_ptr<compress_integer> get_by_name(const std::string &name)
 				{
 				for (size_t which = 0; which < compressors_size; which++)
 					if (compressors[which].description == name)
-						return *compressors[which].codex;
+						return replicate(compressors[which].codex);
 
-				return *compressors[0].codex;
+				return replicate(compressors[0].codex);
 				}
 
 			/*

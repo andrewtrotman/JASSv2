@@ -441,7 +441,7 @@ namespace JASS
 				payload2 = _mm256_srli_epi32(payload2, width);
 
 				/*
-					move on to the next selctor
+					move on to the next selector
 				*/
 				selector >>= width;
 				}

@@ -450,7 +450,7 @@ if (document_id >= SENTINAL)
 				decode(buffer, integers, compressed, compressed_size);
 
 				/*
-					D1-decode inplace with SIMD instructions the process one at a time
+					D1-decode inplace with SIMD instructions then process one at a time
 				*/
 				simd::cumulative_sum(buffer, integers);
 				DOCID_TYPE *end = buffer + integers;

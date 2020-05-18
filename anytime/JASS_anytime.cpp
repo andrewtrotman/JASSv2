@@ -35,8 +35,8 @@
 constexpr size_t MAX_QUANTUM = 0x0FFF;
 constexpr size_t MAX_TERMS_PER_QUERY = 1024;
 
-constexpr size_t MAX_DOCUMENTS = 55'000'000;
-constexpr size_t MAX_TOP_K = 1'000;
+constexpr size_t MAX_DOCUMENTS = JASS::query::MAX_DOCUMENTS;
+constexpr size_t MAX_TOP_K = JASS::query::MAX_TOP_K;
 
 /*
 	PARAMETERS
@@ -76,7 +76,7 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 	*/
 	std::string codex_name;
 	int32_t d_ness;
-	JASS::compress_integer &jass_query = index.codex(codex_name, d_ness);
+	std::unique_ptr<JASS::compress_integer> jass_query = index.codex(codex_name, d_ness);
 #ifdef NEVER
 //	typedef JASS::query_maxblock<uint16_t, MAX_DOCUMENTS, MAX_TOP_K> QUERY_TYPE;
 	typedef JASS::query_heap QUERY_TYPE;
@@ -86,7 +86,7 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 
 	try
 		{
-		jass_query.init(index.primary_keys(), index.document_count(), top_k);
+		jass_query->init(index.primary_keys(), index.document_count(), top_k);
 		}
 	catch (std::bad_array_new_length &)
 		{
@@ -129,8 +129,8 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 		/*
 			Process the query
 		*/
-		jass_query.parse(query);
-		auto &terms = jass_query.terms();
+		jass_query->parse(query);
+		auto &terms = jass_query->terms();
 
 		/*
 			Parse the query and extract the list of impact segments
@@ -189,7 +189,7 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 		/*
 			Process the segments
 		*/
-		jass_query.rewind(largest_possible_rsv);
+		jass_query->rewind(largest_possible_rsv);
 //std::cout << "MAXRSV:" << largest_possible_rsv << "\n";
 
 		size_t postings_processed = 0;
@@ -211,10 +211,10 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 				Process the postings
 			*/
 			JASS::query::ACCUMULATOR_TYPE impact = header.impact;
-			jass_query.decode_and_process(impact, header.segment_frequency, index.postings() + header.offset, header.end - header.offset);
+			jass_query->decode_and_process(impact, header.segment_frequency, index.postings() + header.offset, header.end - header.offset);
 			}
 
-		jass_query.sort();
+		jass_query->sort();
 		
 		/*
 			stop the timer
@@ -224,7 +224,7 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 		/*
 			Serialise the results list (don't time this)
 		*/
-		JASS::run_export(JASS::run_export::TREC, output.results_list, query_id.c_str(), jass_query, "JASSv2", true);
+		JASS::run_export(JASS::run_export::TREC, output.results_list, query_id.c_str(), *jass_query, "JASSv2", true);
 
 		/*
 			Re-start the timer
@@ -280,6 +280,7 @@ uint8_t usage(const std::string &exename)
 */
 int main(int argc, const char *argv[])
 	{
+	auto total_run_time = JASS::timer::start();
 	/*
 		Parse the commane line parameters
 	*/
@@ -404,6 +405,7 @@ std::cout << "Maximum number of postings to process:" << postings_to_process << 
 	if ((size_t)TREC_file.tellp() != 0)
 		JASS::file::write_entire_file("ranking.txt", TREC_file.str());
 
+	stats.total_run_time_in_ns = JASS::timer::stop(total_run_time).nanoseconds();
 	std::cout << stats;
 
 	return 0;
