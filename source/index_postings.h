@@ -1,4 +1,4 @@
-#define SIMD_JASS 1
+//#define SIMD_JASS 1
 /*
 	INDEX_POSTINGS.H
 	----------------
