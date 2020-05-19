@@ -402,6 +402,7 @@ class metric_set
 
 		for (const auto &[first_name, first_set] : run_set)
 			{
+			(void)first_name;		// unused, supress warning.
 			/*
 				Output the row name
 			*/
@@ -412,7 +413,7 @@ class metric_set
 			*/
 			for (const auto &[second_name, second_set] : run_set)
 					{
-					(void)second_set;		// unused, supress warning.
+					(void)second_name;		// unused, supress warning.
 					std::vector<double> first_scores;
 					std::vector<double> second_scores;
 					for (const auto &[first_query, first_metric_set] : first_set)
@@ -485,7 +486,10 @@ class metric_set
 			*/
 			std::vector<double> scores_one;
 			for (const auto &[name, values] : average_set)
+				{
+				(void)name;
 				scores_one.push_back(values.metric[metric_one]);
+				}
 
 			/*
 				Compute the second set of scores and the Spearman Correlation
@@ -494,7 +498,10 @@ class metric_set
 				{
 				std::vector<double> scores_two;
 				for (const auto &[name, values] : average_set)
+					{
+					(void)name;
 					scores_two.push_back(values.metric[metric_two]);
+					}
 
 				double rho = JASS::statistics::spearman_correlation(scores_one, scores_two);
 				std::cout << std::setw(width) << rho;
@@ -957,6 +964,7 @@ void load_and_evaluate_run(const std::string &filename, std::map<std::string, me
 	double query_count = 0;
 	for (const auto &[query_id, scores] : per_query_scores)
 		{
+		(void)query_id;
 		query_count++;
 		averages += scores;
 		}
@@ -1034,11 +1042,20 @@ int main(int argc, const char *argv[])
 	*/
 	if (parameter_output_per_query_scores)
 		for (const auto &[run_name, per_query_scores] : all_the_runs)
+			{
+			(void)run_name;
 			for (const auto &[query_id, scores] : per_query_scores)
+				{
+				(void)query_id;
 				std::cout << scores << '\n';
+				}
+			}
 
 	for (const auto &[run_name, averages] : all_the_averages)
+		{
+		(void)run_name;
 		std::cout << averages << '\n';
+		}
 
 	/*
 		For each metric, conduct the t-test
