@@ -147,7 +147,7 @@ namespace JASS
 				this->primary_keys = &primary_keys;
 				this->top_k = top_k;
 				this->documents = documents;
-				decompress_buffer.resize(documents);
+				decompress_buffer.resize(documents + 1024);			// we add 1024 so that decompressors can overflow
 				rewind();
 				}
 
