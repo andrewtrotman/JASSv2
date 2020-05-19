@@ -254,7 +254,7 @@ namespace JASS
 					/*
 						and write back out to the same location we read from
 					*/
-					_mm256_store_si256(block, current_set);
+					_mm256_storeu_si256(block, current_set);
 
 					/*
 						Broadcast the largest number from the result for next time
