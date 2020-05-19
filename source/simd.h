@@ -233,8 +233,8 @@ namespace JASS
 				/*
 					Loop over all the data (going too far if necessary)
 				*/
-				__m256i *end = (__m256i *)data + (length + 7) / 8;
-				for (__m256i *block = (__m256i *)data; block != end; block++)
+				__m256i *end = (__m256i *)(data + (length + 7) / 8);
+				for (__m256i *block = (__m256i *)data; block < end; block++)
 					{
 					/*
 						load the next 8 integers
