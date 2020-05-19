@@ -1,4 +1,3 @@
-//#define SIMD_JASS 1
 /*
 	COMPRESS_INTEGER_ELIAS_GAMMA_SIMD.H
 	-----------------------------------
