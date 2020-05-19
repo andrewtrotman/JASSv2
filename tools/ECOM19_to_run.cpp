@@ -220,6 +220,7 @@ fprintf(stderr, "Dump the Run\n");
 		size_t results_list_length = answer.size();
 		for (const auto &[query, document, price] : answer)
 			{
+			(void)price;		// unused, supress warning.
 			rank++;
 			std::cout << query << " Q0 " << document << ' ' << rank << ' ' << results_list_length - rank + 1 << ' ' << argv[4] << '\n';
 			}

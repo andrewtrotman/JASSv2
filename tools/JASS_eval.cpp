@@ -381,7 +381,10 @@ class metric_set
 		*/
 		size_t width = 0;
 		for (const auto &[first_name, first_set] : run_set)
+			{
+			(void)first_name;		// unused, supress warning.
 			width = JASS::maths::maximum(width, first_set.begin()->second.run_id.size());
+			}
 
 		width = JASS::maths::maximum(width + 1, static_cast<size_t>(7));			// account for a space and account for the size of a p value.
 		std::cout.width(width);
@@ -391,7 +394,10 @@ class metric_set
 		*/
 		std::cout << std::setw(width) << " ";
 		for (const auto &[first_name, first_set] : run_set)
+			{
+			(void)first_name;		// unused, supress warning.
 			std::cout << std::right << std::setw(width) << first_set.begin()->second.run_id;
+			}
 		std::cout << '\n';
 
 		for (const auto &[first_name, first_set] : run_set)
@@ -406,6 +412,7 @@ class metric_set
 			*/
 			for (const auto &[second_name, second_set] : run_set)
 					{
+					(void)second_set;		// unused, supress warning.
 					std::vector<double> first_scores;
 					std::vector<double> second_scores;
 					for (const auto &[first_query, first_metric_set] : first_set)

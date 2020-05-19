@@ -112,7 +112,7 @@ int main(int argc, const char *argv[])
 		{
 		document_length_vector.push_back(docid.doclength);
 		key_vector.push_back(docid.collection_docid);
-		if (last_docid != docid.docid)
+		if (last_docid != static_cast<JASS::compress_integer::integer>(docid.docid))
 			{
 			std::cout << "Document IDs must be ordered\n";
 			exit(0);
