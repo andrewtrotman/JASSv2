@@ -97,9 +97,10 @@ namespace JASS
 			/*!
 				@brief Constructor.
 			*/
-			accumulator_2d()
+			accumulator_2d() :
+				number_of_clean_flags(0)
 #ifdef USE_QUERY_IDS
-				:
+				,
 				query_id(std::numeric_limits<decltype(query_id)>::max())
 #endif
 				{
