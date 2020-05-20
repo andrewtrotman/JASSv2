@@ -178,6 +178,7 @@ int main(int argc, const char *argv[])
 	std::string codex_name;
 	int32_t d_ness;
 	std::unique_ptr<JASS::compress_integer> decompressor = index.codex(codex_name, d_ness);
+	decompressor->init(index.primary_keys(), index.document_count());
 
 	if (!parameter_look_like_atire)
 		{

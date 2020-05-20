@@ -210,7 +210,9 @@ namespace JASS
 					ABCD BCD0 CD00 D000 EFGH FGH0 GH00 H000
 					EFGH EFGH EFGH EFGH 0000 0000 0000 0000
 				*/
-				return _mm256_add_epi32(elements, missing);
+				__m256i answer = _mm256_add_epi32(elements, missing);
+
+				return answer;
 				}
 
 			/*
@@ -233,7 +235,7 @@ namespace JASS
 				/*
 					Loop over all the data (going too far if necessary)
 				*/
-				__m256i *end = ((__m256i *)data) + ((length + 7) / 8);
+				__m256i *end = (__m256i *)(data + length);
 				for (__m256i *block = (__m256i *)data; block < end; block++)
 					{
 					/*

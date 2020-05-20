@@ -286,10 +286,12 @@ namespace JASS
 				*which += score;
 				if (this->cmp(which, accumulator_pointers[0]) >= 0)			// ==0 is the case where we're the current bottom of heap so might need to be promoted
 					{
-#ifndef SIMD_JASS_GROUP_ADD_RSV
-DOCID_TYPE SENTINAL = documents;
-if (document_id >= SENTINAL)
-	return;
+#ifdef SIMD_JASS
+	#ifndef SIMD_JASS_GROUP_ADD_RSV
+	DOCID_TYPE SENTINAL = documents;
+	if (document_id >= SENTINAL)
+		return;
+	#endif
 #endif
 					/*
 						We end up in the top-k, now to work out why.  As this is a rare occurence, we've got a little bit of time on our hands
