@@ -35,8 +35,8 @@ namespace JASS
 		{
 		public:
 			/*
-				GATHER()
-				--------
+				SIMD::GATHER()
+				--------------
 			*/
 			/*!
 				@brief Gather 8 x 8 bit values into an 8 x 32-bit integer register.
@@ -47,6 +47,9 @@ namespace JASS
 			*/
 			forceinline static __m256i gather(const uint8_t *array, __m256i vindex)
 				{
+#ifdef __AVX512F__
+				return _mm256_maskz_mov_epi8((__mmask32)0x11111111, _mm256_i32gather_epi32((int const *)array, vindex, 1));
+#else
 				return _mm256_set_epi32
 					(
 					array[_mm256_extract_epi32(vindex, 7)],
@@ -58,33 +61,12 @@ namespace JASS
 					array[_mm256_extract_epi32(vindex, 1)],
 					array[_mm256_extract_epi32(vindex, 0)]
 					);
+#endif
 				}
 
 			/*
-				SCATTER()
-				---------
-			*/
-			/*!
-				@brief Scatter 8-bit integers
-				@param array [in] The base address of the array
-				@param vindex [in] The indexes into the array to write into
-				@param a [in] The value to split and scatter (8 x 32-bit integers written as 8 x 16-bit integers)
-			*/
-			forceinline static void scatter(uint8_t *array, __m256i vindex, __m256i a)
-				{
-				array[_mm256_extract_epi32(vindex, 0)] = _mm256_extract_epi16(a, 0);
-				array[_mm256_extract_epi32(vindex, 1)] = _mm256_extract_epi16(a, 2);
-				array[_mm256_extract_epi32(vindex, 2)] = _mm256_extract_epi16(a, 4);
-				array[_mm256_extract_epi32(vindex, 3)] = _mm256_extract_epi16(a, 6);
-				array[_mm256_extract_epi32(vindex, 4)] = _mm256_extract_epi16(a, 8);
-				array[_mm256_extract_epi32(vindex, 5)] = _mm256_extract_epi16(a, 10);
-				array[_mm256_extract_epi32(vindex, 6)] = _mm256_extract_epi16(a, 12);
-				array[_mm256_extract_epi32(vindex, 7)] = _mm256_extract_epi16(a, 14);
-				}
-
-			/*
-				GATHER()
-				--------
+				SIMD::GATHER()
+				--------------
 			*/
 			/*!
 				@brief Gather 8 x 16 bit values into an 8 x 32-bit integer register.
@@ -95,6 +77,9 @@ namespace JASS
 			*/
 			forceinline static __m256i gather(const uint16_t *array, __m256i vindex)
 				{
+#ifdef __AVX512F__
+				return _mm256_maskz_mov_epi16((__mmask16)0x5555, _mm256_i32gather_epi32((int const *)array, vindex, 2));
+#else
 				return _mm256_set_epi32
 					(
 					array[_mm256_extract_epi32(vindex, 7)],
@@ -106,11 +91,112 @@ namespace JASS
 					array[_mm256_extract_epi32(vindex, 1)],
 					array[_mm256_extract_epi32(vindex, 0)]
 					);
+#endif
 				}
 
 			/*
-				SCATTER()
-				---------
+				SIMD::GATHER()
+				--------------
+			*/
+			/*!
+				@brief Gather 8 x 32 bit values into an 8 x 32-bit integer register.
+				@param array [in] The base address of the array to read from.
+				@param vindex [in] The indexes into the array to read from.
+				@param a [in] The value to split and scatter.
+				@return The 8 integers
+			*/
+			forceinline static __m256i gather(const uint32_t *array, __m256i vindex)
+				{
+				return _mm256_i32gather_epi32((int const *)array, vindex, 4);
+				}
+
+			/*
+				SIMD::GATHER()
+				--------------
+			*/
+			/*!
+				@brief Gather 16 x 8 bit values into an 16 x 32-bit integer register.
+				@param array [in] The base address of the array to read from.
+				@param vindex [in] The indexes into the array to read from.
+				@param a [in] The value to split and scatter.
+				@return The 16 integers
+			*/
+			forceinline static __m512i gather(const uint8_t *array, __m512i vindex)
+				{
+				return _mm512_maskz_mov_epi8((__mmask64)0x1111111111111111, _mm512_i32gather_epi32(vindex, array, 1));
+				}
+
+			/*
+				SIMD::GATHER()
+				--------------
+			*/
+			/*!
+				@brief Gather 16 x 16 bit values into an 16 x 32-bit integer register.
+				@param array [in] The base address of the array to read from.
+				@param vindex [in] The indexes into the array to read from.
+				@param a [in] The value to split and scatter.
+				@return The 16 integers
+			*/
+			forceinline static __m512i gather(const uint16_t *array, __m512i vindex)
+				{
+				return _mm512_maskz_mov_epi16((__mmask32)0x55555555, _mm512_i32gather_epi32(vindex, array, 2));
+				}
+
+			/*
+				SIMD::GATHER()
+				--------------
+			*/
+			/*!
+				@brief Gather 16 x 32 bit values into an 16 x 32-bit integer register.
+				@param array [in] The base address of the array to read from.
+				@param vindex [in] The indexes into the array to read from.
+				@param a [in] The value to split and scatter.
+				@return The 16 integers
+			*/
+			forceinline static __m512i gather(const uint32_t *array, __m512i vindex)
+				{
+				return _mm512_i32gather_epi32(vindex, array, 4);
+				}
+
+			/*
+				SIMD::SCATTER()
+				---------------
+			*/
+			/*!
+				@brief Scatter 8-bit integers
+				@param array [in] The base address of the array
+				@param vindex [in] The indexes into the array to write into
+				@param a [in] The value to split and scatter (8 x 32-bit integers written as 8 x 16-bit integers)
+			*/
+			forceinline static void scatter(uint8_t *array, __m256i vindex, __m256i a)
+				{
+#ifdef __AVX512F__
+				__m256i mask = _mm256_set1_epi32(~0x0000'0003);
+				__m256i word_locations = _mm256_and_si256(vindex, mask);
+				__m256i conflict = _mm256_conflict_epi32(word_locations);
+				if (_mm256_testz_si256 (_mm256_set1_epi32(0xFFFF'FFFF), conflict))
+					{
+					__m256i was = _mm256_i32gather_epi32((int *)array, vindex, 1);
+					__m256i send = _mm256_mask_blend_epi8((__mmask32)0x1111'1111, was, a);
+					_mm256_i32scatter_epi32(array, vindex, send, 1);
+					}
+				else
+#endif
+					{
+					array[_mm256_extract_epi32(vindex, 0)] = _mm256_extract_epi16(a, 0);
+					array[_mm256_extract_epi32(vindex, 1)] = _mm256_extract_epi16(a, 2);
+					array[_mm256_extract_epi32(vindex, 2)] = _mm256_extract_epi16(a, 4);
+					array[_mm256_extract_epi32(vindex, 3)] = _mm256_extract_epi16(a, 6);
+					array[_mm256_extract_epi32(vindex, 4)] = _mm256_extract_epi16(a, 8);
+					array[_mm256_extract_epi32(vindex, 5)] = _mm256_extract_epi16(a, 10);
+					array[_mm256_extract_epi32(vindex, 6)] = _mm256_extract_epi16(a, 12);
+					array[_mm256_extract_epi32(vindex, 7)] = _mm256_extract_epi16(a, 14);
+					}
+				}
+
+			/*
+				SIMD::SCATTER()
+				---------------
 			*/
 			/*!
 				@brief Scatter 16-bit integers
@@ -131,24 +217,8 @@ namespace JASS
 				}
 
 			/*
-				GATHER()
-				--------
-			*/
-			/*!
-				@brief Gather 8 x 32 bit values into an 8 x 32-bit integer register.
-				@param array [in] The base address of the array to read from.
-				@param vindex [in] The indexes into the array to read from.
-				@param a [in] The value to split and scatter.
-				@return The 8 integers
-			*/
-			forceinline static __m256i gather(const uint32_t *array, __m256i vindex)
-				{
-				return _mm256_i32gather_epi32((int const *)array, vindex, 4);
-				}
-
-			/*
-				SCATTER()
-				---------
+				SIMD::SCATTER()
+				---------------
 			*/
 			/*!
 				@brief Scatter 32-bit integers
@@ -168,10 +238,9 @@ namespace JASS
 				array[_mm256_extract_epi32(vindex, 7)] = _mm256_extract_epi32(a, 7);
 				}
 
-
 			/*
-				CUMULATIVE_SUM()
-				----------------
+				SIMD::CUMULATIVE_SUM()
+				----------------------
 			*/
 			/*!
 				@brief Calculate the cumulative sum of the 32-bit integers in an AVX2 register.
@@ -216,8 +285,8 @@ namespace JASS
 				}
 
 			/*
-				CUMULATIVE_SUM()
-				----------------
+				SIMD::CUMULATIVE_SUM()
+				----------------------
 			*/
 			/*
 				@brief Calculate (inplace) the cumulative sum of the array of integers.
