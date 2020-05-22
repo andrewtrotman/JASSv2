@@ -488,7 +488,7 @@ namespace JASS
 				@param data [in/out] The integers to sum (and result).
 				@param length [in] The number of integrers to sum.
 			*/
-			forceinline static void cumulative_sum(uint32_t *data, size_t length)
+			static void cumulative_sum(uint32_t *data, size_t length)
 				{
 				/*
 					previous cumulative sum is zero
@@ -524,7 +524,7 @@ namespace JASS
 					/*
 						Broadcast the largest number from the result for next time
 					*/
-					previous_max = _mm512_maskz_permutexvar_epi32((__mmask16)0xFFFF, _mm512_set1_epi32(0x0F), answer);
+					previous_max = _mm512_maskz_permutexvar_epi32((__mmask16)0xFFFF, _mm512_set1_epi32(0x0F), current_set);
 					}
 				}
 
