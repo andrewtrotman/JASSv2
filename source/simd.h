@@ -171,10 +171,15 @@ namespace JASS
 			forceinline static void scatter(uint8_t *array, __m256i vindex, __m256i a)
 				{
 #ifdef __AVX512F__
-				__m256i mask = _mm256_set1_epi32(~0x0000'0003);
-				__m256i word_locations = _mm256_and_si256(vindex, mask);
+				/*
+					Assunme array == NULL, now vindex is an address.  Turn that into a 32-bit "chunk" by dividing by 4
+					then check to see if there are any address conflicts. If there are not then we can gather, blend, scatter.
+					If there are conflicts then we to do individual writes because gather,blend,write will give the wrong
+					result when two bytes are adjacent (because the results of the gather, blend will be wrong).
+				*/
+				__m256i word_locations = _mm256_srli_epi32(vindex, 2);
 				__m256i conflict = _mm256_conflict_epi32(word_locations);
-				if (_mm256_testz_si256 (_mm256_set1_epi32(0xFFFF'FFFF), conflict))
+				if (_mm256_testz_si256(_mm256_set1_epi32(0xFFFF'FFFF), conflict))
 					{
 					__m256i was = _mm256_i32gather_epi32((int *)array, vindex, 1);
 					__m256i send = _mm256_mask_blend_epi8((__mmask32)0x1111'1111, was, a);
@@ -206,14 +211,27 @@ namespace JASS
 			*/
 			forceinline static void scatter(uint16_t *array, __m256i vindex, __m256i a)
 				{
-				array[_mm256_extract_epi32(vindex, 0)] = _mm256_extract_epi16(a, 0);
-				array[_mm256_extract_epi32(vindex, 1)] = _mm256_extract_epi16(a, 2);
-				array[_mm256_extract_epi32(vindex, 2)] = _mm256_extract_epi16(a, 4);
-				array[_mm256_extract_epi32(vindex, 3)] = _mm256_extract_epi16(a, 6);
-				array[_mm256_extract_epi32(vindex, 4)] = _mm256_extract_epi16(a, 8);
-				array[_mm256_extract_epi32(vindex, 5)] = _mm256_extract_epi16(a, 10);
-				array[_mm256_extract_epi32(vindex, 6)] = _mm256_extract_epi16(a, 12);
-				array[_mm256_extract_epi32(vindex, 7)] = _mm256_extract_epi16(a, 14);
+#ifdef __AVX512F__
+				__m256i word_locations = _mm256_srli_epi32(vindex, 1);
+				__m256i conflict = _mm256_conflict_epi32(word_locations);
+				if (_mm256_testz_si256(_mm256_set1_epi32(0xFFFF'FFFF), conflict))
+					{
+					__m256i was = _mm256_i32gather_epi32((int *)array, vindex, 2);
+					__m256i send = _mm256_mask_blend_epi16((__mmask16)0x5555, was, a);
+					_mm256_i32scatter_epi32(array, vindex, send, 2);
+					}
+				else
+#endif
+					{
+					array[_mm256_extract_epi32(vindex, 0)] = _mm256_extract_epi16(a, 0);
+					array[_mm256_extract_epi32(vindex, 1)] = _mm256_extract_epi16(a, 2);
+					array[_mm256_extract_epi32(vindex, 2)] = _mm256_extract_epi16(a, 4);
+					array[_mm256_extract_epi32(vindex, 3)] = _mm256_extract_epi16(a, 6);
+					array[_mm256_extract_epi32(vindex, 4)] = _mm256_extract_epi16(a, 8);
+					array[_mm256_extract_epi32(vindex, 5)] = _mm256_extract_epi16(a, 10);
+					array[_mm256_extract_epi32(vindex, 6)] = _mm256_extract_epi16(a, 12);
+					array[_mm256_extract_epi32(vindex, 7)] = _mm256_extract_epi16(a, 14);
+					}
 				}
 
 			/*
@@ -228,6 +246,9 @@ namespace JASS
 			*/
 			forceinline static void scatter(uint32_t *array, __m256i vindex, __m256i a)
 				{
+#ifdef __AVX512F__
+				_mm256_i32scatter_epi32 (array, vindex, a, 4)
+#else
 				array[_mm256_extract_epi32(vindex, 0)] = _mm256_extract_epi32(a, 0);
 				array[_mm256_extract_epi32(vindex, 1)] = _mm256_extract_epi32(a, 1);
 				array[_mm256_extract_epi32(vindex, 2)] = _mm256_extract_epi32(a, 2);
@@ -236,6 +257,131 @@ namespace JASS
 				array[_mm256_extract_epi32(vindex, 5)] = _mm256_extract_epi32(a, 5);
 				array[_mm256_extract_epi32(vindex, 6)] = _mm256_extract_epi32(a, 6);
 				array[_mm256_extract_epi32(vindex, 7)] = _mm256_extract_epi32(a, 7);
+#endif
+				}
+
+
+			/*
+				SIMD::SCATTER()
+				---------------
+			*/
+			/*!
+				@brief Scatter 32-bit integers
+				@param array [in] The base address of the array
+				@param vindex [in] The indexes into the array to write into
+				@param a [in] The value to split and scatter (16 x 8-bit integers written as 16 x 32-bit integers)
+			*/
+			forceinline static void scatter(uint8_t *array, __m512i vindex, __m512i a)
+				{
+			#ifdef __AVX512F__
+				__m512i word_locations = _mm512_srli_epi32(vindex, 2);
+				__m512i conflict = _mm512_conflict_epi32(word_locations);
+				if (!_mm512_cmpneq_epi32_mask(_mm512_setzero_si512(), conflict))
+					{
+					__m512i was = _mm512_i32gather_epi32(vindex, array, 1);
+					__m512i send = _mm512_mask_blend_epi8((__mmask64)0x1111'1111'1111'1111, was, a);
+					_mm512_i32scatter_epi32(array, vindex, send, 1);
+					}
+				else
+			#endif
+					{
+					__m128i values = _mm512_extracti32x4_epi32(a, 0);
+					__m128i indexes = _mm512_extracti32x4_epi32(vindex, 0);
+					array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi8(values, 0);
+					array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi8(values, 4);
+					array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi8(values, 8);
+					array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi8(values, 12);
+
+					values = _mm512_extracti32x4_epi32(a, 1);
+					indexes = _mm512_extracti32x4_epi32(vindex, 1);
+					array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi8(values, 0);
+					array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi8(values, 4);
+					array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi8(values, 8);
+					array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi8(values, 12);
+
+					values = _mm512_extracti32x4_epi32(a, 2);
+					indexes = _mm512_extracti32x4_epi32(vindex, 2);
+					array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi8(values, 0);
+					array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi8(values, 4);
+					array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi8(values, 8);
+					array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi8(values, 12);
+
+					values = _mm512_extracti32x4_epi32(a, 3);
+					indexes = _mm512_extracti32x4_epi32(vindex, 3);
+					array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi8(values, 0);
+					array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi8(values, 4);
+					array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi8(values, 8);
+					array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi8(values, 12);
+					}
+				}
+
+			/*
+				SIMD::SCATTER()
+				---------------
+			*/
+			/*!
+				@brief Scatter 32-bit integers
+				@param array [in] The base address of the array
+				@param vindex [in] The indexes into the array to write into
+				@param a [in] The value to split and scatter (16 x 16-bit integers written as 16 x 32-bit integers)
+			*/
+			forceinline static void scatter(uint16_t *array, __m512i vindex, __m512i a)
+				{
+			#ifdef __AVX512F__
+				__m512i word_locations = _mm512_srli_epi32(vindex, 1);
+				__m512i conflict = _mm512_conflict_epi32(word_locations);
+				if (!_mm512_cmpneq_epi32_mask(_mm512_setzero_si512(), conflict))
+					{
+					__m512i was = _mm512_i32gather_epi32(vindex, array, 2);
+					__m512i send = _mm512_mask_blend_epi16((__mmask32)0x5555'5555, was, a);
+					_mm512_i32scatter_epi32(array, vindex, send, 2);
+					}
+				else
+			#endif
+					{
+					__m128i values = _mm512_extracti32x4_epi32(a, 0);
+					__m128i indexes = _mm512_extracti32x4_epi32(vindex, 0);
+					array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi32(values, 0);
+					array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi32(values, 1);
+					array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi32(values, 2);
+					array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi32(values, 3);
+
+					values = _mm512_extracti32x4_epi32(a, 1);
+					indexes = _mm512_extracti32x4_epi32(vindex, 1);
+					array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi32(values, 0);
+					array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi32(values, 1);
+					array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi32(values, 2);
+					array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi32(values, 3);
+
+					values = _mm512_extracti32x4_epi32(a, 2);
+					indexes = _mm512_extracti32x4_epi32(vindex, 2);
+					array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi32(values, 0);
+					array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi32(values, 1);
+					array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi32(values, 2);
+					array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi32(values, 3);
+
+					values = _mm512_extracti32x4_epi32(a, 3);
+					indexes = _mm512_extracti32x4_epi32(vindex, 3);
+					array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi32(values, 0);
+					array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi32(values, 1);
+					array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi32(values, 2);
+					array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi32(values, 3);
+					}
+				}
+
+			/*
+				SIMD::SCATTER()
+				---------------
+			*/
+			/*!
+				@brief Scatter 32-bit integers
+				@param array [in] The base address of the array
+				@param vindex [in] The indexes into the array to write into
+				@param a [in] The value to split and scatter (16 x 32-bit integers written as 16 x 32-bit integers)
+			*/
+			forceinline static void scatter(uint32_t *array, __m512i vindex, __m512i a)
+				{
+				_mm512_i32scatter_epi32(array, vindex, a, 4);
 				}
 
 			/*
@@ -274,7 +420,7 @@ namespace JASS
 				*/
 				__m256i missing = _mm256_shuffle_epi32(elements, _MM_SHUFFLE(3, 3, 3, 3));
 				missing = _mm256_permute2x128_si256(_mm256_setzero_si256(), missing, 2 << 4);
-
+	
 				/*
 					ABCD BCD0 CD00 D000 EFGH FGH0 GH00 H000
 					EFGH EFGH EFGH EFGH 0000 0000 0000 0000
@@ -283,6 +429,106 @@ namespace JASS
 
 				return answer;
 				}
+
+			/*
+				SIMD::CUMULATIVE_SUM()
+				----------------------
+			*/
+			/*!
+				@brief Calculate the cumulative sum of the 32-bit integers in an AVX512 register.
+				@param elements [in] The 32-bit integers.
+				@return An AVX512 register holding the cumulative sums.
+			*/
+			forceinline static __m512i cumulative_sum(__m512i elements)
+				{
+				/*
+					shift left by 1 integer and add
+					A B C D E F G H I J K L M N O P
+					B C D 0 F G H 0 J K L M N O P 0
+				*/
+				__m512i bottom = _mm512_bslli_epi128(elements, 4);
+				elements = _mm512_add_epi32(elements, bottom);
+
+				/*
+					shift left by 2 integers and add
+					AB BC CD D0 EF FG GH H0 IJ JK KL L0 MN NO OP P0
+					CD D0 00 00 GH H0 00 00 KL L0 00 00 OP P0 00 00
+				*/
+				bottom = _mm512_bslli_epi128(elements, 8);
+				elements = _mm512_add_epi32(elements, bottom);
+
+				/*
+					We have: ABCD BCD0 CD00 D000 EFGH FGH0 GH00 H000 IJKL JKL0 KL00 L000 MNOP NOP0 OP00 P000
+					permute: EFGH EFGH EFGH EFGH 0000 0000 0000 0000 MNOP MNOP MNOP MNOP 0000 0000 0000 0000
+				*/
+				static const __m512i missing_in_lane = _mm512_set_epi32(11, 11, 11, 11, 0, 0, 0, 0, 3, 3, 3, 3, 0, 0, 0, 0);
+				__m512i missing = _mm512_maskz_permutexvar_epi32((__mmask16)0xF0F0, missing_in_lane, elements);
+				__m512i answer = _mm512_add_epi32(elements, missing);
+
+				/*
+					We have: ABCDEFGH BCD0EFGH CD00EFGH D000EFGH EFGH0000 FGH00000 GH000000 H0000000 IJKLMNOP JKL0MNOP KL00MNOP L000MNOP MNOP0000 NOP00000 OP000000 P0000000
+					permute: IJKLMNOP IJKLMNOP IJKLMNOP IJKLMNOP IJKLMNOP IJKLMNOP IJKLMNOP IJKLMNOP 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000
+				*/
+				static const __m512i missing_cross_lane = _mm512_set_epi32(7, 7, 7, 7, 7, 7, 7, 7, 0, 0, 0, 0, 0, 0, 0, 0);
+				__m512i result = _mm512_maskz_permutexvar_epi32((__mmask16)0xFF00, missing_cross_lane, answer);
+				answer = _mm512_add_epi32(answer, result);
+
+				return answer;
+				}
+
+#ifdef __AVX512F__
+
+			/*
+				SIMD::CUMULATIVE_SUM()
+				----------------------
+			*/
+			/*
+				@brief Calculate (inplace) the cumulative sum of the array of integers.
+				@details As this uses AVX512 instrucrtions is can read and write more than length load of integers
+				@param data [in/out] The integers to sum (and result).
+				@param length [in] The number of integrers to sum.
+			*/
+			forceinline static void cumulative_sum(uint32_t *data, size_t length)
+				{
+				/*
+					previous cumulative sum is zero
+				*/
+				__m512i previous_max = _mm256_setzero_si512();
+
+				/*
+					Loop over all the data (going too far if necessary)
+				*/
+				__m512i *end = (__m512i *)(data + length);
+				for (__m512i *block = (__m512i *)data; block < end; block++)
+					{
+					/*
+						load the next 16 integers
+					*/
+					__m512i current_set = _mm512_loadu_si512(block);
+
+					/*
+						compute the cumulative sum of those
+					*/
+					current_set = cumulative_sum(current_set);
+
+					/*
+						add the previous maximum to each of them
+					*/
+					current_set = _mm512_add_epi32(current_set, previous_max);
+
+					/*
+						and write back out to the same location we read from
+					*/
+					_mm512_storeu_si512(block, current_set);
+
+					/*
+						Broadcast the largest number from the result for next time
+					*/
+					previous_max = _mm512_maskz_permutexvar_epi32((__mmask16)0xFFFF, _mm512_set1_epi32(0x0F), answer);
+					}
+				}
+
+#else
 
 			/*
 				SIMD::CUMULATIVE_SUM()
@@ -334,6 +580,7 @@ namespace JASS
 					previous_max = _mm256_permute2x128_si256(current_set, current_set, 3 | (3 << 4));
 					}
 				}
+#endif
 
 			/*
 				SIMD::UNITTEST()
