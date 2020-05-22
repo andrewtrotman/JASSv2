@@ -476,11 +476,9 @@ namespace JASS
 				return answer;
 				}
 
-#ifdef __AVX512F__
-
 			/*
-				SIMD::CUMULATIVE_SUM()
-				----------------------
+				SIMD::CUMULATIVE_SUM_512()
+				--------------------------
 			*/
 			/*
 				@brief Calculate (inplace) the cumulative sum of the array of integers.
@@ -488,12 +486,12 @@ namespace JASS
 				@param data [in/out] The integers to sum (and result).
 				@param length [in] The number of integrers to sum.
 			*/
-			static void cumulative_sum(uint32_t *data, size_t length)
+			static void cumulative_sum_512(uint32_t *data, size_t length)
 				{
 				/*
 					previous cumulative sum is zero
 				*/
-				__m512i previous_max = _mm256_setzero_si512();
+				__m512i previous_max = _mm512_setzero_si512();
 
 				/*
 					Loop over all the data (going too far if necessary)
@@ -528,11 +526,9 @@ namespace JASS
 					}
 				}
 
-#else
-
 			/*
-				SIMD::CUMULATIVE_SUM()
-				----------------------
+				SIMD::CUMULATIVE_SUM_256()
+				--------------------------
 			*/
 			/*
 				@brief Calculate (inplace) the cumulative sum of the array of integers.
@@ -540,7 +536,7 @@ namespace JASS
 				@param data [in/out] The integers to sum (and result).
 				@param length [in] The number of integrers to sum.
 			*/
-			static void cumulative_sum(uint32_t *data, size_t length)
+			static void cumulative_sum_256(uint32_t *data, size_t length)
 				{
 				/*
 					previous cumulative sum is zero
@@ -580,7 +576,24 @@ namespace JASS
 					previous_max = _mm256_permute2x128_si256(current_set, current_set, 3 | (3 << 4));
 					}
 				}
-#endif
+			/*
+				SIMD::CUMULATIVE_SUM()
+				----------------------
+			*/
+			/*
+				@brief Calculate (inplace) the cumulative sum of the array of integers.
+				@details As this uses AVX2 instrucrtions is can read and write more than length load of integers
+				@param data [in/out] The integers to sum (and result).
+				@param length [in] The number of integrers to sum.
+			*/
+			forceinline static void cumulative_sum(uint32_t *data, size_t length)
+				{
+		#ifdef __AVX512F__
+				cumulative_sum_512(data, length);
+		#else
+				cumulative_sum_256(data, length);
+		#endif
+				}
 
 			/*
 				SIMD::UNITTEST()
