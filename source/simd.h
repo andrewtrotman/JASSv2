@@ -247,7 +247,7 @@ namespace JASS
 			forceinline static void scatter(uint32_t *array, __m256i vindex, __m256i a)
 				{
 #ifdef __AVX512F__
-				_mm256_i32scatter_epi32 (array, vindex, a, 4)
+				_mm256_i32scatter_epi32 (array, vindex, a, 4);
 #else
 				array[_mm256_extract_epi32(vindex, 0)] = _mm256_extract_epi32(a, 0);
 				array[_mm256_extract_epi32(vindex, 1)] = _mm256_extract_epi32(a, 1);
