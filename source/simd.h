@@ -272,48 +272,25 @@ namespace JASS
 				@param a [in] The value to split and scatter (16 x 8-bit integers written as 16 x 32-bit integers)
 			*/
 			forceinline static void scatter(uint8_t *array, __m512i vindex, __m512i a)
+			{
+			__m512i word_locations = _mm512_srli_epi32(vindex, 2);
+			__mmask16 unwritten = 0xFFFF;
+
+			do
 				{
-			#ifdef __AVX512F__
-				__m512i word_locations = _mm512_srli_epi32(vindex, 2);
-				__m512i conflict = _mm512_conflict_epi32(word_locations);
-				if (!_mm512_cmpneq_epi32_mask(_mm512_setzero_si512(), conflict))
-					{
-					__m512i was = _mm512_i32gather_epi32(vindex, array, 1);
-					__m512i send = _mm512_mask_blend_epi8((__mmask64)0x1111'1111'1111'1111, was, a);
-					_mm512_i32scatter_epi32(array, vindex, send, 1);
-					}
-				else
-			#endif
-					{
-					__m128i values = _mm512_extracti32x4_epi32(a, 0);
-					__m128i indexes = _mm512_extracti32x4_epi32(vindex, 0);
-					array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi8(values, 0);
-					array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi8(values, 4);
-					array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi8(values, 8);
-					array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi8(values, 12);
+				__m512i conflict = _mm512_maskz_conflict_epi32 (unwritten, word_locations);
+				conflict = _mm512_and_epi32(_mm512_set1_epi32(unwritten), conflict);
+				__mmask16 mask = _mm512_testn_epi32_mask(conflict, _mm512_set1_epi32(0xFFFF'FFFF));
+				mask &= unwritten;
 
-					values = _mm512_extracti32x4_epi32(a, 1);
-					indexes = _mm512_extracti32x4_epi32(vindex, 1);
-					array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi8(values, 0);
-					array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi8(values, 4);
-					array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi8(values, 8);
-					array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi8(values, 12);
+				__m512i was = _mm512_mask_i32gather_epi32(_mm512_setzero_si512(), mask, vindex, array, 1);
+				__m512i send = _mm512_mask_blend_epi8((__mmask64)0x1111'1111'1111'1111, was, a);
+				_mm512_mask_i32scatter_epi32 (array, mask, vindex, send, 1);
 
-					values = _mm512_extracti32x4_epi32(a, 2);
-					indexes = _mm512_extracti32x4_epi32(vindex, 2);
-					array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi8(values, 0);
-					array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi8(values, 4);
-					array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi8(values, 8);
-					array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi8(values, 12);
-
-					values = _mm512_extracti32x4_epi32(a, 3);
-					indexes = _mm512_extracti32x4_epi32(vindex, 3);
-					array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi8(values, 0);
-					array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi8(values, 4);
-					array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi8(values, 8);
-					array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi8(values, 12);
-					}
+				unwritten ^= mask;
 				}
+			while (unwritten != 0);
+			}
 
 			/*
 				SIMD::SCATTER()
@@ -327,46 +304,33 @@ namespace JASS
 			*/
 			forceinline static void scatter(uint16_t *array, __m512i vindex, __m512i a)
 				{
-			#ifdef __AVX512F__
+				/*
+					Convert from indexes of 16-bit integers to indexes of 32-bitwites
+				*/
 				__m512i word_locations = _mm512_srli_epi32(vindex, 1);
+
+				/*
+					See if we have any conflicts, and turn into a mask for first occurences
+				*/
 				__m512i conflict = _mm512_conflict_epi32(word_locations);
-				if (!_mm512_cmpneq_epi32_mask(_mm512_setzero_si512(), conflict))
-					{
-					__m512i was = _mm512_i32gather_epi32(vindex, array, 2);
-					__m512i send = _mm512_mask_blend_epi16((__mmask32)0x5555'5555, was, a);
-					_mm512_i32scatter_epi32(array, vindex, send, 2);
-					}
-				else
-			#endif
-					{
-					__m128i values = _mm512_extracti32x4_epi32(a, 0);
-					__m128i indexes = _mm512_extracti32x4_epi32(vindex, 0);
-					array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi32(values, 0);
-					array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi32(values, 1);
-					array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi32(values, 2);
-					array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi32(values, 3);
+				__mmask16 mask = _mm512_testn_epi32_mask(conflict, _mm512_set1_epi32(0xFFFF'FFFF));
 
-					values = _mm512_extracti32x4_epi32(a, 1);
-					indexes = _mm512_extracti32x4_epi32(vindex, 1);
-					array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi32(values, 0);
-					array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi32(values, 1);
-					array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi32(values, 2);
-					array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi32(values, 3);
+				/*
+					read, merge, write the fitst occurences.
+					The worst case is indexes of 1,2,3,4... which will result in every second index being read/written then the sanme a second time.
+				*/
+				__m512i was = _mm512_mask_i32gather_epi32(_mm512_setzero_si512(), mask, vindex, array, 2);
+				__m512i send = _mm512_mask_blend_epi16((__mmask32)0x5555'5555, was, a);
+				_mm512_mask_i32scatter_epi32 (array, mask, vindex, send, 2);
 
-					values = _mm512_extracti32x4_epi32(a, 2);
-					indexes = _mm512_extracti32x4_epi32(vindex, 2);
-					array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi32(values, 0);
-					array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi32(values, 1);
-					array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi32(values, 2);
-					array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi32(values, 3);
-
-					values = _mm512_extracti32x4_epi32(a, 3);
-					indexes = _mm512_extracti32x4_epi32(vindex, 3);
-					array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi32(values, 0);
-					array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi32(values, 1);
-					array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi32(values, 2);
-					array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi32(values, 3);
-					}
+				/*
+					read, merge, write the subsequnce occurences
+					If the same address appears more than once then the result is indeterminant (you get what you deserve)
+				*/
+				mask = _knot_mask16(mask);
+				was = _mm512_mask_i32gather_epi32(_mm512_setzero_si512(), mask, vindex, array, 2);
+				send = _mm512_mask_blend_epi16((__mmask32)0x5555'5555, was, a);
+				_mm512_mask_i32scatter_epi32 (array, mask, vindex, send, 2);
 				}
 
 			/*
