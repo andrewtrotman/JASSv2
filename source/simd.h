@@ -10,7 +10,6 @@
 	@author Andrew Trotman
 	@copyright 2020 Andrew Trotman
 */
-
 #pragma once
 
 #include <stdio.h>
@@ -21,6 +20,9 @@
 #include "asserts.h"
 #include "forceinline.h"
 
+
+#define USE_AXV512_WRITES 1
+#define USE_AXV512_READS 1
 
 namespace JASS
 	{
@@ -47,7 +49,7 @@ namespace JASS
 			*/
 			forceinline static __m256i gather(const uint8_t *array, __m256i vindex)
 				{
-#ifdef NEVER
+#if defined(USE_AXV512_READS) && defined(__AVX512F__)
 				return _mm256_maskz_mov_epi8((__mmask32)0x11111111, _mm256_i32gather_epi32((int const *)array, vindex, 1));
 #else
 				return _mm256_set_epi32
@@ -77,7 +79,7 @@ namespace JASS
 			*/
 			forceinline static __m256i gather(const uint16_t *array, __m256i vindex)
 				{
-#ifdef NEVER
+#if defined(USE_AXV512_READS) && defined(__AVX512F__)
 				return _mm256_maskz_mov_epi16((__mmask16)0x5555, _mm256_i32gather_epi32((int const *)array, vindex, 2));
 #else
 				return _mm256_set_epi32
@@ -175,7 +177,7 @@ namespace JASS
 					so we don't use scatter for 256-bit registers. we leave the code here but disable
 					it (in case it is faster on a different CPUs)
 				*/
-#ifdef NEVER
+#if defined(USE_AXV512_WRITES) && defined(__AVX512F__)
 				__m256i word_locations = _mm256_srli_epi32(vindex, 2);
 				__mmask8 unwritten = 0xFF;
 
@@ -226,11 +228,11 @@ namespace JASS
 			forceinline static void scatter(uint16_t *array, __m256i vindex, __m256i a)
 				{
 				/*
-					The individual write approach is faster on "Intel(R) Core(TM) i7-9800X CPU @ 3.80GHz"
+					The individual write approach is faster on "Intel(R) Core(TM) SICPU @ 3.80GHz"
 					so we don't use scatter for 256-bit registers. we leave the code here but disable
 					it (in case it is faster on a different CPUs)
 				*/
-#ifdef NEVER
+#if defined(USE_AXV512_WRITES) && defined(__AVX512F__)
 				__m256i word_locations = _mm256_srli_epi32(vindex, 1);
 				__mmask8 unwritten = 0xFF;
 
@@ -252,15 +254,15 @@ namespace JASS
 				/*
 					Extracting 32-bit integers then downcasting to 16-bit integers is faster then extracting 16-bit integers
 				*/
-				__m128i values = _mm256_extracti32x4_epi32(a, 0);
-				__m128i indexes = _mm256_extracti32x4_epi32(vindex, 0);
+				__m128i values = _mm256_extracti128_si256(a, 0);
+				__m128i indexes = _mm256_extracti128_si256(vindex, 0);
 				array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi32(values, 0);
 				array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi32(values, 1);
 				array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi32(values, 2);
 				array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi32(values, 3);
 
-				values = _mm256_extracti32x4_epi32(a, 1);
-				indexes = _mm256_extracti32x4_epi32(vindex, 1);
+				values = _mm256_extracti128_si256(a, 1);
+				indexes = _mm256_extracti128_si256(vindex, 1);
 				array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi32(values, 0);
 				array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi32(values, 1);
 				array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi32(values, 2);
@@ -285,18 +287,18 @@ namespace JASS
 					so we don't use scatter for 256-bit registers. we leave the code here but disable
 					it (in case it is faster on a different CPUs)
 				*/
-#ifdef NEVER
+#if defined(USE_AXV512_WRITES) && defined(__AVX512F__)
 			   _mm256_i32scatter_epi32(array, vindex, a, 4);
 #else
-				__m128i values = _mm256_extracti32x4_epi32(a, 0);
-				__m128i indexes = _mm256_extracti32x4_epi32(vindex, 0);
+				__m128i values = _mm256_extracti128_si256(a, 0);
+				__m128i indexes = _mm256_extracti128_si256(vindex, 0);
 				array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi32(values, 0);
 				array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi32(values, 1);
 				array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi32(values, 2);
 				array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi32(values, 3);
 
-				values = _mm256_extracti32x4_epi32(a, 1);
-				indexes = _mm256_extracti32x4_epi32(vindex, 1);
+				values = _mm256_extracti128_si256(a, 1);
+				indexes = _mm256_extracti128_si256(vindex, 1);
 				array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi32(values, 0);
 				array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi32(values, 1);
 				array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi32(values, 2);
@@ -322,7 +324,7 @@ namespace JASS
 				writes.  When writing to different cache lines the difference is 1.6 times. So we
 				leave the code here but disable it (in case it is faster on a different CPUs).
 			*/
-#ifdef NEVER
+#if defined(USE_AXV512_WRITES) && defined(__AVX512F__)
 			__m512i word_locations = _mm512_srli_epi32(vindex, 2);
 			__mmask16 unwritten = 0xFFFF;
 
@@ -394,7 +396,7 @@ namespace JASS
 					writes.  When writing to different cache lines the difference is 1.5 times. So we
 					leave the code here but disable it (in case it is faster on a different CPUs).
 				*/
-#ifdef NEVER
+#if defined(USE_AXV512_WRITES) && defined(__AVX512F__)
 				/*
 					Convert from indexes of 16-bit integers to indexes of 32-bitwites
 				*/
@@ -679,11 +681,11 @@ namespace JASS
 			*/
 			forceinline static void cumulative_sum(uint32_t *data, size_t length)
 				{
-		#ifdef __AVX512F__
-				cumulative_sum_512(data, length);
-		#else
-				cumulative_sum_256(data, length);
-		#endif
+				#ifdef __AVX512F__
+					cumulative_sum_512(data, length);
+				#else
+					cumulative_sum_256(data, length);
+				#endif
 				}
 
 			/*
