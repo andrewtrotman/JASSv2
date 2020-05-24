@@ -47,7 +47,7 @@ namespace JASS
 			*/
 			forceinline static __m256i gather(const uint8_t *array, __m256i vindex)
 				{
-#ifdef __AVX512F__
+#ifdef NEVER
 				return _mm256_maskz_mov_epi8((__mmask32)0x11111111, _mm256_i32gather_epi32((int const *)array, vindex, 1));
 #else
 				return _mm256_set_epi32
@@ -77,7 +77,7 @@ namespace JASS
 			*/
 			forceinline static __m256i gather(const uint16_t *array, __m256i vindex)
 				{
-#ifdef __AVX512F__
+#ifdef NEVER
 				return _mm256_maskz_mov_epi16((__mmask16)0x5555, _mm256_i32gather_epi32((int const *)array, vindex, 2));
 #else
 				return _mm256_set_epi32
@@ -170,33 +170,47 @@ namespace JASS
 			*/
 			forceinline static void scatter(uint8_t *array, __m256i vindex, __m256i a)
 				{
-#ifdef __AVX512F__
 				/*
-					Assunme array == NULL, now vindex is an address.  Turn that into a 32-bit "chunk" by dividing by 4
-					then check to see if there are any address conflicts. If there are not then we can gather, blend, scatter.
-					If there are conflicts then we to do individual writes because gather,blend,write will give the wrong
-					result when two bytes are adjacent (because the results of the gather, blend will be wrong).
+					The individual write approach is faster on "Intel(R) Core(TM) i7-9800X CPU @ 3.80GHz"
+					so we don't use scatter for 256-bit registers. we leave the code here but disable
+					it (in case it is faster on a different CPUs)
 				*/
+#ifdef NEVER
 				__m256i word_locations = _mm256_srli_epi32(vindex, 2);
-				__m256i conflict = _mm256_conflict_epi32(word_locations);
-				if (_mm256_testz_si256(_mm256_set1_epi32(0xFFFF'FFFF), conflict))
+				__mmask8 unwritten = 0xFF;
+
+				do
 					{
-					__m256i was = _mm256_i32gather_epi32((int *)array, vindex, 1);
+					__m256i conflict = _mm256_maskz_conflict_epi32 (unwritten, word_locations);
+					conflict = _mm256_and_si256(_mm256_set1_epi32(unwritten), conflict);
+					__mmask8 mask = _mm256_testn_epi32_mask(conflict, _mm256_set1_epi32(0xFFFF'FFFF));
+					mask &= unwritten;
+
+					__m256i was = _mm256_mmask_i32gather_epi32(_mm256_setzero_si256(), mask, vindex, array, 1);
 					__m256i send = _mm256_mask_blend_epi8((__mmask32)0x1111'1111, was, a);
-					_mm256_i32scatter_epi32(array, vindex, send, 1);
+					_mm256_mask_i32scatter_epi32 (array, mask, vindex, send, 1);
+
+					unwritten ^= mask;
 					}
-				else
+				while (unwritten != 0);
+#else
+				/*
+					Extracting 32-bit integers then downcasting to 8-bit integers is faster then extracting 8-bit integers
+				*/
+				__m128i values = _mm256_extracti32x4_epi32(a, 0);
+				__m128i indexes = _mm256_extracti32x4_epi32(vindex, 0);
+				array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi32(values, 0);
+				array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi32(values, 1);
+				array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi32(values, 2);
+				array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi32(values, 3);
+
+				values = _mm256_extracti32x4_epi32(a, 1);
+				indexes = _mm256_extracti32x4_epi32(vindex, 1);
+				array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi32(values, 0);
+				array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi32(values, 1);
+				array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi32(values, 2);
+				array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi32(values, 3);
 #endif
-					{
-					array[_mm256_extract_epi32(vindex, 0)] = _mm256_extract_epi16(a, 0);
-					array[_mm256_extract_epi32(vindex, 1)] = _mm256_extract_epi16(a, 2);
-					array[_mm256_extract_epi32(vindex, 2)] = _mm256_extract_epi16(a, 4);
-					array[_mm256_extract_epi32(vindex, 3)] = _mm256_extract_epi16(a, 6);
-					array[_mm256_extract_epi32(vindex, 4)] = _mm256_extract_epi16(a, 8);
-					array[_mm256_extract_epi32(vindex, 5)] = _mm256_extract_epi16(a, 10);
-					array[_mm256_extract_epi32(vindex, 6)] = _mm256_extract_epi16(a, 12);
-					array[_mm256_extract_epi32(vindex, 7)] = _mm256_extract_epi16(a, 14);
-					}
 				}
 
 			/*
@@ -211,27 +225,47 @@ namespace JASS
 			*/
 			forceinline static void scatter(uint16_t *array, __m256i vindex, __m256i a)
 				{
-#ifdef __AVX512F__
+				/*
+					The individual write approach is faster on "Intel(R) Core(TM) i7-9800X CPU @ 3.80GHz"
+					so we don't use scatter for 256-bit registers. we leave the code here but disable
+					it (in case it is faster on a different CPUs)
+				*/
+#ifdef NEVER
 				__m256i word_locations = _mm256_srli_epi32(vindex, 1);
-				__m256i conflict = _mm256_conflict_epi32(word_locations);
-				if (_mm256_testz_si256(_mm256_set1_epi32(0xFFFF'FFFF), conflict))
+				__mmask8 unwritten = 0xFF;
+
+				do
 					{
-					__m256i was = _mm256_i32gather_epi32((int *)array, vindex, 2);
+					__m256i conflict = _mm256_maskz_conflict_epi32 (unwritten, word_locations);
+					conflict = _mm256_and_si256(_mm256_set1_epi32(unwritten), conflict);
+					__mmask8 mask = _mm256_testn_epi32_mask(conflict, _mm256_set1_epi32(0xFFFF'FFFF));
+					mask &= unwritten;
+
+					__m256i was = _mm256_mmask_i32gather_epi32(_mm256_setzero_si256(), mask, vindex, array, 2);
 					__m256i send = _mm256_mask_blend_epi16((__mmask16)0x5555, was, a);
-					_mm256_i32scatter_epi32(array, vindex, send, 2);
+					_mm256_mask_i32scatter_epi32 (array, mask, vindex, send, 2);
+
+					unwritten ^= mask;
 					}
-				else
+				while (unwritten != 0);
+#else
+				/*
+					Extracting 32-bit integers then downcasting to 16-bit integers is faster then extracting 16-bit integers
+				*/
+				__m128i values = _mm256_extracti32x4_epi32(a, 0);
+				__m128i indexes = _mm256_extracti32x4_epi32(vindex, 0);
+				array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi32(values, 0);
+				array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi32(values, 1);
+				array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi32(values, 2);
+				array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi32(values, 3);
+
+				values = _mm256_extracti32x4_epi32(a, 1);
+				indexes = _mm256_extracti32x4_epi32(vindex, 1);
+				array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi32(values, 0);
+				array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi32(values, 1);
+				array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi32(values, 2);
+				array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi32(values, 3);
 #endif
-					{
-					array[_mm256_extract_epi32(vindex, 0)] = _mm256_extract_epi16(a, 0);
-					array[_mm256_extract_epi32(vindex, 1)] = _mm256_extract_epi16(a, 2);
-					array[_mm256_extract_epi32(vindex, 2)] = _mm256_extract_epi16(a, 4);
-					array[_mm256_extract_epi32(vindex, 3)] = _mm256_extract_epi16(a, 6);
-					array[_mm256_extract_epi32(vindex, 4)] = _mm256_extract_epi16(a, 8);
-					array[_mm256_extract_epi32(vindex, 5)] = _mm256_extract_epi16(a, 10);
-					array[_mm256_extract_epi32(vindex, 6)] = _mm256_extract_epi16(a, 12);
-					array[_mm256_extract_epi32(vindex, 7)] = _mm256_extract_epi16(a, 14);
-					}
 				}
 
 			/*
@@ -246,20 +280,29 @@ namespace JASS
 			*/
 			forceinline static void scatter(uint32_t *array, __m256i vindex, __m256i a)
 				{
-#ifdef __AVX512F__
-				_mm256_i32scatter_epi32 (array, vindex, a, 4);
+				/*
+					The individual write approach is faster on "Intel(R) Core(TM) i7-9800X CPU @ 3.80GHz"
+					so we don't use scatter for 256-bit registers. we leave the code here but disable
+					it (in case it is faster on a different CPUs)
+				*/
+#ifdef NEVER
+			   _mm256_i32scatter_epi32(array, vindex, a, 4);
 #else
-				array[_mm256_extract_epi32(vindex, 0)] = _mm256_extract_epi32(a, 0);
-				array[_mm256_extract_epi32(vindex, 1)] = _mm256_extract_epi32(a, 1);
-				array[_mm256_extract_epi32(vindex, 2)] = _mm256_extract_epi32(a, 2);
-				array[_mm256_extract_epi32(vindex, 3)] = _mm256_extract_epi32(a, 3);
-				array[_mm256_extract_epi32(vindex, 4)] = _mm256_extract_epi32(a, 4);
-				array[_mm256_extract_epi32(vindex, 5)] = _mm256_extract_epi32(a, 5);
-				array[_mm256_extract_epi32(vindex, 6)] = _mm256_extract_epi32(a, 6);
-				array[_mm256_extract_epi32(vindex, 7)] = _mm256_extract_epi32(a, 7);
+				__m128i values = _mm256_extracti32x4_epi32(a, 0);
+				__m128i indexes = _mm256_extracti32x4_epi32(vindex, 0);
+				array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi32(values, 0);
+				array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi32(values, 1);
+				array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi32(values, 2);
+				array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi32(values, 3);
+
+				values = _mm256_extracti32x4_epi32(a, 1);
+				indexes = _mm256_extracti32x4_epi32(vindex, 1);
+				array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi32(values, 0);
+				array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi32(values, 1);
+				array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi32(values, 2);
+				array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi32(values, 3);
 #endif
 				}
-
 
 			/*
 				SIMD::SCATTER()
@@ -273,6 +316,13 @@ namespace JASS
 			*/
 			forceinline static void scatter(uint8_t *array, __m512i vindex, __m512i a)
 			{
+			/*
+				I've (Andrew) benchmarked these two approaches on "Intel(R) Core(TM) i7-9800X CPU @ 3.80GHz" and in the
+				case of adjacent writes the gather/merge/scatter apporach takes about 7.2 times longer than individual
+				writes.  When writing to different cache lines the difference is 1.6 times. So we
+				leave the code here but disable it (in case it is faster on a different CPUs).
+			*/
+#ifdef NEVER
 			__m512i word_locations = _mm512_srli_epi32(vindex, 2);
 			__mmask16 unwritten = 0xFFFF;
 
@@ -290,6 +340,40 @@ namespace JASS
 				unwritten ^= mask;
 				}
 			while (unwritten != 0);
+
+#else
+			/*
+				Extracting 8-bit integers is faster than extracting 32-bit integers
+			*/
+			__m128i values = _mm512_extracti32x4_epi32(a, 0);
+			__m128i indexes = _mm512_extracti32x4_epi32(vindex, 0);
+			array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi8(values, 0);
+			array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi8(values, 4);
+			array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi8(values, 8);
+			array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi8(values, 12);
+
+			values = _mm512_extracti32x4_epi32(a, 1);
+			indexes = _mm512_extracti32x4_epi32(vindex, 1);
+			array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi8(values, 0);
+			array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi8(values, 4);
+			array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi8(values, 8);
+			array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi8(values, 12);
+
+			values = _mm512_extracti32x4_epi32(a, 2);
+			indexes = _mm512_extracti32x4_epi32(vindex, 2);
+			array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi8(values, 0);
+			array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi8(values, 4);
+			array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi8(values, 8);
+			array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi8(values, 12);
+
+			values = _mm512_extracti32x4_epi32(a, 3);
+			indexes = _mm512_extracti32x4_epi32(vindex, 3);
+			array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi8(values, 0);
+			array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi8(values, 4);
+			array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi8(values, 8);
+			array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi8(values, 12);
+#endif
+
 			}
 
 			/*
@@ -305,32 +389,70 @@ namespace JASS
 			forceinline static void scatter(uint16_t *array, __m512i vindex, __m512i a)
 				{
 				/*
+					I've (Andrew) benchmarked these two approaches on "Intel(R) Core(TM) i7-9800X CPU @ 3.80GHz" and in the
+					case of adjacent writes the gather/merge/scatter apporach takes about 3.5 times longer than individual
+					writes.  When writing to different cache lines the difference is 1.5 times. So we
+					leave the code here but disable it (in case it is faster on a different CPUs).
+				*/
+#ifdef NEVER
+				/*
 					Convert from indexes of 16-bit integers to indexes of 32-bitwites
 				*/
 				__m512i word_locations = _mm512_srli_epi32(vindex, 1);
+				__mmask16 unwritten = 0xFFFF;
 
-				/*
-					See if we have any conflicts, and turn into a mask for first occurences
-				*/
-				__m512i conflict = _mm512_conflict_epi32(word_locations);
-				__mmask16 mask = _mm512_testn_epi32_mask(conflict, _mm512_set1_epi32(0xFFFF'FFFF));
+				do
+					{
+					/*
+						See if we have any conflicts, and turn into a mask for first occurences
+					*/
+					__m512i conflict = _mm512_maskz_conflict_epi32 (unwritten, word_locations);
+					conflict = _mm512_and_epi32(_mm512_set1_epi32(unwritten), conflict);
+					__mmask16 mask = _mm512_testn_epi32_mask(conflict, _mm512_set1_epi32(0xFFFF'FFFF));
+					mask &= unwritten;
 
-				/*
-					read, merge, write the fitst occurences.
-					The worst case is indexes of 1,2,3,4... which will result in every second index being read/written then the sanme a second time.
-				*/
-				__m512i was = _mm512_mask_i32gather_epi32(_mm512_setzero_si512(), mask, vindex, array, 2);
-				__m512i send = _mm512_mask_blend_epi16((__mmask32)0x5555'5555, was, a);
-				_mm512_mask_i32scatter_epi32 (array, mask, vindex, send, 2);
+					/*
+					read, merge, write the fitst occurences. The worst case is indexes of 1,2,3,4... which will result in every second index being read/written then the sanme a second time.
+					*/
+					__m512i was = _mm512_mask_i32gather_epi32(_mm512_setzero_si512(), mask, vindex, array, 2);
+					__m512i send = _mm512_mask_blend_epi16((__mmask32)0x5555'5555, was, a);
+					_mm512_mask_i32scatter_epi32 (array, mask, vindex, send, 2);
 
+					unwritten ^= mask;
+					}
+				while (unwritten != 0);
+#else
 				/*
-					read, merge, write the subsequnce occurences
-					If the same address appears more than once then the result is indeterminant (you get what you deserve)
+					Extracting 16-bit integers is faster than extracting 32-bit integers
 				*/
-				mask = _knot_mask16(mask);
-				was = _mm512_mask_i32gather_epi32(_mm512_setzero_si512(), mask, vindex, array, 2);
-				send = _mm512_mask_blend_epi16((__mmask32)0x5555'5555, was, a);
-				_mm512_mask_i32scatter_epi32 (array, mask, vindex, send, 2);
+				__m128i values = _mm512_extracti32x4_epi32(a, 0);
+				__m128i indexes = _mm512_extracti32x4_epi32(vindex, 0);
+				array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi16(values, 0);
+				array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi16(values, 2);
+				array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi16(values, 4);
+				array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi16(values, 6);
+
+				values = _mm512_extracti32x4_epi32(a, 1);
+				indexes = _mm512_extracti32x4_epi32(vindex, 1);
+				array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi16(values, 0);
+				array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi16(values, 2);
+				array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi16(values, 4);
+				array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi16(values, 6);
+
+				values = _mm512_extracti32x4_epi32(a, 2);
+				indexes = _mm512_extracti32x4_epi32(vindex, 2);
+				array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi16(values, 0);
+				array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi16(values, 2);
+				array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi16(values, 4);
+				array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi16(values, 6);
+
+				values = _mm512_extracti32x4_epi32(a, 3);
+				indexes = _mm512_extracti32x4_epi32(vindex, 3);
+				array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi16(values, 0);
+				array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi16(values, 2);
+				array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi16(values, 4);
+				array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi16(values, 6);
+#endif
 				}
 
 			/*
@@ -345,6 +467,10 @@ namespace JASS
 			*/
 			forceinline static void scatter(uint32_t *array, __m512i vindex, __m512i a)
 				{
+				/*
+					On "Intel(R) Core(TM) i7-9800X CPU @ 3.80GHz" this is faster than individual writes for both adjacent
+					and seperate cache line writes.
+				*/
 				_mm512_i32scatter_epi32(array, vindex, a, 4);
 				}
 
@@ -444,7 +570,7 @@ namespace JASS
 				SIMD::CUMULATIVE_SUM_512()
 				--------------------------
 			*/
-			/*
+			/*!
 				@brief Calculate (inplace) the cumulative sum of the array of integers.
 				@details As this uses AVX512 instrucrtions is can read and write more than length load of integers
 				@param data [in/out] The integers to sum (and result).
@@ -494,7 +620,7 @@ namespace JASS
 				SIMD::CUMULATIVE_SUM_256()
 				--------------------------
 			*/
-			/*
+			/*!
 				@brief Calculate (inplace) the cumulative sum of the array of integers.
 				@details As this uses AVX2 instrucrtions is can read and write more than length load of integers
 				@param data [in/out] The integers to sum (and result).
@@ -540,11 +666,12 @@ namespace JASS
 					previous_max = _mm256_permute2x128_si256(current_set, current_set, 3 | (3 << 4));
 					}
 				}
+
 			/*
 				SIMD::CUMULATIVE_SUM()
 				----------------------
 			*/
-			/*
+			/*!
 				@brief Calculate (inplace) the cumulative sum of the array of integers.
 				@details As this uses AVX2 instrucrtions is can read and write more than length load of integers
 				@param data [in/out] The integers to sum (and result).
@@ -562,6 +689,8 @@ namespace JASS
 			/*
 				SIMD::UNITTEST()
 				----------------
+			*/
+			/*!
 				@brief Unit test this class
 			*/
 			static void unittest(void)
