@@ -20,7 +20,17 @@
 #include "asserts.h"
 #include "forceinline.h"
 
+/*
+	Here we can choose between individual writes or block writes on AVX512:
 
+	USE_AXV512_READS_8:   gather then mask 8-bit reads
+	USE_AXV512_READS_16:  gather then mask 16-bit reads
+	USE_AXV512_WRITES_8:  gather/merge/scatter then mask 8-bit writes
+	USE_AXV512_WRITES_16: gather/merge/scatter then mask 16-bit writes
+	USE_AXV512_WRITES_32: gather/merge/scatter then mask 32-bit writes
+
+	For "Intel(R) Core(TM) SICPU @ 3.80GHz" enable USE_AXV512_READS_8 and USE_AXV512_READS_16
+*/
 #define USE_AXV512_READS_8 1
 #define USE_AXV512_READS_16 1
 //#define USE_AXV512_WRITES_8 1
