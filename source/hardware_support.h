@@ -47,16 +47,28 @@ namespace JASS
 		{
 		public:
 			//  Misc.
-			bool MMX;		///< MMX instructions
-			bool x64;		///< x64 i.e. 64-bit processor
-			bool ABM;      	///< Advanced bit manipulation
-			bool RDRAND;	///< Hardware random number generator
-			bool BMI1;		///< Bit manipulation instructions 1
-			bool BMI2;		///< Bit manipulation instructions 2
-			bool ADX;		///< Multi-precision add-carry instruction extensions
-			bool PREFETCHWT1;	///< Prefetch instructions
+			bool FP;				///< Has Floating Point on chip
+			bool MMX;			///< MMX instructions
+			bool x64;			///< x64 i.e. 64-bit processor
+			bool ABM;			///< Advanced bit manipulation
+			bool RDRAND;		///< Hardware random number generator
+			bool BMI1;			///< Bit manipulation instructions 1
+			bool BMI2;			///< Bit manipulation instructions 2
+			bool ADX;			///< Multi-precision add-carry instruction extensions
+			bool PREFETCHWT1;	///< Prefetch instructions (Xeon Phi(
+			bool CX8; 			///< CMPXCHG8B - compare exchange 8-byte values
+			bool CMPXCHG16B;	///< compare exchange 16-byte values
+			bool CMOV;			///< Conditional move CMOV instructions
+			bool CLFSH;			///< CLFLUSH instruction
+			bool PCLMULQDQ;	///< Carryless Multiplication
+			bool MOVBE;			///< MOVBE instructon (convert endianness)
+			bool POPCNT;		///< popcount.  Count set bits
+			bool XSAVE;			///< Save processor state
+			bool OSXSAVE;		///< Save processor state
+			bool F16C;			///< 16-bit float conversion
 
 			//  SIMD: 128-bit
+			bool FXSR;		///< save and restore FP, MMX, SSE registers
 			bool SSE;		///< SSE instructions
 			bool SSE2;		///< SSE 2 instructions
 			bool SSE3;		///< SSE 3 instructions
@@ -77,8 +89,8 @@ namespace JASS
 			//  SIMD: 512-bit
 			bool AVX512F;    ///<  AVX512 Foundation
 			bool AVX512CD;   ///<  AVX512 Conflict Detection
-			bool AVX512PF;   ///<  AVX512 Prefetch
-			bool AVX512ER;   ///<  AVX512 Exponential + Reciprocal
+			bool AVX512PF;   ///<  AVX512 Prefetch (Xeon Phi)
+			bool AVX512ER;   ///<  AVX512 Exponential + Reciprocal (Xeon Phi)
 			bool AVX512VL;   ///<  AVX512 Vector Length Extensions
 			bool AVX512BW;   ///<  AVX512 Byte + Word
 			bool AVX512DQ;   ///<  AVX512 Doubleword + Quadword
@@ -114,6 +126,7 @@ namespace JASS
 				@brief Constructor.  Ask the CPU for details of what it is.
 			*/
 			hardware_support() :
+				FP(false),
 				MMX(false),
 				x64(false),
 				ABM(false),
@@ -122,6 +135,17 @@ namespace JASS
 				BMI2(false),
 				ADX(false),
 				PREFETCHWT1(false),
+				CX8(false),
+				CMPXCHG16B(false),
+				CMOV(false),
+				CLFSH(false),
+				PCLMULQDQ(false),
+				MOVBE(false),
+				POPCNT(false),
+				XSAVE(false),
+				OSXSAVE(false),
+				F16C(false),
+				FXSR(false),
 				SSE(false),
 				SSE2(false),
 				SSE3(false),
@@ -157,20 +181,30 @@ namespace JASS
 				if (nIds >= 0x00000001)
 					{
 					cpuid(info,0x00000001);
+					FP     = (info[3] & ((int)1 << 0)) != 0;
+					CX8    = (info[3] & ((int)1 << 8)) != 0;
+					CMOV   = (info[3] & ((int)1 << 15)) != 0;
+					CLFSH  = (info[3] & ((int)1 << 19)) != 0;
 					MMX    = (info[3] & ((int)1 << 23)) != 0;
+					FXSR 	 = (info[3] & ((int)1 << 24)) != 0;
 					SSE    = (info[3] & ((int)1 << 25)) != 0;
 					SSE2   = (info[3] & ((int)1 << 26)) != 0;
-					SSE3   = (info[2] & ((int)1 <<  0)) != 0;
 
-					SSSE3  = (info[2] & ((int)1 <<  9)) != 0;
-					SSE41  = (info[2] & ((int)1 << 19)) != 0;
-					SSE42  = (info[2] & ((int)1 << 20)) != 0;
-					AES    = (info[2] & ((int)1 << 25)) != 0;
-
-					AVX    = (info[2] & ((int)1 << 28)) != 0;
-					FMA3   = (info[2] & ((int)1 << 12)) != 0;
-
-					RDRAND = (info[2] & ((int)1 << 30)) != 0;
+					SSE3       = (info[2] & ((int)1 <<  0)) != 0;
+					PCLMULQDQ  = (info[2] & ((int)1 <<  1)) != 0;
+					SSSE3      = (info[2] & ((int)1 <<  9)) != 0;
+					FMA3       = (info[2] & ((int)1 << 12)) != 0;
+					CMPXCHG16B = (info[2] & ((int)1 << 13)) != 0;
+					SSE41      = (info[2] & ((int)1 << 19)) != 0;
+					SSE42      = (info[2] & ((int)1 << 20)) != 0;
+					MOVBE      = (info[2] & ((int)1 << 22)) != 0;
+					POPCNT     = (info[2] & ((int)1 << 23)) != 0;
+					AES        = (info[2] & ((int)1 << 25)) != 0;
+					XSAVE      = (info[2] & ((int)1 << 26)) != 0;
+					OSXSAVE    = (info[2] & ((int)1 << 27)) != 0;
+					AVX        = (info[2] & ((int)1 << 28)) != 0;
+					F16C       = (info[2] & ((int)1 << 29)) != 0;
+					RDRAND     = (info[2] & ((int)1 << 30)) != 0;
 					}
 				if (nIds >= 0x00000007)
 					{
@@ -179,6 +213,7 @@ namespace JASS
 					BMI2        = (info[1] & ((int)1 <<  8)) != 0;
 					ADX         = (info[1] & ((int)1 << 19)) != 0;
 					SHA         = (info[1] & ((int)1 << 29)) != 0;
+
 					PREFETCHWT1 = (info[2] & ((int)1 <<  0)) != 0;
 
 					/*
@@ -189,13 +224,14 @@ namespace JASS
 						AVX2   = (info[1] & ((int)1 <<  5)) != 0;
 
 						AVX512F     = (info[1] & ((int)1 << 16)) != 0;
-						AVX512CD    = (info[1] & ((int)1 << 28)) != 0;
-						AVX512PF    = (info[1] & ((int)1 << 26)) != 0;
-						AVX512ER    = (info[1] & ((int)1 << 27)) != 0;
-						AVX512VL    = (info[1] & ((int)1 << 31)) != 0;
-						AVX512BW    = (info[1] & ((int)1 << 30)) != 0;
 						AVX512DQ    = (info[1] & ((int)1 << 17)) != 0;
 						AVX512IFMA  = (info[1] & ((int)1 << 21)) != 0;
+						AVX512PF    = (info[1] & ((int)1 << 26)) != 0;
+						AVX512ER    = (info[1] & ((int)1 << 27)) != 0;
+						AVX512CD    = (info[1] & ((int)1 << 28)) != 0;
+						AVX512BW    = (info[1] & ((int)1 << 30)) != 0;
+						AVX512VL    = (info[1] & ((int)1 << 31)) != 0;
+
 						AVX512VBMI  = (info[2] & ((int)1 <<  1)) != 0;
 						}
 					}
@@ -241,6 +277,10 @@ namespace JASS
 	*/
 	inline std::ostream &operator<<(std::ostream &stream, const hardware_support &data)
 		{
+		stream << "FP         :" << data.FP << "\n";
+		stream << "CX8        :" << data.CX8 << "\n";
+		stream << "CMPXCHG16B :" << data.CMPXCHG16B << "\n";
+		stream << "CMOV       :" << data.CMOV << "\n";
 		stream << "MMX        :" << data.MMX << "\n";
 		stream << "x64        :" << data.x64 << "\n";
 		stream << "ABM        :" << data.ABM << "\n";
@@ -249,7 +289,13 @@ namespace JASS
 		stream << "BMI2       :" << data.BMI2 << "\n";
 		stream << "ADX        :" << data.ADX << "\n";
 		stream << "PREFETCHWT1:" << data.PREFETCHWT1 << "\n";
+		stream << "PCLMULQDQ  :" << data.PCLMULQDQ << "\n";
+		stream << "MOVBE      :" << data.MOVBE << "\n";
+		stream << "XSAVE      :" << data.XSAVE << "\n";
+		stream << "OSXSAVE    :" << data.OSXSAVE << "\n";
+		stream << "F16C       :" << data.F16C << "\n";
 
+		stream << "FXSR       :" << data.FXSR << "\n";
 		stream << "SSE        :" << data.SSE << "\n";
 		stream << "SSE2       :" << data.SSE2 << "\n";
 		stream << "SSE3       :" << data.SSE3 << "\n";

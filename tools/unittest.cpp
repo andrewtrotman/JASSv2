@@ -120,6 +120,11 @@ int main(void)
 	setvbuf(stdout, NULL, _IONBF, 0);
  	puts(JASS::version::credits().c_str());
 
+ 	/*
+ 		Output basic statistics about the machine we're running on.
+ 	*/
+ 	std::cout << JASS::hardware_support();
+
 	/*
 		Test the JASS classes
 	*/
