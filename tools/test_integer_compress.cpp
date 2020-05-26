@@ -206,7 +206,7 @@ void compress_all_lists(uint32_t longest_list, JASS::compress_integer &shrinkera
 */
 void decompress_all_lists(uint32_t longest_list, JASS::compress_integer &shrinkerator, std::vector<postings_list_object>  &entire_index, size_t *total_decopress_time)
 	{
-	std::vector<uint32_t> decompressed_postings_list(longest_list);
+	std::vector<uint32_t> decompressed_postings_list(longest_list, 0);
 	size_t term_count = 0;
 	
 	for (auto &list : entire_index)
