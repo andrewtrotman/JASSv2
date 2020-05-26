@@ -66,6 +66,17 @@ namespace JASS
 			bool XSAVE;			///< Save processor state
 			bool OSXSAVE;		///< Save processor state
 			bool F16C;			///< 16-bit float conversion
+			bool FSGSBASE;		///< F segment and a G segment
+			bool SGX;			///< Software Guard Extensions
+			bool HLE;			///< Hardware Lock Elision (Transactional Memory)
+			bool RTM;			///< Restricted Transactional Memory
+			bool RDSEED;		///< RDSEED
+			bool CLFLUSHOPT;	///< Cache flush
+			bool CLWB;			///< Cache flush
+			bool RDPID;		    ///< RDPID
+			bool CLDEMOTE;     ///< cache line demote
+			bool MOVDIRI;		 ///< MOVDIRI
+			bool MOVDIR64B;    ///< MOVDIR64B
 
 			//  SIMD: 128-bit
 			bool FXSR;		///< save and restore FP, MMX, SSE registers
@@ -96,9 +107,25 @@ namespace JASS
 			bool AVX512DQ;   ///<  AVX512 Doubleword + Quadword
 			bool AVX512IFMA; ///<  AVX512 Integer 52-bit Fused Multiply-Add
 			bool AVX512VBMI; ///<  AVX512 Vector Byte Manipulation Instructions
+			bool AVX512VBMI2;	    ///< AVX512 Vector Byte Manipulation Instructions 2
+			bool AVX512GFNI;	    ///< AVX512 Galois field new instructions
+			bool AVX512VAES;	    ///< AVX512 AES instructions
+			bool VPCLMULQDQ;	    ///< VPCLMULQDQ
+			bool AVX512VNNI;      ///< AVX512 Vector Neural Network Instructions
+			bool AVX512BITALG;    ///< AVX512 Bit Algorithms
+			bool AVX512VPOPCNTDQ;///< AVX512 Vector population count instruction
+			bool AVX5124VNNIW;	///< AVX512 Vector Neural Network Instructions Word variable precision
+			bool AVX5124FMAPS;	///< AVX512 Fused Multiply Accumulation Packed Single precision
+
+			char brand[256];			///< The CPU model number (e.g. "Intel(R) Core(TM) i7-9800X CPU @ 3.80GHz")
+			char manufacturer[14];	///< The CPU manufacturer (such as "GenuineIntel")
+
+			uint32_t level_1_data_cache_size_in_bytes;
+			uint32_t level_1_instruction_cache_size_in_bytes;
+			uint32_t level_2_cache_size_in_bytes;
+			uint32_t level_3_cache_size_in_bytes;
 
 		protected:
-
 			/*
 				HARDWARE_SUPPORT::CPUID()
 				-------------------------
@@ -107,15 +134,92 @@ namespace JASS
 				@brief Execute a CPUID instruction.
 				@param info [out] the CPUID data.
 				@param info_type [in] the type of informaiton being sought.
+				@param subfunction [in] the subfunction
 			*/
-			void cpuid(int info[4], int info_type)
+			void cpuid(uint32_t info[4], uint32_t info_type, uint32_t subfunction = 0)
 				{
 				#ifdef _MSC_VER
-					__cpuidex(info, info_type, 0);
+					__cpuidex(info, info_type, subfunction);
 				#else
-					__cpuid_count(info_type, 0, info[0], info[1], info[2], info[3]);
+					__cpuid_count(info_type, subfunction, info[0], info[1], info[2], info[3]);
 				#endif
 				}
+
+			/*
+				HARDWARE_SUPPORT::BITMASK32()
+				------------------------------
+			*/
+			/*!
+				@brief Compute a mask (all 1s) between h and l.
+				@param h [in] the high bit number.
+				@param l [in] the low bit number.
+				@return a bit mask with 1 for h..l elsewhere 0.
+			*/
+			inline uint32_t bitmask32(uint32_t h, uint32_t l)
+				{
+				return (1U << h | ((1U << h) - 1)) & ~((1U << l ) - 1);
+				}
+
+			/*
+				HARDWARE_SUPPORT::BITFIELD32()
+				------------------------------
+			*/
+			/*!
+				@brief Extract bitfield data from x
+				@param x [in] get bits h..l out of this
+				@param h [in] the high bit number
+				@param l [in] the low bit number
+				@return x[h..l]
+			*/
+			inline uint32_t bitfield32(uint32_t x, uint32_t h, uint32_t l)
+				{
+				return (x & bitmask32(h, l)) >> l;
+				}
+
+			/*
+				HARDWARE_SUPPORT::GET_CACHE_SIZES()
+				-----------------------------------
+			*/
+			/*!
+				@brief Compute the sizes of the caches.
+			*/
+			void get_cache_sizes(void)
+				{
+				uint32_t info[4];
+
+				for(uint32_t level = 0; level < 10; level++)		// never going to see 10 levels of cache (are we?)
+					{
+					cpuid(info, 4, level);
+
+					if (info[0] == 0)
+						break;
+
+					uint64_t ways = bitfield32(info[1], 31, 22);
+					uint64_t partitions = bitfield32(info[1], 21, 12);
+					uint64_t line_size = bitfield32(info[1], 11, 0);
+					uint64_t sets = info[2];
+					uint64_t total_size_in_bytes = (ways + 1) * (partitions + 1) * (line_size + 1) * (sets + 1);
+
+//					uint32_t cache_level = bitfield32(info[0], 7, 5);
+//					uint32_t cache_type = bitfield32(info[0], 4, 0);
+//					printf("L%c%c ",  cache_level + '0', cache_type == 1 ? 'd' : cache_type == 2 ? 'i' : cache_type == 3 ? 'u' : '?');
+//					printf("%lluKB\n", total_size_in_bytes / 1024);
+
+					uint32_t cache_type_level = bitfield32(info[0], 7, 0);
+					if (cache_type_level == 0x21)
+						level_1_data_cache_size_in_bytes = total_size_in_bytes;
+					else if (cache_type_level == 0x22)
+						level_1_instruction_cache_size_in_bytes = total_size_in_bytes;
+					else if (cache_type_level == 0x43)
+						level_2_cache_size_in_bytes = total_size_in_bytes;
+					else if (cache_type_level == 0x63)
+						level_3_cache_size_in_bytes = total_size_in_bytes;
+					else
+						JASS_assert(1);
+					}
+				}
+
+
 
 		public:
 			/*
@@ -145,6 +249,17 @@ namespace JASS
 				XSAVE(false),
 				OSXSAVE(false),
 				F16C(false),
+				FSGSBASE(false),
+				SGX(false),
+				HLE(false),
+				RTM(false),
+				RDSEED(false),
+				CLFLUSHOPT(false),
+				CLWB(false),
+				RDPID(false),
+				CLDEMOTE(false),
+				MOVDIRI(false),
+				MOVDIR64B(false),
 				FXSR(false),
 				SSE(false),
 				SSE2(false),
@@ -168,11 +283,24 @@ namespace JASS
 				AVX512BW(false),
 				AVX512DQ(false),
 				AVX512IFMA(false),
-				AVX512VBMI(false)
+				AVX512VBMI(false),
+				AVX512VBMI2(false),
+				AVX512GFNI(false),
+				AVX512VAES(false),
+				VPCLMULQDQ(false),
+				AVX512VNNI(false),
+				AVX512BITALG(false),
+				AVX512VPOPCNTDQ(false),
+				AVX5124VNNIW(false),
+				AVX5124FMAPS(false),
+				level_1_data_cache_size_in_bytes(0),
+				level_1_instruction_cache_size_in_bytes(0),
+				level_2_cache_size_in_bytes(0),
+				level_3_cache_size_in_bytes(0)
 				{
-				int info[4];
+				uint32_t info[4];
 				cpuid(info, 0);
-				int nIds = info[0];
+				uint32_t nIds = info[0];
 
 				cpuid(info, 0x80000000);
 				unsigned nExIds = info[0];
@@ -180,7 +308,7 @@ namespace JASS
 				//  Detect Features
 				if (nIds >= 0x00000001)
 					{
-					cpuid(info,0x00000001);
+					cpuid(info, 0x00000001);
 					FP     = (info[3] & ((int)1 << 0)) != 0;
 					CX8    = (info[3] & ((int)1 << 8)) != 0;
 					CMOV   = (info[3] & ((int)1 << 15)) != 0;
@@ -209,19 +337,30 @@ namespace JASS
 				if (nIds >= 0x00000007)
 					{
 					cpuid(info,0x00000007);
+					FSGSBASE    = (info[1] & ((int)1 <<  0)) != 0;
+					SGX         = (info[1] & ((int)1 <<  2)) != 0;
 					BMI1        = (info[1] & ((int)1 <<  3)) != 0;
+					HLE         = (info[1] & ((int)1 <<  3)) != 0;
 					BMI2        = (info[1] & ((int)1 <<  8)) != 0;
+					RTM         = (info[1] & ((int)1 << 11)) != 0;
+					RDSEED      = (info[1] & ((int)1 << 18)) != 0;
 					ADX         = (info[1] & ((int)1 << 19)) != 0;
+					CLFLUSHOPT  = (info[1] & ((int)1 << 23)) != 0;
+					CLWB        = (info[1] & ((int)1 << 24)) != 0;
 					SHA         = (info[1] & ((int)1 << 29)) != 0;
 
 					PREFETCHWT1 = (info[2] & ((int)1 <<  0)) != 0;
+					RDPID       = (info[2] & ((int)1 << 22)) != 0;
+					CLDEMOTE    = (info[2] & ((int)1 << 25)) != 0;
+					MOVDIRI     = (info[2] & ((int)1 << 27)) != 0;
+					MOVDIR64B   = (info[2] & ((int)1 << 28)) != 0;
 
 					/*
 						At present AVX2 and above is not supported on vlagrind.
 					*/
 					if (!RUNNING_ON_VALGRIND)
 						{
-						AVX2   = (info[1] & ((int)1 <<  5)) != 0;
+						AVX2        = (info[1] & ((int)1 <<  5)) != 0;
 
 						AVX512F     = (info[1] & ((int)1 << 16)) != 0;
 						AVX512DQ    = (info[1] & ((int)1 << 17)) != 0;
@@ -233,17 +372,53 @@ namespace JASS
 						AVX512VL    = (info[1] & ((int)1 << 31)) != 0;
 
 						AVX512VBMI  = (info[2] & ((int)1 <<  1)) != 0;
+						AVX512VBMI2 = (info[2] & ((int)1 <<  6)) != 0;
+
+						AVX512GFNI      = (info[2] & ((int)1 <<  8)) != 0;
+						AVX512VAES      = (info[2] & ((int)1 <<  9)) != 0;
+						VPCLMULQDQ      = (info[2] & ((int)1 << 10)) != 0;
+						AVX512VNNI      = (info[2] & ((int)1 << 11)) != 0;
+						AVX512BITALG    = (info[2] & ((int)1 << 12)) != 0;
+						AVX512VPOPCNTDQ = (info[2] & ((int)1 << 14)) != 0;
+
+						AVX5124VNNIW = (info[3] & ((int)1 << 2)) != 0;
+						AVX5124FMAPS = (info[3] & ((int)1 << 3)) != 0;
 						}
 					}
 				if (nExIds >= 0x80000001)
 					{
-					cpuid(info,0x80000001);
-					x64   = (info[3] & ((int)1 << 29)) != 0;
+					/*
+						AMD flags, see: https://en.wikipedia.org/wiki/CPUID
+					*/
+					cpuid(info, 0x80000001);
 					ABM   = (info[2] & ((int)1 <<  5)) != 0;
 					SSE4a = (info[2] & ((int)1 <<  6)) != 0;
 					FMA4  = (info[2] & ((int)1 << 16)) != 0;
 					XOP   = (info[2] & ((int)1 << 11)) != 0;
+
+					x64   = (info[3] & ((int)1 << 29)) != 0;
 					}
+
+				/*
+					CPU manufacturer
+				*/
+				memset(manufacturer, 0, sizeof(manufacturer));
+				cpuid(info, 0x00000000);
+				*(uint32_t *)manufacturer = info[1];
+				*(uint32_t *)(manufacturer + 4) = info[3];
+				*(uint32_t *)(manufacturer + 8) = info[2];
+
+				/*
+					CPU model brand
+				*/
+				memset(brand, 0, sizeof(brand));
+				if (nExIds >= 0x80000004)
+					{
+					cpuid((uint32_t *)brand, 0x80000002);
+					cpuid((uint32_t *)brand + 4, 0x80000003);
+					cpuid((uint32_t *)brand + 8, 0x80000004);
+					}
+				get_cache_sizes();
 				}
 
 
@@ -277,51 +452,83 @@ namespace JASS
 	*/
 	inline std::ostream &operator<<(std::ostream &stream, const hardware_support &data)
 		{
-		stream << "FP         :" << data.FP << "\n";
-		stream << "CX8        :" << data.CX8 << "\n";
-		stream << "CMPXCHG16B :" << data.CMPXCHG16B << "\n";
-		stream << "CMOV       :" << data.CMOV << "\n";
-		stream << "MMX        :" << data.MMX << "\n";
-		stream << "x64        :" << data.x64 << "\n";
-		stream << "ABM        :" << data.ABM << "\n";
-		stream << "RDRAND     :" << data.RDRAND << "\n";
-		stream << "BMI1       :" << data.BMI1 << "\n";
-		stream << "BMI2       :" << data.BMI2 << "\n";
-		stream << "ADX        :" << data.ADX << "\n";
-		stream << "PREFETCHWT1:" << data.PREFETCHWT1 << "\n";
-		stream << "PCLMULQDQ  :" << data.PCLMULQDQ << "\n";
-		stream << "MOVBE      :" << data.MOVBE << "\n";
-		stream << "XSAVE      :" << data.XSAVE << "\n";
-		stream << "OSXSAVE    :" << data.OSXSAVE << "\n";
-		stream << "F16C       :" << data.F16C << "\n";
+		stream << "Manufacturer    :" << data.manufacturer << "\n";
+		stream << "Model           :" << data.brand << "\n";
 
-		stream << "FXSR       :" << data.FXSR << "\n";
-		stream << "SSE        :" << data.SSE << "\n";
-		stream << "SSE2       :" << data.SSE2 << "\n";
-		stream << "SSE3       :" << data.SSE3 << "\n";
-		stream << "SSSE3      :" << data.SSSE3 << "\n";
-		stream << "SSE41      :" << data.SSE41 << "\n";
-		stream << "SSE42      :" << data.SSE42 << "\n";
-		stream << "SSE4a      :" << data.SSE4a << "\n";
-		stream << "AES        :" << data.AES << "\n";
-		stream << "SHA        :" << data.SHA << "\n";
+		stream << "L1d cache       :"<< data.level_1_data_cache_size_in_bytes / 1024 << "KB\n";
+		stream << "L1i cache       :"<< data.level_1_instruction_cache_size_in_bytes / 1024 << "KB\n";
+		stream << "L2  cache       :"<< data.level_2_cache_size_in_bytes / 1024 << "KB\n";
+		stream << "L3  cache       :"<< data.level_3_cache_size_in_bytes / 1024 << "KB\n";
 
-		stream << "AVX        :" << data.AVX << "\n";
-		stream << "XOP        :" << data.XOP << "\n";
-		stream << "FMA3       :" << data.FMA3 << "\n";
-		stream << "FMA4       :" << data.FMA4 << "\n";
-		stream << "AVX2       :" << data.AVX2 << "\n";
+		stream << "x64             :" << data.x64 << "\n";
+		stream << "POPCNT          :" << data.POPCNT << "\n";
+		stream << "CX8             :" << data.CX8 << "\n";
+		stream << "CMPXCHG16B      :" << data.CMPXCHG16B << "\n";
+		stream << "CMOV            :" << data.CMOV << "\n";
+		stream << "ABM             :" << data.ABM << "\n";
+		stream << "BMI1            :" << data.BMI1 << "\n";
+		stream << "BMI2            :" << data.BMI2 << "\n";
+		stream << "ADX             :" << data.ADX << "\n";
+		stream << "PREFETCHWT1     :" << data.PREFETCHWT1 << "\n";
+		stream << "PCLMULQDQ       :" << data.PCLMULQDQ << "\n";
+		stream << "MOVBE           :" << data.MOVBE << "\n";
+		stream << "XSAVE           :" << data.XSAVE << "\n";
+		stream << "OSXSAVE         :" << data.OSXSAVE << "\n";
+		stream << "F16C            :" << data.F16C << "\n";
+		stream << "FSGSBASE        :" << data.FSGSBASE << "\n";
+		stream << "SGX             :" << data.SGX << "\n";
+		stream << "HLE             :" << data.HLE << "\n";
+		stream << "RTM             :" << data.RTM << "\n";
+		stream << "RDRAND          :" << data.RDRAND << "\n";
+		stream << "RDSEED          :" << data.RDSEED << "\n";
+		stream << "CLFLUSHOPT      :" << data.CLFLUSHOPT << "\n";
+		stream << "CLWB            :" << data.CLWB << "\n";
+		stream << "CLFSH           :" << data.CLFSH << "\n";
 
-		stream << "AVX512F    :" << data.AVX512F << "\n";
-		stream << "AVX512CD   :" << data.AVX512CD << "\n";
-		stream << "AVX512PF   :" << data.AVX512PF << "\n";
-		stream << "AVX512ER   :" << data.AVX512ER << "\n";
-		stream << "AVX512VL   :" << data.AVX512VL << "\n";
-		stream << "AVX512BW   :" << data.AVX512BW << "\n";
-		stream << "AVX512DQ   :" << data.AVX512DQ << "\n";
-		stream << "AVX512IFMA :" << data.AVX512IFMA << "\n";
-		stream << "AVX512VBMI :" << data.AVX512VBMI << "\n";
+		stream << "RDPID           :" << data.RDPID << "\n";
+		stream << "CLDEMOTE        :" << data.CLDEMOTE << "\n";
+		stream << "MOVDIRI         :" << data.MOVDIRI << "\n";
+		stream << "MOVDIR64B       :" << data.MOVDIR64B << "\n";
 
+		stream << "FXSR            :" << data.FXSR << "\n";
+		stream << "FP              :" << data.FP << "\n";
+		stream << "MMX             :" << data.MMX << "\n";
+		stream << "SSE             :" << data.SSE << "\n";
+		stream << "SSE2            :" << data.SSE2 << "\n";
+		stream << "SSE3            :" << data.SSE3 << "\n";
+		stream << "SSSE3           :" << data.SSSE3 << "\n";
+		stream << "SSE41           :" << data.SSE41 << "\n";
+		stream << "SSE42           :" << data.SSE42 << "\n";
+		stream << "SSE4a           :" << data.SSE4a << "\n";
+		stream << "AES             :" << data.AES << "\n";
+		stream << "SHA             :" << data.SHA << "\n";
+
+		stream << "AVX             :" << data.AVX << "\n";
+		stream << "XOP             :" << data.XOP << "\n";
+		stream << "FMA3            :" << data.FMA3 << "\n";
+		stream << "FMA4            :" << data.FMA4 << "\n";
+		stream << "AVX2            :" << data.AVX2 << "\n";
+
+		stream << "AVX512F         :" << data.AVX512F << "\n";
+		stream << "AVX512CD        :" << data.AVX512CD << "\n";
+		stream << "AVX512PF        :" << data.AVX512PF << "\n";
+		stream << "AVX512ER        :" << data.AVX512ER << "\n";
+		stream << "AVX512VL        :" << data.AVX512VL << "\n";
+		stream << "AVX512BW        :" << data.AVX512BW << "\n";
+		stream << "AVX512DQ        :" << data.AVX512DQ << "\n";
+		stream << "AVX512IFMA      :" << data.AVX512IFMA << "\n";
+		stream << "AVX512VBMI      :" << data.AVX512VBMI << "\n";
+
+		stream << "AVX512VBMI2     :" << data.AVX512VBMI2 << "\n";
+		stream << "AVX512GFNI      :" << data.AVX512GFNI << "\n";
+		stream << "AVX512VAES      :" << data.AVX512VAES << "\n";
+		stream << "VPCLMULQDQ      :" << data.VPCLMULQDQ << "\n";
+		stream << "AVX512VNNI      :" << data.AVX512VNNI << "\n";
+		stream << "AVX512BITALG    :" << data.AVX512BITALG << "\n";
+		stream << "AVX512VPOPCNTDQ :" << data.AVX512VPOPCNTDQ << "\n";
+
+		stream << "AVX5124VNNIW    :" << data.AVX5124VNNIW << "\n";
+		stream << "AVX5124FMAPS    :" << data.AVX5124FMAPS << "\n";
 		return stream;
 		}
 	}
