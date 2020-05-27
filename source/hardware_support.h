@@ -302,7 +302,9 @@ namespace JASS
 				hyperthreads_per_core = bitfield32(regs[1], 15, 8) + 1;
 
 				cpuid(regs, 0x80000008);
-				hyperthreads_per_core = bitfield32(regs[2], 7, 0) + 1;
+				cores_per_die = bitfield32(regs[2], 7, 0) + 1;
+
+				cores_per_die /= hyperthreads_per_core;
 				}
 
 		public:
