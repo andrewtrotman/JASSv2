@@ -532,9 +532,9 @@ namespace JASS
 	*/
 	void compress_integer_elias_gamma_simd::unittest(void)
 		{
-		compress_integer_elias_gamma_simd *compressor = new compress_integer_elias_gamma_simd();
+		compress_integer_elias_gamma_simd *compressor;
 
-
+		compressor = new compress_integer_elias_gamma_simd();
 		compress_integer::unittest(*compressor);
 
 		std::vector<uint32_t> broken_sequence =

@@ -84,7 +84,6 @@ namespace JASS
 			{
 			double term;
 			double sum;
-			double pi = 3.14159265358979;
 			/*
 				treat the small and moderate degrees of freedom case
 				method utilized--exact finite sum
@@ -123,7 +122,10 @@ namespace JASS
 
 			sum = sum * s;
 			if (ievodd != 0)
+				{
+				const double pi = 3.14159265358979;
 				sum = (2.0 / pi) * (atan(dx / sqrt(dnu)) + sum);
+				}
 			return 0.5 + sum / 2.0;
 			}
 		else
