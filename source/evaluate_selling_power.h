@@ -52,7 +52,7 @@ namespace JASS
 				Although prices are assumed to be in dollars and (2 is $2.00, 2.2 = $2.20), the implementation is unit agnostic
 				and therefore prices might be in cents (or pence, etc.) or even units other than financial (such as time).
 			*/
-			virtual double compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth = std::numeric_limits<size_t>::max()) const;
+			virtual double compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth = (std::numeric_limits<size_t>::max)()) const;
 
 			/*
 				EVALUATE_SELLING_POWER::UNITTEST()
