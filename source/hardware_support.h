@@ -12,6 +12,8 @@
 */
 #pragma once
 
+#include <stdio.h>
+
 #ifdef _MSC_VER
 	#include <intrin.h>
 #else
@@ -177,13 +179,13 @@ namespace JASS
 				}
 
 			/*
-				HARDWARE_SUPPORT::GET_CACHE_SIZES()
-				-----------------------------------
+				HARDWARE_SUPPORT::INTEL_GET_CACHE_SIZES()
+				-----------------------------------------
 			*/
 			/*!
-				@brief Compute the sizes of the caches.
+				@brief Compute the sizes of the caches on an Intel CPU
 			*/
-			void get_cache_sizes(void)
+			void intel_get_cache_sizes(void)
 				{
 				uint32_t info[4];
 
@@ -219,7 +221,26 @@ namespace JASS
 					}
 				}
 
+			/*
+				HARDWARE_SUPPORT::INTEL_GET_CACHE_SIZES()
+				-----------------------------------------
+			*/
+			/*!
+				@brief Compute the sizes of the caches on an AMD CPU
+			*/
+			void amd_get_chache_sizes(void)
+				{
+				uint32_t info[4];
+				cpuid(info, 0x80000005);
 
+				level_1_data_cache_size_in_bytes = bitfield32(info[2], 31, 24) * 1024;
+				level_1_instruction_cache_size_in_bytes = bitfield32(info[3], 31, 24) * 1024;
+
+				cpuid(info, 0x80000006);
+
+				level_2_cache_size_in_bytes = bitfield32(info[2], 31, 16) * 1024;
+				level_3_cache_size_in_bytes = bitfield32(info[3], 31, 18) * 512 * 1024;
+				}
 
 		public:
 			/*
@@ -340,7 +361,7 @@ namespace JASS
 					FSGSBASE    = (info[1] & ((int)1 <<  0)) != 0;
 					SGX         = (info[1] & ((int)1 <<  2)) != 0;
 					BMI1        = (info[1] & ((int)1 <<  3)) != 0;
-					HLE         = (info[1] & ((int)1 <<  3)) != 0;
+					HLE         = (info[1] & ((int)1 <<  4)) != 0;
 					BMI2        = (info[1] & ((int)1 <<  8)) != 0;
 					RTM         = (info[1] & ((int)1 << 11)) != 0;
 					RDSEED      = (info[1] & ((int)1 << 18)) != 0;
@@ -418,7 +439,11 @@ namespace JASS
 					cpuid((uint32_t *)brand + 4, 0x80000003);
 					cpuid((uint32_t *)brand + 8, 0x80000004);
 					}
-				get_cache_sizes();
+
+				if (::strcmp(manufacturer, "GenuineIntel"))
+					intel_get_cache_sizes();
+				else if (::strcmp(manufacturer, "AuthenticAMD"))
+					amd_get_chache_sizes();
 				}
 
 
