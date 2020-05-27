@@ -10,9 +10,19 @@
 	@author Andrew Trotman
 	@copyright 2018 Andrew Trotman
 */
-#pragma once
+
+#ifndef HARDWARE_SUPPORT_STAND_ALONE
+	#pragma once
+#endif
 
 #include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+
+#ifdef HARDWARE_SUPPORT_STAND_ALONE
+	#include <assert.h>
+	#define JASS_assert(x) assert(x)
+#endif
 
 #ifdef _MSC_VER
 	#include <intrin.h>
@@ -23,7 +33,7 @@
 #include <sstream>
 #include <iostream>
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER) || defined(HARDWARE_SUPPORT_STAND_ALONE)
 	#define RUNNING_ON_VALGRIND (0)
 #else
 	#include "../external/valgrind/valgrind.h"
@@ -127,6 +137,9 @@ namespace JASS
 			uint32_t level_2_cache_size_in_bytes;
 			uint32_t level_3_cache_size_in_bytes;
 
+			uint32_t hyperthreads_per_core;
+			uint32_t cores_per_die;
+
 		protected:
 			/*
 				HARDWARE_SUPPORT::CPUID()
@@ -222,8 +235,8 @@ namespace JASS
 				}
 
 			/*
-				HARDWARE_SUPPORT::INTEL_GET_CACHE_SIZES()
-				-----------------------------------------
+				HARDWARE_SUPPORT::AMD_GET_CACHE_SIZES()
+				---------------------------------------
 			*/
 			/*!
 				@brief Compute the sizes of the caches on an AMD CPU
@@ -240,6 +253,56 @@ namespace JASS
 
 				level_2_cache_size_in_bytes = bitfield32(info[2], 31, 16) * 1024;
 				level_3_cache_size_in_bytes = bitfield32(info[3], 31, 18) * 512 * 1024;
+				}
+
+			/*
+				HARDWARE_SUPPORT::INTEL_GET_CORE_COUNT()
+				----------------------------------------
+			*/
+			/*!
+				@brief Compute the core count and the hyperthreading count
+			*/
+			void intel_get_core_count(void)
+				{
+				uint32_t regs[4];
+
+				/*
+					Old school leaf 0x0B becaue I don't have a CPU with leaf 0x1F
+				*/
+				hyperthreads_per_core = cores_per_die = 1;
+
+				for (uint32_t level = 0; level < 10; level++)
+					{
+					cpuid(regs, 0x0B, level);
+					uint32_t type = bitfield32(regs[2], 15, 8);
+					uint32_t count = bitfield32(regs[1], 15, 0);
+
+					if (type == 0)
+						break;
+					else if (type == 1)
+						hyperthreads_per_core = count;
+					else if (type == 2)
+						cores_per_die = count;
+					}
+				cores_per_die /= hyperthreads_per_core;
+				}
+
+			/*
+				HARDWARE_SUPPORT::AMD_GET_CORE_COUNT()
+				--------------------------------------
+			*/
+			/*!
+				@brief Compute the core count and the hyperthreading count
+			*/
+			void amd_get_core_count(void)
+				{
+				uint32_t regs[4];
+
+				cpuid(regs, 0x8000001E);
+				hyperthreads_per_core = bitfield32(regs[1], 15, 8) + 1;
+
+				cpuid(regs, 0x80000008);
+				hyperthreads_per_core = bitfield32(regs[2], 7, 0) + 1;
 				}
 
 		public:
@@ -317,7 +380,9 @@ namespace JASS
 				level_1_data_cache_size_in_bytes(0),
 				level_1_instruction_cache_size_in_bytes(0),
 				level_2_cache_size_in_bytes(0),
-				level_3_cache_size_in_bytes(0)
+				level_3_cache_size_in_bytes(0),
+				hyperthreads_per_core(1),
+				cores_per_die(1)
 				{
 				uint32_t info[4];
 				cpuid(info, 0);
@@ -440,10 +505,16 @@ namespace JASS
 					cpuid((uint32_t *)brand + 8, 0x80000004);
 					}
 
-				if (::strcmp(manufacturer, "GenuineIntel"))
+				if (::strcmp(manufacturer, "GenuineIntel") == 0)
+					{
 					intel_get_cache_sizes();
-				else if (::strcmp(manufacturer, "AuthenticAMD"))
+					intel_get_core_count();
+					}
+				else if (::strcmp(manufacturer, "AuthenticAMD") == 0)
+					{
 					amd_get_chache_sizes();
+					amd_get_core_count();
+					}
 				}
 
 
@@ -484,6 +555,9 @@ namespace JASS
 		stream << "L1i cache       :"<< data.level_1_instruction_cache_size_in_bytes / 1024 << "KB\n";
 		stream << "L2  cache       :"<< data.level_2_cache_size_in_bytes / 1024 << "KB\n";
 		stream << "L3  cache       :"<< data.level_3_cache_size_in_bytes / 1024 << "KB\n";
+
+		stream << "CPU Cores       :" << data.cores_per_die << "\n";
+		stream << "Threads per core:" << data.hyperthreads_per_core << "\n";
 
 		stream << "x64             :" << data.x64 << "\n";
 		stream << "POPCNT          :" << data.POPCNT << "\n";
@@ -557,3 +631,10 @@ namespace JASS
 		return stream;
 		}
 	}
+
+#ifdef HARDWARE_SUPPORT_STAND_ALONE
+	int main(void)
+		{
+		std::cout << JASS::hardware_support();
+		}
+#endif
