@@ -754,10 +754,7 @@ namespace JASS
 				*/
 				got = simd::gather(source_32, vindex);
 				for (size_t pos = 0; pos < 8; pos++)
-					{
-					std::cout << "got:" << ((uint32_t *)&got)[pos] << " should be:" << pos << "\n";
 					JASS_assert(((uint32_t *)&got)[pos] == pos);
-					}
 
 				simd::scatter(destination_32, vindex, got);
 				for (size_t pos = 0; pos < 8; pos++)
