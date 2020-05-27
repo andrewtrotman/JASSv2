@@ -55,7 +55,7 @@ namespace JASS
 				@param depth [in] How far down the results list to look.
 				@return The buying power of this results list for this query.
 			*/
-			virtual double compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth = std::numeric_limits<size_t>::max()) const;
+			virtual double compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth = (std::numeric_limits<size_t>::max)()) const;
 
 			/*
 				EVALUATE_BUYING_POWER::UNITTEST()
