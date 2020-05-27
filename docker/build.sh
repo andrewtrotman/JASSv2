@@ -12,20 +12,20 @@ make
 #
 # Coverage using codecov.io
 #
-# export CODECOV_TOKEN="531ba3f8-2ebe-40a2-9f40-95ea61dc0186"
-# export ci_env=$(bash <(curl -s https://codecov.io/env))
-# /bin/bash <(curl -s https://codecov.io/bash) > ers 2> ers2
+export CODECOV_TOKEN="531ba3f8-2ebe-40a2-9f40-95ea61dc0186"
+export ci_env=$(bash <(curl -s https://codecov.io/env))
+/bin/bash <(curl -s https://codecov.io/bash) > ers 2> ers2
 
 #
 # Coverage using coveralls.io
 #
-pip install --upgrade setuptools
-pip install wheel
-pip install cpp-coveralls
+# pip install --upgrade setuptools
+# pip install wheel
+# pip install cpp-coveralls
 
-export COVERALLS_REPO_TOKEN=D5tNCS2tc1XK8guPC5ePloTuxr7ifkzlV
+# export COVERALLS_REPO_TOKEN=D5tNCS2tc1XK8guPC5ePloTuxr7ifkzlV
 # coveralls ---root . -gcov-options '\-lp' 
-coveralls > ers 2> ers2
+# coveralls > ers 2> ers2
 
 #valgrind -q --error-exitcode=42 ./unittest
 exit 0
