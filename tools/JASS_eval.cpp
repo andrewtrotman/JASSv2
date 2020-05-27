@@ -297,7 +297,7 @@ class metric_set
 		/*!
 			@brief Constructor
 		*/
-		metric_set(const std::string run_id, const std::string query_id) :
+		metric_set(const std::string &run_id, const std::string &query_id) :
 			run_id(run_id),
 			query_id(query_id)
 			{
@@ -566,7 +566,7 @@ class run_result
 					51 Q0 WSJ871218-0126 1 208 JASSv2
 			@param source [in] a single line from a TREC run file in trec_eval format.
 		*/
-		run_result(uint8_t *source)
+		explicit run_result(uint8_t *source)
 			{
 			if (char *column_1 = (char *)source)
 				{

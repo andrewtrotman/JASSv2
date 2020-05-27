@@ -45,31 +45,11 @@ namespace JASS
 	*/
 	double statistics::t_cumulative_distribution_function(double x, uint32_t nu)
 		{
-		double dx, dnu, c, csq, s, sum, term, ai;
-		double term1, term2, term3;
-		double dcdfn;
-		double dcdf;
-		double d1, d3, d5, d7, d9, d11;
 		uint32_t nucut = 1000;
-		double pi = 3.14159265358979;
-		double dconst = 0.3989422804;
-		double b11 = 0.25;
-		double b21 = 0.01041666666667;
-		double b22 = 3.0;
-		double b23 = -7.0;
-		double b24 = -5.0;
-		double b25 = -3.0;
-		double b31 = 0.00260416666667;
-		double b32 = 1.0;
-		double b33 = -11.0;
-		double b34 = 14.0;
-		double b35 = 6.0;
-		double b36 = -3.0;
-		double b37 = -15.0;
 
-		dx = x;
+		double dx = x;
 		double anu = nu;
-		dnu = nu;
+		double dnu = nu;
 
 		/*
 			if nu is 3 through 9 and x is more than 3000 standard deviations below the mean,
@@ -102,14 +82,17 @@ namespace JASS
 		*/
 		if (nu < nucut)
 			{
+			double term;
+			double sum;
+			double pi = 3.14159265358979;
 			/*
 				treat the small and moderate degrees of freedom case
 				method utilized--exact finite sum
 				(see AMS 55, page 948, formulae 26.7.3 and 26.7.4).
 			*/
-			c = sqrt(dnu / (dx * dx + dnu));
-			csq = dnu / (dx * dx + dnu);
-			s = dx / sqrt(dx * dx + dnu);
+			double c = sqrt(dnu / (dx * dx + dnu));
+			double csq = dnu / (dx * dx + dnu);
+			double s = dx / sqrt(dx * dx + dnu);
 			int64_t imax = nu - 2;
 			int64_t ievodd = nu - 2 * (nu / 2);
 
@@ -133,7 +116,7 @@ namespace JASS
 			if (imin <= imax)
 				for (int64_t i = imin; i <= imax; i += 2)
 					{
-					ai = i;
+					double ai = i;
 					term = term * ((ai - 1.0) / ai) * csq;
 					sum = sum + term;
 					}
@@ -151,18 +134,33 @@ namespace JASS
 				(see Johnson and Kotz, volume 2, page 102, formula 10;
 				see Federighi, page 687).
 			*/
+			double b11 = 0.25;
+			double b21 = 0.01041666666667;
+			double b22 = 3.0;
+			double b23 = -7.0;
+			double b24 = -5.0;
+			double b25 = -3.0;
+			double b31 = 0.00260416666667;
+			double b32 = 1.0;
+			double b33 = -11.0;
+			double b34 = 14.0;
+			double b35 = 6.0;
+			double b36 = -3.0;
+			double b37 = -15.0;
+			double dconst = 0.3989422804;
+
 			double cdfn = normal_cumulative_distribution_function(x);
-			dcdfn = cdfn;
-			d1 = dx;
-			d3 = pow(dx, 3);
-			d5 = pow(dx, 5);
-			d7 = pow(dx, 7);
-			d9 = pow(dx, 9);
-			d11 = pow(dx, 11);
-			term1 = b11 * (d3 + d1) / dnu;
-			term2 = b21 * (b22 * d7 + b23 * d5 + b24 * d3 + b25 * d1) / pow(dnu, 2);
-			term3 = b31 * (b32 * d11 + b33 * d9 + b34 * d7 + b35 * d5 + b36 * d3 + b37 * d1) / pow(dnu, 3);
-			dcdf = term1 + term2 + term3;
+			double dcdfn = cdfn;
+			double d1 = dx;
+			double d3 = pow(dx, 3);
+			double d5 = pow(dx, 5);
+			double d7 = pow(dx, 7);
+			double d9 = pow(dx, 9);
+			double d11 = pow(dx, 11);
+			double term1 = b11 * (d3 + d1) / dnu;
+			double term2 = b21 * (b22 * d7 + b23 * d5 + b24 * d3 + b25 * d1) / pow(dnu, 2);
+			double term3 = b31 * (b32 * d11 + b33 * d9 + b34 * d7 + b35 * d5 + b36 * d3 + b37 * d1) / pow(dnu, 3);
+			double dcdf = term1 + term2 + term3;
 			return dcdfn - (dconst * (exp(-dx * dx / 2.0))) * dcdf;
 			}
 		}

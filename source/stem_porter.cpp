@@ -55,12 +55,10 @@ namespace JASS
 	*/
 	bool stem_porter::has_vowel(const char *what)
 		{
-		const char *pos;
-
 		if (strpbrk("aeiou", what) != NULL)
 			return true;
 		else
-			for (pos = strchr(what, 'y'); pos != NULL; pos = strchr(pos + 1, 'y'))
+			for (const char *pos = strchr(what, 'y'); pos != NULL; pos = strchr(pos + 1, 'y'))
 				if (!ascii::isvowel(*(pos + 1)))
 					return true;
 
@@ -73,8 +71,6 @@ namespace JASS
 	*/
 	size_t stem_porter::tostem(char *destination, const char *source, size_t source_length)
 		{
-		long kill_dups = 0;
-
 		/*
 			Reverse the string.
 		*/
@@ -103,6 +99,8 @@ namespace JASS
 		*/
 		if (*at == 'd' || *at == 'g')
 			{
+			long kill_dups = 0;
+
 			if (strncmp(at, "dee", 3) == 0)
 				{
 				if (length(at + 3) > 0)

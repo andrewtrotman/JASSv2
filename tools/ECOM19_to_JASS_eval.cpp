@@ -128,9 +128,9 @@ int main(int argc, const char *argv[])
 	/*
 		Output the sorted assessments
 	*/
-	for (const auto &[query_id, document_list] : assessment_table)
+	for (const auto &[qid, document_list] : assessment_table)
 		for (const auto &[document_id, assessment] : document_list)
-			printf("%d 0 %d %d\n", query_id, document_id, assessment);
+			printf("%d 0 %d %d\n", qid, document_id, assessment);
 
 	return 0;
 	}

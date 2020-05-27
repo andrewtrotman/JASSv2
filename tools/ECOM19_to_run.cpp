@@ -80,7 +80,6 @@ class query_document_price
 void read_matrix(std::string &data, std::unordered_map<int, std::unordered_map<int, int>> &table, int include_minus_1 = true)
 	{
 	size_t document_id = 0;
-	size_t query_id = 0;
 
 	std::vector<uint8_t *> file_lines;
 	JASS::file::buffer_to_list(file_lines, data);
@@ -109,7 +108,7 @@ void read_matrix(std::string &data, std::unordered_map<int, std::unordered_map<i
 				}
 			else
 				{
-				query_id = table[0][column_number];
+				size_t query_id = table[0][column_number];
 				if (*start_of_data == '1')
 					table[document_id][query_id] = 1;
 				if (include_minus_1 && *start_of_data == '-')

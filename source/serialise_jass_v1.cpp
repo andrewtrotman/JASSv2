@@ -109,7 +109,7 @@ namespace JASS
 			compress_integer::d1_encode(header.begin(), header.begin(), header.size());
 			*header.begin() -= 1;			// JASS v1 counts documents from 0.
 			auto took = encoder->encode(compress_into, compress_into_size, header.begin(), header.size());
-			if (took <= 0)
+			if (took == 0)
 				{
 				/*
 					Compression failed - exit

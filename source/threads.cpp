@@ -19,18 +19,18 @@ namespace JASS
 		THREAD::THREAD()
 		----------------
 	*/
-	thread::thread(thread &&other)
+	thread::thread(thread &&other) :
+		thread_id(other.thread_id)
+#ifndef _MSC_VER
+		,
+		attributes(other.attributes),
+		valid(other.valid)
+#endif
 		{
 		#ifdef _MSC_VER
-			thread_id = other.thread_id;
 			other.thread_id = -1;
 		#else
-			thread_id = other.thread_id;
-
-			valid = other.valid;
 			other.valid = false;
-
-			attributes = other.attributes;
 		#endif
 		}
 

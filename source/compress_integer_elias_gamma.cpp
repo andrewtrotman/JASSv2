@@ -70,7 +70,6 @@ namespace JASS
 		{
 		const uint64_t *source = reinterpret_cast<const uint64_t *>(source_as_void);
 		uint64_t value = 0;
-		uint8_t bits_used = 0;
 		uint8_t bits_remaining = 0;
 		uint8_t unary;
 
@@ -92,7 +91,7 @@ namespace JASS
 				*/
 				unary = bits_remaining;
 				value = *source++;
-				bits_used = (uint8_t)_tzcnt_u64(value);
+				uint8_t bits_used = (uint8_t)_tzcnt_u64(value);
 				unary += bits_used;
 				value >>= bits_used;
 				bits_remaining = 64 - bits_used;
@@ -116,7 +115,7 @@ namespace JASS
 				value = *source++;
 				*decoded |= static_cast<integer>((_bextr_u64(value, 0, unary - bits_remaining + 1)) << bits_remaining);
 				*decoded = static_cast<integer>((*decoded >> 1) | (1UL << unary));				// unzig-zag
-				bits_used = unary - bits_remaining + 1;
+				uint8_t bits_used = unary - bits_remaining + 1;
 				bits_remaining = 64 - bits_used;
 				value >>= bits_used;
 				}

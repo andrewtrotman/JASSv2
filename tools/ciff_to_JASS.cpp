@@ -43,7 +43,6 @@
 int main(int argc, const char *argv[])
 	{
 	std::string file;
-	size_t file_size;
 
 	if (argc != 2)
 		exit(printf("Usage:%s <index.ciff>\n", argv[0]));
@@ -57,7 +56,7 @@ int main(int argc, const char *argv[])
 		read the postings lists
 	*/
 	std::cout << "READ THE CIFF INTO MEMORY\n";
-	if ((file_size = JASS::file::read_entire_file(argv[1], file)) == 0)
+	if (JASS::file::read_entire_file(argv[1], file) == 0)
 		exit(printf("Can't read file:%s\n", argv[1]));
 
 	/*

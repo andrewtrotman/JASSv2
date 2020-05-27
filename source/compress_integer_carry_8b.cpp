@@ -1556,7 +1556,6 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 		*/
 		compress_integer_carry_8b compressor;
 		std::vector<uint32_t>compressed(every_case.size() * 2);
-		std::vector<uint32_t>decompressed(every_case.size() + 256);
 
 		integer one = 1;
 		auto size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &one, 0);

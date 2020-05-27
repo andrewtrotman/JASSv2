@@ -47,6 +47,21 @@ class printer
 
 	public:
 		/*
+			PRINTER::PRINTER()
+			------------------
+		*/
+		/*!
+			@brief constructor
+		*/
+		printer() :
+			impact(0)
+			{
+			/*
+				Nothing
+			*/
+			}
+
+		/*
 			PRINTER::SET_SCORE()
 			--------------------
 		*/
