@@ -17,6 +17,8 @@
 #include <string.h>
 #include <immintrin.h>
 
+#include <iostream>
+
 #include "asserts.h"
 #include "forceinline.h"
 
@@ -721,14 +723,14 @@ namespace JASS
 				*/
 				for (uint16_t pos = 0; pos < 8; pos++)
 					{
-					indexes[pos] = source_32[pos] = pos;
+					indexes[pos] = pos;
 					source_16[pos] = pos;
 					}
 
 				::memset(destination_32, 0, sizeof(destination_32));
 				::memset(destination_16, 0, sizeof(destination_16));
 
-				__m256i vindex = _mm256_lddqu_si256 ((__m256i const *)indexes);
+				__m256i vindex = _mm256_lddqu_si256((__m256i const *)indexes);
 
 				/*
 					Check 16-bit scatter/gather
@@ -742,11 +744,20 @@ namespace JASS
 					JASS_assert(destination_16[pos] == pos);
 
 				/*
+					Initialise
+				*/
+				for (uint32_t pos = 0; pos < 8; pos++)
+					source_32[pos] = pos;
+
+				/*
 					Check 32-bit scatter/gather
 				*/
 				got = simd::gather(source_32, vindex);
 				for (size_t pos = 0; pos < 8; pos++)
+					{
+					std::cout << "got:" << ((uint32_t *)&got)[pos] << " should be:" << pos << "\n";
 					JASS_assert(((uint32_t *)&got)[pos] == pos);
+					}
 
 				simd::scatter(destination_32, vindex, got);
 				for (size_t pos = 0; pos < 8; pos++)
