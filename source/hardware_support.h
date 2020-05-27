@@ -19,6 +19,8 @@
 #include <stdint.h>
 #include <string.h>
 
+//#define HARDWARE_SUPPORT_STAND_ALONE
+
 #ifdef HARDWARE_SUPPORT_STAND_ALONE
 	#include <assert.h>
 	#define JASS_assert(x) assert(x)
@@ -26,8 +28,10 @@
 
 #ifdef _MSC_VER
 	#include <intrin.h>
+	#include <windows.h>
 #else
 	#include <cpuid.h>
+	#include <unistd.h>
 #endif
 
 #include <sstream>
@@ -139,6 +143,9 @@ namespace JASS
 
 			uint32_t hyperthreads_per_core;
 			uint32_t cores_per_die;
+			uint32_t cpus_in_sockets;
+
+			uint64_t ram_physical_in_bytes;
 
 		protected:
 			/*
@@ -307,6 +314,47 @@ namespace JASS
 				cores_per_die /= hyperthreads_per_core;
 				}
 
+			/*
+				HARDWARE_SUPPORT::GET_CPUS_IN_SOCKETS_COUNT()
+				---------------------------------------------
+			*/
+			/*!
+				@brief Compute the number of physically seperate CPUs in sockets on the motherboard
+			*/
+			void get_cpus_in_sockets_count(void)
+				{
+				#ifdef _MSC_VER
+					SYSTEM_INFO sysinfo;
+					GetSystemInfo(&sysinfo);
+					cpus_in_sockets = sysinfo.dwNumberOfProcessors;
+				#else
+					cpus_in_sockets = sysconf(_SC_NPROCESSORS_ONLN);
+				#endif
+
+				cpus_in_sockets /= cores_per_die * hyperthreads_per_core;
+				}
+
+			/*
+				HARDWARE_SUPPORT::GET_PHYSICAL_RAM()
+				------------------------------------
+			*/
+			/*!
+				@brief Compute the total amount of physical RAM on the macbine.
+			*/
+			void get_physical_ram(void)
+			{
+			#ifdef _MSC_VER
+				MEMORYSTATUSEX status;
+				status.dwLength = sizeof(status);
+				GlobalMemoryStatusEx(&status);
+				ram_physical_in_bytes = status.ullTotalPhys;
+			#else
+				uint64_t pages = sysconf(_SC_PHYS_PAGES);
+				uint64_t page_size = sysconf(_SC_PAGE_SIZE);
+				ram_physical_in_bytes = pages * page_size;
+			#endif
+			}
+
 		public:
 			/*
 				HARDWARE_SUPPORT::HARDWARE_SUPPORT()
@@ -384,7 +432,9 @@ namespace JASS
 				level_2_cache_size_in_bytes(0),
 				level_3_cache_size_in_bytes(0),
 				hyperthreads_per_core(1),
-				cores_per_die(1)
+				cores_per_die(1),
+				cpus_in_sockets(1),
+				ram_physical_in_bytes(0)
 				{
 				uint32_t info[4];
 				cpuid(info, 0);
@@ -507,6 +557,9 @@ namespace JASS
 					cpuid((uint32_t *)brand + 8, 0x80000004);
 					}
 
+				/*
+					Get the cache and core count
+				*/
 				if (::strcmp(manufacturer, "GenuineIntel") == 0)
 					{
 					intel_get_cache_sizes();
@@ -517,6 +570,16 @@ namespace JASS
 					amd_get_chache_sizes();
 					amd_get_core_count();
 					}
+
+				/*
+					Get the number of CPUs (not cores or hyperthreads)
+				*/
+				get_cpus_in_sockets_count();
+
+				/*
+					Get the amount of physical RAM
+				*/
+				get_physical_ram();
 				}
 
 
@@ -538,6 +601,7 @@ namespace JASS
 				puts("hardware_support::PASSED");
 				}
 		};
+
 	/*
 		OPERATOR<<()
 		------------
@@ -553,13 +617,16 @@ namespace JASS
 		stream << "Manufacturer    :" << data.manufacturer << "\n";
 		stream << "Model           :" << data.brand << "\n";
 
-		stream << "L1d cache       :"<< data.level_1_data_cache_size_in_bytes / 1024 << "KB\n";
-		stream << "L1i cache       :"<< data.level_1_instruction_cache_size_in_bytes / 1024 << "KB\n";
-		stream << "L2  cache       :"<< data.level_2_cache_size_in_bytes / 1024 << "KB\n";
-		stream << "L3  cache       :"<< data.level_3_cache_size_in_bytes / 1024 << "KB\n";
+		stream << "L1d cache       :" << data.level_1_data_cache_size_in_bytes / 1024 << "KB\n";
+		stream << "L1i cache       :" << data.level_1_instruction_cache_size_in_bytes / 1024 << "KB\n";
+		stream << "L2  cache       :" << data.level_2_cache_size_in_bytes / 1024 << "KB\n";
+		stream << "L3  cache       :" << data.level_3_cache_size_in_bytes / 1024 << "KB\n";
+		stream << "Physical RAM    :" << data.ram_physical_in_bytes / (1024 * 1024 * 1023)<< "GB\n";
 
-		stream << "CPU Cores       :" << data.cores_per_die << "\n";
+		stream << "CPUs            :" << data.cpus_in_sockets << "\n";
+		stream << "CPU cores       :" << data.cores_per_die << "\n";
 		stream << "Threads per core:" << data.hyperthreads_per_core << "\n";
+		stream << "Total           :" << data.cpus_in_sockets * data.cores_per_die * data.hyperthreads_per_core << " Processing units\n";
 
 		stream << "x64             :" << data.x64 << "\n";
 		stream << "POPCNT          :" << data.POPCNT << "\n";
