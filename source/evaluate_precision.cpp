@@ -36,6 +36,6 @@ namespace JASS
 				break;
 			}
 
-		return found_and_relevant / (depth == std::numeric_limits<size_t>::max() ? which : depth);
+		return found_and_relevant / (depth == (std::numeric_limits<size_t>::max)() ? which : depth);
 		}
 	}

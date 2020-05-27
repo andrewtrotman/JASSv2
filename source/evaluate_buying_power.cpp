@@ -19,7 +19,7 @@ namespace JASS
 	*/
 	double evaluate_buying_power::compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth) const
 		{
-		double lowest_priced_item = std::numeric_limits<decltype(lowest_priced_item)>::max();
+		double lowest_priced_item = (std::numeric_limits<decltype(lowest_priced_item)>::max)();
 
 		/*
 			If we're not looking at any results then we have a perfect score.

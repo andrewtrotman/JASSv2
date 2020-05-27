@@ -36,7 +36,7 @@ namespace JASS
 				@brief Compute the Expected Search Length of the results list.
 				@copydoc evaluate::compute()
 			*/
-			virtual double compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth = std::numeric_limits<size_t>::max()) const;
+			virtual double compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth = (std::numeric_limits<size_t>::max)()) const;
 
 			/*
 				EVALUATE_EXPECTED_SEARCH_LENGTH::UNITTEST()

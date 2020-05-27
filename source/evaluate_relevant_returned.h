@@ -35,7 +35,7 @@ namespace JASS
 				@brief Compute the numner of found and relevant results.
 				@copydoc evaluate::compute()
 			*/
-			virtual double compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth = std::numeric_limits<size_t>::max()) const;
+			virtual double compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth = (std::numeric_limits<size_t>::max)()) const;
 
 			/*
 				EVALUATE_RELEVANT_RETURNED::UNITTEST()

@@ -46,7 +46,7 @@ namespace JASS
 				@brief Compute Rank Biased Precision (RBP).
 				@copydoc evaluate::compute()
 			*/
-			virtual double compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth = std::numeric_limits<size_t>::max()) const;
+			virtual double compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth = (std::numeric_limits<size_t>::max)()) const;
 
 			/*
 				EVALUATE_RANK_BIASED_PRECISION::UNITTEST()

@@ -36,7 +36,7 @@ namespace JASS
 				@copydoc evaluate::compute()
 				@brief Compute the Mean Average Precision (MAP).
 			*/
-			virtual double compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth = std::numeric_limits<size_t>::max()) const;
+			virtual double compute(const std::string &query_id, const std::vector<std::string> &results_list, size_t depth = (std::numeric_limits<size_t>::max)()) const;
 
 			/*
 				EVALUATE_PRECISION::UNITTEST()
