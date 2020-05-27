@@ -10,6 +10,7 @@
 	@author Andrew Trotman
 	@copyright 2018 Andrew Trotman
 */
+//#define HARDWARE_SUPPORT_STAND_ALONE
 
 #ifndef HARDWARE_SUPPORT_STAND_ALONE
 	#pragma once
@@ -18,8 +19,6 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-
-//#define HARDWARE_SUPPORT_STAND_ALONE
 
 #ifdef HARDWARE_SUPPORT_STAND_ALONE
 	#include <assert.h>
@@ -136,10 +135,10 @@ namespace JASS
 			char brand[256];			///< The CPU model number (e.g. "Intel(R) Core(TM) i7-9800X CPU @ 3.80GHz")
 			char manufacturer[14];	///< The CPU manufacturer (such as "GenuineIntel")
 
-			uint32_t level_1_data_cache_size_in_bytes;
-			uint32_t level_1_instruction_cache_size_in_bytes;
-			uint32_t level_2_cache_size_in_bytes;
-			uint32_t level_3_cache_size_in_bytes;
+			uint64_t level_1_data_cache_size_in_bytes;
+			uint64_t level_1_instruction_cache_size_in_bytes;
+			uint64_t level_2_cache_size_in_bytes;
+			uint64_t level_3_cache_size_in_bytes;
 
 			uint32_t hyperthreads_per_core;
 			uint32_t cores_per_die;
@@ -161,7 +160,7 @@ namespace JASS
 			void cpuid(uint32_t info[4], uint32_t info_type, uint32_t subfunction = 0)
 				{
 				#ifdef _MSC_VER
-					__cpuidex(info, info_type, subfunction);
+					__cpuidex((int32_t *)info, info_type, subfunction);
 				#else
 					__cpuid_count(info_type, subfunction, info[0], info[1], info[2], info[3]);
 				#endif
@@ -702,6 +701,12 @@ namespace JASS
 	}
 
 #ifdef HARDWARE_SUPPORT_STAND_ALONE
+	/*
+		MAIN()
+		------
+		If you #define HARDWARE_SUPPORT_STAND_ALONE at the top then this becomes
+		a stand alone program that dump stats about the machine it is running on.
+	*/
 	int main(void)
 		{
 		std::cout << JASS::hardware_support();

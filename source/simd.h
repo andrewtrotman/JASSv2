@@ -719,7 +719,7 @@ namespace JASS
 				/*
 					Initialise
 				*/
-				for (size_t pos = 0; pos < 8; pos++)
+				for (uint16_t pos = 0; pos < 8; pos++)
 					{
 					indexes[pos] = source_32[pos] = pos;
 					source_16[pos] = pos;

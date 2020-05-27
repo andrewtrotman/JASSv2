@@ -142,7 +142,7 @@ namespace JASS
 				@param documents [in] The number of documents in the collection.
 				@param top_k [in]	The top-k documents to return from the query once executed.
 			*/
-			virtual void init(const std::vector<std::string> &primary_keys, size_t documents = 1024, size_t top_k = 10)
+			virtual void init(const std::vector<std::string> &primary_keys, DOCID_TYPE documents = 1024, size_t top_k = 10)
 				{
 				this->primary_keys = &primary_keys;
 				this->top_k = top_k;

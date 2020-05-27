@@ -271,7 +271,7 @@ namespace JASS
 				@param postings_end [in] The end of the range if postings that share this impact score
 
 			*/
-			void header(size_t index, size_t score, compress_integer::integer *postings_start, compress_integer::integer *postings_end)
+			void header(size_t index, impact_type score, compress_integer::integer *postings_start, compress_integer::integer *postings_end)
 				{
 				impacts[index].impact_score = score;
 				impacts[index].start = postings_start;

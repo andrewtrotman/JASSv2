@@ -144,7 +144,7 @@ namespace JASS
 			accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;	///< The accumulators, one per document in the collection
 			bool sorted;																	///< has heap and accumulator_pointers been sorted (false after rewind() true after sort())
 
-			static constexpr size_t rounded_top_k = 1 << maths::ceiling_log2(MAX_TOP_K);
+			static constexpr size_t rounded_top_k = ((size_t)1) << maths::ceiling_log2(MAX_TOP_K);
 			static constexpr size_t rounded_top_k_filter = rounded_top_k - 1;
 			compress_integer::integer bucket[std::numeric_limits<ACCUMULATOR_TYPE>::max()][rounded_top_k];	///< The array of buckets to use.
 			ACCUMULATOR_TYPE largest_used_bucket;																///< The largest bucket used (to decrease cost of initialisation and search)
@@ -192,7 +192,7 @@ namespace JASS
 				@param documents [in] The number of documents in the collection.
 				@param top_k [in]	The top-k documents to return from the query once executed.
 			*/
-			virtual void init(const std::vector<std::string> &primary_keys, size_t documents = 1024, size_t top_k = 10)
+			virtual void init(const std::vector<std::string> &primary_keys, DOCID_TYPE documents = 1024, size_t top_k = 10)
 				{
 				query::init(primary_keys, documents, top_k);
 				accumulators.init(documents);
@@ -295,7 +295,7 @@ namespace JASS
 				@param document_id [in] which document to increment
 				@param score [in] the amount of weight to add
 			*/
-			forceinline void add_rsv(size_t document_id, ACCUMULATOR_TYPE score)
+			forceinline void add_rsv(DOCID_TYPE document_id, ACCUMULATOR_TYPE score)
 				{
 				ACCUMULATOR_TYPE *which = &accumulators[document_id];			// This will create the accumulator if it doesn't already exist.
 
