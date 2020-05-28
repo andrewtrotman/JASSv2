@@ -69,6 +69,8 @@ set(JASSlib_FILES
 	#compress_integer_elias_gamma_bitwise.h
 	compress_integer_elias_gamma_simd.h
 	compress_integer_elias_gamma_simd.cpp
+	compress_integer_elias_gamma_simd_vb.h
+	compress_integer_elias_gamma_simd_vb.cpp
 	#compress_integer_lyck_16.h
 	#compress_integer_lyck_16.cpp
 	compress_integer_none.h

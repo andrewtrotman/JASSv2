@@ -102,6 +102,7 @@
 #include "compress_integer_simple_8b_packed.h"
 #include "compress_integer_simple_16_packed.h"
 #include "compress_integer_elias_gamma_simd.h"
+#include "compress_integer_elias_gamma_simd_vb.h"
 #include "compress_integer_bitpack_32_reduced.h"
 #include "compress_integer_elias_gamma_bitwise.h"
 #include "compress_integer_elias_delta_bitwise.h"
@@ -133,6 +134,11 @@ int main(void)
 	try
 		{
 		JASS::hardware_support hardware;
+
+		puts("compress_integer_elias_gamma_simd_vb");
+		JASS::compress_integer_elias_gamma_simd_vb::unittest();
+
+
 		if (hardware.AVX2)
 			{
 			puts("simd");

@@ -1,6 +1,6 @@
 /*
-	COMPRESS_INTEGER_ELIAS_GAMMA_SIMD.H
-	------------------------------------
+	COMPRESS_INTEGER_ELIAS_GAMMA_SIMD.CPP
+	-------------------------------------
 	Copyright (c) 2018 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
