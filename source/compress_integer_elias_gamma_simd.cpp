@@ -241,11 +241,11 @@ namespace JASS
 		{0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff},			///< AND mask for 32-bit integers
 		};
 
-
 #ifdef __AVX512F__
 		/*
 			COMPRESS_INTEGER_ELIAS_GAMMA_SIMD::DECODE()
 			-------------------------------------------
+			AVX-512F version
 		*/
 		void compress_integer_elias_gamma_simd::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
 			{
@@ -302,78 +302,66 @@ namespace JASS
 					into++;
 					selector >>= width;
 					}
-			}
-		}
-#ifdef SIMD_JASS
-	/*
-		COMPRESS_INTEGER_ELIAS_GAMMA_SIMD::DECODE_WITH_WRITER()
-		-------------------------------------------------------
-	*/
-	void compress_integer_elias_gamma_simd::decode_with_writer(size_t integers_to_decode, const void *source_as_void, size_t source_length)
-		{
-		init_add_rsv();
-		__m256i mask;
-		const uint8_t *source = (const uint8_t *)source_as_void;
-		const uint8_t *end_of_source = source + source_length;
-
-		uint64_t selector = *(uint32_t *)source;
-		__m256i payload1 = _mm256_loadu_si256((__m256i *)(source + 4));
-		__m256i payload2 = _mm256_loadu_si256((__m256i *)(source + 36));
-		source += 68;
-
-		while (1)
-			{
-			uint32_t width = (uint32_t)find_first_set_bit(selector);
-			mask = _mm256_loadu_si256((__m256i *)mask_set[width]);
-
-			add_rsv(_mm256_and_si256(payload1, mask));
-			add_rsv(_mm256_and_si256(payload2, mask));
-
-			payload1 = _mm256_srli_epi32(payload1, width);
-			payload2 = _mm256_srli_epi32(payload2, width);
-
-			selector >>= width;
-
-			while (selector == 0)
-				{
-				if (source >= end_of_source)
-					return;
-
-				/*
-					Save the remaining bits
-				*/
-				__m256i high_bits1 = payload1;
-				__m256i high_bits2 = payload2;
-
-				/*
-					move on to the next word
-				*/
-				selector = *(uint32_t *)source;
-				payload1 = _mm256_loadu_si256((__m256i *)(source + 4));
-				payload2 = _mm256_loadu_si256((__m256i *)(source + 36));
-				source += 68;
-
-				/*
-					get the low bits and write to memory
-				*/
-				width = (uint32_t)find_first_set_bit(selector);
-
-				high_bits1 = _mm256_slli_epi32(high_bits1, width);
-				high_bits2 = _mm256_slli_epi32(high_bits2, width);
-
-				mask = _mm256_loadu_si256((__m256i *)mask_set[width]);
-
-				add_rsv(_mm256_or_si256(_mm256_and_si256(payload1, mask), high_bits1));
-				add_rsv(_mm256_or_si256(_mm256_and_si256(payload2, mask), high_bits2));
-
-				payload1 = _mm256_srli_epi32(payload1, width);
-				payload2 = _mm256_srli_epi32(payload2, width);
-
-				/*
-					move on to the next selector
-				*/
-				selector >>= width;
 				}
+			}
+#ifdef SIMD_JASS
+		/*
+			COMPRESS_INTEGER_ELIAS_GAMMA_SIMD::DECODE_WITH_WRITER()
+			-------------------------------------------------------
+			AVX-512F version
+		*/
+		void compress_integer_elias_gamma_simd::decode_with_writer(size_t integers_to_decode, const void *source_as_void, size_t source_length)
+			{
+			__m512i mask;
+			const uint8_t *source = (const uint8_t *)source_as_void;
+			const uint8_t *end_of_source = source + source_length;
+
+			uint64_t selector = *(uint32_t *)source;
+			__m512i payload = _mm512_loadu_si512((__m512i *)(source + 4));
+			source += 68;
+
+			while (1)
+				{
+				uint32_t width = (uint32_t)find_first_set_bit(selector);
+				mask = _mm512_loadu_si512((__m512i *)mask_set[width]);
+				add_rsv(_mm512_and_si512(payload, mask));
+				payload = _mm512_srli_epi32(payload, width);
+
+				selector >>= width;
+
+				while (selector == 0)
+					{
+					if (source >= end_of_source)
+						return;
+
+					/*
+						Save the remaining bits
+					*/
+					__m512i high_bits = payload;
+
+					/*
+						move on to the next word
+					*/
+					selector = *(uint32_t *)source;
+					payload = _mm512_loadu_si512((__m512i *)(source + 4));
+					source += 68;
+
+					/*
+						get the low bits and write to memory
+					*/
+					width = (uint32_t)find_first_set_bit(selector);
+
+					high_bits = _mm512_slli_epi32(high_bits, width);
+
+					mask = _mm512_loadu_si512((__m512i *)mask_set[width]);
+					add_rsv(_mm512_or_si512(_mm512_and_si512(payload, mask), high_bits));
+					payload = _mm512_srli_epi32(payload, width);
+
+					/*
+						move on to the next slector
+					*/
+					selector >>= width;
+					}
 			}
 		}
 	#endif
@@ -381,6 +369,7 @@ namespace JASS
 	/*
 		COMPRESS_INTEGER_ELIAS_GAMMA_SIMD::DECODE()
 		-------------------------------------------
+		AVX2 version
 	*/
 	void compress_integer_elias_gamma_simd::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
 		{
@@ -452,6 +441,7 @@ namespace JASS
 	/*
 		COMPRESS_INTEGER_ELIAS_GAMMA_SIMD::DECODE_WITH_WRITER()
 		-------------------------------------------------------
+		AVX2 version
 	*/
 	void compress_integer_elias_gamma_simd::decode_with_writer(size_t integers_to_decode, const void *source_as_void, size_t source_length)
 		{

@@ -1,5 +1,5 @@
-//#define SIMD_JASS_GROUP_ADD_RSV 1
-//#define SIMD_JASS 1
+#define SIMD_JASS_GROUP_ADD_RSV 1
+#define SIMD_JASS 1
 /*
 	QUERY.H
 	-------
@@ -99,9 +99,14 @@ namespace JASS
 
 		protected:
 #ifdef SIMD_JASS_GROUP_ADD_RSV
+	#ifdef __AVX512F__
+			__m512i impacts;																///< The impact score to be added on a call to add_rsv()
+	#else
 			__m256i impacts;																///< The impact score to be added on a call to add_rsv()
+	#endif
 #endif
 			ACCUMULATOR_TYPE impact;													///< The impact score to be added on a call to add_rsv()
+			DOCID_TYPE d1_cumulative_sum;												///<< The current cumulative sum from d1 decoding
 
 			allocator_pool memory;														///< All memory allocation happens in this "arena"
 			std::vector<uint32_t> decompress_buffer;								///< The delta-encoded decopressed integer sequence.
@@ -202,6 +207,8 @@ namespace JASS
 				{
 				delete parsed_query;
 				parsed_query = new query_term_list(memory);
+				d1_cumulative_sum = 0;
+				impact = 0;
 				}
 
 			/*
@@ -215,10 +222,26 @@ namespace JASS
 			forceinline void set_impact(ACCUMULATOR_TYPE score)
 				{
 #ifdef SIMD_JASS_GROUP_ADD_RSV
+	#ifdef __AVX512F__
+				impacts = _mm512_set1_epi32(score);
+	#else
 				impacts = _mm256_set1_epi32(score);
+	#endif
 #else
 				impact = score;
 #endif
+				}
+
+			/*
+				QUERY::INIT_ADD_RSV()
+				---------------------
+			*/
+			/*!
+				@brief Set the d1_cumulative_sum to zero
+			*/
+			forceinline void init_add_rsv()
+				{
+				d1_cumulative_sum = 0;
 				}
 
 			/*
@@ -235,6 +258,7 @@ namespace JASS
 			forceinline void decode_and_process(ACCUMULATOR_TYPE impact, size_t integers, const void *compressed, size_t compressed_size)
 				{
 				set_impact(impact);
+				init_add_rsv();
 				decode_with_writer(integers, compressed, compressed_size);
 				}
 

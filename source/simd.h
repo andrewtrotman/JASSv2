@@ -41,6 +41,9 @@
 
 namespace JASS
 	{
+	std::ostream &operator<<(std::ostream &stream, const __m256i &data);
+	std::ostream &operator<<(std::ostream &stream, const __m512i &data);
+
 	/*
 		CLASS SIMD
 		----------
@@ -156,7 +159,9 @@ namespace JASS
 			*/
 			forceinline static __m512i gather(const uint16_t *array, __m512i vindex)
 				{
-				return _mm512_maskz_mov_epi16((__mmask32)0x55555555, _mm512_i32gather_epi32(vindex, array, 2));
+				__m512i got = _mm512_i32gather_epi32(vindex, array, 2);
+				__m512i answer = _mm512_maskz_mov_epi16((__mmask32)0x55555555, got);
+				return answer;
 				}
 
 			/*
@@ -762,5 +767,52 @@ namespace JASS
 
 				puts("simd::PASSED");
 				}
-			};
+		};
+
+
+	/*
+		OPERATOR<<()
+		------------
+	*/
+	/*!
+		@brief Dump the contents of an object.
+		@param stream [in] The stream to write to.
+		@param data [in] The data to write.
+		@return The stream once the data has been written.
+	*/
+	inline std::ostream &operator<<(std::ostream &stream, const __m256i &data)
+		{
+		uint32_t got[8];
+		_mm256_storeu_si256((__m256i *)got, data);
+
+		stream << "[";
+		for (uint32_t index = 0;  index < 7; index++)
+			stream << got[index] << ", ";
+		stream << got[8] << "]";
+
+		return stream;
+		}
+
+	/*
+		OPERATOR<<()
+		------------
+	*/
+	/*!
+		@brief Dump the contents of an object.
+		@param stream [in] The stream to write to.
+		@param data [in] The data to write.
+		@return The stream once the data has been written.
+	*/
+	inline std::ostream &operator<<(std::ostream &stream, const __m512i &data)
+		{
+		uint32_t got[16];
+		_mm512_storeu_si512(got, data);
+
+		stream << "[";
+		for (uint32_t index = 0;  index < 15; index++)
+			stream << got[index] << ", ";
+		stream << got[15] << "]";
+
+		return stream;
+		}
 	}

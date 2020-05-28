@@ -45,59 +45,59 @@ set(JASSlib_FILES
 	compress_integer.cpp
 	compress_integer_all.h
 	compress_integer_all.cpp
-	compress_integer_bitpack.h
-	compress_integer_bitpack.cpp
-	compress_integer_bitpack_32_reduced.h
-	compress_integer_bitpack_32_reduced.cpp
-	compress_integer_bitpack_64.h
-	compress_integer_bitpack_64.cpp
-	compress_integer_bitpack_128.h
-	compress_integer_bitpack_128.cpp
-	compress_integer_bitpack_256.h
-	compress_integer_bitpack_256.cpp
-	compress_integer_carry_8b.h
-	compress_integer_carry_8b.cpp
-	compress_integer_carryover_12.h
-	compress_integer_carryover_12.cpp
-	compress_integer_elias_delta.h
-	compress_integer_elias_delta.cpp
-	compress_integer_elias_delta_bitwise.h
-	compress_integer_elias_delta_simd.h
-	compress_integer_elias_delta_simd.cpp
-	compress_integer_elias_gamma.h
-	compress_integer_elias_gamma.cpp
-	compress_integer_elias_gamma_bitwise.h
+#	compress_integer_bitpack.h
+	#compress_integer_bitpack.cpp
+	#compress_integer_bitpack_32_reduced.h
+	#compress_integer_bitpack_32_reduced.cpp
+	#compress_integer_bitpack_64.h
+	#compress_integer_bitpack_64.cpp
+	#compress_integer_bitpack_128.h
+	#compress_integer_bitpack_128.cpp
+	#compress_integer_bitpack_256.h
+	#compress_integer_bitpack_256.cpp
+	#compress_integer_carry_8b.h
+	#compress_integer_carry_8b.cpp
+	#compress_integer_carryover_12.h
+	#compress_integer_carryover_12.cpp
+	#compress_integer_elias_delta.h
+	#compress_integer_elias_delta.cpp
+	#compress_integer_elias_delta_bitwise.h
+	#compress_integer_elias_delta_simd.h
+	#compress_integer_elias_delta_simd.cpp
+	#compress_integer_elias_gamma.h
+	#compress_integer_elias_gamma.cpp
+	#compress_integer_elias_gamma_bitwise.h
 	compress_integer_elias_gamma_simd.h
 	compress_integer_elias_gamma_simd.cpp
-	compress_integer_lyck_16.h
-	compress_integer_lyck_16.cpp
+	#compress_integer_lyck_16.h
+	#compress_integer_lyck_16.cpp
 	compress_integer_none.h
 	compress_integer_none.cpp
-	compress_integer_nybble_8.h
-	compress_integer_nybble_8.cpp
-	compress_integer_qmx_improved.h
-	compress_integer_qmx_improved.cpp
+	#compress_integer_nybble_8.h
+	#compress_integer_nybble_8.cpp
+	#compress_integer_qmx_improved.h
+	#compress_integer_qmx_improved.cpp
 	compress_integer_qmx_jass_v1.h
 	compress_integer_qmx_jass_v1.cpp
-	compress_integer_qmx_original.h
-	compress_integer_qmx_original.cpp
-	compress_integer_relative_10.h
-	compress_integer_relative_10.cpp
-	compress_integer_simple_16.h
-	compress_integer_simple_16.cpp
-	compress_integer_simple_16_packed.h
-	compress_integer_simple_16_packed.cpp
-	compress_integer_simple_8b.h
-	compress_integer_simple_8b.cpp
-	compress_integer_simple_8b_packed.h
-	compress_integer_simple_8b_packed.cpp
-	compress_integer_simple_9.h
-	compress_integer_simple_9.cpp
-	compress_integer_simple_9_packed.h
-	compress_integer_simple_9_packed.cpp
+	#compress_integer_qmx_original.h
+	#compress_integer_qmx_original.cpp
+	#compress_integer_relative_10.h
+	#compress_integer_relative_10.cpp
+	#compress_integer_simple_16.h
+	#compress_integer_simple_16.cpp
+	#compress_integer_simple_16_packed.h
+	#compress_integer_simple_16_packed.cpp
+	#compress_integer_simple_8b.h
+	#compress_integer_simple_8b.cpp
+	#compress_integer_simple_8b_packed.h
+	#compress_integer_simple_8b_packed.cpp
+	#compress_integer_simple_9.h
+	#compress_integer_simple_9.cpp
+	#compress_integer_simple_9_packed.h
+	#compress_integer_simple_9_packed.cpp
 	compress_integer_special.h
-	compress_integer_stream_vbyte.h
-	compress_integer_stream_vbyte.cpp
+	#compress_integer_stream_vbyte.h
+	#compress_integer_stream_vbyte.cpp
 	compress_integer_variable_byte.h
 	compress_integer_variable_byte.cpp
 	deserialised_jass_v1.h

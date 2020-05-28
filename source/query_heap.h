@@ -151,9 +151,12 @@ namespace JASS
 			size_t needed_for_top_k;													///< The number of results we still need in order to fill the top-k
 			heap<ACCUMULATOR_TYPE *, typename query::add_rsv_compare> top_results;			///< Heap containing the top-k results
 			bool sorted;																	///< has heap and accumulator_pointers been sorted (false after rewind() true after sort())
-			DOCID_TYPE d1_cumulative_sum;
 #ifdef SIMD_JASS_GROUP_ADD_RSV
+	#ifdef __AVX512F__
+			__m512i lowest_in_heap;														///< vector of the smallest values in the heap
+	#else
 			__m256i lowest_in_heap;														///< vector of the smallest values in the heap
+	#endif
 #endif
 
 		public:
@@ -242,9 +245,12 @@ namespace JASS
 				accumulators.rewind();
 				needed_for_top_k = this->top_k;
 				query::rewind(largest_possible_rsv);
-				d1_cumulative_sum = 0;
 #ifdef SIMD_JASS_GROUP_ADD_RSV
+	#ifdef __AVX512F__
+				lowest_in_heap = _mm512_setzero_si512();
+	#else
 				lowest_in_heap = _mm256_setzero_si256();
+	#endif
 #endif
 				}
 
@@ -287,11 +293,11 @@ namespace JASS
 				if (this->cmp(which, accumulator_pointers[0]) >= 0)			// ==0 is the case where we're the current bottom of heap so might need to be promoted
 					{
 #ifdef SIMD_JASS
-	#ifndef SIMD_JASS_GROUP_ADD_RSV
-	DOCID_TYPE SENTINAL = documents;
-	if (document_id >= SENTINAL)
-		return;
-	#endif
+#ifndef SIMD_JASS_GROUP_ADD_RSV
+DOCID_TYPE SENTINAL = documents;
+if (document_id >= SENTINAL)
+	return;
+#endif
 #endif
 					/*
 						We end up in the top-k, now to work out why.  As this is a rare occurence, we've got a little bit of time on our hands
@@ -321,19 +327,160 @@ namespace JASS
 						}
 					}
 				}
+#ifdef __AVX512F__
 
 			/*
-				QUERY_HEAP::INIT_ADD_RSV()
-				--------------------------
+				QUERY_HEAP::ADD_RSV()
+				---------------------
 			*/
 			/*!
-				@brief Set the d1_cumulative_sum to zero
+				@brief Add weight to the rsv for document docuument_id
+				@param document_ids [in] which document to increment
+				@param score [in] the amount of weight to add
 			*/
-			forceinline void init_add_rsv()
+			forceinline void add_rsv(__m512i document_ids)
 				{
-				d1_cumulative_sum = 0;
-				}
+				/*
+					Compute the cumulative sum using SIMD (and add the previous cumulative sum)
+				*/
+				document_ids = simd::cumulative_sum(document_ids);
+				__m512i cumsum = _mm512_set1_epi32(d1_cumulative_sum);
+				document_ids = _mm512_add_epi32(document_ids, cumsum);
 
+#ifdef SIMD_JASS_GROUP_ADD_RSV
+				/*
+					Save the cumulative sum
+				*/
+				d1_cumulative_sum = _mm_extract_epi32(_mm512_extracti32x4_epi32(document_ids, 3), 3);
+
+				/*
+					Add to the accumulators
+				*/
+				__m512i values = accumulators[document_ids];			// set the dirty flags and gather() the rsv values
+//std::cout << "DOCIDS:" << document_ids << "\n";
+//std::cout << "Before:" << values << "\n";
+//std::cout << "Plus  :" << impacts << "\n";
+
+				values = _mm512_add_epi32(values, impacts);			// add the impact scores
+
+//std::cout << "After :" << values << "\n";
+
+				/*
+					Compare and turn that into a bit patern.. If a >= b then 0xFFFF else 0x0000
+				*/
+				__mmask16 cmp = _mm512_cmpge_epi32_mask(values, lowest_in_heap);
+				/*
+					Check that we got all zeros.
+				*/
+				if (cmp != 0)
+					simd::scatter(&accumulators.accumulator[0], document_ids, values);		// write them back to the accumulators
+				else
+					{
+					ACCUMULATOR_TYPE score = _mm_extract_epi32(_mm512_extracti32x4_epi32(document_ids, 0), 0);
+
+					/*
+						At lest one document has (probably) made the top-k
+					*/
+					if (d1_cumulative_sum < documents)
+						{
+						__m128i quad_docs;
+						quad_docs = _mm512_extracti32x4_epi32(document_ids, 0);
+						add_rsv(_mm_extract_epi32(quad_docs, 0), impact);
+						add_rsv(_mm_extract_epi32(quad_docs, 1), impact);
+						add_rsv(_mm_extract_epi32(quad_docs, 2), impact);
+						add_rsv(_mm_extract_epi32(quad_docs, 3), impact);
+
+						quad_docs = _mm512_extracti32x4_epi32(document_ids, 1);
+						add_rsv(_mm_extract_epi32(quad_docs, 0), impact);
+						add_rsv(_mm_extract_epi32(quad_docs, 1), impact);
+						add_rsv(_mm_extract_epi32(quad_docs, 2), impact);
+						add_rsv(_mm_extract_epi32(quad_docs, 3), impact);
+
+						quad_docs = _mm512_extracti32x4_epi32(document_ids, 2);
+						add_rsv(_mm_extract_epi32(quad_docs, 0), impact);
+						add_rsv(_mm_extract_epi32(quad_docs, 1), impact);
+						add_rsv(_mm_extract_epi32(quad_docs, 2), impact);
+						add_rsv(_mm_extract_epi32(quad_docs, 3), impact);
+
+						quad_docs = _mm512_extracti32x4_epi32(document_ids, 3);
+						add_rsv(_mm_extract_epi32(quad_docs, 0), impact);
+						add_rsv(_mm_extract_epi32(quad_docs, 1), impact);
+						add_rsv(_mm_extract_epi32(quad_docs, 2), impact);
+						add_rsv(_mm_extract_epi32(quad_docs, 3), impact);
+						/*
+							The lowest value in the heap might have changed so update it.
+						*/
+						lowest_in_heap = _mm512_set1_epi32(*accumulator_pointers[0]);
+						}
+					else
+						{
+						/*
+							At some point we've gone too far to check for overshooting
+						*/
+						DOCID_TYPE docid;
+						__m128i quad_docs;
+
+						quad_docs = _mm512_extracti32x4_epi32(document_ids, 0);
+						if ((docid = _mm_extract_epi32(quad_docs, 0)) < documents) add_rsv(docid, score); else goto done;
+						if ((docid = _mm_extract_epi32(quad_docs, 1)) < documents) add_rsv(docid, score); else goto done;
+						if ((docid = _mm_extract_epi32(quad_docs, 2)) < documents) add_rsv(docid, score); else goto done;
+						if ((docid = _mm_extract_epi32(quad_docs, 3)) < documents) add_rsv(docid, score); else goto done;
+
+						quad_docs = _mm512_extracti32x4_epi32(document_ids, 1);
+						if ((docid = _mm_extract_epi32(quad_docs, 0)) < documents) add_rsv(docid, score); else goto done;
+						if ((docid = _mm_extract_epi32(quad_docs, 1)) < documents) add_rsv(docid, score); else goto done;
+						if ((docid = _mm_extract_epi32(quad_docs, 2)) < documents) add_rsv(docid, score); else goto done;
+						if ((docid = _mm_extract_epi32(quad_docs, 3)) < documents) add_rsv(docid, score); else goto done;
+
+						quad_docs = _mm512_extracti32x4_epi32(document_ids, 2);
+						if ((docid = _mm_extract_epi32(quad_docs, 0)) < documents) add_rsv(docid, score); else goto done;
+						if ((docid = _mm_extract_epi32(quad_docs, 1)) < documents) add_rsv(docid, score); else goto done;
+						if ((docid = _mm_extract_epi32(quad_docs, 2)) < documents) add_rsv(docid, score); else goto done;
+						if ((docid = _mm_extract_epi32(quad_docs, 3)) < documents) add_rsv(docid, score); else goto done;
+
+						quad_docs = _mm512_extracti32x4_epi32(document_ids, 3);
+						if ((docid = _mm_extract_epi32(quad_docs, 0)) < documents) add_rsv(docid, score); else goto done;
+						if ((docid = _mm_extract_epi32(quad_docs, 1)) < documents) add_rsv(docid, score); else goto done;
+						if ((docid = _mm_extract_epi32(quad_docs, 2)) < documents) add_rsv(docid, score); else goto done;
+						if ((docid = _mm_extract_epi32(quad_docs, 3)) < documents) add_rsv(docid, score); else goto done;
+
+						done:
+						/*
+							The lowest value in the heap might have changed so update it.
+						*/
+						lowest_in_heap = _mm512_set1_epi32(*accumulator_pointers[0]);
+						}
+					}
+#else
+				__m128i quad_docs;
+				quad_docs = _mm512_extracti32x4_epi32(document_ids, 0);
+				add_rsv(_mm_extract_epi32(quad_docs, 0), impact);
+				add_rsv(_mm_extract_epi32(quad_docs, 1), impact);
+				add_rsv(_mm_extract_epi32(quad_docs, 2), impact);
+				add_rsv(_mm_extract_epi32(quad_docs, 3), impact);
+
+				quad_docs = _mm512_extracti32x4_epi32(document_ids, 1);
+				add_rsv(_mm_extract_epi32(quad_docs, 0), impact);
+				add_rsv(_mm_extract_epi32(quad_docs, 1), impact);
+				add_rsv(_mm_extract_epi32(quad_docs, 2), impact);
+				add_rsv(_mm_extract_epi32(quad_docs, 3), impact);
+
+				quad_docs = _mm512_extracti32x4_epi32(document_ids, 2);
+				add_rsv(_mm_extract_epi32(quad_docs, 0), impact);
+				add_rsv(_mm_extract_epi32(quad_docs, 1), impact);
+				add_rsv(_mm_extract_epi32(quad_docs, 2), impact);
+				add_rsv(_mm_extract_epi32(quad_docs, 3), impact);
+
+				quad_docs = _mm512_extracti32x4_epi32(document_ids, 3);
+				add_rsv(_mm_extract_epi32(quad_docs, 0), impact);
+				add_rsv(_mm_extract_epi32(quad_docs, 1), impact);
+				add_rsv(_mm_extract_epi32(quad_docs, 2), impact);
+				add_rsv(_mm_extract_epi32(quad_docs, 3), impact);
+
+				d1_cumulative_sum = _mm_extract_epi32(quad_docs, 3);
+#endif
+				}
+#else
 			/*
 				QUERY_HEAP::ADD_RSV()
 				---------------------
@@ -432,6 +579,7 @@ namespace JASS
 				add_rsv(d1_cumulative_sum, impact);
 #endif
 				}
+#endif
 
 			/*
 				QUERY_HEAP::DECODE_WITH_WRITER()
