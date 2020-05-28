@@ -357,26 +357,21 @@ if (document_id >= SENTINAL)
 					Add to the accumulators
 				*/
 				__m512i values = accumulators[document_ids];			// set the dirty flags and gather() the rsv values
-//std::cout << "DOCIDS:" << document_ids << "\n";
-//std::cout << "Before:" << values << "\n";
-//std::cout << "Plus  :" << impacts << "\n";
-
 				values = _mm512_add_epi32(values, impacts);			// add the impact scores
-
-//std::cout << "After :" << values << "\n";
 
 				/*
 					Compare and turn that into a bit patern.. If a >= b then 0xFFFF else 0x0000
 				*/
 				__mmask16 cmp = _mm512_cmpge_epi32_mask(values, lowest_in_heap);
+
 				/*
 					Check that we got all zeros.
 				*/
-				if (cmp != 0)
+				if (cmp == 0)
 					simd::scatter(&accumulators.accumulator[0], document_ids, values);		// write them back to the accumulators
 				else
 					{
-					ACCUMULATOR_TYPE score = _mm_extract_epi32(_mm512_extracti32x4_epi32(document_ids, 0), 0);
+					ACCUMULATOR_TYPE score = _mm_extract_epi32(_mm512_extracti32x4_epi32(impacts, 0), 0);
 
 					/*
 						At lest one document has (probably) made the top-k
@@ -385,28 +380,28 @@ if (document_id >= SENTINAL)
 						{
 						__m128i quad_docs;
 						quad_docs = _mm512_extracti32x4_epi32(document_ids, 0);
-						add_rsv(_mm_extract_epi32(quad_docs, 0), impact);
-						add_rsv(_mm_extract_epi32(quad_docs, 1), impact);
-						add_rsv(_mm_extract_epi32(quad_docs, 2), impact);
-						add_rsv(_mm_extract_epi32(quad_docs, 3), impact);
+						add_rsv(_mm_extract_epi32(quad_docs, 0), score);
+						add_rsv(_mm_extract_epi32(quad_docs, 1), score);
+						add_rsv(_mm_extract_epi32(quad_docs, 2), score);
+						add_rsv(_mm_extract_epi32(quad_docs, 3), score);
 
 						quad_docs = _mm512_extracti32x4_epi32(document_ids, 1);
-						add_rsv(_mm_extract_epi32(quad_docs, 0), impact);
-						add_rsv(_mm_extract_epi32(quad_docs, 1), impact);
-						add_rsv(_mm_extract_epi32(quad_docs, 2), impact);
-						add_rsv(_mm_extract_epi32(quad_docs, 3), impact);
+						add_rsv(_mm_extract_epi32(quad_docs, 0), score);
+						add_rsv(_mm_extract_epi32(quad_docs, 1), score);
+						add_rsv(_mm_extract_epi32(quad_docs, 2), score);
+						add_rsv(_mm_extract_epi32(quad_docs, 3), score);
 
 						quad_docs = _mm512_extracti32x4_epi32(document_ids, 2);
-						add_rsv(_mm_extract_epi32(quad_docs, 0), impact);
-						add_rsv(_mm_extract_epi32(quad_docs, 1), impact);
-						add_rsv(_mm_extract_epi32(quad_docs, 2), impact);
-						add_rsv(_mm_extract_epi32(quad_docs, 3), impact);
+						add_rsv(_mm_extract_epi32(quad_docs, 0), score);
+						add_rsv(_mm_extract_epi32(quad_docs, 1), score);
+						add_rsv(_mm_extract_epi32(quad_docs, 2), score);
+						add_rsv(_mm_extract_epi32(quad_docs, 3), score);
 
 						quad_docs = _mm512_extracti32x4_epi32(document_ids, 3);
-						add_rsv(_mm_extract_epi32(quad_docs, 0), impact);
-						add_rsv(_mm_extract_epi32(quad_docs, 1), impact);
-						add_rsv(_mm_extract_epi32(quad_docs, 2), impact);
-						add_rsv(_mm_extract_epi32(quad_docs, 3), impact);
+						add_rsv(_mm_extract_epi32(quad_docs, 0), score);
+						add_rsv(_mm_extract_epi32(quad_docs, 1), score);
+						add_rsv(_mm_extract_epi32(quad_docs, 2), score);
+						add_rsv(_mm_extract_epi32(quad_docs, 3), score);
 						/*
 							The lowest value in the heap might have changed so update it.
 						*/
@@ -415,7 +410,7 @@ if (document_id >= SENTINAL)
 					else
 						{
 						/*
-							At some point we've gone too far to check for overshooting
+							At some point we've gone too far so check for overshooting.
 						*/
 						DOCID_TYPE docid;
 						__m128i quad_docs;
@@ -444,7 +439,7 @@ if (document_id >= SENTINAL)
 						if ((docid = _mm_extract_epi32(quad_docs, 2)) < documents) add_rsv(docid, score); else goto done;
 						if ((docid = _mm_extract_epi32(quad_docs, 3)) < documents) add_rsv(docid, score); else goto done;
 
-						done:
+					done:
 						/*
 							The lowest value in the heap might have changed so update it.
 						*/
@@ -475,9 +470,8 @@ if (document_id >= SENTINAL)
 				add_rsv(_mm_extract_epi32(quad_docs, 0), impact);
 				add_rsv(_mm_extract_epi32(quad_docs, 1), impact);
 				add_rsv(_mm_extract_epi32(quad_docs, 2), impact);
-				add_rsv(_mm_extract_epi32(quad_docs, 3), impact);
-
 				d1_cumulative_sum = _mm_extract_epi32(quad_docs, 3);
+				add_rsv(d1_cumulative_sum, impact);
 #endif
 				}
 #else

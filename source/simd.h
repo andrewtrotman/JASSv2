@@ -702,6 +702,9 @@ namespace JASS
 			forceinline static void cumulative_sum(uint32_t *data, size_t length)
 				{
 				#ifdef __AVX512F__
+					/*
+						Its faster to always call the 512-bit version than to check the length and sometimes call the 256 bit version.
+					*/
 					cumulative_sum_512(data, length);
 				#else
 					cumulative_sum_256(data, length);
@@ -788,7 +791,7 @@ namespace JASS
 		stream << "[";
 		for (uint32_t index = 0;  index < 7; index++)
 			stream << got[index] << ", ";
-		stream << got[8] << "]";
+		stream << got[7] << "]";
 
 		return stream;
 		}
