@@ -216,30 +216,30 @@ namespace JASS
 	*/
 	std::unique_ptr<compress_integer> serialise_jass_v1::get_compressor(jass_v1_codex codex, std::string &name, int32_t &d_ness)
 		{
+		d_ness = 1;
 		switch (codex)
 			{
 			case elias_gamma_simd_vb:
 				name = "Group Elias Delta SIMD with Variable Byte";
-				d_ness = 1;
+				break;
 			case serialise_jass_v1::jass_v1_codex::elias_delta_simd:
 				name = "Group Elias Delta SIMD";
-				d_ness = 1;
-				return compress_integer_all::get_by_name("Group Elias Delta SIMD");
+				break;
 			case serialise_jass_v1::jass_v1_codex::elias_gamma_simd:
 				name = "Group Elias Gamma SIMD";
-				d_ness = 1;
-				return compress_integer_all::get_by_name("Group Elias Gamma SIMD");
+				break;
 			case serialise_jass_v1::jass_v1_codex::qmx:
 				name = "QMX JASS v1";
-				d_ness = 1;
-				return compress_integer_all::get_by_name("QMX JASS v1");
+				break;
 			case serialise_jass_v1::jass_v1_codex::uncompressed:
 				name = "None";
 				d_ness = 0;
-				return compress_integer_all::get_by_name("None");
+				break;
 			default:
 				exit(printf("Unknown index format\n"));
 			}
+
+		return compress_integer_all::get_by_name(name);
 		}
 
 	/*
