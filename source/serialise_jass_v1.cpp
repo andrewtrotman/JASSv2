@@ -218,6 +218,9 @@ namespace JASS
 		{
 		switch (codex)
 			{
+			case elias_gamma_simd_vb:
+				name = "Group Elias Delta SIMD with Variable Byte";
+				d_ness = 1;
 			case serialise_jass_v1::jass_v1_codex::elias_delta_simd:
 				name = "Group Elias Delta SIMD";
 				d_ness = 1;

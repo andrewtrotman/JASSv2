@@ -1,3 +1,6 @@
+
+//#define ADD_SENTINALS 1
+
 /*
 	INDEX_POSTINGS.H
 	----------------
@@ -259,7 +262,7 @@ namespace JASS
 			*/
 			void impact_order(size_t documents_in_collection, index_postings_impact &postings_list, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies) const
 				{
-#ifdef SIMD_JASS
+#ifdef ADD_SENTINALS
 #define SENTINAL (documents_in_collection + 1)
 std::ostream &operator<<(std::ostream &stream, const index_postings &data);
 //if (document_frequency < 10)
@@ -299,7 +302,7 @@ std::ostream &operator<<(std::ostream &stream, const index_postings &data);
 					if (frequencies[which] != 0)
 						{
 						number_of_impacts++;
-#ifdef SIMD_JASS
+#ifdef ADD_SENTINALS
 						frequencies[which]++;			// Include room for the sentinal
 #endif
 						}
@@ -343,7 +346,7 @@ std::ostream &operator<<(std::ostream &stream, const index_postings &data);
 					frequencies[*current_tf]++;
 					current_id++;
 					}
-#ifdef SIMD_JASS
+#ifdef ADD_SENTINALS
 				/*
 					Put the sentinals in place.
 				*/

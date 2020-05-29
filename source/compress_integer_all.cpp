@@ -32,6 +32,7 @@
 #include "compress_integer_bitpack_32_reduced.h"
 #include "compress_integer_elias_gamma_bitwise.h"
 #include "compress_integer_elias_delta_bitwise.h"
+#include "compress_integer_elias_gamma_simd_vb.h"
 
 namespace JASS
 	{
@@ -64,6 +65,7 @@ namespace JASS
 	static compress_integer_simple_8b_packed simple_8b_packed;			///< Packed Simple-8b compressor
 #endif
 	static compress_integer_elias_gamma_simd elias_gamma_simd;			///< elias gamma packed into SIMD regisers
+	static compress_integer_elias_gamma_simd_vb elias_gamma_simd_vb;	///< elias gamma packed into SIMD regisers with variable byte on short lists and endings
 #ifdef NEVER
 	static compress_integer_bitpack_32_reduced bitpack_32_reduced;		///< fixed width bin-packed into 32-bit integers
 	static compress_integer_elias_gamma_bitwise elias_gamma_bitwise;	///< Elias gamma done with bit-wise instructions (slow)
@@ -84,6 +86,7 @@ namespace JASS
 			{"-ce",    "--compress_elias_delta_SIMD", "Group Elias Delta SIMD", &elias_delta_simd},
 #endif
 			{"-cE",    "--compress_elias_gamma_SIMD", "Group Elias Gamma SIMD", &elias_gamma_simd},
+			{"-cF",    "--compress_elias_gamma_SIMD_vb", "Group Elias Delta SIMD with Variable Byte", &elias_gamma_simd_vb},
 #ifdef NEVER
 			{"-cg",    "--compress_elias_gamma", "Elias gamma", &elias_gamma},
 			{"-cG",    "--compress_elias_gamma_bitwise", "Elias gamma with bit instuctions (slow)", &elias_gamma_bitwise},
@@ -166,6 +169,8 @@ namespace JASS
 	#endif
 		if (codex == &elias_gamma_simd)
 			return std::make_unique<compress_integer_elias_gamma_simd>();
+		if (codex == &elias_gamma_simd_vb)
+			return std::make_unique<compress_integer_elias_gamma_simd_vb>();
 	#ifdef NEVER
 		if (codex == &bitpack_32_reduced)
 			return std::make_unique<compress_integer_bitpack_32_reduced>();

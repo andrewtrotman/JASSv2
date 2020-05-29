@@ -34,10 +34,10 @@ namespace JASS
 		{
 		public:
 #ifdef NEVER
-			static constexpr size_t compressors_size = 25;					///< There are currently this many compressors known to JASS
+			static constexpr size_t compressors_size = 26;					///< There are currently this many compressors known to JASS
 			static constexpr size_t default_compressor = 8;					///< The default one to use is at this position in the compressors array
 #else
-			static constexpr size_t compressors_size = 3;					///< There are currently this many compressors known to JASS
+			static constexpr size_t compressors_size = 4;					///< There are currently this many compressors known to JASS
 			static constexpr size_t default_compressor = 1;					///< The default one to use is at this position in the compressors array
 #endif
 

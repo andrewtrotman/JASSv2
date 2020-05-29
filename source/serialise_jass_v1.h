@@ -138,6 +138,7 @@ namespace JASS
 				qmx_d4 = 'Q',						///< Postings are compressed using QMX with Lemire's D4 delta encoding.
 				qmx_d0 = 'R',						///< Postings are compressed using QMX without delta encoding.
 				elias_gamma_simd = 'G',			///< Postings are compressed using Elias gamma SIMD encoding.
+				elias_gamma_simd_vb = 'g',		///< Postings are compressed using Elias gamma SIMD encoding with variable byte endings.
 				elias_delta_simd = 'D'			///< Postings are compressed using Elias delta SIMD encoding.
 				};
 
