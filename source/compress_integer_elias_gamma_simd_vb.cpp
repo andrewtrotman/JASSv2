@@ -54,7 +54,13 @@ namespace JASS
 		uint8_t encodings[33] = {0};
 		uint32_t *destination = (uint32_t *)encoded;
 		uint32_t *end_of_destination = (uint32_t *)((uint8_t *)encoded + encoded_buffer_length);
+		size_t elements_at_start_of_codeword;
+		const integer *array_at_start_of_codeword;
 
+		/*
+			Store the length of the variable byte part
+		*/
+		*destination++ = 0;			// store as a 4-byte integer to start with (variable byte encode it later)
 		while (1)
 			{
 			/*
@@ -66,7 +72,7 @@ namespace JASS
 			/*
 				Zero the result memory before writing the bit paterns into it
 			*/
-			memset(destination, 0, (WORDS + 1) * 4);
+			::memset(destination, 0, (WORDS + 1) * 4);
 
 			/*
 				Get the address of the selector and move on to the payload
@@ -79,6 +85,8 @@ namespace JASS
 			*/
 			uint32_t remaining = WORD_WIDTH;
 			uint32_t cumulative_shift = 0;
+			array_at_start_of_codeword = array;
+			elements_at_start_of_codeword = elements;
 
 			/*
 				Pack into the next word
@@ -95,39 +103,82 @@ namespace JASS
 
 				max_width = maths::ceiling_log2(max_width);
 
-				if (max_width <= remaining)
+				if (max_width > remaining)
+					break;			// move on to the next code word
+				else
 					{
 					/*
 						Pack them in because there's room
 					*/
 					encodings[slice] = max_width;
 					for (uint32_t word = 0; word < WORDS; word++)
-						{
-						uint32_t value = (word < elements ? array[word] : 0);
-						destination[word] |= value << cumulative_shift;
-						}
+						destination[word] |= (word < elements ? array[word] : 0) << cumulative_shift;
 					cumulative_shift += max_width;
 					remaining -= max_width;
 
-					array += WORDS;
+					/*
+						Check for end of input
+					*/
 					if (WORDS >= elements)
 						{
 						/*
-							Pack the last selector then return
+							Pack the last selector
 						*/
 						encodings[slice] += remaining;
 						encodings[slice + 1] = 0;
 						*selector = compute_selector(encodings);
-						destination += WORDS;
-						return (uint8_t *)(destination) - (uint8_t *)encoded;						// we've finished the encoding
+
+						if (WORDS == elements)
+							return (uint8_t *)(destination + WORDS) - (uint8_t *)encoded;						// we've finished the encoding
+						else
+							{
+							/*
+								We're at end of input so either re-code the final column as variable byte or re-code the entire word.
+							*/
+
+							/*
+								Check to see how many bits of the current word we're using.
+							*/
+							size_t elias_size = WORDS * (WORD_WIDTH / 8);		// size (in bytes) of the codeword up to the last column
+							for (size_t current = 0; current < elements; current++)
+								elias_size += bytes_needed_for(array[current]);
+
+							/*
+								Check to see how much space it would take with variable byte
+							*/
+							size_t vbyte_size = 0;
+							for (size_t current = 0; current < elements_at_start_of_codeword; current++)
+								vbyte_size += bytes_needed_for(array_at_start_of_codeword[current]);
+
+							if (vbyte_size < elias_size)
+								{
+								// re-code the codeword
+								vbyte_size = compress_integer_variable_byte::encode(selector, end_of_destination - selector, array_at_start_of_codeword, elements_at_start_of_codeword);
+								destination = selector;
+								}
+							else
+								{
+								// re-code the final column
+								for (uint32_t word = 0; word < WORDS; word++)
+									destination[word] ^= (word < elements ? array[word] : 0) << (cumulative_shift - max_width);// becuase we've alread incremente cumulative_shift
+								destination += WORDS;
+								encodings[slice - 1] += encodings[slice];
+								encodings[slice] = 0;
+								*selector = compute_selector(encodings);
+								vbyte_size = compress_integer_variable_byte::encode(destination, end_of_destination - selector, array, elements);
+								}
+							uint32_t *vb_length_locaton = (uint32_t *)encoded;
+							*vb_length_locaton = vbyte_size;
+
+							return ((uint8_t *)destination) + vbyte_size - (uint8_t *)encoded;						// we've finished the encoding
+							}
 						}
 					elements -= WORDS;
+					array += WORDS;
 					}
-				else
-					break;		// move on to the next codeword
 				}
 			/*
-				Didn't fit!  Finish this word by padding the last width to the full width of the block (i.e. add the spare bits)
+				Didn't fit!  Finish this codeword by padding the last width to the full width of the block (i.e. add the spare bits)
 			*/
 			encodings[slice - 1] += remaining;
 			encodings[slice] = 0;
@@ -136,7 +187,7 @@ namespace JASS
 			destination += WORDS;
 			}
 
-		return  (uint8_t *)destination - (uint8_t *)encoded;
+		return 0;			// can't happen
 		}
 
 	alignas(64)  const uint32_t compress_integer_elias_gamma_simd_vb::mask_set[33][16]=
@@ -184,11 +235,14 @@ namespace JASS
 		{
 		__m256i mask;
 		const uint8_t *source = (const uint8_t *)source_as_void;
-		const uint8_t *end_of_source = source + source_length;
+		size_t vb_length = *(const uint32_t *)source_as_void;
+		const uint8_t *end_of_source = (const uint8_t *)source_as_void + source_length - vb_length;
+		source += sizeof(uint32_t);
 		__m256i *into = (__m256i *)decoded;
 		uint64_t selector = 0;
 		__m256i payload1;
 		__m256i payload2;
+
 
 		while (1)
 			{
@@ -212,6 +266,9 @@ namespace JASS
 			into += 2;
 			selector >>= width;
 			}
+
+		if (vb_length != 0)
+			compress_integer_variable_byte::decode((integer *)into, vb_length, source, vb_length);
 		}
 
 	/*
@@ -225,8 +282,52 @@ namespace JASS
 		compressor = new compress_integer_elias_gamma_simd_vb();
 		std::vector<std::string>etc;
 		compressor->init(etc);
+
+
+		/*
+			Variable byte only
+		*/
+		std::vector<uint32_t> short_sequence =
+			{
+			1, 2, 3
+			};
+		unittest_one(*compressor, short_sequence);
+
+		/*
+			SIMD + Variable byte
+		*/
+		std::vector<uint32_t> medium_short_sequence =
+			{
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,			// 1 bits
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,			// 1 bits
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,			// 1 bits
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,			// 1 bits
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,			// 1 bits
+			2, 3, 4																// 3 bits
+			};
+		unittest_one(*compressor, medium_short_sequence);
+
+		/*
+			SIMD only
+		*/
+		std::vector<uint32_t> long_short_sequence =
+			{
+			1, 1, 793,   1,   1, 1, 1, 1, 2, 1, 5, 3, 2, 1, 5, 63,		// 10 bits
+			1, 1,   1, 793,   1, 1, 1, 1, 2, 1, 5, 3, 2, 1, 5, 63,		// 10 bits
+			1, 1,   1,   1, 793, 1, 1, 1, 2, 1, 5, 3, 2, 1, 5, 63,		// 10 bits
+			1, 1,   1,   1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  1,		// 1 bits
+			1, 1,   1,   1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  1			// 1 bits
+			};
+		unittest_one(*compressor, long_short_sequence);
+
+		/*
+			All the usual tests
+		*/
 		compress_integer::unittest(*compressor);
 
+		/*
+			Cases that went wrong on Elias Gamma SIMD
+		*/
 		std::vector<uint32_t> broken_sequence =
 			{
 			6,10,2,1,2,1,1,1,1,2,2,1,1,14,1,1,		// 4 bits
@@ -257,7 +358,6 @@ namespace JASS
 			45,2,33,39,20,14,2,1,8,26,1,10,12,3,16,3,		// 6 bits
 			25,9,6,9,6,3,41,17,15,11,33,8,1,1,1,1			// 6 bits
 			};
-
 		unittest_one(*compressor, broken_sequence);
 
 		std::vector<uint32_t> second_broken_sequence =
@@ -268,11 +368,11 @@ namespace JASS
 			1, 1, 2, 3, 1, 1, 8, 1, 1, 21, 2, 9, 15, 27, 7, 4,		// 5 bits
 			2, 7, 1, 1, 2, 1, 1, 3, 2, 3, 1, 3, 3, 1, 2, 2,			// 3 bits
 			3, 1, 3, 1, 2, 1, 2, 4, 1, 1, 3, 10, 1, 2, 1, 1,		// 4 bits
-			6, 2, 1, 1, 3, 3, 7, 3, 2, 1, 2, 4, 3, 1, 2, 1,			// 3 bits <31 bits>, carryover 1 from next line
+			6, 2, 1, 1, 3, 3, 7, 3, 2, 1, 2, 4, 3, 1, 2, 1,			// 3 bits <31 bits>, (expand to 4 bits)
 			6, 2, 2, 1															// 3 bits
 			};
 		unittest_one(*compressor, second_broken_sequence);
 
-		puts("compress_integer_elias_gamma_simd::PASSED");
+		puts("compress_integer_elias_gamma_simd_vb::PASSED");
 		}
 	}

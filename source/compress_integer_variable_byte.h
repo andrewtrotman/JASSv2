@@ -110,12 +110,9 @@ namespace JASS
 			static inline void static_decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
 				{
 				const uint8_t *source = static_cast<const uint8_t *>(source_as_void);
-				integer *end = decoded + integers_to_decode;		// compute the stopping condition
+				const uint8_t *end = source + source_length;		// compute the stopping condition
 
-				/*
-					Count how many integers should be decoded
-				*/
-				while (decoded < end)
+				while (source < end)
 					{
 					decompress_into(decoded, source);
 					decoded++;
