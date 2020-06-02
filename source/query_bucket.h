@@ -146,9 +146,9 @@ namespace JASS
 
 			static constexpr size_t rounded_top_k = ((size_t)1) << maths::ceiling_log2(MAX_TOP_K);
 			static constexpr size_t rounded_top_k_filter = rounded_top_k - 1;
-			compress_integer::integer bucket[std::numeric_limits<ACCUMULATOR_TYPE>::max()][rounded_top_k];	///< The array of buckets to use.
+			DOCID_TYPE bucket[std::numeric_limits<ACCUMULATOR_TYPE>::max() + 1][rounded_top_k];	///< The array of buckets to use.
 			ACCUMULATOR_TYPE largest_used_bucket;																///< The largest bucket used (to decrease cost of initialisation and search)
-			uint16_t bucket_depth[std::numeric_limits<ACCUMULATOR_TYPE>::max()];						///< The number of documents in the given bucket
+			uint16_t bucket_depth[std::numeric_limits<ACCUMULATOR_TYPE>::max() + 1];				///< The number of documents in the given bucket
 			ACCUMULATOR_TYPE shadow_accumulator[MAX_DOCUMENTS];											///< Used to deduplicate the top-k
 			size_t accumulator_pointers_used;																	///< The number of accumulator_pointers used (can be smaller than top_k)
 
@@ -305,6 +305,30 @@ namespace JASS
 
 				bucket[new_rsv][bucket_depth[new_rsv] & rounded_top_k_filter] = document_id;
 				bucket_depth[new_rsv]++;
+				}
+				
+			/*
+				QUERY_HEAP::DECODE_WITH_WRITER()
+				--------------------------------
+			*/
+			/*!
+				@brief Given the integer decoder, the number of integes to decode, and the compressed sequence, decompress (but do not process).
+				@param integers [in] The number of integers that are compressed.
+				@param compressed [in] The compressed sequence.
+				@param compressed_size [in] The length of the compressed sequence.
+			*/
+			virtual void decode_with_writer(size_t integers, const void *compressed, size_t compressed_size)
+				{
+				auto buffer = decompress_buffer.data();
+				decode(buffer, integers, compressed, compressed_size);
+
+				/*
+					D1-decode inplace with SIMD instructions then process one at a time
+				*/
+				simd::cumulative_sum(buffer, integers);
+				DOCID_TYPE *end = buffer + integers;
+				for (auto *current = buffer; current < end; current++)
+					add_rsv(*current, impact);
 				}
 
 			/*
