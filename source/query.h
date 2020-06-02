@@ -1,5 +1,5 @@
-//#define SIMD_JASS_GROUP_ADD_RSV 1
-//#define SIMD_JASS 1
+#define SIMD_JASS_GROUP_ADD_RSV 1
+#define SIMD_JASS 1
 /*
 	QUERY.H
 	-------
@@ -221,14 +221,13 @@ namespace JASS
 			*/
 			forceinline void set_impact(ACCUMULATOR_TYPE score)
 				{
+				impact = score;
 #ifdef SIMD_JASS_GROUP_ADD_RSV
 	#ifdef __AVX512F__
 				impacts = _mm512_set1_epi32(score);
 	#else
 				impacts = _mm256_set1_epi32(score);
 	#endif
-#else
-				impact = score;
 #endif
 				}
 

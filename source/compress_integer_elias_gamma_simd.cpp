@@ -324,7 +324,7 @@ namespace JASS
 				{
 				uint32_t width = (uint32_t)find_first_set_bit(selector);
 				mask = _mm512_loadu_si512((__m512i *)mask_set[width]);
-				add_rsv(_mm512_and_si512(payload, mask));
+				add_rsv_d1(_mm512_and_si512(payload, mask));
 				payload = _mm512_srli_epi32(payload, width);
 
 				selector >>= width;
@@ -354,7 +354,7 @@ namespace JASS
 					high_bits = _mm512_slli_epi32(high_bits, width);
 
 					mask = _mm512_loadu_si512((__m512i *)mask_set[width]);
-					add_rsv(_mm512_or_si512(_mm512_and_si512(payload, mask), high_bits));
+					add_rsv_d1(_mm512_or_si512(_mm512_and_si512(payload, mask), high_bits));
 					payload = _mm512_srli_epi32(payload, width);
 
 					/*
@@ -445,7 +445,6 @@ namespace JASS
 	*/
 	void compress_integer_elias_gamma_simd::decode_with_writer(size_t integers_to_decode, const void *source_as_void, size_t source_length)
 		{
-		init_add_rsv();
 		__m256i mask;
 		const uint8_t *source = (const uint8_t *)source_as_void;
 		const uint8_t *end_of_source = source + source_length;
@@ -460,8 +459,8 @@ namespace JASS
 			uint32_t width = (uint32_t)find_first_set_bit(selector);
 			mask = _mm256_loadu_si256((__m256i *)mask_set[width]);
 
-			add_rsv(_mm256_and_si256(payload1, mask));
-			add_rsv(_mm256_and_si256(payload2, mask));
+			add_rsv_d1(_mm256_and_si256(payload1, mask));
+			add_rsv_d1(_mm256_and_si256(payload2, mask));
 
 			payload1 = _mm256_srli_epi32(payload1, width);
 			payload2 = _mm256_srli_epi32(payload2, width);
@@ -497,8 +496,8 @@ namespace JASS
 
 				mask = _mm256_loadu_si256((__m256i *)mask_set[width]);
 
-				add_rsv(_mm256_or_si256(_mm256_and_si256(payload1, mask), high_bits1));
-				add_rsv(_mm256_or_si256(_mm256_and_si256(payload2, mask), high_bits2));
+				add_rsv_d1(_mm256_or_si256(_mm256_and_si256(payload1, mask), high_bits1));
+				add_rsv_d1(_mm256_or_si256(_mm256_and_si256(payload2, mask), high_bits2));
 
 				payload1 = _mm256_srli_epi32(payload1, width);
 				payload2 = _mm256_srli_epi32(payload2, width);

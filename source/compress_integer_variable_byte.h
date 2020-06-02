@@ -120,6 +120,32 @@ namespace JASS
 				}
 
 			/*
+				COMPRESS_INTEGER_VARIABLE_BYTE::DECODE_WITH_WRITER()
+				----------------------------------------------------
+			*/
+			/*!
+				@brief Decode a sequence of integers encoded with this codex, calling add_rsv for each SIMD register
+				@param integers_to_decode [in] The minimum number of integers to decode (it may decode more).
+				@param source [in] The encoded integers.
+				@param source_length [in] The length (in bytes) of the source buffer.
+			*/
+#ifdef SIMD_JASS
+			virtual void decode_with_writer(size_t integers_to_decode, const void *source_as_void, size_t source_length)
+				{
+				const uint8_t *source = static_cast<const uint8_t *>(source_as_void);
+				const uint8_t *end = source + source_length;		// compute the stopping condition
+
+				while (source < end)
+					{
+					integer into;
+					
+					decompress_into(&into, source);
+					add_rsv_d1(into);
+					}
+				}
+#endif
+
+			/*
 				COMPRESS_INTEGER_VARIABLE_BYTE::BYTES_NEEDED_FOR()
 				--------------------------------------------------
 			*/
