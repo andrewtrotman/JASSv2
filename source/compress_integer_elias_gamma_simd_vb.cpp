@@ -277,7 +277,6 @@ namespace JASS
 	*/
 #ifdef SIMD_JASS
 	void compress_integer_elias_gamma_simd_vb::decode_with_writer(size_t integers_to_decode, const void *source_as_void, size_t source_length)
-#endif
 		{
 		__m512i mask;
 		const uint8_t *source = (const uint8_t *)source_as_void;
@@ -309,6 +308,7 @@ namespace JASS
 		if (vb_length != 0)
 			compress_integer_variable_byte::decode_with_writer(vb_length, source, vb_length);
 		}
+#endif
 
 
 #else

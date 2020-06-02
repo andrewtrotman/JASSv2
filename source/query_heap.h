@@ -321,7 +321,6 @@ namespace JASS
 					}
 				}
 
-
 			/*
 				QUERY_HEAP::ADD_RSV_D1()
 				------------------------
