@@ -332,6 +332,32 @@ namespace JASS
 				}
 
 			/*
+				QUERY_HEAP::DECODE_WITH_WRITER()
+				--------------------------------
+			*/
+			/*!
+				@brief Given the integer decoder, the number of integes to decode, and the compressed sequence, decompress (but do not process).
+				@details Typically used to export an index, not used to process queries.
+				@param integers [in] The number of integers that are compressed.
+				@param compressed [in] The compressed sequence.
+				@param compressed_size [in] The length of the compressed sequence.
+			*/
+			template <typename WRITER>
+			void decode_with_writer(WRITER &writer, size_t integers, const void *compressed, size_t compressed_size)
+				{
+				auto buffer = decompress_buffer.data();
+				decode(buffer, integers, compressed, compressed_size);
+
+				DOCID_TYPE id = 0;
+				DOCID_TYPE *end = buffer + integers;
+				for (auto *current = buffer; current < end; current++)
+					{
+					id += *current;
+					writer.add_rsv(id, impact);
+					}
+				}
+
+			/*
 				QUERY_BUCKET::UNITTEST()
 				------------------------
 			*/
