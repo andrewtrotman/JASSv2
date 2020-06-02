@@ -187,8 +187,71 @@ namespace JASS
 			/*!
 				@brief Scatter 8-bit integers
 				@param array [in] The base address of the array
+				@param indexes [in] The indexes into the array to write into
+				@param values [in] The value to split and scatter (4 x 32-bit integers written as 4 x 8-bit integers)
+			*/
+			forceinline static void scatter(uint8_t *array, __m128i indexes, __m128i values)
+				{
+				/*
+					Extracting 32-bit integers then downcasting to 8-bit integers is faster then extracting 8-bit integers
+				*/
+				array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi32(values, 0);
+				array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi32(values, 1);
+				array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi32(values, 2);
+				array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi32(values, 3);
+				}
+
+			/*
+				SIMD::SCATTER()
+				---------------
+			*/
+			/*!
+				@brief Scatter 16-bit integers
+				@param array [in] The base address of the array
+				@param indexes [in] The indexes into the array to write into
+				@param values [in] The value to split and scatter (4 x 32-bit integers written as 4 x 16-bit integers)
+			*/
+			forceinline static void scatter(uint16_t *array, __m128i indexes, __m128i values)
+				{
+				/*
+					Extracting 32-bit integers then downcasting to 8-bit integers is faster then extracting 8-bit integers
+				*/
+				array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi32(values, 0);
+				array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi32(values, 1);
+				array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi32(values, 2);
+				array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi32(values, 3);
+				}
+
+			/*
+				SIMD::SCATTER()
+				---------------
+			*/
+			/*!
+				@brief Scatter 32-bit integers
+				@param array [in] The base address of the array
+				@param indexes [in] The indexes into the array to write into
+				@param values [in] The value to split and scatter (4 x 32-bit integers written as 4 x 32-bit integers)
+			*/
+			forceinline static void scatter(uint32_t *array, __m128i indexes, __m128i values)
+				{
+				/*
+					Extracting 32-bit integers then downcasting to 8-bit integers is faster then extracting 8-bit integers
+				*/
+				array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi32(values, 0);
+				array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi32(values, 1);
+				array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi32(values, 2);
+				array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi32(values, 3);
+				}
+
+			/*
+				SIMD::SCATTER()
+				---------------
+			*/
+			/*!
+				@brief Scatter 8-bit integers
+				@param array [in] The base address of the array
 				@param vindex [in] The indexes into the array to write into
-				@param a [in] The value to split and scatter (8 x 32-bit integers written as 8 x 16-bit integers)
+				@param a [in] The value to split and scatter (8 x 32-bit integers written as 8 x 8-bit integers)
 			*/
 			forceinline static void scatter(uint8_t *array, __m256i vindex, __m256i a)
 				{

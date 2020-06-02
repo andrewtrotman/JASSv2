@@ -353,8 +353,8 @@ namespace JASS
 				/*
 					Compute the cumulative sum using SIMD (and add the previous cumulative sum)
 				*/
-				document_ids = simd::cumulative_sum(document_ids);
 				__m512i cumsum = _mm512_set1_epi32(d1_cumulative_sum);
+				document_ids = simd::cumulative_sum(document_ids);
 				document_ids = _mm512_add_epi32(document_ids, cumsum);
 
 #ifdef SIMD_JASS_GROUP_ADD_RSV
@@ -385,29 +385,51 @@ namespace JASS
 						At lest one document has (probably) made the top-k
 					*/
 					__m128i quad_docs;
+
 					quad_docs = _mm512_extracti32x4_epi32(document_ids, 0);
-					add_rsv(_mm_extract_epi32(quad_docs, 0), impact);
-					add_rsv(_mm_extract_epi32(quad_docs, 1), impact);
-					add_rsv(_mm_extract_epi32(quad_docs, 2), impact);
-					add_rsv(_mm_extract_epi32(quad_docs, 3), impact);
+					if (cmp & 0x000F)
+						{
+						add_rsv(_mm_extract_epi32(quad_docs, 0), impact);
+						add_rsv(_mm_extract_epi32(quad_docs, 1), impact);
+						add_rsv(_mm_extract_epi32(quad_docs, 2), impact);
+						add_rsv(_mm_extract_epi32(quad_docs, 3), impact);
+						}
+					else
+						simd::scatter(&accumulators.accumulator[0], quad_docs, _mm512_extracti32x4_epi32(values, 0));
 
 					quad_docs = _mm512_extracti32x4_epi32(document_ids, 1);
-					add_rsv(_mm_extract_epi32(quad_docs, 0), impact);
-					add_rsv(_mm_extract_epi32(quad_docs, 1), impact);
-					add_rsv(_mm_extract_epi32(quad_docs, 2), impact);
-					add_rsv(_mm_extract_epi32(quad_docs, 3), impact);
+					if (cmp & 0x00F0)
+						{
+						add_rsv(_mm_extract_epi32(quad_docs, 0), impact);
+						add_rsv(_mm_extract_epi32(quad_docs, 1), impact);
+						add_rsv(_mm_extract_epi32(quad_docs, 2), impact);
+						add_rsv(_mm_extract_epi32(quad_docs, 3), impact);
+						}
+					else
+						simd::scatter(&accumulators.accumulator[0], quad_docs, _mm512_extracti32x4_epi32(values, 1));
 
 					quad_docs = _mm512_extracti32x4_epi32(document_ids, 2);
-					add_rsv(_mm_extract_epi32(quad_docs, 0), impact);
-					add_rsv(_mm_extract_epi32(quad_docs, 1), impact);
-					add_rsv(_mm_extract_epi32(quad_docs, 2), impact);
-					add_rsv(_mm_extract_epi32(quad_docs, 3), impact);
+					if (cmp & 0x0F00)
+						{
+						add_rsv(_mm_extract_epi32(quad_docs, 0), impact);
+						add_rsv(_mm_extract_epi32(quad_docs, 1), impact);
+						add_rsv(_mm_extract_epi32(quad_docs, 2), impact);
+						add_rsv(_mm_extract_epi32(quad_docs, 3), impact);
+						}
+					else
+						simd::scatter(&accumulators.accumulator[0], quad_docs, _mm512_extracti32x4_epi32(values, 2));
 
 					quad_docs = _mm512_extracti32x4_epi32(document_ids, 3);
-					add_rsv(_mm_extract_epi32(quad_docs, 0), impact);
-					add_rsv(_mm_extract_epi32(quad_docs, 1), impact);
-					add_rsv(_mm_extract_epi32(quad_docs, 2), impact);
-					add_rsv(_mm_extract_epi32(quad_docs, 3), impact);
+					if (cmp & 0xF000)
+						{
+						add_rsv(_mm_extract_epi32(quad_docs, 0), impact);
+						add_rsv(_mm_extract_epi32(quad_docs, 1), impact);
+						add_rsv(_mm_extract_epi32(quad_docs, 2), impact);
+						add_rsv(_mm_extract_epi32(quad_docs, 3), impact);
+						}
+					else
+						simd::scatter(&accumulators.accumulator[0], quad_docs, _mm512_extracti32x4_epi32(values, 3));
+
 					/*
 						The lowest value in the heap might have changed so update it.
 					*/
