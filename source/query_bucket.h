@@ -308,6 +308,7 @@ namespace JASS
 				bucket_depth[new_rsv]++;
 				}
 
+#ifdef SIMD_JASS
 			/*
 				QUERY_BUCKET::ADD_RSV_D1()
 				--------------------------
@@ -331,7 +332,6 @@ namespace JASS
 				bucket_depth[new_rsv]++;
 				}
 
-#ifdef SIMD_JASS
 			/*
 				QUERY_HEAP::ADD_RSV_D1()
 				------------------------
