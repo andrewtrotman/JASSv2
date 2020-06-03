@@ -328,7 +328,7 @@ namespace JASS
 
 					__m256i was = _mm256_mmask_i32gather_epi32(_mm256_setzero_si256(), mask, vindex, array, 2);
 					__m256i send = _mm256_mask_blend_epi16((__mmask16)0x5555, was, a);
-					_mm256_mask_i32scatter_epi32 (array, mask, vindex, send, 2);
+					_mm256_mask_i32scatter_epi32(array, mask, vindex, send, 2);
 
 					unwritten ^= mask;
 					}
@@ -420,7 +420,7 @@ namespace JASS
 
 				__m512i was = _mm512_mask_i32gather_epi32(_mm512_setzero_si512(), mask, vindex, array, 1);
 				__m512i send = _mm512_mask_blend_epi8((__mmask64)0x1111'1111'1111'1111, was, a);
-				_mm512_mask_i32scatter_epi32 (array, mask, vindex, send, 1);
+				_mm512_mask_i32scatter_epi32(array, mask, vindex, send, 1);
 
 				unwritten ^= mask;
 				}
@@ -497,7 +497,7 @@ namespace JASS
 					mask &= unwritten;
 
 					/*
-					read, merge, write the fitst occurences. The worst case is indexes of 1,2,3,4... which will result in every second index being read/written then the sanme a second time.
+						read, merge, write the fitst occurences. The worst case is indexes of 1,2,3,4... which will result in every second index being read/written then the sanme a second time.
 					*/
 					__m512i was = _mm512_mask_i32gather_epi32(_mm512_setzero_si512(), mask, vindex, array, 2);
 					__m512i send = _mm512_mask_blend_epi16((__mmask32)0x5555'5555, was, a);

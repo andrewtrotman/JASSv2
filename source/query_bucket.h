@@ -146,7 +146,7 @@ namespace JASS
 
 			static constexpr size_t rounded_top_k = ((size_t)1) << maths::ceiling_log2(MAX_TOP_K);
 			static constexpr size_t rounded_top_k_filter = rounded_top_k - 1;
-			static constexpr size_t number_of_buckets = std::numeric_limits<ACCUMULATOR_TYPE>::max() + 1;
+			static constexpr size_t number_of_buckets = std::numeric_limits<ACCUMULATOR_TYPE>::max();
 			DOCID_TYPE bucket[number_of_buckets][rounded_top_k];	///< The array of buckets to use.
 			ACCUMULATOR_TYPE largest_used_bucket;																///< The largest bucket used (to decrease cost of initialisation and search)
 			uint16_t bucket_depth[number_of_buckets];				///< The number of documents in the given bucket
@@ -332,6 +332,204 @@ namespace JASS
 				bucket_depth[new_rsv]++;
 				}
 
+
+#ifdef __AVX512F__
+			/*
+				QUERY_HEAP::ADD_RSV_D1()
+				------------------------
+			*/
+			/*!
+				@brief Add weight to the rsv for document docuument_id
+				@param document_ids [in] which document to increment
+			*/
+			forceinline void add_rsv_d1(__m512i document_ids)
+				{
+				/*
+					Compute the cumulative sum using SIMD (and add the previous cumulative sum)
+				*/
+				document_ids = simd::cumulative_sum(document_ids);
+				__m512i cumsum = _mm512_set1_epi32(d1_cumulative_sum);
+				document_ids = _mm512_add_epi32(document_ids, cumsum);
+
+				/*
+					Save the cumulative sum
+				*/
+				d1_cumulative_sum = _mm_extract_epi32(_mm512_extracti32x4_epi32(document_ids, 3), 3);
+
+				/*
+					Add to the accumulators
+				*/
+				__m512i values = accumulators[document_ids];			// set the dirty flags and gather() the rsv values
+				values = _mm512_add_epi32(values, impacts);			// add the impact scores
+
+				/*
+					Write back the accumulators
+				*/
+				simd::scatter(&accumulators.accumulator[0], document_ids, values);
+
+				//
+				// bucket[new_rsv * rounded_top_k + (bucket_depth[new_rsv] & rounded_top_k_filter)] = new_doc;
+				// bucket_depth[new_rsv]++;
+				//
+				//
+				// bucket[new_rsv][bucket_depth[new_rsv] & rounded_top_k_filter] = document_id;
+				// bucket_depth[new_rsv]++;
+				//
+
+				/*
+					Compute the bucket indexes
+				*/
+				__m512i depths = simd::gather(bucket_depth, values);
+				__m512i ander = _mm512_set1_epi32(rounded_top_k_filter);
+				__m512i one = _mm512_set1_epi32(1);
+				depths = _mm512_and_epi32(depths, ander);
+
+				__m512i rows = _mm512_mullo_epi32(values, rounded_top_k);
+				__m512i columns = _mm512_and_epi32(depths, ander);
+				__m512i buckets = _mm512_add_epi32(row, columns);
+
+				/*
+					Check for conflicts
+				*/
+				__mmask16 unwritten = 0xFFFF;
+
+				do
+					{
+					/*
+						See if we have any conflicts, and turn into a mask for first occurences
+					*/
+					__m512i conflict = _mm512_maskz_conflict_epi32(unwritten, buckets);
+					conflict = _mm512_and_epi32(_mm512_set1_epi32(unwritten), conflict);
+					__mmask16 mask = _mm512_testn_epi32_mask(conflict, _mm512_set1_epi32(0xFFFF'FFFF));
+					mask &= unwritten;
+
+					/*
+						read, merge, write the first occurences. First the DocIDs then the bucket positions
+					*/
+					_mm512_mask_i32scatter_epi32(bucket, mask, buckets, document_ids, 4);
+
+					/*
+						increment the column numbers
+					*/
+					__m512i columns = _mm512_and_epi32(_mm512_mask_add_epi32(depths, mask, depths, one), ander);
+					__m512i buckets = _mm512_add_epi32(row, columns);
+
+					/*
+						ready for the next set
+					*/
+					unwritten ^= mask;
+					}
+				while (unwritten != 0);
+
+				/*
+					save the column numbers
+				*/
+				simd::scatter(bucket_depth, values, depths);
+
+
+#ifdef NEVER
+				/*
+					Update the buckets
+				*/
+				__m128i quad_docs = _mm512_extracti32x4_epi32(document_ids, 0);
+				__m128i quad_rsv = _mm512_extracti32x4_epi32(values, 0);
+
+				uint32_t new_rsv = _mm_extract_epi32(quad_rsv, 0);
+				uint32_t new_doc = _mm_extract_epi32(quad_docs, 0);
+				bucket[new_rsv][bucket_depth[new_rsv] & rounded_top_k_filter] = new_doc;
+				bucket_depth[new_rsv]++;
+
+				new_rsv = _mm_extract_epi32(quad_rsv, 1);
+				new_doc = _mm_extract_epi32(quad_docs, 1);
+				bucket[new_rsv][bucket_depth[new_rsv] & rounded_top_k_filter] = new_doc;
+				bucket_depth[new_rsv]++;
+
+				new_rsv = _mm_extract_epi32(quad_rsv, 2);
+				new_doc = _mm_extract_epi32(quad_docs, 2);
+				bucket[new_rsv][bucket_depth[new_rsv] & rounded_top_k_filter] = new_doc;
+				bucket_depth[new_rsv]++;
+
+				new_rsv = _mm_extract_epi32(quad_rsv, 3);
+				new_doc = _mm_extract_epi32(quad_docs, 3);
+				bucket[new_rsv][bucket_depth[new_rsv] & rounded_top_k_filter] = new_doc;
+				bucket_depth[new_rsv]++;
+
+
+
+				quad_docs = _mm512_extracti32x4_epi32(document_ids, 1);
+				quad_rsv = _mm512_extracti32x4_epi32(values, 1);
+
+				new_rsv = _mm_extract_epi32(quad_rsv, 0);
+				new_doc = _mm_extract_epi32(quad_docs, 0);
+				bucket[new_rsv][bucket_depth[new_rsv] & rounded_top_k_filter] = new_doc;
+				bucket_depth[new_rsv]++;
+
+				new_rsv = _mm_extract_epi32(quad_rsv, 1);
+				new_doc = _mm_extract_epi32(quad_docs, 1);
+				bucket[new_rsv][bucket_depth[new_rsv] & rounded_top_k_filter] = new_doc;
+				bucket_depth[new_rsv]++;
+
+				new_rsv = _mm_extract_epi32(quad_rsv, 2);
+				new_doc = _mm_extract_epi32(quad_docs, 2);
+				bucket[new_rsv][bucket_depth[new_rsv] & rounded_top_k_filter] = new_doc;
+				bucket_depth[new_rsv]++;
+
+				new_rsv = _mm_extract_epi32(quad_rsv, 3);
+				new_doc = _mm_extract_epi32(quad_docs, 3);
+				bucket[new_rsv][bucket_depth[new_rsv] & rounded_top_k_filter] = new_doc;
+				bucket_depth[new_rsv]++;
+
+
+				quad_docs = _mm512_extracti32x4_epi32(document_ids, 2);
+				quad_rsv = _mm512_extracti32x4_epi32(values, 2);
+
+				new_rsv = _mm_extract_epi32(quad_rsv, 0);
+				new_doc = _mm_extract_epi32(quad_docs, 0);
+				bucket[new_rsv][bucket_depth[new_rsv] & rounded_top_k_filter] = new_doc;
+				bucket_depth[new_rsv]++;
+
+				new_rsv = _mm_extract_epi32(quad_rsv, 1);
+				new_doc = _mm_extract_epi32(quad_docs, 1);
+				bucket[new_rsv][bucket_depth[new_rsv] & rounded_top_k_filter] = new_doc;
+				bucket_depth[new_rsv]++;
+
+				new_rsv = _mm_extract_epi32(quad_rsv, 2);
+				new_doc = _mm_extract_epi32(quad_docs, 2);
+				bucket[new_rsv][bucket_depth[new_rsv] & rounded_top_k_filter] = new_doc;
+				bucket_depth[new_rsv]++;
+
+				new_rsv = _mm_extract_epi32(quad_rsv, 3);
+				new_doc = _mm_extract_epi32(quad_docs, 3);
+				bucket[new_rsv][bucket_depth[new_rsv] & rounded_top_k_filter] = new_doc;
+				bucket_depth[new_rsv]++;
+
+
+
+				quad_docs = _mm512_extracti32x4_epi32(document_ids, 3);
+				quad_rsv = _mm512_extracti32x4_epi32(values, 3);
+
+				new_rsv = _mm_extract_epi32(quad_rsv, 0);
+				new_doc = _mm_extract_epi32(quad_docs, 0);
+				bucket[new_rsv][bucket_depth[new_rsv] & rounded_top_k_filter] = new_doc;
+				bucket_depth[new_rsv]++;
+
+				new_rsv = _mm_extract_epi32(quad_rsv, 1);
+				new_doc = _mm_extract_epi32(quad_docs, 1);
+				bucket[new_rsv][bucket_depth[new_rsv] & rounded_top_k_filter] = new_doc;
+				bucket_depth[new_rsv]++;
+
+				new_rsv = _mm_extract_epi32(quad_rsv, 2);
+				new_doc = _mm_extract_epi32(quad_docs, 2);
+				bucket[new_rsv][bucket_depth[new_rsv] & rounded_top_k_filter] = new_doc;
+				bucket_depth[new_rsv]++;
+
+				new_rsv = _mm_extract_epi32(quad_rsv, 3);
+				new_doc = _mm_extract_epi32(quad_docs, 3);
+				bucket[new_rsv][bucket_depth[new_rsv] & rounded_top_k_filter] = new_doc;
+				bucket_depth[new_rsv]++;
+				}
+#endif
+#else
 			/*
 				QUERY_HEAP::ADD_RSV_D1()
 				------------------------
@@ -364,7 +562,7 @@ namespace JASS
 					Write back the accumulators
 				*/
 				simd::scatter(&accumulators.accumulator[0], document_ids, values);
-				
+
 				/*
 					Update the buckets
 				*/
@@ -415,12 +613,8 @@ namespace JASS
 				new_doc = _mm_extract_epi32(quad_docs, 3);
 				bucket[new_rsv][bucket_depth[new_rsv] & rounded_top_k_filter] = new_doc;
 				bucket_depth[new_rsv]++;
-
-//
-// bucket[new_rsv * rounded_top_k + bucket_depth[new_rsv]] = document_id;
-// bucket_depth[new_rsv]++;
-//
 				}
+#endif
 #endif
 			/*
 				QUERY_HEAP::DECODE_WITH_WRITER()
