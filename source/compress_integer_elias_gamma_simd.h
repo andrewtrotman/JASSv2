@@ -88,19 +88,6 @@ namespace JASS
 			virtual void decode(integer *decoded, size_t integers_to_decode, const void *source, size_t source_length);
 
 			/*
-				COMPRESS_INTEGER_ELIAS_GAMMA_SIMD::DECODE_WITH_WRITER()
-				-------------------------------------------------------
-			*/
-			/*!
-				@brief Decode a sequence of integers encoded with this codex, calling add_rsv for each SIMD register
-				@param integers_to_decode [in] The minimum number of integers to decode (it may decode more).
-				@param source [in] The encoded integers.
-				@param source_length [in] The length (in bytes) of the source buffer.
-			*/
-#ifdef SIMD_JASS
-			virtual void decode_with_writer(size_t integers_to_decode, const void *source, size_t source_length);
-#endif
-			/*
 				COMPRESS_INTEGER_ELIAS_GAMMA_SIMD::UNITTEST()
 				---------------------------------------------
 			*/

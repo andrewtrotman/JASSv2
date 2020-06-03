@@ -328,7 +328,6 @@ namespace JASS
 			/*!
 				@brief Add weight to the rsv for document docuument_id
 				@param document_ids [in] which document to increment
-				@param score [in] the amount of weight to add
 			*/
 			forceinline void add_rsv_d1(DOCID_TYPE document_id)
 				{
@@ -345,7 +344,6 @@ namespace JASS
 			/*!
 				@brief Add weight to the rsv for document docuument_id
 				@param document_ids [in] which document to increment
-				@param score [in] the amount of weight to add
 			*/
 			forceinline void add_rsv_d1(__m512i document_ids)
 				{
@@ -470,7 +468,6 @@ namespace JASS
 			/*!
 				@brief Add weight to the rsv for document docuument_id
 				@param document_ids [in] which document to increment
-				@param score [in] the amount of weight to add
 			*/
 			forceinline void add_rsv_d1(__m256i document_ids)
 				{
