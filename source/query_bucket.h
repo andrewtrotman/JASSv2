@@ -246,48 +246,6 @@ namespace JASS
 				query::rewind();
 				}
 
-void dump_bucket(uint32_t which)
-{
-std::cout << "[bucket " << which << ":(" << bucket_depth[which] << ")";
-for (size_t index = 0; index < (bucket_depth[which] & rounded_top_k_filter); index++)
-	std::cout << bucket[which][index] << " ";
-std::cout << "]\n";
-}
-void dumo_whereis(uint32_t document_id)
-{
-for (size_t current_bucket = largest_used_bucket; current_bucket > 0; current_bucket--)
-	for (size_t which = 0; which < bucket_depth[current_bucket]; which++)
-		{
-		size_t doc_id = bucket[current_bucket][which];
-		if (doc_id == document_id)		// only include those not already in the top-k
-			std::cout << "{" << current_bucket << "," << which << "}\n";
-		}
-}
-
-bool has(__m512i list, uint32_t wanted)
-{
-uint32_t values[16];
-_mm512_storeu_si512(values, list);
-
-for (size_t index = 0; index < 16; index++)
-	if (values[index] == wanted)
-		return true;
-
-return false;
-}
-
-void dump16(__m512i list)
-{
-uint16_t values[32];
-_mm512_storeu_si512(values, list);
-
-for (size_t index = 0; index < 32; index++)
-	std::cout << values[index] << " ";
-
-std::cout << "\n";
-}
-
-
 			/*
 				QUERY_BUCKET::SORT()
 				--------------------
@@ -297,8 +255,6 @@ std::cout << "\n";
 			*/
 			void sort(void)
 				{
-dumo_whereis(244689);
-
 				if (!sorted)
 					{
 					/*
@@ -306,7 +262,9 @@ dumo_whereis(244689);
 					*/
 					accumulator_pointers_used = 0;
 					for (size_t current_bucket = largest_used_bucket; current_bucket > 0; current_bucket--)
-						for (size_t which = 0; which < bucket_depth[current_bucket]; which++)
+						{
+						size_t end_looking_at = maths::minimum((size_t)bucket_depth[current_bucket], (size_t)rounded_top_k);
+						for (size_t which = 0; which < end_looking_at; which++)
 							{
 							size_t doc_id = bucket[current_bucket][which];
 							if (accumulators.accumulator[doc_id] != 0)		// only include those not already in the top-k
@@ -321,6 +279,7 @@ dumo_whereis(244689);
 									goto got_them_all;
 								}
 							}
+						}
 							
 				got_them_all:
 					/*
@@ -350,9 +309,6 @@ dumo_whereis(244689);
 
 				bucket[new_rsv][bucket_depth[new_rsv] & rounded_top_k_filter] = document_id;
 				bucket_depth[new_rsv]++;
-
-if (document_id == 244689)
-	dump_bucket(new_rsv);
 				}
 
 #ifdef SIMD_JASS
@@ -369,12 +325,6 @@ if (document_id == 244689)
 				document_id += d1_cumulative_sum;
 				d1_cumulative_sum = document_id;
 
-if (impact == 149)
-	{
-	std::cout << "****\n";
-	std::cout << document_id << "\n";
-	}
-
 				ACCUMULATOR_TYPE *which = &accumulators[document_id];			// This will create the accumulator if it doesn't already exist.
 
 				*which += impact;
@@ -383,143 +333,9 @@ if (impact == 149)
 
 				bucket[new_rsv][bucket_depth[new_rsv] & rounded_top_k_filter] = document_id;
 				bucket_depth[new_rsv]++;
-
-
-if (document_id == 244689)
-	dump_bucket(new_rsv);
 				}
 
-
 #ifdef __AVX512F__
-
-
-
-
-
-void dumo_status_before(__m512i document_ids)
-{
-if (impact != 149)
-	return;
-
-__m128i quad_docs = _mm512_extracti32x4_epi32(document_ids, 0);
-uint32_t new_doc = _mm_extract_epi32(quad_docs, 0);
-uint32_t new_rsv = accumulators[new_doc] + impact;
-std::cout << new_doc << " "; dump_bucket(new_rsv);
-new_doc = _mm_extract_epi32(quad_docs, 1);
-new_rsv = accumulators[new_doc] + impact;
-std::cout << new_doc << " "; dump_bucket(new_rsv);
-new_doc = _mm_extract_epi32(quad_docs, 2);
-new_rsv = accumulators[new_doc] + impact;
-std::cout << new_doc << " "; dump_bucket(new_rsv);
-new_doc = _mm_extract_epi32(quad_docs, 3);
-new_rsv = accumulators[new_doc] + impact;
-std::cout << new_doc << " "; dump_bucket(new_rsv);
-
-quad_docs = _mm512_extracti32x4_epi32(document_ids, 1);
-new_doc = _mm_extract_epi32(quad_docs, 0);
-new_rsv = accumulators[new_doc] + impact;
-std::cout << new_doc << " "; dump_bucket(new_rsv);
-new_doc = _mm_extract_epi32(quad_docs, 1);
-new_rsv = accumulators[new_doc] + impact;
-std::cout << new_doc << " "; dump_bucket(new_rsv);
-new_doc = _mm_extract_epi32(quad_docs, 2);
-new_rsv = accumulators[new_doc] + impact;
-std::cout << new_doc << " "; dump_bucket(new_rsv);
-new_doc = _mm_extract_epi32(quad_docs, 3);
-new_rsv = accumulators[new_doc] + impact;
-std::cout << new_doc << " "; dump_bucket(new_rsv);
-
-quad_docs = _mm512_extracti32x4_epi32(document_ids, 2);
-new_doc = _mm_extract_epi32(quad_docs, 0);
-new_rsv = accumulators[new_doc] + impact;
-std::cout << new_doc << " "; dump_bucket(new_rsv);
-new_doc = _mm_extract_epi32(quad_docs, 1);
-new_rsv = accumulators[new_doc] + impact;
-std::cout << new_doc << " "; dump_bucket(new_rsv);
-new_doc = _mm_extract_epi32(quad_docs, 2);
-new_rsv = accumulators[new_doc] + impact;
-std::cout << new_doc << " "; dump_bucket(new_rsv);
-new_doc = _mm_extract_epi32(quad_docs, 3);
-new_rsv = accumulators[new_doc] + impact;
-std::cout << new_doc << " "; dump_bucket(new_rsv);
-
-quad_docs = _mm512_extracti32x4_epi32(document_ids, 3);
-new_doc = _mm_extract_epi32(quad_docs, 0);
-new_rsv = accumulators[new_doc] + impact;
-std::cout << new_doc << " "; dump_bucket(new_rsv);
-new_doc = _mm_extract_epi32(quad_docs, 1);
-new_rsv = accumulators[new_doc] + impact;
-std::cout << new_doc << " "; dump_bucket(new_rsv);
-new_doc = _mm_extract_epi32(quad_docs, 2);
-new_rsv = accumulators[new_doc] + impact;
-std::cout << new_doc << " "; dump_bucket(new_rsv);
-new_doc = _mm_extract_epi32(quad_docs, 3);
-new_rsv = accumulators[new_doc] + impact;
-std::cout << new_doc << " "; dump_bucket(new_rsv);
-}
-
-void dumo_status_after(__m512i document_ids)
-{
-if (impact != 149)
-	return;
-
-__m128i quad_docs = _mm512_extracti32x4_epi32(document_ids, 0);
-uint32_t new_doc = _mm_extract_epi32(quad_docs, 0);
-uint32_t new_rsv = accumulators[new_doc];
-std::cout << new_doc << " "; dump_bucket(new_rsv);
-new_doc = _mm_extract_epi32(quad_docs, 1);
-new_rsv = accumulators[new_doc];
-std::cout << new_doc << " "; dump_bucket(new_rsv);
-new_doc = _mm_extract_epi32(quad_docs, 2);
-new_rsv = accumulators[new_doc];
-std::cout << new_doc << " "; dump_bucket(new_rsv);
-new_doc = _mm_extract_epi32(quad_docs, 3);
-new_rsv = accumulators[new_doc];
-std::cout << new_doc << " "; dump_bucket(new_rsv);
-
-quad_docs = _mm512_extracti32x4_epi32(document_ids, 1);
-new_doc = _mm_extract_epi32(quad_docs, 0);
-new_rsv = accumulators[new_doc];
-std::cout << new_doc << " "; dump_bucket(new_rsv);
-new_doc = _mm_extract_epi32(quad_docs, 1);
-new_rsv = accumulators[new_doc];
-std::cout << new_doc << " "; dump_bucket(new_rsv);
-new_doc = _mm_extract_epi32(quad_docs, 2);
-new_rsv = accumulators[new_doc];
-std::cout << new_doc << " "; dump_bucket(new_rsv);
-new_doc = _mm_extract_epi32(quad_docs, 3);
-new_rsv = accumulators[new_doc];
-std::cout << new_doc << " "; dump_bucket(new_rsv);
-
-quad_docs = _mm512_extracti32x4_epi32(document_ids, 2);
-new_doc = _mm_extract_epi32(quad_docs, 0);
-new_rsv = accumulators[new_doc];
-std::cout << new_doc << " "; dump_bucket(new_rsv);
-new_doc = _mm_extract_epi32(quad_docs, 1);
-new_rsv = accumulators[new_doc];
-std::cout << new_doc << " "; dump_bucket(new_rsv);
-new_doc = _mm_extract_epi32(quad_docs, 2);
-new_rsv = accumulators[new_doc];
-std::cout << new_doc << " "; dump_bucket(new_rsv);
-new_doc = _mm_extract_epi32(quad_docs, 3);
-new_rsv = accumulators[new_doc];
-std::cout << new_doc << " "; dump_bucket(new_rsv);
-
-quad_docs = _mm512_extracti32x4_epi32(document_ids, 3);
-new_doc = _mm_extract_epi32(quad_docs, 0);
-new_rsv = accumulators[new_doc];
-std::cout << new_doc << " "; dump_bucket(new_rsv);
-new_doc = _mm_extract_epi32(quad_docs, 1);
-new_rsv = accumulators[new_doc];
-std::cout << new_doc << " "; dump_bucket(new_rsv);
-new_doc = _mm_extract_epi32(quad_docs, 2);
-new_rsv = accumulators[new_doc];
-std::cout << new_doc << " "; dump_bucket(new_rsv);
-new_doc = _mm_extract_epi32(quad_docs, 3);
-new_rsv = accumulators[new_doc];
-std::cout << new_doc << " "; dump_bucket(new_rsv);
-}
-
 
 			/*
 				QUERY_HEAP::ADD_RSV_D1()
@@ -538,15 +354,6 @@ std::cout << new_doc << " "; dump_bucket(new_rsv);
 				__m512i cumsum = _mm512_set1_epi32(d1_cumulative_sum);
 				document_ids = _mm512_add_epi32(document_ids, cumsum);
 
-bool noise = has(document_ids, 244689);
-
-if (noise)
-	{
-	std::cout << "impact:" << impact << "\n";
-	std::cout << document_ids << "\n";
-	}
-//dumo_status_before(document_ids);
-
 				/*
 					Save the cumulative sum
 				*/
@@ -563,15 +370,8 @@ if (noise)
 				*/
 				simd::scatter(&accumulators.accumulator[0], document_ids, values);
 
-				//
-				// bucket[new_rsv * rounded_top_k + (bucket_depth[new_rsv] & rounded_top_k_filter)] = new_doc;
-				// bucket_depth[new_rsv]++;
-				//
-				//
-				// bucket[new_rsv][bucket_depth[new_rsv] & rounded_top_k_filter] = document_id;
-				// bucket_depth[new_rsv]++;
-				//
 
+#ifdef NEVER
 				/*
 					Compute the bucket indexes
 				*/
@@ -587,9 +387,13 @@ if (noise)
 
 
 				/*
-					turn the values into word addresses of the bucket_depth[] array for 32-bit loads
+					"values" are indexes into the bucket_depth[] array of 16-bit integers.  We can only gather/scatter
+					32-bit values with AVX-512, so if we want to write to (say) bucket_depth[376] and bucket_depth[377] then
+					we can't scatter because one write will interfeer with another.  So either we use 32-bit bucket depths or
+					we need to conflict on the 32-bit aligned addresses, which is achieved by dividing the imdexes by 1 (or
+					shifting left by 1).
 				*/
-//				__m512i word_locations = _mm512_srli_epi32(values, 1);
+				__m512i conflicting_locations = _mm512_srli_epi32(values, 1);
 
 				/*
 					Check for conflicts
@@ -597,28 +401,14 @@ if (noise)
 				__mmask16 unwritten = 0xFFFF;
 				do
 					{
-if (noise)
-{
-std::cout << "B Depths:" << depths << "\n";
-std::cout << "B Addresses:" << buckets << "\n";
-printf("B Unwritten:%04X\n", unwritten);
-}
 					/*
 						See if we have any conflicts, and turn into a mask for first occurences
 					*/
-					__m512i conflict = _mm512_maskz_conflict_epi32(unwritten, buckets);
-if (noise)
-{
-std::cout << "Conflict:" << conflict << "\n";
-}
+					__m512i conflict = _mm512_maskz_conflict_epi32(unwritten, conflicting_locations);
+
 					conflict = _mm512_and_epi32(_mm512_set1_epi32(unwritten), conflict);
 					__mmask16 mask = _mm512_testn_epi32_mask(conflict, _mm512_set1_epi32(0xFFFF'FFFF));
 					mask &= unwritten;
-
-if (noise)
-{
-printf("Mask:%04X\n", mask);
-}
 
 					/*
 						write the values. First the DocIDs then the bucket positions
@@ -636,39 +426,16 @@ printf("Mask:%04X\n", mask);
 						write the column numbers (bucket depths) to memory
 					*/
 					__m512i was = _mm512_mask_i32gather_epi32(zero, mask, values, bucket_depth, 2);
-if (noise)
-{
-std::cout << "read:";
-dump16(was);
-std::cout << "merg:";
-dump16(depths);
-}
-
 					__m512i send = _mm512_mask_blend_epi16((__mmask32)0x5555'5555, was, depths);
-if (noise)
-{
-std::cout << "send:";
-dump16(send);
-}
 					_mm512_mask_i32scatter_epi32(bucket_depth, mask, values, send, 2);
 
 					/*
 						ready for the next set
 					*/
 					unwritten ^= mask;
-if (noise)
-{
-std::cout << "A Depths:" << depths << "\n";
-std::cout << "A Addresses:" << buckets << "\n";
-printf("A Unwritten:%04X\n", unwritten);
-std::cout << "\n";
-}
 					}
 				while (unwritten != 0);
-
-//dumo_status_after(document_ids);
-//exit(0);
-#ifdef NEVER
+#else
 				/*
 					Update the buckets
 				*/
