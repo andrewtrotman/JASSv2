@@ -362,79 +362,40 @@ namespace JASS
 				/*
 					Add to the accumulators
 				*/
-				__m512i values = accumulators[document_ids];			// set the dirty flags and gather() the rsv values
-				values = _mm512_add_epi32(values, impacts);			// add the impact scores
-
-				/*
-					Write back the accumulators
-				*/
-				simd::scatter(&accumulators.accumulator[0], document_ids, values);
-
+				__m512i values = accumulators[document_ids];										// set the dirty flags and gather() the rsv values
+				values = _mm512_add_epi32(values, impacts);										// add the impact scores
+				simd::scatter(&accumulators.accumulator[0], document_ids, values);		// write back the accumulators
 
 #ifdef NEVER
 				/*
-					Compute the bucket indexes
+					Retrieve the current bottom of bucket indexes
 				*/
-				__m512i one = _mm512_set1_epi32(1);
-				__m512i zero = _mm512_setzero_epi32();
-				__m512i ander = _mm512_set1_epi32(rounded_top_k_filter);
-
 				__m512i depths = simd::gather(bucket_depth, values);
 
+				/*
+					Compute the new indexes for each document ID
+				*/
+				__m512i conflict = _mm512_conflict_epi32(depths);
+				__m512i new_index = simd::popcount(conflict);
+				depths = _mm512_add_epi32(depths, new_index);
+
+				/*
+					Place the DocIDs there.  We can scatter because no two writes are to the same location because the popcnt
+					above increments the index into the buckets array by 1 for each conflicting address!
+				*/
+				__m512i columns = _mm512_and_epi32(depths, _mm512_set1_epi32(rounded_top_k_filter));
 				__m512i rows = _mm512_mullo_epi32(values, _mm512_set1_epi32(rounded_top_k));
-				__m512i columns = _mm512_and_epi32(depths, ander);
 				__m512i buckets = _mm512_add_epi32(rows, columns);
-
-
-				/*
-					"values" are indexes into the bucket_depth[] array of 16-bit integers.  We can only gather/scatter
-					32-bit values with AVX-512, so if we want to write to (say) bucket_depth[376] and bucket_depth[377] then
-					we can't scatter because one write will interfeer with another.  So either we use 32-bit bucket depths or
-					we need to conflict on the 32-bit aligned addresses, which is achieved by dividing the imdexes by 1 (or
-					shifting left by 1).
-				*/
-				__m512i conflicting_locations = _mm512_srli_epi32(values, 1);
+				simd::scatter(&bucket[0][0], buckets, document_ids);
 
 				/*
-					Check for conflicts
+					We've added at least one to each bucket_depth so we account for that here.  Note that the writes must happen from
+					LSB to MSB (according to the Intel spec) and so if we increment by more than 1 then the conflict() popcnt() above
+					will have accumulated increments towards the MSB end and so the LSB writes can be ignored.
 				*/
-				__mmask16 unwritten = 0xFFFF;
-				do
-					{
-					/*
-						See if we have any conflicts, and turn into a mask for first occurences
-					*/
-					__m512i conflict = _mm512_maskz_conflict_epi32(unwritten, conflicting_locations);
+				__m512i new_depths = _mm512_add_epi32(depths, _mm512_set1_epi32(1));
+				simd::scatter(bucket_depth, values, new_depths);
 
-					conflict = _mm512_and_epi32(_mm512_set1_epi32(unwritten), conflict);
-					__mmask16 mask = _mm512_testn_epi32_mask(conflict, _mm512_set1_epi32(0xFFFF'FFFF));
-					mask &= unwritten;
-
-					/*
-						write the values. First the DocIDs then the bucket positions
-					*/
-					_mm512_mask_i32scatter_epi32(bucket, mask, buckets, document_ids, 4);
-
-					/*
-						increment the column numbers
-					*/
-					depths = _mm512_add_epi32(depths, one);
-					columns = _mm512_and_epi32(depths, ander);
-					buckets = _mm512_add_epi32(rows, columns);
-
-					/*
-						write the column numbers (bucket depths) to memory
-					*/
-					__m512i was = _mm512_mask_i32gather_epi32(zero, mask, values, bucket_depth, 2);
-					__m512i send = _mm512_mask_blend_epi16((__mmask32)0x5555'5555, was, depths);
-					_mm512_mask_i32scatter_epi32(bucket_depth, mask, values, send, 2);
-
-					/*
-						ready for the next set
-					*/
-					unwritten ^= mask;
-					}
-				while (unwritten != 0);
 #else
 				/*
 					Update the buckets

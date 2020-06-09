@@ -84,7 +84,7 @@ if(WIN32)
 		endif()
 	endif()
 else()
-	add_definitions("-march=native" -mbmi -mavx2)
+	add_definitions(-march=native -mbmi -mavx2)
 endif()
 
 #

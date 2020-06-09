@@ -34,7 +34,6 @@ namespace JASS
 		{
 		public:
 			typedef uint16_t ACCUMULATOR_TYPE;									///< the type of an accumulator (probably a uint16_t)
-//			typedef uint32_t ACCUMULATOR_TYPE;									///< the type of an accumulator (probably a uint16_t)
 			typedef uint32_t DOCID_TYPE;											///< the type of a document id (from a compressor)
 			static constexpr size_t MAX_DOCUMENTS = 55'000'000;			///< the maximum number of documents an index can hold
 			static constexpr size_t MAX_TOP_K = 1'000;						///< the maximum top-k value
@@ -98,12 +97,10 @@ namespace JASS
 				};
 
 		protected:
-#ifdef SIMD_JASS_GROUP_ADD_RSV
-	#ifdef __AVX512F__
+#ifdef __AVX512F__
 			__m512i impacts;																///< The impact score to be added on a call to add_rsv()
-	#else
+#else
 			__m256i impacts;																///< The impact score to be added on a call to add_rsv()
-	#endif
 #endif
 			ACCUMULATOR_TYPE impact;													///< The impact score to be added on a call to add_rsv()
 			DOCID_TYPE d1_cumulative_sum;												///<< The current cumulative sum from d1 decoding

@@ -426,12 +426,11 @@ namespace JASS
 						}
 					else
 						simd::scatter(&accumulators.accumulator[0], quad_docs, _mm512_extracti32x4_epi32(values, 3));
-
-					/*
-						The lowest value in the heap might have changed so update it.
-					*/
-					lowest_in_heap = _mm512_set1_epi32(*accumulator_pointers[0]);
 					}
+				/*
+					The lowest value in the heap might have changed so update it.
+				*/
+				lowest_in_heap = _mm512_set1_epi32(*accumulator_pointers[0]);
 #else
 				__m128i quad_docs;
 				quad_docs = _mm512_extracti32x4_epi32(document_ids, 0);

@@ -34,6 +34,7 @@ namespace JASS
 		is needed in order to encode or decode integer sequences.
 	*/
 	class compress_integer : public query_bucket
+//	class compress_integer : public query_heap
 		{
 		private:
 			static constexpr int MAX_D_GAP = 64;				///< this is the maximum D-ness that this code supports, it can be changes to anything that won't reuslt in stack overflow.  It is unlikely to exceed 16 for years (from 2019).
