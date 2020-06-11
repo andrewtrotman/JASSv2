@@ -54,8 +54,6 @@ namespace JASS
 		uint8_t encodings[33] = {0};
 		uint32_t *destination = (uint32_t *)encoded;
 		uint32_t *end_of_destination = (uint32_t *)((uint8_t *)encoded + encoded_buffer_length);
-		size_t elements_at_start_of_codeword;
-		const integer *array_at_start_of_codeword;
 
 		/*
 			Store the length of the variable byte part
@@ -85,8 +83,8 @@ namespace JASS
 			*/
 			uint32_t remaining = WORD_WIDTH;
 			uint32_t cumulative_shift = 0;
-			array_at_start_of_codeword = array;
-			elements_at_start_of_codeword = elements;
+			const integer *array_at_start_of_codeword = array;
+			size_t elements_at_start_of_codeword = elements;
 
 			/*
 				Pack into the next word

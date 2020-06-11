@@ -8,10 +8,13 @@ services:
 notifications:
   slack: jassv2:IX7Yf0N9YJ0rM4OFVvCTrgCY
 
+env:
+  global:
+   # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
+   #   via the "travis encrypt" command using the project repo's public key
+   - secure: "luglXydd+BtaGAHZwVpkszfoeEIciMrSalJ9BJ63wTZa/3A4iwtX//qSL/gyGIHEPz1RmX6g2T+fF1A+WaPw6dD9VkDo2/KsWOatX7X8h2xh1hWq4MZZvcLSTyKKvqnXZnDBLZkK9nVEaJLJEYI3Ln4NqGsXqp7bCHxty9D8Eotfagnp73PSzBJ5JEK0Gcoq4VpTQLcmqjhfPNtRZadTPeuvrZJXAFARxQn8x78q5sWBswXypFfn6gZVOX1IZu+IhNWibo49CophpyW8ZKml/KIsvJSaJPPiee2/GK5se0Dg4W3t5DIab3+Y2V5PE1LXPdqZeLrkTtZqDF8zTnBHd5hLcQqBPgjfgDp0KfNAE7LP8hk+Tumaw4D6QC40xuZmYaeKJM7mCF9tAjPYwBRi+ffYGleBaF4iiB2kvNnXMqWNJ0pc17p/r30p/svp9hnFpoob/5Hy4r+DCjXsbhnoaVmDB5dpRk6JV6yX6DzZEgKuh6zKPsNop1RZsHQzjr2Ao6XrFFa0nPCVlnTjGtuQtBzdQqPtuLFGSxyee7hQD2uBChKv6jZVOOnPOuG7MIwdAJB9KlZerHU3WXE/JZX2W0jaqfB/UuO0pOL1jrXsm6da668DnMSmpe/DU3RzKjmQduNp7n6/TvH2IGrI/uuCxBG1l8seVeNp39jJ5QOCxbs="
+
 before_install:
-  - if [ "$TRAVIS_BRANCH" == "coverity_scan" ]; then 
-      echo "Done. Early exit with 0." && sleep 1 && exit 0;
-    fi
   - if [ "$TRAVIS_BRANCH" != "coverity_scan" -a "$TRAVIS_OS_NAME" == "linux" ]; then 
       docker pull andrewtrotman/build-with-gcc;
       docker run andrewtrotman/build-with-gcc -e TRAVIS_JOB_ID="$TRAVIS_JOB_ID" -e TRAVIS_BRANCH="$TRAVIS_BRANCH";
@@ -26,6 +29,9 @@ before_install:
       cd build;
       ../docker/mac_build.sh;
       xcodebuild -version;
+    fi
+  - if [ "$TRAVIS_BRANCH" == "coverity_scan" -a "$TRAVIS_OS_NAME" == osx ]; then 
+      echo -n | openssl s_client -connect https://scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
     fi
 
 install: true
@@ -51,7 +57,8 @@ branches:
 addons:
   coverity_scan:
     project:
-      name: andrewtrotman/JASSv2
+      name: "andrewtrotman/JASSv2"
+      description: "JASSv2 Coverity Scan Branch"
     notification_email: andrew@trotman.com
     build_command_prepend: "cd build && cmake -D FORCE_CMAKE_BUILD_TYPE=Debug .."
     build_command: "make"

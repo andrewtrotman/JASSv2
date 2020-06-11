@@ -762,7 +762,6 @@ namespace JASS
 
 #ifdef __AVX512F__
 				uint32_t numbers[] = {0, 1, 3, 7, 15, 31, 63, 127, 255, 511, 1023, 2047, 4095, 8191, 16383, 32767};
-//				uint32_t bit_count[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
 				__m512i bit_vector = _mm512_loadu_si512(numbers);
 				auto set_bits = popcount(bit_vector);
 				for (size_t pos = 0; pos < 16; pos++)
