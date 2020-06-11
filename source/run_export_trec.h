@@ -76,7 +76,7 @@ namespace JASS
 				std::vector<uint32_t>integer_sequence = {1, 1, 1, 1, 1, 1};
 				std::vector<std::string>primary_keys = {"zero", "one", "two", "three", "four", "five", "six"};
 				compress_integer_none *identity = new compress_integer_none;
-				identity->init(primary_keys, 10, 5);
+				identity->init(primary_keys, 10, 10);
 				std::ostringstream result;
 
 				identity->decode_and_process(1, integer_sequence.size(), integer_sequence.data(), sizeof(integer_sequence[0]) * integer_sequence.size());
@@ -88,7 +88,9 @@ namespace JASS
 					"qid Q0 five 2 1 unittest(ID:5->1)\n"
 					"qid Q0 four 3 1 unittest(ID:4->1)\n"
 					"qid Q0 three 4 1 unittest(ID:3->1)\n"
-					"qid Q0 two 5 1 unittest(ID:2->1)\n";
+					"qid Q0 two 5 1 unittest(ID:2->1)\n"
+					"qid Q0 one 6 1 unittest(ID:1->1)\n";
+
 
 				JASS_assert(result.str() == correct_answer);
 				puts("run_export_trec::PASSED");

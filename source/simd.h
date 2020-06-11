@@ -255,22 +255,22 @@ namespace JASS
 #if defined(USE_AXV512_WRITES_8) && defined(__AVX512F__)
 				__m256i low_two_bits = _mm256_and_si256(vindex, _mm256_set1_epi32(3));
 
-				__mmask16 zero = _mm256_cmp_epi32_mask(low_two_bits, _mm256_setzero_si256(), _MM_CMPINT_EQ);
+				__mmask8 zero = _mm256_cmp_epi32_mask(low_two_bits, _mm256_setzero_si256(), _MM_CMPINT_EQ);
 				__m256i was = _mm256_mmask_i32gather_epi32(_mm256_setzero_si256(), zero, vindex, array, 1);
 				__m256i data = _mm256_mask_blend_epi8(0x1111'1111, was, a);
 				_mm256_mask_i32scatter_epi32(array, zero, vindex, data, 1);
 
-				__mmask16 one = _mm256_cmp_epi32_mask(low_two_bits, _mm256_set1_epi32(1), _MM_CMPINT_EQ);
+				__mmask8 one = _mm256_cmp_epi32_mask(low_two_bits, _mm256_set1_epi32(1), _MM_CMPINT_EQ);
 				was = _mm256_mmask_i32gather_epi32(_mm256_setzero_si256(), one, vindex, array, 1);
 				data = _mm256_mask_blend_epi8(0x1111'1111, was, a);
 				_mm256_mask_i32scatter_epi32(array, one, vindex, data, 1);
 
-				__mmask16 two = _mm256_cmp_epi32_mask(low_two_bits, _mm256_set1_epi32(2), _MM_CMPINT_EQ);
+				__mmask8 two = _mm256_cmp_epi32_mask(low_two_bits, _mm256_set1_epi32(2), _MM_CMPINT_EQ);
 				was = _mm256_mmask_i32gather_epi32(_mm256_setzero_si256(), two, vindex, array, 1);
 				data = _mm256_mask_blend_epi8(0x1111'1111, was, a);
 				_mm256_mask_i32scatter_epi32(array, two, vindex, data, 1);
 
-				__mmask16 three = _mm256_cmp_epi32_mask(low_two_bits, _mm256_set1_epi32(3), _MM_CMPINT_EQ);
+				__mmask8 three = _mm256_cmp_epi32_mask(low_two_bits, _mm256_set1_epi32(3), _MM_CMPINT_EQ);
 				was = _mm256_mmask_i32gather_epi32(_mm256_setzero_si256(), three, vindex, array, 1);
 				data = _mm256_mask_blend_epi8(0x1111'1111, was, a);
 				_mm256_mask_i32scatter_epi32(array, three, vindex, data, 1);
@@ -662,9 +662,9 @@ namespace JASS
 				const __m512i ohfs = _mm512_set1_epi8(0x0F);
 				const __m512i ohones = _mm512_set1_epi8(0x01);
 
-				value = _mm512_sub_epi32(value, (_mm512_srli_epi32(value, 1) & fives));
-				value = _mm512_add_epi32(value & threes, (_mm512_srli_epi32(value, 2) & threes));
-				return  _mm512_srli_epi32(_mm512_mullo_epi32(_mm512_add_epi32(value, _mm512_srli_epi32(value, 4)) & ohfs, ohones), 24);
+				value = _mm512_sub_epi32(value, (_mm512_and_epi32(_mm512_srli_epi32(value, 1), fives)));
+				value = _mm512_add_epi32(_mm512_and_epi32(value, threes), (_mm512_and_epi32(_mm512_srli_epi32(value, 2), threes)));
+				return  _mm512_srli_epi32(_mm512_mullo_epi32(_mm512_and_epi32(_mm512_add_epi32(value, _mm512_srli_epi32(value, 4)), ohfs), ohones), 24);
 #ifdef NEVER
 				/*
 					from: https://stackoverflow.com/questions/51104493/is-it-possible-to-popcount-m256i-and-store-result-in-8-32-bit-words-instead-of
