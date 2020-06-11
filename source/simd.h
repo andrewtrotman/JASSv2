@@ -758,11 +758,16 @@ namespace JASS
 
 				cumulative_sum(destination_32, 8);
 				uint32_t sum_answer[8] = {0, 1, 3, 6, 10, 15, 21, 28};
-				::memcmp(destination_32, sum_answer, sizeof(destination_32));
+				JASS_assert(::memcmp(destination_32, sum_answer, sizeof(destination_32)) == 0);
 
 #ifdef __AVX512F__
-				auto set_bits = popcount(vindex);
-				std::cout << set_bits;
+				uint32_t numbers[] = {0, 1, 3, 7, 15, 31, 63, 127, 255, 511, 1023, 2047, 4095, 8191, 16383, 32767};
+//				uint32_t bit_count[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+				__m512i bit_vector = _mm512_loadu_epi32(numbers);
+				auto set_bits = popcount(bit_vector);
+				for (size_t pos = 0; pos < 16; pos++)
+					JASS_assert(((uint32_t *)&set_bits)[pos] == pos);
+
 #endif
 
 
