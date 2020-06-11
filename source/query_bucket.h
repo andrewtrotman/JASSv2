@@ -366,7 +366,7 @@ namespace JASS
 				values = _mm512_add_epi32(values, impacts);										// add the impact scores
 				simd::scatter(&accumulators.accumulator[0], document_ids, values);		// write back the accumulators
 
-#ifdef NEVER
+#ifndef NEVER
 				/*
 					Retrieve the current bottom of bucket indexes
 				*/
