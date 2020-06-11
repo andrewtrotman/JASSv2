@@ -59,6 +59,6 @@ addons:
       name: "andrewtrotman/JASSv2"
       description: "JASSv2 Coverity Scan Branch"
     notification_email: andrew@trotman.com
-    build_command_prepend: "cd build && cmake .."
+    build_command_prepend: "cd build && cmake -D FORCE_CMAKE_BUILD_TYPE=Debug .."
     build_command: make
     branch_pattern: coverity_scan
