@@ -19,7 +19,7 @@ before_install:
       docker pull andrewtrotman/build-with-gcc;
       docker run andrewtrotman/build-with-gcc -e TRAVIS_JOB_ID="$TRAVIS_JOB_ID" -e TRAVIS_BRANCH="$TRAVIS_BRANCH";
     fi
-  - if [ "$TRAVIS_BRANCH" != "coverity_scan" -a "$TRAVIS_OS_NAME" == osx ]; then 
+  - if [ "$TRAVIS_BRANCH" != "coverity_scan" -a "$TRAVIS_OS_NAME" == "osx" ]; then 
       system_profiler SPHardwareDataType | grep "Model Identifier";
       sysctl -n machdep.cpu.brand_string;
       system_profiler SPSoftwareDataType;
@@ -30,7 +30,7 @@ before_install:
       ../docker/mac_build.sh;
       xcodebuild -version;
     fi
-  - if [ "$TRAVIS_BRANCH" == "coverity_scan" -a "$TRAVIS_OS_NAME" == osx ]; then 
+  - if [ "$TRAVIS_BRANCH" == "coverity_scan" -a "$TRAVIS_OS_NAME" == "osx" ]; then 
       echo -n | openssl s_client -connect https://scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-;
     fi
 
@@ -57,6 +57,6 @@ addons:
       name: "andrewtrotman/JASSv2"
       description: "JASSv2 Coverity Scan Branch"
     notification_email: andrew@trotman.com
-    build_command_prepend: git clone https://github.com/andrewtrotman/JASSv2.git
-    build_command: cd JASSv2/build && cmake -D FORCE_CMAKE_BUILD_TYPE=Debug .. && make
+    build_command_prepend: "cd JASSv2/build && cmake .."
+    build_command: make
     branch_pattern: coverity_scan
