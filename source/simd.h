@@ -41,6 +41,7 @@
 
 namespace JASS
 	{
+	std::ostream &operator<<(std::ostream &stream, const __m128i &data);
 	std::ostream &operator<<(std::ostream &stream, const __m256i &data);
 	std::ostream &operator<<(std::ostream &stream, const __m512i &data);
 
@@ -217,9 +218,9 @@ namespace JASS
 					Extracting 16-bit integers is faster then 32-bit integers
 				*/
 				array[_mm_extract_epi32(indexes, 0)] = _mm_extract_epi16(values, 0);
-				array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi16(values, 1);
-				array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi16(values, 2);
-				array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi16(values, 3);
+				array[_mm_extract_epi32(indexes, 1)] = _mm_extract_epi16(values, 2);
+				array[_mm_extract_epi32(indexes, 2)] = _mm_extract_epi16(values, 4);
+				array[_mm_extract_epi32(indexes, 3)] = _mm_extract_epi16(values, 6);
 				}
 
 			/*
@@ -278,8 +279,8 @@ namespace JASS
 				/*
 					Extracting 32-bit integers then downcasting to 8-bit integers is faster then extracting 8-bit integers
 				*/
-				scatter(array, _mm256_extracti32x4_epi32(vindex, 0), _mm256_extracti32x4_epi32(a, 0));
-				scatter(array, _mm256_extracti32x4_epi32(vindex, 1), _mm256_extracti32x4_epi32(a, 1));
+				scatter(array, _mm256_extracti128_si256(vindex, 0), _mm256_extracti128_si256(a, 0));
+				scatter(array, _mm256_extracti128_si256(vindex, 1), _mm256_extracti128_si256(a, 1));
 #endif
 				}
 
@@ -308,8 +309,8 @@ namespace JASS
 				__m256i data_odd = _mm256_mask_blend_epi16(0x5555, was_even, a);
 				_mm256_mask_i32scatter_epi32(array, odd, vindex, data_odd, 2);
 #else
-				scatter(array, _mm256_extracti32x4_epi32(vindex, 0), _mm256_extracti32x4_epi32(a, 0));
-				scatter(array, _mm256_extracti32x4_epi32(vindex, 1), _mm256_extracti32x4_epi32(a, 1));
+				scatter(array, _mm256_extracti128_si256(vindex, 0), _mm256_extracti128_si256(a, 0));
+				scatter(array, _mm256_extracti128_si256(vindex, 1), _mm256_extracti128_si256(a, 1));
 #endif
 				}
 
@@ -328,8 +329,8 @@ namespace JASS
 #if defined(USE_AXV512_WRITES_32) && defined(__AVX512F__)
 			   _mm256_i32scatter_epi32(array, vindex, a, 4);
 #else
-				scatter(array, _mm256_extracti32x4_epi32(vindex, 0), _mm256_extracti32x4_epi32(a, 0));
-				scatter(array, _mm256_extracti32x4_epi32(vindex, 1), _mm256_extracti32x4_epi32(a, 1));
+				scatter(array, _mm256_extracti128_si256(vindex, 0), _mm256_extracti128_si256(a, 0));
+				scatter(array, _mm256_extracti128_si256(vindex, 1), _mm256_extracti128_si256(a, 1));
 #endif
 				}
 
@@ -697,42 +698,52 @@ namespace JASS
 			*/
 			static void unittest(void)
 				{
-				uint32_t source_32[8];
-				uint32_t destination_32[8];
+				uint16_t source_8[8];
 				uint16_t source_16[8];
+				uint32_t source_32[8];
+				uint8_t destination_8[8];
 				uint16_t destination_16[8];
-				uint32_t indexes[8];
+				uint32_t destination_32[8];
+				uint32_t indexes_32[8];
 
 				/*
 					Initialise
 				*/
 				for (uint16_t pos = 0; pos < 8; pos++)
 					{
-					indexes[pos] = pos;
+					source_8[pos] = pos;
 					source_16[pos] = pos;
+					source_32[pos] = pos;
+					indexes_32[pos] = pos;
 					}
 
-				::memset(destination_32, 0, sizeof(destination_32));
+				::memset(destination_8, 0, sizeof(destination_8));
 				::memset(destination_16, 0, sizeof(destination_16));
+				::memset(destination_32, 0, sizeof(destination_32));
 
-				__m256i vindex = _mm256_lddqu_si256((__m256i const *)indexes);
+				__m256i vindex = _mm256_lddqu_si256((__m256i const *)indexes_32);
+
+				/*
+					Check 8-bit scatter/gather
+				*/
+				__m256i got = simd::gather(source_8, vindex);
+				for (size_t pos = 0; pos < 8; pos++)
+					JASS_assert(((uint32_t *)&got)[pos] == pos);
+
+				simd::scatter(destination_8, vindex, got);
+				for (size_t pos = 0; pos < 8; pos++)
+					JASS_assert(destination_8[pos] == pos);
 
 				/*
 					Check 16-bit scatter/gather
 				*/
-				__m256i got = simd::gather(source_16, vindex);
+				got = simd::gather(source_16, vindex);
 				for (size_t pos = 0; pos < 8; pos++)
 					JASS_assert(((uint32_t *)&got)[pos] == pos);
 
 				simd::scatter(destination_16, vindex, got);
 				for (size_t pos = 0; pos < 8; pos++)
 					JASS_assert(destination_16[pos] == pos);
-
-				/*
-					Initialise
-				*/
-				for (uint32_t pos = 0; pos < 8; pos++)
-					source_32[pos] = pos;
 
 				/*
 					Check 32-bit scatter/gather
@@ -745,9 +756,42 @@ namespace JASS
 				for (size_t pos = 0; pos < 8; pos++)
 					JASS_assert(destination_32[pos] == pos);
 
+				cumulative_sum(destination_32, 8);
+				uint32_t sum_answer[8] = {0, 1, 3, 6, 10, 15, 21, 28};
+				::memcmp(destination_32, sum_answer, sizeof(destination_32));
+
+#ifdef __AVX512F__
+				auto set_bits = popcount(vindex);
+				std::cout << set_bits;
+#endif
+
+
 				puts("simd::PASSED");
 				}
 		};
+
+	/*
+		OPERATOR<<()
+		------------
+	*/
+	/*!
+		@brief Dump the contents of an object.
+		@param stream [in] The stream to write to.
+		@param data [in] The data to write.
+		@return The stream once the data has been written.
+	*/
+	inline std::ostream &operator<<(std::ostream &stream, const __m128i &data)
+		{
+		uint32_t got[4];
+		_mm_storeu_si128((__m128i *)got, data);
+
+		stream << "[";
+		for (uint32_t index = 0;  index < 3; index++)
+			stream << got[index] << ", ";
+		stream << got[3] << "]";
+
+		return stream;
+		}
 
 
 	/*
