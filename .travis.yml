@@ -31,7 +31,7 @@ before_install:
       xcodebuild -version;
     fi
   - if [ "$TRAVIS_BRANCH" == "coverity_scan" -a "$TRAVIS_OS_NAME" == osx ]; then 
-      echo -n | openssl s_client -connect https://scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
+      echo -n | openssl s_client -connect https://scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-;
     fi
 
 install: true
