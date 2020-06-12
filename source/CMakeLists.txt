@@ -192,6 +192,7 @@ set(JASSlib_FILES
 	serialise_forward_index.cpp
 	simd.h
 	slice.h
+	sort512_uint64_t.h
 	statistics.h
 	statistics.cpp
 	stem.h
