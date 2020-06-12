@@ -653,11 +653,17 @@ namespace JASS
 				@details
 					Uses the Wilkes-Wheel-Gill algorithm, which appears to be fastest on my PC.
 					see https://github.com/WojciechMula/sse-popcount
-					see W. Muła, N. Kurz, D. Lemire (2018) Faster Population Counts Using AVX2 Instructions, Computer Journal 61(1):111-120
+					see W. Mula, N. Kurz, D. Lemire (2018) Faster Population Counts Using AVX2 Instructions, Computer Journal 61(1):111-120
 				@return 32-bit integers holding the population count.
 			*/
 			forceinline static __m512i popcount(__m512i value)
 				{
+#ifdef NEVER
+				/*
+					This is the Wilkes-Wheel-Gill algorithm from
+					W. Mula, N. Kurz, D. Lemire (2018) Faster Population Counts Using AVX2 Instructions, Computer Journal 61(1):111-120
+					It isn't quite as fast as the algorithm below. See also, https://github.com/WojciechMula/sse-popcount
+				*/
 				const __m512i fives = _mm512_set1_epi8(0x55);
 				const __m512i threes = _mm512_set1_epi8(0x33);
 				const __m512i ohfs = _mm512_set1_epi8(0x0F);
@@ -666,9 +672,14 @@ namespace JASS
 				value = _mm512_sub_epi32(value, (_mm512_and_epi32(_mm512_srli_epi32(value, 1), fives)));
 				value = _mm512_add_epi32(_mm512_and_epi32(value, threes), (_mm512_and_epi32(_mm512_srli_epi32(value, 2), threes)));
 				return  _mm512_srli_epi32(_mm512_mullo_epi32(_mm512_and_epi32(_mm512_add_epi32(value, _mm512_srli_epi32(value, 4)), ohfs), ohones), 24);
-#ifdef NEVER
+#else
 				/*
-					from: https://stackoverflow.com/questions/51104493/is-it-possible-to-popcount-m256i-and-store-result-in-8-32-bit-words-instead-of
+					Mula’s algorithm from
+					Mula, W. SSSE3: fast popcount. http://0x80.pl/articles/sse-popcount.html [last checked June 2020].
+					source is on from: https://stackoverflow.com/questions/51104493/is-it-possible-to-popcount-m256i-and-store-result-in-8-32-bit-words-instead-of
+					see W. Mula, N. Kurz, D. Lemire (2018) Faster Population Counts Using AVX2 Instructions, Computer Journal 61(1):111-120
+
+					It uses a single lookup table of the numner of bits in a nybble, then adds the resul for each nybble to give the result for each word.
 				*/
 
 				const __m512i lookup = _mm512_setr_epi64
@@ -680,8 +691,8 @@ namespace JASS
 					);
 
 				__m512i low_mask = _mm512_set1_epi8(0x0f);
-				__m512i lo = _mm512_and_si512(v, low_mask);
-				__m512i hi = _mm512_and_si512(_mm512_srli_epi16(v, 4), low_mask);
+				__m512i lo = _mm512_and_si512(value, low_mask);
+				__m512i hi = _mm512_and_si512(_mm512_srli_epi16(value, 4), low_mask);
 				__m512i popcnt1 = _mm512_shuffle_epi8(lookup, lo);
 				__m512i popcnt2 = _mm512_shuffle_epi8(lookup, hi);
 				__m512i sum8 = _mm512_add_epi8(popcnt1, popcnt2);

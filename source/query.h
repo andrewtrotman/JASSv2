@@ -1,5 +1,5 @@
-//#define SIMD_JASS_GROUP_ADD_RSV 1
-//#define SIMD_JASS 1
+#define SIMD_JASS_GROUP_ADD_RSV 1
+#define SIMD_JASS 1
 /*
 	QUERY.H
 	-------
