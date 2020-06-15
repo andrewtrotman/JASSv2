@@ -12,9 +12,10 @@
 */
 #pragma once
 
+#include "heap.h"
 #include "query.h"
 #include "accumulator_2d.h"
-#include "heap.h"
+#include "sort512_uint64_t.h"
 
 namespace JASS
 	{
@@ -50,7 +51,7 @@ namespace JASS
 				class docid_rsv_pair
 					{
 					public:
-						size_t document_id;							///< The document identifier
+						DOCID_TYPE document_id;							///< The document identifier
 						const std::string &primary_key;			///< The external identifier of the document (the primary key)
 						ACCUMULATOR_TYPE rsv;						///< The rsv (Retrieval Status Value) relevance score
 
@@ -65,7 +66,7 @@ namespace JASS
 							@param key [in] The external identifier of the document (the primary key).
 							@param rsv [in] The rsv (Retrieval Status Value) relevance score.
 						*/
-						docid_rsv_pair(size_t document_id, const std::string &key, ACCUMULATOR_TYPE rsv) :
+						docid_rsv_pair(DOCID_TYPE document_id, const std::string &key, ACCUMULATOR_TYPE rsv) :
 							document_id(document_id),
 							primary_key(key),
 							rsv(rsv)
@@ -134,24 +135,35 @@ namespace JASS
 					*/
 					docid_rsv_pair operator*()
 						{
+#ifdef ACCUMULATOR_64s
+						DOCID_TYPE id = parent.sorted_accumulators[where] & 0xFFFF'FFFF;
+						ACCUMULATOR_TYPE rsv = parent.largest_used_bucket - (parent.sorted_accumulators[where] >> 32);
+						return docid_rsv_pair(id, (*parent.primary_keys)[id], rsv);
+#else
 						size_t id = parent.accumulator_pointers[where] - parent.shadow_accumulator;
 						return docid_rsv_pair(id, (*parent.primary_keys)[id], parent.shadow_accumulator[id]);
+#endif
 						}
 					};
 
 		private:
+#ifdef ACCUMULATOR_64s
+			uint64_t sorted_accumulators[MAX_TOP_K];		///< high word is the rsv, the low word is the DocID.
+			uint64_t accumulators_used;
+#else
 			ACCUMULATOR_TYPE *accumulator_pointers[MAX_TOP_K];					///< Array of pointers to the top k accumulators
+			ACCUMULATOR_TYPE shadow_accumulator[MAX_DOCUMENTS];				///< Used to deduplicate the top-k
+			size_t accumulator_pointers_used;										///< The number of accumulator_pointers used (can be smaller than top_k)
+#endif
 			accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;	///< The accumulators, one per document in the collection
 			bool sorted;																	///< has heap and accumulator_pointers been sorted (false after rewind() true after sort())
 
 			static constexpr size_t rounded_top_k = ((size_t)1) << maths::ceiling_log2(MAX_TOP_K);
 			static constexpr size_t rounded_top_k_filter = rounded_top_k - 1;
 			static constexpr size_t number_of_buckets = std::numeric_limits<ACCUMULATOR_TYPE>::max();
-			DOCID_TYPE bucket[number_of_buckets][rounded_top_k];	///< The array of buckets to use.
-			ACCUMULATOR_TYPE largest_used_bucket;																///< The largest bucket used (to decrease cost of initialisation and search)
-			uint16_t bucket_depth[number_of_buckets];				///< The number of documents in the given bucket
-			ACCUMULATOR_TYPE shadow_accumulator[MAX_DOCUMENTS];											///< Used to deduplicate the top-k
-			size_t accumulator_pointers_used;																	///< The number of accumulator_pointers used (can be smaller than top_k)
+			DOCID_TYPE bucket[number_of_buckets][rounded_top_k];						///< The array of buckets to use.
+			ACCUMULATOR_TYPE largest_used_bucket;											///< The largest bucket used (to decrease cost of initialisation and search)
+			uint16_t bucket_depth[number_of_buckets];										///< The number of documents in the given bucket
 
 		public:
 			/*
@@ -224,7 +236,11 @@ namespace JASS
 			*/
 			auto end(void)
 				{
+#ifdef ACCUMULATOR_64s
+				return iterator(*this, accumulators_used);
+#else
 				return iterator(*this, accumulator_pointers_used);
+#endif
 				}
 
 			/*
@@ -257,36 +273,96 @@ namespace JASS
 				{
 				if (!sorted)
 					{
+#ifdef ACCUMULATOR_64s
+	#ifdef ACCUMULATOR_FIND_64s
 					/*
 						Copy to the array of pointers for sorting (this will include duplicates)
 					*/
-					accumulator_pointers_used = 0;
+					accumulators_used = 0;
 					for (size_t current_bucket = largest_used_bucket; current_bucket > 0; current_bucket--)
 						{
 						size_t end_looking_at = maths::minimum((size_t)bucket_depth[current_bucket], (size_t)rounded_top_k);
 						for (size_t which = 0; which < end_looking_at; which++)
 							{
-							size_t doc_id = bucket[current_bucket][which];
-							if (accumulators.accumulator[doc_id] != 0)		// only include those not already in the top-k
+							uint64_t doc_id = bucket[current_bucket][which];
+							uint64_t rsv = accumulators.accumulator[doc_id];
+							if (rsv != 0)		// only include those not already in the top-k
 								{
-								shadow_accumulator[doc_id] = accumulators.accumulator[doc_id];
-								accumulator_pointers[accumulator_pointers_used] = &shadow_accumulator[doc_id];
+								sorted_accumulators[accumulators_used] = ((uint64_t)(largest_used_bucket - rsv) << ((uint64_t)32)) | doc_id;
 								accumulators.accumulator[doc_id] = 0;		// mark it as already in the top-k
 
-								accumulator_pointers_used++;
+								accumulators_used++;
 
-								if (accumulator_pointers_used >= this->top_k)
+								if (accumulators_used >= this->top_k)
 									goto got_them_all;
 								}
 							}
 						}
+	#else
+					/*
+						Copy to the array of pointers for sorting (this will include duplicates)
+					*/
+					accumulators_used = 0;
+					for (size_t current_bucket = largest_used_bucket; current_bucket > 0; current_bucket--)
+						{
+						size_t end_looking_at = maths::minimum((size_t)bucket_depth[current_bucket], (size_t)rounded_top_k);
+						for (size_t which = 0; which < end_looking_at; which++)
+							{
+							uint64_t doc_id = bucket[current_bucket][which];
+							uint64_t rsv = accumulators.accumulator[doc_id];
+							if (rsv != 0)		// only include those not already in the top-k
+								{
+								sorted_accumulators[accumulators_used] = ((uint64_t)(largest_used_bucket - rsv) << ((uint64_t)32)) | doc_id;
+								accumulators.accumulator[doc_id] = 0;		// mark it as already in the top-k
+
+								accumulators_used++;
+
+								if (accumulators_used >= this->top_k)
+									goto got_them_all;
+								}
+							}
+						}
+	#endif
 							
+				got_them_all:
+					/*
+						Sort on the top-k
+					*/
+					Sort512_uint64_t::Sort(sorted_accumulators, accumulators_used);
+					sorted = true;
+#else
+				/*
+					Copy to the array of pointers for sorting (this will include duplicates)
+				*/
+				accumulators_used = 0;
+				for (size_t current_bucket = largest_used_bucket; current_bucket > 0; current_bucket--)
+					{
+					size_t end_looking_at = maths::minimum((size_t)bucket_depth[current_bucket], (size_t)rounded_top_k);
+					for (size_t which = 0; which < end_looking_at; which++)
+						{
+						uint64_t doc_id = bucket[current_bucket][which];
+						uint64_t rsv = accumulators.accumulator[doc_id];
+						if (rsv != 0)		// only include those not already in the top-k
+							{
+							sorted_accumulators[accumulators_used] = ((uint64_t)(largest_used_bucket - rsv) << ((uint64_t)32)) | doc_id;
+							accumulators.accumulator[doc_id] = 0;		// mark it as already in the top-k
+
+							accumulators_used++;
+
+							if (accumulators_used >= this->top_k)
+								goto got_them_all;
+							}
+						}
+					}
+
 				got_them_all:
 					/*
 						Sort on the top-k
 					*/
 					top_k_qsort::sort(accumulator_pointers, accumulator_pointers_used, top_k, query::final_sort_cmp);
 					sorted = true;
+
+#endif
 					}
 				}
 
@@ -366,7 +442,7 @@ namespace JASS
 				values = _mm512_add_epi32(values, impacts);										// add the impact scores
 				simd::scatter(&accumulators.accumulator[0], document_ids, values);		// write back the accumulators
 
-#ifndef NEVER
+#ifdef SIMD_JASS_GROUP_ADD_RSV
 				/*
 					Retrieve the current bottom of bucket indexes
 				*/

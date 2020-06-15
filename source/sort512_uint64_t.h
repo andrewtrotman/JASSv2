@@ -1,7 +1,7 @@
 /*
 	SORT512_UINT64_T.H
 	------------------
-	This code sorts an array of 64-bit integers into descending order (from highest to lowest).  It is a conversion
+	This code sorts an array of 64-bit integers into ascending order (from lowest to largest).  It is a conversion
 	of the avx-512-sort code (by Berenger Bramas) from double-precison floating point numbers to 64-bit integers. The
 	conversion was done with global substitution of the _pd to _epi64 throughoug the source file.
 	The original code is from: https://gitlab.mpcdf.mpg.de/bbramas/avx-512-sort/blob/master/sort512test.cpp
