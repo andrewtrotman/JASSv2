@@ -45,7 +45,9 @@
 #include <cfloat>
 #include <algorithm>
 
-
+#ifdef _MSC_VER
+	#define __restrict__ restrict
+#endif
 
 namespace Sort512_uint64_t {
 
