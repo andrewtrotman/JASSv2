@@ -135,7 +135,7 @@ namespace JASS
 					*/
 					docid_rsv_pair operator*()
 						{
-#ifdef ACCUMULATOR_64s
+#if defined(ACCUMULATOR_64s) &&  defined(__AVX512__)
 						DOCID_TYPE id = parent.sorted_accumulators[where] & 0xFFFF'FFFF;
 						ACCUMULATOR_TYPE rsv = parent.largest_used_bucket - (parent.sorted_accumulators[where] >> 32);
 						return docid_rsv_pair(id, (*parent.primary_keys)[id], rsv);
@@ -147,7 +147,7 @@ namespace JASS
 					};
 
 		private:
-#ifdef ACCUMULATOR_64s
+#if defined(ACCUMULATOR_64s) &&  defined(__AVX512__)
 			uint64_t sorted_accumulators[MAX_TOP_K];		///< high word is the rsv, the low word is the DocID.
 #else
 			ACCUMULATOR_TYPE *accumulator_pointers[MAX_TOP_K];					///< Array of pointers to the top k accumulators
@@ -268,7 +268,7 @@ namespace JASS
 				{
 				if (!sorted)
 					{
-#ifdef ACCUMULATOR_64s
+#if defined(ACCUMULATOR_64s) &&  defined(__AVX512__)
 					/*
 						Copy to the array of pointers for sorting (this will include duplicates)
 					*/
