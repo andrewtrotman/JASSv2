@@ -1,7 +1,30 @@
-#define SIMD_JASS_GROUP_ADD_RSV 1
-#define SIMD_JASS 1
+/*
+	QUERY_BUCKETS uses the bucket apprach to th top-k the alternative is the query_heap
+*/
+#define QUERY_BUCKETS
+
+/*
+	SIMD_ADD_RSV_AFTER_CUMSUM uses AVX instructions to process the postings in set_rsv() after the d1 decoding has already been done
+	the alternativce is to process each posting one at a time.
+*/
+//#define SIMD_ADD_RSV_AFTER_CUMSUM 1
+
+/*
+	SIMD_JASS uses the decompressor that calls add_rsv() directly (single pass) rather than decompressng then processing (in 2 passes)
+*/
+//#define SIMD_JASS 1
+
+/*
+	SIMD_JASS_GROUP_ADD_RSV uses the AVX512 version of the processing of the postings list in add_rsv(), the alternative
+	is to extract each doc id and process them one at a time
+*/
+//#define SIMD_JASS_GROUP_ADD_RSV 1
+
+/*
+	ACCUMULATOR_64s uses AVX512 verison of quick sort to do the final sort of the results list.  The alternative is the
+	top-k qsort from ATIRE.
+*/
 #define ACCUMULATOR_64s 1
-#define ACCUMULATOR_FIND_64s 1
 
 /*
 	QUERY.H
@@ -100,11 +123,8 @@ namespace JASS
 				};
 
 		protected:
-#ifdef __AVX512F__
-			__m512i impacts;																///< The impact score to be added on a call to add_rsv()
-#else
-			__m256i impacts;																///< The impact score to be added on a call to add_rsv()
-#endif
+			__m512i impacts512;																///< The impact score to be added on a call to add_rsv()
+			__m256i impacts256;																///< The impact score to be added on a call to add_rsv()
 			ACCUMULATOR_TYPE impact;													///< The impact score to be added on a call to add_rsv()
 			DOCID_TYPE d1_cumulative_sum;												///<< The current cumulative sum from d1 decoding
 
@@ -222,11 +242,11 @@ namespace JASS
 			forceinline void set_impact(ACCUMULATOR_TYPE score)
 				{
 				impact = score;
-#ifdef SIMD_JASS_GROUP_ADD_RSV
+#ifdef SIMD_JASS
 	#ifdef __AVX512F__
-				impacts = _mm512_set1_epi32(score);
+				impacts512 = _mm512_set1_epi32(impact);
 	#else
-				impacts = _mm256_set1_epi32(score);
+				impacts256 = _mm256_set1_epi32(impact);
 	#endif
 #endif
 				}

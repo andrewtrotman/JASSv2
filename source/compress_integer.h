@@ -33,8 +33,11 @@ namespace JASS
 		methods, encode() and decode().  As those methods are virtual, an object of the given subclass
 		is needed in order to encode or decode integer sequences.
 	*/
+#ifdef QUERY_BUCKETS
 	class compress_integer : public query_bucket
-//	class compress_integer : public query_heap
+#else
+	class compress_integer : public query_heap
+#endif
 		{
 		private:
 			static constexpr int MAX_D_GAP = 64;				///< this is the maximum D-ness that this code supports, it can be changes to anything that won't reuslt in stack overflow.  It is unlikely to exceed 16 for years (from 2019).
@@ -52,8 +55,11 @@ namespace JASS
 				@brief Constructor.
 			*/
 			compress_integer() :
+#ifdef QUERY_BUCKETS
 				query_bucket()
-//				query_heap()
+#else
+				query_heap()
+#endif
 				{
 				/* Nothing */
 				}

@@ -364,7 +364,7 @@ namespace JASS
 					Add to the accumulators
 				*/
 				__m512i values = accumulators[document_ids];			// set the dirty flags and gather() the rsv values
-				values = _mm512_add_epi32(values, impacts);			// add the impact scores
+				values = _mm512_add_epi32(values, impacts512);			// add the impact scores
 
 				/*
 					Compare and turn that into a bit patern.. If a >= b then 0xFFFF else 0x0000
@@ -557,10 +557,22 @@ namespace JASS
 				/*
 					D1-decode inplace with SIMD instructions then process one at a time
 				*/
+
+#define PRE_SIMD
+#ifdef PRE_SIMD
+				DOCID_TYPE id = 0;
+				DOCID_TYPE *end = buffer + integers;
+				for (auto *current = buffer; current < end; current++)
+					{
+					id += *current;
+					add_rsv(id, impact);
+					}
+#else
 				simd::cumulative_sum(buffer, integers);
 				DOCID_TYPE *end = buffer + integers;
 				for (auto *current = buffer; current < end; current++)
 					add_rsv(*current, impact);
+#endif
 				}
 
 			/*
