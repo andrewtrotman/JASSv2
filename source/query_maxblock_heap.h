@@ -230,7 +230,7 @@ namespace JASS
 			/*!
 				@brief Clear this object after use and ready for re-use
 			*/
-			virtual void rewind(ACCUMULATOR_TYPE largest_possible_rsv = 0)
+			virtual void rewind(ACCUMULATOR_TYPE smallest_possible_rsv = 0, ACCUMULATOR_TYPE largest_possible_rsv = 0)
 				{
 				sorted = false;
 				accumulator_pointers[0] = &zero;

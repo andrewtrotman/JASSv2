@@ -162,6 +162,7 @@ namespace JASS
 			static constexpr size_t number_of_buckets = std::numeric_limits<ACCUMULATOR_TYPE>::max();
 			DOCID_TYPE bucket[number_of_buckets][rounded_top_k];						///< The array of buckets to use.
 			ACCUMULATOR_TYPE largest_used_bucket;											///< The largest bucket used (to decrease cost of initialisation and search)
+			ACCUMULATOR_TYPE smallest_used_bucket;											///< The smallest bucket used (to decrease cost of initialisation and search)
 			uint16_t bucket_depth[number_of_buckets];										///< The number of documents in the given bucket
 
 		public:
@@ -208,7 +209,7 @@ namespace JASS
 				{
 				query::init(primary_keys, documents, top_k);
 				accumulators.init(documents);
-				rewind(number_of_buckets);
+				rewind(0, number_of_buckets);
 				}
 
 			/*
@@ -246,13 +247,14 @@ namespace JASS
 				@brief Clear this object after use and ready for re-use
 				@param largest_possible_rsv [in] the largest possible rsv value (or larger that that)
 			*/
-			virtual void rewind(ACCUMULATOR_TYPE largest_possible_rsv = 0)
+			virtual void rewind(ACCUMULATOR_TYPE smallest_possible_rsv = 0, ACCUMULATOR_TYPE largest_possible_rsv = 0)
 				{
+				smallest_used_bucket = smallest_possible_rsv;
 				largest_used_bucket = largest_possible_rsv;
 				sorted = false;
 				accumulators.rewind();
 
-				std::fill(bucket_depth, bucket_depth + largest_used_bucket, 0);
+				std::fill(bucket_depth + smallest_possible_rsv, bucket_depth + largest_used_bucket, 0);
 
 				query::rewind();
 				}
@@ -273,7 +275,7 @@ namespace JASS
 						Copy to the array of pointers for sorting (this will include duplicates)
 					*/
 					accumulators_used = 0;
-					for (size_t current_bucket = largest_used_bucket; current_bucket > 0; current_bucket--)
+					for (size_t current_bucket = largest_used_bucket; current_bucket >= smallest_used_bucket; current_bucket--)
 						{
 						size_t end_looking_at = maths::minimum((size_t)bucket_depth[current_bucket], (size_t)rounded_top_k);
 						for (size_t which = 0; which < end_looking_at; which++)
@@ -304,7 +306,7 @@ namespace JASS
 						Copy to the array of pointers for sorting (this will include duplicates)
 					*/
 					accumulators_used = 0;
-					for (size_t current_bucket = largest_used_bucket; current_bucket > 0; current_bucket--)
+					for (size_t current_bucket = largest_used_bucket; current_bucket > smallest_used_bucket; current_bucket--)
 						{
 						size_t end_looking_at = maths::minimum((size_t)bucket_depth[current_bucket], (size_t)rounded_top_k);
 						for (size_t which = 0; which < end_looking_at; which++)
@@ -595,6 +597,7 @@ namespace JASS
 				DOCID_TYPE *chunk = buffer;
 #endif
 
+//std::cout << "I:" << impact << " / "  << largest_used_bucket << "\n";
 				end = buffer + integers;
 				for (DOCID_TYPE *current = (DOCID_TYPE *)chunk; current < end; current++)
 					add_rsv(*current, impact);

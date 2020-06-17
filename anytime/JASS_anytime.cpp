@@ -136,7 +136,8 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 			Parse the query and extract the list of impact segments
 		*/
 		uint64_t *current_segment = segment_order;
-		size_t largest_possible_rsv = 0;
+		uint16_t largest_possible_rsv = std::numeric_limits<decltype(largest_possible_rsv)>::min();
+		uint16_t smallest_possible_rsv = std::numeric_limits<decltype(smallest_possible_rsv)>::max();
 		for (const auto &term : terms)
 			{
 //std::cout << "TERM:" << term << "\n";
@@ -152,8 +153,14 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 				Add to the list of impact segments that need to be processed
 			*/
 			std::copy((uint64_t *)(metadata.offset), (uint64_t *)(metadata.offset) + metadata.impacts, current_segment);
-			size_t highest_term_impact = ((JASS::deserialised_jass_v1::segment_header *)(index.postings() + *current_segment))->impact;
+
+			/*
+				Normally the highest impact is the first impact, but binary_to_JASS gets it wrong and puts the highest impact last!
+			*/
+			size_t highest_term_impact = JASS::maths::maximum(((JASS::deserialised_jass_v1::segment_header *)(index.postings() + current_segment[0]))->impact, ((JASS::deserialised_jass_v1::segment_header *)(index.postings() + current_segment[metadata.impacts - 1]))->impact);
 			largest_possible_rsv += highest_term_impact;
+			smallest_possible_rsv = JASS::maths::minimum(smallest_possible_rsv, ((JASS::deserialised_jass_v1::segment_header *)(index.postings() + current_segment[0]))->impact, ((JASS::deserialised_jass_v1::segment_header *)(index.postings() + current_segment[metadata.impacts - 1]))->impact);
+
 			current_segment += metadata.impacts;
 			}
 
@@ -189,7 +196,7 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 		/*
 			Process the segments
 		*/
-		jass_query->rewind(largest_possible_rsv);
+		jass_query->rewind(smallest_possible_rsv, largest_possible_rsv);
 //std::cout << "MAXRSV:" << largest_possible_rsv << "\n";
 
 		size_t postings_processed = 0;
