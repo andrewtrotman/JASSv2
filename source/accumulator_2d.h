@@ -491,7 +491,7 @@ namespace JASS
 					}
 				query_id++;
 #else
-//				std::fill(dirty_flag, dirty_flag + number_of_dirty_flags, false);
+//				std::fill(dirty_flag, dirty_flag + number_of_dirty_flags, 0xFF);
 				::memset(&dirty_flag[0], 0xFF, number_of_dirty_flags * sizeof(dirty_flag[0]));
 #endif
 				}
