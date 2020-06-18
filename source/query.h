@@ -172,7 +172,7 @@ namespace JASS
 				this->primary_keys = &primary_keys;
 				this->top_k = top_k;
 				this->documents = documents;
-				decompress_buffer.resize(64 + (documents * sizeof(DOCID_TYPE) + sizeof(decompress_buffer[0] - 1)) / sizeof(decompress_buffer[0]));			// we add 64 so that decompressors can overflow
+				decompress_buffer.resize(64 + (documents * sizeof(DOCID_TYPE) + sizeof(decompress_buffer[0]) - 1) / sizeof(decompress_buffer[0]));			// we add 64 so that decompressors can overflow
 				rewind();
 				}
 
