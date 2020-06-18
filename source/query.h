@@ -129,7 +129,7 @@ namespace JASS
 			DOCID_TYPE d1_cumulative_sum;												///<< The current cumulative sum from d1 decoding
 
 			allocator_pool memory;														///< All memory allocation happens in this "arena"
-			std::vector<uint32_t> decompress_buffer;								///< The delta-encoded decopressed integer sequence.
+			std::vector<__m512i> decompress_buffer;								///< The delta-encoded decopressed integer sequence.
 			DOCID_TYPE documents;														///< The numnber of documents this index contains
 
 			parser_query parser;															///< Parser responsible for converting text into a parsed query
@@ -172,7 +172,7 @@ namespace JASS
 				this->primary_keys = &primary_keys;
 				this->top_k = top_k;
 				this->documents = documents;
-				decompress_buffer.resize(documents + 1024);			// we add 1024 so that decompressors can overflow
+				decompress_buffer.resize(64 + (documents * sizeof(DOCID_TYPE) + sizeof(decompress_buffer[0] - 1)) / sizeof(decompress_buffer[0]));			// we add 64 so that decompressors can overflow
 				rewind();
 				}
 

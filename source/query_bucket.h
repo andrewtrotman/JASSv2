@@ -559,7 +559,7 @@ namespace JASS
 			*/
 			virtual void decode_with_writer(size_t integers, const void *compressed, size_t compressed_size)
 				{
-				DOCID_TYPE *buffer = decompress_buffer.data();
+				DOCID_TYPE *buffer = reinterpret_cast<DOCID_TYPE *>(decompress_buffer.data());
 				decode(buffer, integers, compressed, compressed_size);
 
 				/*
@@ -597,7 +597,6 @@ namespace JASS
 				DOCID_TYPE *chunk = buffer;
 #endif
 
-//std::cout << "I:" << impact << " / "  << largest_used_bucket << "\n";
 				end = buffer + integers;
 				for (DOCID_TYPE *current = (DOCID_TYPE *)chunk; current < end; current++)
 					add_rsv(*current, impact);
@@ -617,7 +616,7 @@ namespace JASS
 			template <typename WRITER>
 			void decode_with_writer(WRITER &writer, size_t integers, const void *compressed, size_t compressed_size)
 				{
-				auto buffer = decompress_buffer.data();
+				DOCID_TYPE *buffer = reinterpret_cast<DOCID_TYPE *>(decompress_buffer.data());
 				decode(buffer, integers, compressed, compressed_size);
 
 				DOCID_TYPE id = 0;
