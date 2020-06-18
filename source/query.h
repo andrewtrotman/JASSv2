@@ -12,7 +12,7 @@
 /*
 	SIMD_JASS uses the decompressor that calls add_rsv() directly (single pass) rather than decompressng then processing (in 2 passes)
 */
-//#define SIMD_JASS 1
+#define SIMD_JASS 1
 
 /*
 	SIMD_JASS_GROUP_ADD_RSV uses the AVX512 version of the processing of the postings list in add_rsv(), the alternative

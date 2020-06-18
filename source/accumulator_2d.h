@@ -12,6 +12,7 @@
 #include <immintrin.h>
 
 #include <new>
+#include <bitset>
 #include <vector>
 #include <random>
 #include <numeric>
@@ -186,8 +187,6 @@ namespace JASS
 				{
 				size_t flag = which_dirty_flag(which);
 
-//std::cout << "FLAG:" << flag << "\n";
-
 #ifdef USE_QUERY_IDS
 				if (dirty_flag[flag] != query_id)
 					{
@@ -235,11 +234,6 @@ namespace JASS
 				{
 				__m256i indexes = which_dirty_flag(which);
 				__m256i flags = simd::gather(&dirty_flag[0], indexes);
-
-
-//std::cout << "INDX:" << indexes << "\n";
-//std::cout << "FLAG:" << flags << "\n";
-
 
 				uint32_t got = _mm256_movemask_epi8(flags);
 				if (got == 0)
@@ -379,7 +373,7 @@ namespace JASS
 							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
 							dirty_flag[single_flag] = 0x00;
 							}
-					if (got & 0x0000'0000'0F0'0000)
+					if (got & 0x0000'0000'0F00'0000)
 						if (dirty_flag[single_flag = _mm_extract_epi32(quad_flags, 2)])
 							{
 							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
@@ -407,7 +401,7 @@ namespace JASS
 							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
 							dirty_flag[single_flag] = 0x00;
 							}
-					if (got & 0x0000'0F00'000'0000)
+					if (got & 0x0000'0F00'0000'0000)
 						if (dirty_flag[single_flag = _mm_extract_epi32(quad_flags, 2)])
 							{
 							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
@@ -435,7 +429,7 @@ namespace JASS
 							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
 							dirty_flag[single_flag] = 0x00;
 							}
-					if (got & 0x0F00'0000'000'0000)
+					if (got & 0x0F00'0000'0000'0000)
 						if (dirty_flag[single_flag = _mm_extract_epi32(quad_flags, 2)])
 							{
 							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
@@ -448,7 +442,6 @@ namespace JASS
 							dirty_flag[single_flag] = 0x00;
 							}
 					}
-
 				return simd::gather(&accumulator[0], which);
 				}
 
