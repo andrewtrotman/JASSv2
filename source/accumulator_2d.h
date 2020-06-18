@@ -334,113 +334,113 @@ namespace JASS
 					{
 					__m128i quad_flags = _mm512_extracti32x4_epi32(indexes, 0);
 					if (got & 0x0000'0000'0000'000F)
-						if (dirty_flag[single_flag = _mm_extract_epi32(quad_flags, 0)])
-							{
-							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-							dirty_flag[single_flag] = 0x00;
-							}
+						{
+						single_flag = _mm_extract_epi32(quad_flags, 0);
+						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
+						dirty_flag[single_flag] = 0x00;
+						}
 					if (got & 0x0000'0000'0000'00F0)
-						if (dirty_flag[single_flag = _mm_extract_epi32(quad_flags, 1)])
-							{
-							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-							dirty_flag[single_flag] = 0x00;
-							}
+						{
+						single_flag = _mm_extract_epi32(quad_flags, 1);
+						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
+						dirty_flag[single_flag] = 0x00;
+						}
 					if (got & 0x0000'0000'0000'0F00)
-						if (dirty_flag[single_flag = _mm_extract_epi32(quad_flags, 2)])
-							{
-							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-							dirty_flag[single_flag] = 0x00;
-							}
+						{
+						single_flag = _mm_extract_epi32(quad_flags, 2);
+						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
+						dirty_flag[single_flag] = 0x00;
+						}
 					if (got & 0x0000'0000'0000'F000)
-						if (dirty_flag[single_flag = _mm_extract_epi32(quad_flags, 3)])
-							{
-							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-							dirty_flag[single_flag] = 0x00;
-							}
+						{
+						single_flag = _mm_extract_epi32(quad_flags, 3);
+						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
+						dirty_flag[single_flag] = 0x00;
+						}
 					}
 				if (got & 0x0000'0000'FFFF'0000)
 					{
 					__m128i quad_flags = _mm512_extracti32x4_epi32(indexes, 1);
 					if (got & 0x0000'0000'000F'0000)
-						if (dirty_flag[single_flag = _mm_extract_epi32(quad_flags, 0)])
-							{
-							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-							dirty_flag[single_flag] = 0x00;
-							}
+						{
+						single_flag = _mm_extract_epi32(quad_flags, 0);
+						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
+						dirty_flag[single_flag] = 0x00;
+						}
 					if (got & 0x0000'0000'00F0'0000)
-						if (dirty_flag[single_flag = _mm_extract_epi32(quad_flags, 1)])
-							{
-							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-							dirty_flag[single_flag] = 0x00;
-							}
+						{
+						single_flag = _mm_extract_epi32(quad_flags, 1);
+						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
+						dirty_flag[single_flag] = 0x00;
+						}
 					if (got & 0x0000'0000'0F00'0000)
-						if (dirty_flag[single_flag = _mm_extract_epi32(quad_flags, 2)])
-							{
-							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-							dirty_flag[single_flag] = 0x00;
-							}
+						{
+						single_flag = _mm_extract_epi32(quad_flags, 2);
+						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
+						dirty_flag[single_flag] = 0x00;
+						}
 					if (got & 0x0000'0000'F000'0000)
-						if (dirty_flag[single_flag = _mm_extract_epi32(quad_flags, 3)])
-							{
-							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-							dirty_flag[single_flag] = 0x00;
-							}
+						{
+						single_flag = _mm_extract_epi32(quad_flags, 3);
+						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
+						dirty_flag[single_flag] = 0x00;
+						}
 					}
 				if (got & 0x0000'FFFF'0000'0000)
 					{
 					__m128i quad_flags = _mm512_extracti32x4_epi32(indexes, 2);
 					if (got & 0x0000'000F'0000'0000)
-						if (dirty_flag[single_flag = _mm_extract_epi32(quad_flags, 0)])
-							{
-							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-							dirty_flag[single_flag] = 0x00;
-							}
+						{
+						single_flag = _mm_extract_epi32(quad_flags, 0);
+						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
+						dirty_flag[single_flag] = 0x00;
+						}
 					if (got & 0x0000'00F0'0000'0000)
-						if (dirty_flag[single_flag = _mm_extract_epi32(quad_flags, 1)])
-							{
-							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-							dirty_flag[single_flag] = 0x00;
-							}
+						{
+						single_flag = _mm_extract_epi32(quad_flags, 1);
+						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
+						dirty_flag[single_flag] = 0x00;
+						}
 					if (got & 0x0000'0F00'0000'0000)
-						if (dirty_flag[single_flag = _mm_extract_epi32(quad_flags, 2)])
-							{
-							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-							dirty_flag[single_flag] = 0x00;
-							}
+						{
+						single_flag = _mm_extract_epi32(quad_flags, 2);
+						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
+						dirty_flag[single_flag] = 0x00;
+						}
 					if (got & 0x0000'F000'0000'0000)
-						if (dirty_flag[single_flag = _mm_extract_epi32(quad_flags, 3)])
-							{
-							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-							dirty_flag[single_flag] = 0x00;
-							}
+						{
+						single_flag = _mm_extract_epi32(quad_flags, 3);
+						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
+						dirty_flag[single_flag] = 0x00;
+						}
 					}
 				if (got & 0xFFFF'0000'0000'0000)
 					{
 					__m128i quad_flags = _mm512_extracti32x4_epi32(indexes, 3);
 					if (got & 0x000F'0000'0000'0000)
-						if (dirty_flag[single_flag = _mm_extract_epi32(quad_flags, 0)])
-							{
-							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-							dirty_flag[single_flag] = 0x00;
-							}
+						{
+						single_flag = _mm_extract_epi32(quad_flags, 0);
+						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
+						dirty_flag[single_flag] = 0x00;
+						}
 					if (got & 0x00F0'0000'0000'0000)
-						if (dirty_flag[single_flag = _mm_extract_epi32(quad_flags, 1)])
-							{
-							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-							dirty_flag[single_flag] = 0x00;
-							}
+						{
+						single_flag = _mm_extract_epi32(quad_flags, 1);
+						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
+						dirty_flag[single_flag] = 0x00;
+						}
 					if (got & 0x0F00'0000'0000'0000)
-						if (dirty_flag[single_flag = _mm_extract_epi32(quad_flags, 2)])
-							{
-							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-							dirty_flag[single_flag] = 0x00;
-							}
+						{
+						single_flag = _mm_extract_epi32(quad_flags, 2);
+						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
+						dirty_flag[single_flag] = 0x00;
+						}
 					if (got & 0xF000'0000'0000'0000)
-						if (dirty_flag[single_flag = _mm_extract_epi32(quad_flags, 3)])
-							{
-							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-							dirty_flag[single_flag] = 0x00;
-							}
+						{
+						single_flag = _mm_extract_epi32(quad_flags, 3);
+						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
+						dirty_flag[single_flag] = 0x00;
+						}
 					}
 				return simd::gather(&accumulator[0], which);
 				}
