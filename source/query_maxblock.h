@@ -247,7 +247,7 @@ namespace JASS
 					*/
 					non_zero_accumulators = 0;
 					for (size_t page = 0; page < accumulators.number_of_dirty_flags; page++)
-						if (accumulators.dirty_flag[page] != 0)
+						if (accumulators.dirty_flag[page] != 0xFF)
 							{
 							ACCUMULATOR_TYPE *start = &accumulators.accumulator[page * accumulators.width];
 							for (ACCUMULATOR_TYPE *which = start; which < start + accumulators.width; which++)
@@ -298,6 +298,7 @@ namespace JASS
 				std::vector<std::string> keys = {"one", "two", "three", "four"};
 				query_maxblock *query_object = new query_maxblock;
 				query_object->init(keys, 1024, 2);
+				query_object->rewind();
 				std::ostringstream string;
 
 				/*
