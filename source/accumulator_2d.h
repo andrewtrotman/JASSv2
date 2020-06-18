@@ -186,6 +186,8 @@ namespace JASS
 				{
 				size_t flag = which_dirty_flag(which);
 
+//std::cout << "FLAG:" << flag << "\n";
+
 #ifdef USE_QUERY_IDS
 				if (dirty_flag[flag] != query_id)
 					{
@@ -233,6 +235,11 @@ namespace JASS
 				{
 				__m256i indexes = which_dirty_flag(which);
 				__m256i flags = simd::gather(&dirty_flag[0], indexes);
+
+
+//std::cout << "INDX:" << indexes << "\n";
+//std::cout << "FLAG:" << flags << "\n";
+
 
 				uint32_t got = _mm256_movemask_epi8(flags);
 				if (got == 0)
