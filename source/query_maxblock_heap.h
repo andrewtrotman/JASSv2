@@ -144,8 +144,8 @@ namespace JASS
 			accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;	///< The accumulators, one per document in the collection
 			size_t needed_for_top_k;													///< The number of results we still need in order to fill the top-k
 			heap<ACCUMULATOR_TYPE *, typename query::add_rsv_compare> top_results;			///< Heap containing the top-k results
-			ACCUMULATOR_TYPE page_maximum[accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS>::maximum_number_of_clean_flags];		///< The current maximum value of the accumulator block
-			ACCUMULATOR_TYPE *page_maximum_pointers[accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS>::maximum_number_of_clean_flags];		///< Poointers to the current maximum value of the accumulator block
+			ACCUMULATOR_TYPE page_maximum[accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS>::maximum_number_of_dirty_flags];		///< The current maximum value of the accumulator block
+			ACCUMULATOR_TYPE *page_maximum_pointers[accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS>::maximum_number_of_dirty_flags];		///< Poointers to the current maximum value of the accumulator block
 			bool sorted;																	///< has heap and accumulator_pointers been sorted (false after rewind() true after sort())
 
 		public:
@@ -192,7 +192,7 @@ namespace JASS
 				query::init(primary_keys, documents, top_k);
 				accumulators.init(documents);
 				top_results.set_top_k(top_k);
-				for (size_t which = 0; which < accumulators.number_of_clean_flags; which++)
+				for (size_t which = 0; which < accumulators.number_of_dirty_flags; which++)
 					page_maximum_pointers[which] = &page_maximum[which];
 				}
 
@@ -236,7 +236,7 @@ namespace JASS
 				accumulator_pointers[0] = &zero;
 				accumulators.rewind();
 				needed_for_top_k = this->top_k;
-				std::fill(page_maximum, page_maximum + accumulators.number_of_clean_flags, 0);
+				std::fill(page_maximum, page_maximum + accumulators.number_of_dirty_flags, 0);
 				query::rewind();
 				}
 
@@ -254,21 +254,21 @@ namespace JASS
 					/*
 						Sort the page maximum values from highest to lowest.
 					*/
-					std::sort(page_maximum_pointers, page_maximum_pointers + accumulators.number_of_clean_flags,
+					std::sort(page_maximum_pointers, page_maximum_pointers + accumulators.number_of_dirty_flags,
 						[](const ACCUMULATOR_TYPE *a, const ACCUMULATOR_TYPE *b) -> bool
 						{
 						return *a > *b ? true : *a < *b ? false : a < b;
 						});
 
-//for (size_t page = 0; page < accumulators.number_of_clean_flags; page++)
+//for (size_t page = 0; page < accumulators.number_of_dirty_flags; page++)
 //	std::cout << "ID:" << page_maximum_pointers[page] - page_maximum << " Value:" << *(page_maximum_pointers[page]) << " P \n";
-//for (size_t page = 0; page < accumulators.number_of_clean_flags; page++)
+//for (size_t page = 0; page < accumulators.number_of_dirty_flags; page++)
 //	std::cout << "ID:" << page << " Value:" << page_maximum[page] << " V \n";
 
 					/*
 						Walk through the pages looking for the case where an accumulator in the page should appear in the heap
 					*/
-					for (size_t page = 0; page < accumulators.number_of_clean_flags; page++)
+					for (size_t page = 0; page < accumulators.number_of_dirty_flags; page++)
 						{
 						if (*page_maximum_pointers[page] != 0 && *page_maximum_pointers[page] >= *accumulator_pointers[0])
 							{
@@ -310,7 +310,7 @@ namespace JASS
 			*/
 			forceinline void add_rsv(size_t document_id, ACCUMULATOR_TYPE score)
 				{
-				size_t page = accumulators.which_clean_flag(document_id);		// get the page number
+				size_t page = accumulators.which_dirty_flag(document_id);		// get the page number
 				ACCUMULATOR_TYPE *which = &accumulators[document_id];				// This will create the accumulator if it doesn't already exist.
 
 				*which += score;

@@ -141,7 +141,7 @@ namespace JASS
 		private:
 			ACCUMULATOR_TYPE *accumulator_pointers[MAX_DOCUMENTS];					///< Array of pointers to the top k accumulators
 			accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;	///< The accumulators, one per document in the collection
-			ACCUMULATOR_TYPE page_maximum[accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS>::maximum_number_of_clean_flags];		///< The current maximum value of the accumulator block
+			ACCUMULATOR_TYPE page_maximum[accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS>::maximum_number_of_dirty_flags];		///< The current maximum value of the accumulator block
 			bool sorted;																	///< has heap and accumulator_pointers been sorted (false after rewind() true after sort())
 			size_t non_zero_accumulators;												///< The number of non-zero accumulators (should be top-k or less)
 
@@ -227,7 +227,7 @@ namespace JASS
 				sorted = false;
 				accumulators.rewind();
 				non_zero_accumulators = 0;
-//				std::fill(page_maximum, page_maximum + accumulators.number_of_clean_flags, 0);
+//				std::fill(page_maximum, page_maximum + accumulators.number_of_dirty_flags, 0);
 				query::rewind();
 				}
 
@@ -246,8 +246,8 @@ namespace JASS
 						Walk through the pages looking for the case where an accumulator in the page might appear in the results list
 					*/
 					non_zero_accumulators = 0;
-					for (size_t page = 0; page < accumulators.number_of_clean_flags; page++)
-						if (accumulators.clean_flag[page] != 0)
+					for (size_t page = 0; page < accumulators.number_of_dirty_flags; page++)
+						if (accumulators.dirty_flag[page] != 0)
 							{
 							ACCUMULATOR_TYPE *start = &accumulators.accumulator[page * accumulators.width];
 							for (ACCUMULATOR_TYPE *which = start; which < start + accumulators.width; which++)
@@ -276,8 +276,8 @@ namespace JASS
 			*/
 			forceinline void add_rsv(size_t document_id, ACCUMULATOR_TYPE score)
 				{
-				size_t page = accumulators.which_clean_flag(document_id);		// get the page number
-				if (accumulators.clean_flag[page])
+				size_t page = accumulators.which_dirty_flag(document_id);		// get the page number
+				if (accumulators.dirty_flag[page])
 					page_maximum[page] = 0;
 				ACCUMULATOR_TYPE *which = &accumulators[document_id];				// This will create the accumulator if it doesn't already exist.
 

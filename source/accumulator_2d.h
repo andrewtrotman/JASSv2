@@ -33,10 +33,10 @@ namespace JASS
 		@brief Store the accumulators in a 2D array as originally used in ATIRE.
 		@details Manage the accumulagtor array as a two dimensional array.  This approach avoids initialising the accumulators on each search by
 		breakig it into a series of pages and keeping clean flag for each page.  A page of accmumulators is only initialised if one of the elements
-		in that page is touched.  This detail is kepts in a set of flags (one per page) known as the clean flags.  The details are described in
+		in that page is touched.  This detail is kept in a set of flags (one per page) known as the dirty flags.  The details are described in
 		X.-F. Jia, A. Trotman, R. O'Keefe (2010), Efficient Accumulator Initialisation, Proceedings of the 15th Australasian Document Computing Symposium (ADCS 2010).
-		This implementation differs from that implenentation is so far as the size of the page is alwaya a whole power of 2 and thus the clean flag can
-		be found wiht a bit shit rather than a mod.
+		This implementation differs from that implenentation is so far as the size of the page is alwaya a whole power of 2 and thus the dirty flag can
+		be found with a bit shift rather than a mod.  It also uses dirty flags rather than clean flags as it requires one fewer instruction to check
 		@tparam ELEMENT The type of accumulator being used (default is uint16_t)
 		@tparam NUMBER_OF_ACCUMULATORS The maxium number of documents allowed in any index
 */
@@ -58,23 +58,23 @@ namespace JASS
 
 		private:
 			/*
-				This class is templated so as to put the array and the clean flags in-object rather than pointers.  So, its necessary
+				This class is templated so as to put the array and the dirty flags in-object rather than pointers.  So, its necessary
 				to work out the maxumum sizes of the two arrays at compile time and the check at construction that no overflow
 				is happening. This code works out the maximums and allocates the arrays.
 			*/
-			static constexpr size_t maximum_shift = maths::floor_log2(maths::sqrt_compiletime(NUMBER_OF_ACCUMULATORS));					///< The amount to shift to get the right clean flag
-			static constexpr size_t maximum_width = 1 << maximum_shift;																					///< Each clean flag represents this number of accumulators in a "row"
+			static constexpr size_t maximum_shift = maths::floor_log2(maths::sqrt_compiletime(NUMBER_OF_ACCUMULATORS));					///< The amount to shift to get the right dirty flag
+			static constexpr size_t maximum_width = 1 << maximum_shift;																					///< Each dirty flag represents this number of accumulators in a "row"
 		public:
-			static constexpr size_t maximum_number_of_clean_flags = (NUMBER_OF_ACCUMULATORS + maximum_width - 1) / maximum_width;	///< The number of "rows" (i.e. clean flags).
+			static constexpr size_t maximum_number_of_dirty_flags = (NUMBER_OF_ACCUMULATORS + maximum_width - 1) / maximum_width;	///< The number of "rows" (i.e. dirty flags).
 		private:
-			static constexpr size_t maximum_number_of_accumulators_allocated = maximum_width * maximum_number_of_clean_flags;			///< The numner of accumulators that were actually allocated (recall that this is a 2D array)
+			static constexpr size_t maximum_number_of_accumulators_allocated = maximum_width * maximum_number_of_dirty_flags;			///< The numner of accumulators that were actually allocated (recall that this is a 2D array)
 		public:
-			typedef std::array<flag_type, maximum_number_of_clean_flags> clean_flag_t;
-			clean_flag_t clean_flag;																								///< The clean flags are kept as bytes for faster lookup
-			typedef std::array<ELEMENT, maximum_number_of_accumulators_allocated> accumulator_t;																				///< The accumulators are kept in an array
-			accumulator_t accumulator;																							///< The accumulators are kept in an array
-//			flag_type clean_flag[maximum_number_of_clean_flags];																								///< The clean flags are kept as bytes for faster lookup
-//			ELEMENT accumulator[maximum_number_of_accumulators_allocated];																							///< The accumulators are kept in an array
+			typedef std::array<flag_type, maximum_number_of_dirty_flags> dirty_flag_t;
+			dirty_flag_t dirty_flag;																																///< The dirty flags are kept as bytes for faster lookup
+			typedef std::array<ELEMENT, maximum_number_of_accumulators_allocated> accumulator_t;												///< The accumulators are kept in an array
+			accumulator_t accumulator;																																///< The accumulators are kept in an array
+//			flag_type dirty_flag[maximum_number_of_dirty_flags];																							///< The dirty flags are kept as bytes for faster lookup
+//			ELEMENT accumulator[maximum_number_of_accumulators_allocated];																				///< The accumulators are kept in an array
 
 #ifdef USE_QUERY_IDS
 			flag_type query_id;
@@ -83,9 +83,9 @@ namespace JASS
 				At run-time we use these parameters
 			*/
 		public:
-			size_t width;												///< Each clean flag represents this number of accumulators in a "row"
-			size_t shift;												///< The amount to shift to get the right clean flag
-			size_t number_of_clean_flags;							///< The number of "rows" (i.e. clean flags)
+			size_t width;												///< Each dirty flag represents this number of accumulators in a "row"
+			size_t shift;												///< The amount to shift to get the right dirty flag
+			size_t number_of_dirty_flags;							///< The number of "rows" (i.e. dirty flags)
 			size_t number_of_accumulators_allocated;			///< The numner of accumulators that were actually allocated (recall that this is a 2D array)
 			size_t number_of_accumulators;						///< The number of accumulators that the user asked for
 
@@ -98,7 +98,7 @@ namespace JASS
 				@brief Constructor.
 			*/
 			accumulator_2d() :
-				number_of_clean_flags(0)
+				number_of_dirty_flags(0)
 #ifdef USE_QUERY_IDS
 				,
 				query_id(std::numeric_limits<decltype(query_id)>::max())
@@ -130,48 +130,44 @@ namespace JASS
 				{
 				this->number_of_accumulators = number_of_accumulators;
 				/*
-					If the width of the accumulator array is a whole power of 2 the its quick to find the clean flag.  If the width is the square root of the
-					number of accumulators then it ballances the number of accumulator with the number of clean flags.  Both techniques are used.
-					Simply taking log2(sqrt(element)) can result in massive disparity in width vs height (63->4x16) so we try to ballance this
-					by checking if they are closer together if we take the ceiling of the log rather than the floor.
+					If the width of the accumulator array is a whole power of 2 the its quick to find the dirty flag.  If the width is the square root of the
+					number of accumulators then it ballances the number of accumulator with the number of dirty flags.  Both techniques are used.
 				*/
-				size_t square_root = (size_t)sqrt(number_of_accumulators);
-				shift = maths::floor_log2(square_root);
-
+				shift = maths::floor_log2((size_t)sqrt(number_of_accumulators));
 				width = (size_t)1 << shift;
 
 				/*
-					Round up the number of clean flags so that if the number of accumulators isn't a square that we don't miss the last row
+					Round up the number of dirty flags so that if the number of accumulators isn't a square that we don't miss the last row
 				*/
-				number_of_clean_flags = (number_of_accumulators + width - 1) / width;
+				number_of_dirty_flags = (number_of_accumulators + width - 1) / width;
 
 				/*
 					Round up the number of accumulators to make a rectangle (we're a 2D array)
 				*/
-				number_of_accumulators_allocated = width * number_of_clean_flags;
+				number_of_accumulators_allocated = width * number_of_dirty_flags;
 
 				/*
 					Check we've not gone past the end of the arrays
 				*/
-				if (number_of_clean_flags > maximum_number_of_clean_flags || number_of_accumulators_allocated > maximum_number_of_accumulators_allocated)
+				if (number_of_dirty_flags > maximum_number_of_dirty_flags || number_of_accumulators_allocated > maximum_number_of_accumulators_allocated)
 					throw std::bad_array_new_length();
 
 				/*
-					Clear the clean flags ready for use.
+					Clear the dirty flags ready for first use.
 				*/
 				rewind();
 				}
 
 			/*
-				ACCUMULATOR_2D::WHICH_CLEAN_FLAG()
+				ACCUMULATOR_2D::WHICH_DIRTY_FLAG()
 				----------------------------------
 			*/
 			/*!
-				@brief Return the id of the clean flag to use.
+				@brief Return the id of the dirty flag to use.
 				@param element [in] The accumulator number.
-				@return The clean flag number.
+				@return The dirty flag number.
 			*/
-			forceinline size_t which_clean_flag(size_t element) const
+			forceinline size_t which_dirty_flag(size_t element) const
 				{
 				return element >> shift;
 				}
@@ -182,25 +178,25 @@ namespace JASS
 			*/
 			/*!
 				@brief Return a reference to the given accumulator
-				@details The only valid way to access the accumulators is through this interface.  It ensures the accumulator has been initialised before thr first
-				time it is returned to the caller.
+				@details The only valid way to access the accumulators is through this interface.  It ensures the accumulator
+				has been initialised before the first time it is returned to the caller.
 				@param which [in] The accumulator to return.
 			*/
 			forceinline ELEMENT &operator[](size_t which)
 				{
-				size_t flag = which_clean_flag(which);
+				size_t flag = which_dirty_flag(which);
 
 #ifdef USE_QUERY_IDS
-				if (clean_flag[flag] != query_id)
+				if (dirty_flag[flag] != query_id)
 					{
 					::memset(&accumulator[0] + flag * width, 0, width * sizeof(accumulator[0]));
-					clean_flag[flag] = query_id;
+					dirty_flag[flag] = query_id;
 					}
 #else
-				if (!clean_flag[flag])
+				if (dirty_flag[flag])
 					{
 					::memset(&accumulator[0] + flag * width, 0, width * sizeof(accumulator[0]));
-					clean_flag[flag] = true;
+					dirty_flag[flag] = 0;
 					}
 #endif
 
@@ -208,15 +204,15 @@ namespace JASS
 				}
 
 			/*
-				ACCUMULATOR_2D::WHICH_CLEAN_FLAG()
+				ACCUMULATOR_2D::WHICH_DIRTY_FLAG()
 				----------------------------------
 			*/
 			/*!
-				@brief Return the ids of the clean flags to use.
+				@brief Return the ids of the dirty flags to use.
 				@param element [in] The accumulator numbers.
 				@return The clean flag numbers.
 			*/
-			forceinline __m256i which_clean_flag(__m256i element) const
+			forceinline __m256i which_dirty_flag(__m256i element) const
 				{
 				return _mm256_srli_epi32(element, shift);
 				}
@@ -235,57 +231,57 @@ namespace JASS
 			*/
 			forceinline __m256i operator[](__m256i which)
 				{
-				__m256i indexes = which_clean_flag(which);
-				__m256i flags = simd::gather(&clean_flag[0], indexes);
+				__m256i indexes = which_dirty_flag(which);
+				__m256i flags = simd::gather(&dirty_flag[0], indexes);
 
 				uint32_t got = _mm256_movemask_epi8(flags);
-				if (got != 0x1111'1111)
+				if (got == 0)
+					return simd::gather(&accumulator[0], which);
+
+				uint32_t single_flag;
+				/*
+					At least one of the rows is unclean.  It might be that two
+					bits represent the same row so we must check for that
+				*/
+				if (dirty_flag[single_flag = _mm256_extract_epi32(indexes, 0)])
 					{
-					uint32_t single_flag;
-					/*
-						At least one of the rows is unclean.  It might be that two
-						bits represent the same row so we must check for that
-					*/
-					if (!clean_flag[single_flag = _mm256_extract_epi32(indexes, 0)])
-						{
-						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-						clean_flag[single_flag] = 0xFF;
-						}
-					if (!clean_flag[single_flag = _mm256_extract_epi32(indexes, 1)])
-						{
-						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-						clean_flag[single_flag] = 0xFF;
-						}
-					if (!clean_flag[single_flag = _mm256_extract_epi32(indexes, 2)])
-						{
-						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-						clean_flag[single_flag] = 0xFF;
-						}
-					if (!clean_flag[single_flag = _mm256_extract_epi32(indexes, 3)])
-						{
-						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-						clean_flag[single_flag] = 0xFF;
-						}
-					if (!clean_flag[single_flag = _mm256_extract_epi32(indexes, 4)])
-						{
-						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-						clean_flag[single_flag] = 0xFF;
-						}
-					if (!clean_flag[single_flag = _mm256_extract_epi32(indexes, 5)])
-						{
-						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-						clean_flag[single_flag] = 0xFF;
-						}
-					if (!clean_flag[single_flag = _mm256_extract_epi32(indexes, 6)])
-						{
-						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-						clean_flag[single_flag] = 0xFF;
-						}
-					if (!clean_flag[single_flag = _mm256_extract_epi32(indexes, 7)])
-						{
-						::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-						clean_flag[single_flag] = 0xFF;
-						}
+					::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
+					dirty_flag[single_flag] = 0x00;
+					}
+				if (dirty_flag[single_flag = _mm256_extract_epi32(indexes, 1)])
+					{
+					::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
+					dirty_flag[single_flag] = 0x00;
+					}
+				if (dirty_flag[single_flag = _mm256_extract_epi32(indexes, 2)])
+					{
+					::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
+					dirty_flag[single_flag] = 0x00;
+					}
+				if (dirty_flag[single_flag = _mm256_extract_epi32(indexes, 3)])
+					{
+					::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
+					dirty_flag[single_flag] = 0x00;
+					}
+				if (dirty_flag[single_flag = _mm256_extract_epi32(indexes, 4)])
+					{
+					::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
+					dirty_flag[single_flag] = 0x00;
+					}
+				if (dirty_flag[single_flag = _mm256_extract_epi32(indexes, 5)])
+					{
+					::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
+					dirty_flag[single_flag] = 0x00;
+					}
+				if (dirty_flag[single_flag = _mm256_extract_epi32(indexes, 6)])
+					{
+					::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
+					dirty_flag[single_flag] = 0x00;
+					}
+				if (dirty_flag[single_flag = _mm256_extract_epi32(indexes, 7)])
+					{
+					::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
+					dirty_flag[single_flag] = 0x00;
 					}
 
 				return simd::gather(&accumulator[0], which);
@@ -293,15 +289,15 @@ namespace JASS
 
 
 			/*
-				ACCUMULATOR_2D::WHICH_CLEAN_FLAG()
+				ACCUMULATOR_2D::WHICH_DIRTY_FLAG()
 				----------------------------------
 			*/
 			/*!
-				@brief Return the ids of the clean flags to use.
+				@brief Return the ids of the dirty flags to use.
 				@param element [in] The accumulator numbers.
 				@return The clean flag numbers.
 			*/
-			forceinline __m512i which_clean_flag(__m512i element) const
+			forceinline __m512i which_dirty_flag(__m512i element) const
 				{
 				return _mm512_srli_epi32(element, shift);
 				}
@@ -320,134 +316,133 @@ namespace JASS
 			*/
 			forceinline __m512i operator[](__m512i which)
 				{
-				__m512i indexes = which_clean_flag(which);
-				__m512i flags = simd::gather(&clean_flag[0], indexes);
+				__m512i indexes = which_dirty_flag(which);
+				__m512i flags = simd::gather(&dirty_flag[0], indexes);
 
 				__mmask64 got = _mm512_movepi8_mask(flags);
 
-				if (got == 0x1111'1111'1111'1111)
+				if (got == 0)
 					return simd::gather(&accumulator[0], which);			// no new flags to set
 
 				/*
 					At least one of the rows is unclean.  It might be that two bits represent the same row so we must check for
-					that - which mean we can't simply work off of the bit-patterns, we have to also check the clean flags.
+					that - which mean we can't simply work off of the bit-patterns, we have to also check the dirty flags.
 				*/
 				uint32_t single_flag;
-				got = ~got;
-				if (got & ~0x0000'0000'0000'FFFF)
+				if (got & 0x0000'0000'0000'FFFF)
 					{
 					__m128i quad_flags = _mm512_extracti32x4_epi32(indexes, 0);
 					if (got & 0x0000'0000'0000'000F)
-						if (!clean_flag[single_flag = _mm_extract_epi32(quad_flags, 0)])
+						if (dirty_flag[single_flag = _mm_extract_epi32(quad_flags, 0)])
 							{
 							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-							clean_flag[single_flag] = 0xFF;
+							dirty_flag[single_flag] = 0x00;
 							}
 					if (got & 0x0000'0000'0000'00F0)
-						if (!clean_flag[single_flag = _mm_extract_epi32(quad_flags, 1)])
+						if (dirty_flag[single_flag = _mm_extract_epi32(quad_flags, 1)])
 							{
 							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-							clean_flag[single_flag] = 0xFF;
+							dirty_flag[single_flag] = 0x00;
 							}
 					if (got & 0x0000'0000'0000'0F00)
-						if (!clean_flag[single_flag = _mm_extract_epi32(quad_flags, 2)])
+						if (dirty_flag[single_flag = _mm_extract_epi32(quad_flags, 2)])
 							{
 							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-							clean_flag[single_flag] = 0xFF;
+							dirty_flag[single_flag] = 0x00;
 							}
 					if (got & 0x0000'0000'0000'F000)
-						if (!clean_flag[single_flag = _mm_extract_epi32(quad_flags, 3)])
+						if (dirty_flag[single_flag = _mm_extract_epi32(quad_flags, 3)])
 							{
 							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-							clean_flag[single_flag] = 0xFF;
+							dirty_flag[single_flag] = 0x00;
 							}
 					}
-				if (got & ~0x0000'0000'FFFF'0000)
+				if (got & 0x0000'0000'FFFF'0000)
 					{
 					__m128i quad_flags = _mm512_extracti32x4_epi32(indexes, 1);
 					if (got & 0x0000'0000'000F'0000)
-						if (!clean_flag[single_flag = _mm_extract_epi32(quad_flags, 0)])
+						if (dirty_flag[single_flag = _mm_extract_epi32(quad_flags, 0)])
 							{
 							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-							clean_flag[single_flag] = 0xFF;
+							dirty_flag[single_flag] = 0x00;
 							}
 					if (got & 0x0000'0000'00F0'0000)
-						if (!clean_flag[single_flag = _mm_extract_epi32(quad_flags, 1)])
+						if (dirty_flag[single_flag = _mm_extract_epi32(quad_flags, 1)])
 							{
 							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-							clean_flag[single_flag] = 0xFF;
+							dirty_flag[single_flag] = 0x00;
 							}
 					if (got & 0x0000'0000'0F0'0000)
-						if (!clean_flag[single_flag = _mm_extract_epi32(quad_flags, 2)])
+						if (dirty_flag[single_flag = _mm_extract_epi32(quad_flags, 2)])
 							{
 							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-							clean_flag[single_flag] = 0xFF;
+							dirty_flag[single_flag] = 0x00;
 							}
 					if (got & 0x0000'0000'F000'0000)
-						if (!clean_flag[single_flag = _mm_extract_epi32(quad_flags, 3)])
+						if (dirty_flag[single_flag = _mm_extract_epi32(quad_flags, 3)])
 							{
 							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-							clean_flag[single_flag] = 0xFF;
+							dirty_flag[single_flag] = 0x00;
 							}
 					}
-				if (got & ~0x0000'FFFF'0000'0000)
+				if (got & 0x0000'FFFF'0000'0000)
 					{
 					__m128i quad_flags = _mm512_extracti32x4_epi32(indexes, 2);
 					if (got & 0x0000'000F'0000'0000)
-						if (!clean_flag[single_flag = _mm_extract_epi32(quad_flags, 0)])
+						if (dirty_flag[single_flag = _mm_extract_epi32(quad_flags, 0)])
 							{
 							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-							clean_flag[single_flag] = 0xFF;
+							dirty_flag[single_flag] = 0x00;
 							}
 					if (got & 0x0000'00F0'0000'0000)
-						if (!clean_flag[single_flag = _mm_extract_epi32(quad_flags, 1)])
+						if (dirty_flag[single_flag = _mm_extract_epi32(quad_flags, 1)])
 							{
 							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-							clean_flag[single_flag] = 0xFF;
+							dirty_flag[single_flag] = 0x00;
 							}
 					if (got & 0x0000'0F00'000'0000)
-						if (!clean_flag[single_flag = _mm_extract_epi32(quad_flags, 2)])
+						if (dirty_flag[single_flag = _mm_extract_epi32(quad_flags, 2)])
 							{
 							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-							clean_flag[single_flag] = 0xFF;
+							dirty_flag[single_flag] = 0x00;
 							}
 					if (got & 0x0000'F000'0000'0000)
-						if (!clean_flag[single_flag = _mm_extract_epi32(quad_flags, 3)])
+						if (dirty_flag[single_flag = _mm_extract_epi32(quad_flags, 3)])
 							{
 							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-							clean_flag[single_flag] = 0xFF;
+							dirty_flag[single_flag] = 0x00;
 							}
 					}
-				if (got & ~0xFFFF'0000'0000'0000)
+				if (got & 0xFFFF'0000'0000'0000)
 					{
 					__m128i quad_flags = _mm512_extracti32x4_epi32(indexes, 3);
 					if (got & 0x000F'0000'0000'0000)
-						if (!clean_flag[single_flag = _mm_extract_epi32(quad_flags, 0)])
+						if (dirty_flag[single_flag = _mm_extract_epi32(quad_flags, 0)])
 							{
 							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-							clean_flag[single_flag] = 0xFF;
+							dirty_flag[single_flag] = 0x00;
 							}
 					if (got & 0x00F0'0000'0000'0000)
-						if (!clean_flag[single_flag = _mm_extract_epi32(quad_flags, 1)])
+						if (dirty_flag[single_flag = _mm_extract_epi32(quad_flags, 1)])
 							{
 							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-							clean_flag[single_flag] = 0xFF;
+							dirty_flag[single_flag] = 0x00;
 							}
 					if (got & 0x0F00'0000'000'0000)
-						if (!clean_flag[single_flag = _mm_extract_epi32(quad_flags, 2)])
+						if (dirty_flag[single_flag = _mm_extract_epi32(quad_flags, 2)])
 							{
 							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-							clean_flag[single_flag] = 0xFF;
+							dirty_flag[single_flag] = 0x00;
 							}
 					if (got & 0xF000'0000'0000'0000)
-						if (!clean_flag[single_flag = _mm_extract_epi32(quad_flags, 3)])
+						if (dirty_flag[single_flag = _mm_extract_epi32(quad_flags, 3)])
 							{
 							::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-							clean_flag[single_flag] = 0xFF;
+							dirty_flag[single_flag] = 0x00;
 							}
 					}
 
-				return simd::gather(&accumulator[0], which);			// no new flags to set
+				return simd::gather(&accumulator[0], which);
 				}
 
 			/*
@@ -483,20 +478,21 @@ namespace JASS
 			*/
 			/*!
 				@brief Clear the accumulators ready for use
-				@details This clears the clean flags so that the next time an accumulator is requested it ix initialised to zero before being returned.
+				@details This sets the dirty flags so that the next time an accumulator is requested it is initialised
+				to zero before being returned.
 			*/
 			void rewind(void)
 				{
 #ifdef USE_QUERY_IDS
 				if (query_id == std::numeric_limits<decltype(query_id)>::max())
 					{
-					::memset(&clean_flag[0], 0, number_of_clean_flags * sizeof(clean_flag[0]));
+					::memset(&dirty_flag[0], 0, number_of_dirty_flags * sizeof(dirty_flag[0]));
 					query_id = 0;
 					}
 				query_id++;
 #else
-//				std::fill(clean_flag, clean_flag + number_of_clean_flags, false);
-				::memset(&clean_flag[0], 0, number_of_clean_flags * sizeof(clean_flag[0]));
+//				std::fill(dirty_flag, dirty_flag + number_of_dirty_flags, false);
+				::memset(&dirty_flag[0], 0xFF, number_of_dirty_flags * sizeof(dirty_flag[0]));
 #endif
 				}
 
@@ -551,7 +547,7 @@ namespace JASS
 				array.init(64);
 				JASS_assert(array.width == 8);
 				JASS_assert(array.shift == 3);
-				JASS_assert(array.number_of_clean_flags == 8);
+				JASS_assert(array.number_of_dirty_flags == 8);
 
 				unittest_example(array);
 
@@ -562,7 +558,7 @@ namespace JASS
 				array_hangover.init(65);
 				JASS_assert(array_hangover.width == 8);
 				JASS_assert(array_hangover.shift == 3);
-				JASS_assert(array_hangover.number_of_clean_flags == 9);
+				JASS_assert(array_hangover.number_of_dirty_flags == 9);
 
 				unittest_example(array_hangover);
 
@@ -573,7 +569,7 @@ namespace JASS
 				array_hangunder.init(63);
 				JASS_assert(array_hangunder.width == 4);
 				JASS_assert(array_hangunder.shift == 2);
-				JASS_assert(array_hangunder.number_of_clean_flags == 16);
+				JASS_assert(array_hangunder.number_of_dirty_flags == 16);
 
 				unittest_example(array_hangunder);
 
@@ -584,7 +580,7 @@ namespace JASS
 				array_one.init(1);
 				JASS_assert(array_one.width == 1);
 				JASS_assert(array_one.shift == 0);
-				JASS_assert(array_one.number_of_clean_flags == 1);
+				JASS_assert(array_one.number_of_dirty_flags == 1);
 
 				unittest_example(array_one);
 
