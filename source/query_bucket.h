@@ -575,20 +575,22 @@ namespace JASS
 	#ifdef __AVX512F__
 				end = buffer + (integers & ~0x0F);
 				__m512i *chunk = (__m512i *)buffer;
-				while (chunk < (__m512i *)end)
+				if (chunk < (__m512i *)end)
 					{
-					impacts512 = _mm512_set1_epi32(impact);				// the compiler will pull this out of the loop and should only do it if needed.
-					add_rsv(_mm512_loadu_si512(chunk));
-					chunk++;
+					impacts512 = _mm512_set1_epi32(impact);
+					do
+						add_rsv(_mm512_loadu_si512(chunk));
+					while (++chunk < (__m512i *)end);
 					}
 	#elif defined(__AVX2__)
 				end = buffer + (integers & ~0x07);
 				__m256i *chunk = (__m256i *)buffer;
-				while (chunk < (__m256i *)end)
+				if (chunk < (__m256i *)end)
 					{
-					impacts256 = _mm256_set1_epi32(impact);				// the compiler will pull this out of the loop and should only do it if needed.
-					add_rsv(_mm256_loadu_si256(chunk));
-					chunk++;
+					impacts256 = _mm256_set1_epi32(impact);
+					do
+						add_rsv(_mm256_loadu_si256(chunk));
+					while (++chunk < (__m256i *)end);
 					}
 	#else
 				DOCID_TYPE *chunk = buffer;
