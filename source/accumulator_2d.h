@@ -277,55 +277,13 @@ namespace JASS
 				if (got == 0)
 					return simd::gather(&accumulator[0], which);
 
-				uint32_t single_flag;
-				/*
-					At least one of the rows is unclean.  It might be that two
-					bits represent the same row so we must check for that
-				*/
-				if (dirty_flag[single_flag = _mm256_extract_epi32(indexes, 0)])
-					{
-					::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-					dirty_flag[single_flag] = 0x00;
-					}
-				if (dirty_flag[single_flag = _mm256_extract_epi32(indexes, 1)])
-					{
-					::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-					dirty_flag[single_flag] = 0x00;
-					}
-				if (dirty_flag[single_flag = _mm256_extract_epi32(indexes, 2)])
-					{
-					::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-					dirty_flag[single_flag] = 0x00;
-					}
-				if (dirty_flag[single_flag = _mm256_extract_epi32(indexes, 3)])
-					{
-					::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-					dirty_flag[single_flag] = 0x00;
-					}
-				if (dirty_flag[single_flag = _mm256_extract_epi32(indexes, 4)])
-					{
-					::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-					dirty_flag[single_flag] = 0x00;
-					}
-				if (dirty_flag[single_flag = _mm256_extract_epi32(indexes, 5)])
-					{
-					::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-					dirty_flag[single_flag] = 0x00;
-					}
-				if (dirty_flag[single_flag = _mm256_extract_epi32(indexes, 6)])
-					{
-					::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-					dirty_flag[single_flag] = 0x00;
-					}
-				if (dirty_flag[single_flag = _mm256_extract_epi32(indexes, 7)])
-					{
-					::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]));
-					dirty_flag[single_flag] = 0x00;
-					}
+				if (got & 0x0000'FFFF)
+					clean_flagset(_mm256_extracti128_si256(indexes, 0), got >> 0);
+				if (got & 0xFFFF'0000)
+					clean_flagset(_mm256_extracti128_si256(indexes, 1), got >> 16);
 
 				return simd::gather(&accumulator[0], which);
 				}
-
 
 			/*
 				ACCUMULATOR_2D::WHICH_DIRTY_FLAG()
