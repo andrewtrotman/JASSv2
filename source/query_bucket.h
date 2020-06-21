@@ -157,13 +157,18 @@ namespace JASS
 			accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;	///< The accumulators, one per document in the collection
 			bool sorted;																	///< has heap and accumulator_pointers been sorted (false after rewind() true after sort())
 
-			static constexpr size_t rounded_top_k = ((size_t)1) << maths::ceiling_log2(MAX_TOP_K);
+#ifdef NEVER
+			static constexpr size_t rounded_top_k = ((size_t)1) << maths::ceiling_log2(MAX_TOP_K); ///< Sets the bucket depth based on top-k
+#else
+			static constexpr size_t rounded_top_k = 256;															///< Sets the bucket depth to 256
+#endif
 			static constexpr size_t rounded_top_k_filter = rounded_top_k - 1;
+
 			static constexpr size_t number_of_buckets = std::numeric_limits<ACCUMULATOR_TYPE>::max();
 			DOCID_TYPE bucket[number_of_buckets][rounded_top_k];						///< The array of buckets to use.
 			ACCUMULATOR_TYPE largest_used_bucket;											///< The largest bucket used (to decrease cost of initialisation and search)
 			ACCUMULATOR_TYPE smallest_used_bucket;											///< The smallest bucket used (to decrease cost of initialisation and search)
-			uint16_t bucket_depth[number_of_buckets];										///< The number of documents in the given bucket
+			uint8_t bucket_depth[number_of_buckets];										///< The number of documents in the given bucket
 
 		public:
 			/*
@@ -180,7 +185,9 @@ namespace JASS
 				query(),
 				largest_used_bucket(0)
 				{
-				std::fill(bucket_depth, bucket_depth + number_of_buckets, 0);
+				std::fill(bucket_depth, bucket_depth + number_of_buckets, char());
+//				memset(bucket_depth, 0, number_of_buckets * sizeof(bucket_depth[0]));
+
 				rewind();
 				}
 
@@ -254,7 +261,8 @@ namespace JASS
 				sorted = false;
 				accumulators.rewind();
 
-				std::fill(bucket_depth + smallest_possible_rsv, bucket_depth + largest_used_bucket, 0);
+				std::fill(bucket_depth + smallest_used_bucket, bucket_depth + largest_used_bucket + 1, char());
+//				memset(bucket_depth + smallest_used_bucket, 0, (largest_used_bucket - smallest_used_bucket + 1) * sizeof(bucket_depth[0]));
 
 				query::rewind();
 				}
@@ -337,35 +345,35 @@ namespace JASS
 				}
 
 			/*
-				QUERY_BUCKET::SET_RSV()
-				-----------------------
+				QUERY_BUCKET::SET_BUCKET()
+				--------------------------
 			*/
 			/*!
-				@brief set the rsv of the given document to the given value
+				@brief update the bucket for the given document
 				@param document_id [in] which document to set
 				@param score [in] the value to set
 			*/
-			forceinline void set_rsv(DOCID_TYPE document_id, ACCUMULATOR_TYPE score)
+			forceinline void set_bucket(DOCID_TYPE document_id, ACCUMULATOR_TYPE score)
 				{
 				bucket[score][bucket_depth[score] & rounded_top_k_filter] = document_id;
 				bucket_depth[score]++;
 				}
 
 			/*
-				QUERY_BUCKET::SET_RSV()
-				-----------------------
+				QUERY_BUCKET::SET_BUCKET()
+				--------------------------
 			*/
 			/*!
-				@brief set the rsv of the given document to the given value
+				@brief update the bucket for the given document
 				@param document_ids [in] which document to set
 				@param values [in] which value to set
 			*/
-			forceinline void set_rsv(__m128i document_ids, __m128i values)
+			forceinline void set_bucket(__m128i document_ids, __m128i values)
 				{
-				set_rsv(_mm_extract_epi32(document_ids, 0), _mm_extract_epi32(values, 0));
-				set_rsv(_mm_extract_epi32(document_ids, 1), _mm_extract_epi32(values, 1));
-				set_rsv(_mm_extract_epi32(document_ids, 2), _mm_extract_epi32(values, 2));
-				set_rsv(_mm_extract_epi32(document_ids, 3), _mm_extract_epi32(values, 3));
+				set_bucket(_mm_extract_epi32(document_ids, 0), _mm_extract_epi32(values, 0));
+				set_bucket(_mm_extract_epi32(document_ids, 1), _mm_extract_epi32(values, 1));
+				set_bucket(_mm_extract_epi32(document_ids, 2), _mm_extract_epi32(values, 2));
+				set_bucket(_mm_extract_epi32(document_ids, 3), _mm_extract_epi32(values, 3));
 				}
 
 			/*
@@ -381,7 +389,7 @@ namespace JASS
 				{
 				ACCUMULATOR_TYPE *which = &accumulators[document_id];			// This will create the accumulator if it doesn't already exist.
 				*which += score;
-				set_rsv(document_id, *which);
+				set_bucket(document_id, *which);
 				}
 
 			/*
@@ -408,8 +416,8 @@ namespace JASS
 				/*
 					Update the buckets
 				*/
-				set_rsv(_mm256_extracti128_si256(document_ids, 0), _mm256_extracti128_si256(values, 0));
-				set_rsv(_mm256_extracti128_si256(document_ids, 1), _mm256_extracti128_si256(values, 1));
+				set_bucket(_mm256_extracti128_si256(document_ids, 0), _mm256_extracti128_si256(values, 0));
+				set_bucket(_mm256_extracti128_si256(document_ids, 1), _mm256_extracti128_si256(values, 1));
 				}
 
 			/*
@@ -466,10 +474,10 @@ namespace JASS
 				/*
 					Update the buckets
 				*/
-				set_rsv(_mm512_extracti32x4_epi32(document_ids, 0), _mm512_extracti32x4_epi32(values, 0));
-				set_rsv(_mm512_extracti32x4_epi32(document_ids, 1), _mm512_extracti32x4_epi32(values, 1));
-				set_rsv(_mm512_extracti32x4_epi32(document_ids, 2), _mm512_extracti32x4_epi32(values, 2));
-				set_rsv(_mm512_extracti32x4_epi32(document_ids, 3), _mm512_extracti32x4_epi32(values, 3));
+				set_bucket(_mm512_extracti32x4_epi32(document_ids, 0), _mm512_extracti32x4_epi32(values, 0));
+				set_bucket(_mm512_extracti32x4_epi32(document_ids, 1), _mm512_extracti32x4_epi32(values, 1));
+				set_bucket(_mm512_extracti32x4_epi32(document_ids, 2), _mm512_extracti32x4_epi32(values, 2));
+				set_bucket(_mm512_extracti32x4_epi32(document_ids, 3), _mm512_extracti32x4_epi32(values, 3));
 #endif
 				}
 
@@ -488,7 +496,7 @@ namespace JASS
 
 				ACCUMULATOR_TYPE *which = &accumulators[document_id];			// This will create the accumulator if it doesn't already exist.
 				*which += impact;
-				set_rsv(document_id, *which);
+				set_bucket(document_id, *which);
 				}
 
 			/*
@@ -598,10 +606,19 @@ namespace JASS
 #else
 				DOCID_TYPE *chunk = buffer;
 #endif
-
+				DOCID_TYPE *current = (DOCID_TYPE *)chunk;
+				end = buffer + (integers & ~0x03);
+				while (current < end)
+					{
+					add_rsv(*(current + 0), impact);
+					add_rsv(*(current + 1), impact);
+					add_rsv(*(current + 2), impact);
+					add_rsv(*(current + 3), impact);
+					current += 4;
+					}
 				end = buffer + integers;
-				for (DOCID_TYPE *current = (DOCID_TYPE *)chunk; current < end; current++)
-					add_rsv(*current, impact);
+				while (current < end)
+					add_rsv(*current++, impact);
 				}
 
 			/*
