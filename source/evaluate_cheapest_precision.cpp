@@ -94,6 +94,8 @@ namespace JASS
 		/*
 			Even if there are fewer than k items in the assessments, we are computing precision against the (depth limited) entire results list.
 		*/
+		if (which == 0)
+			return 0;
 		return found_and_relevant / (depth == (std::numeric_limits<size_t>::max)() ? which : depth);
 		}
 

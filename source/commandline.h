@@ -170,9 +170,10 @@ namespace JASS
 				/*
 					Coverity Scan complains about the line below when TYPE is a unisgned long long because it can never be true.
 				*/
-				//coverity[CONSTANT_EXPRESSION_RESULT]
-				if (answer > (std::numeric_limits<TYPE>::max)())
-					messages << parameter << " Numeric overflow on parameter\n";
+				if constexpr (!std::is_same<TYPE, unsigned long long>::value)
+					if (answer > (std::numeric_limits<TYPE>::max)())
+						messages << parameter << " Numeric overflow on parameter\n";
+
 				element.parameter = static_cast<TYPE>(answer);
 				}
 

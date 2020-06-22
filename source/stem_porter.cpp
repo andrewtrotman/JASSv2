@@ -77,7 +77,8 @@ namespace JASS
 		workspace.resize(source_length + 1);
 		char *at = const_cast<char *>(workspace.c_str());
 		std::reverse_copy(source, source + source_length, at);
-		workspace[source_length] = '\0';
+//		workspace[source_length] = '\0';
+		at[source_length] = '\0';
 
 		/*
 			Step 1a.

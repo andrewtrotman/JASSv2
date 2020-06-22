@@ -256,13 +256,14 @@ namespace JASS
 				source += 68;
 				}
 
-			//coverity[BAD_SHIFT]
 			uint32_t width = (uint32_t)find_first_set_bit(selector);
+			//coverity[OVERRUN]
 			mask = _mm512_loadu_si512((__m512i *)mask_set[width]);
 			_mm512_storeu_si512(into, _mm512_and_si512(payload, mask));
 			payload = _mm512_srli_epi32(payload, width);
 
 			into++;
+			//coverity[BAD_SHIFT]
 			selector >>= width;
 			}
 
@@ -296,12 +297,13 @@ namespace JASS
 				source += 68;
 				}
 
-			//coverity[BAD_SHIFT]
 			uint32_t width = (uint32_t)find_first_set_bit(selector);
+			//coverity[OVERRUN]
 			mask = _mm512_loadu_si512((__m512i *)mask_set[width]);
 			add_rsv_d1(_mm512_and_si512(payload, mask));
 			payload = _mm512_srli_epi32(payload, width);
 
+			//coverity[BAD_SHIFT]
 			selector >>= width;
 			}
 
@@ -339,8 +341,8 @@ namespace JASS
 				payload2 = _mm256_loadu_si256((__m256i *)(source + 36));
 				source += 68;
 				}
-			//coverity[BAD_SHIFT]
 			uint32_t width = (uint32_t)find_first_set_bit(selector);
+			//coverity[OVERRUN]
 			mask = _mm256_loadu_si256((__m256i *)mask_set[width]);
 			_mm256_storeu_si256(into, _mm256_and_si256(payload1, mask));
 			_mm256_storeu_si256(into + 1, _mm256_and_si256(payload2, mask));
@@ -348,6 +350,7 @@ namespace JASS
 			payload2 = _mm256_srli_epi32(payload2, width);
 
 			into += 2;
+			//coverity[BAD_SHIFT]
 			selector >>= width;
 			}
 
@@ -383,14 +386,15 @@ namespace JASS
 				source += 68;
 				}
 
-			//coverity[BAD_SHIFT]
 			uint32_t width = (uint32_t)find_first_set_bit(selector);
+			//coverity[OVERRUN]
 			mask = _mm256_loadu_si256((__m256i *)mask_set[width]);
 			add_rsv_d1(_mm256_and_si256(payload1, mask));
 			add_rsv_d1(_mm256_and_si256(payload2, mask));
 			payload1 = _mm256_srli_epi32(payload1, width);
 			payload2 = _mm256_srli_epi32(payload2, width);
 
+			//coverity[BAD_SHIFT]
 			selector >>= width;
 			}
 
