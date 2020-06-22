@@ -265,9 +265,13 @@ namespace JASS
 #else
 					if (dirty_flag[flag])
 						{
-						auto start = &accumulator[0] + flag * width;
-						std::fill(start, start + width, ELEMENT());
-//						memset(&accumulator[0] + flag * width, 0, width * sizeof(accumulator[0]));
+//						auto start = &accumulator[0] + flag * width;
+//						std::fill(start, start + width, ELEMENT());
+
+						memset(&accumulator[0] + flag * width, 0, width * sizeof(accumulator[0]));
+
+//						simd::bzero(&accumulator[0] + flag * width, width >> 6);
+						
 						dirty_flag[flag] = 0;
 						}
 #endif

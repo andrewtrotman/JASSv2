@@ -700,6 +700,137 @@ namespace JASS
 #endif
 				}
 
+#ifdef __AVX512F__
+			/*
+				SIMD::BZERO()
+				-------------
+			*/
+			/*!
+				@brief zero memory
+				@param address[in] The addres to start zeroing from'
+				@param sixty_fours The numnber of 64-byte chunks of zero to write
+			*/
+			forceinline static void bzero(void *address, size_t sixty_fours)
+				{
+				__m512i zero = _mm512_setzero_si512();
+				__m512i *into = reinterpret_cast<__m512i *>(address);
+
+				switch (sixty_fours)
+					{
+					case 16:
+						_mm512_store_si512(into, zero + 15);
+					case 15:
+						_mm512_store_si512(into, zero + 14);
+					case 14:
+						_mm512_store_si512(into, zero + 13);
+					case 13:
+						_mm512_store_si512(into, zero + 12);
+					case 12:
+						_mm512_store_si512(into, zero + 11);
+					case 11:
+						_mm512_store_si512(into, zero + 10);
+					case 10:
+						_mm512_store_si512(into, zero + 9);
+					case 9:
+						_mm512_store_si512(into, zero + 8);
+					case 8:
+						_mm512_store_si512(into, zero + 7);
+					case 7:
+						_mm512_store_si512(into, zero + 6);
+					case 6:
+						_mm512_store_si512(into, zero + 5);
+					case 5:
+						_mm512_store_si512(into, zero + 4);
+					case 4:
+						_mm512_store_si512(into, zero + 3);
+					case 3:
+						_mm512_store_si512(into, zero + 2);
+					case 2:
+						_mm512_store_si512(into, zero + 1);
+					case 1:
+						_mm512_store_si512(into, zero + 0);
+					case 0:
+						break;
+					default:
+						bzero(address, 16);
+						bzero(address, sixty_fours - 16);
+						break;
+					}
+				}
+#else
+			/*
+				SIMD::BZERO()
+				-------------
+			*/
+			/*!
+				@brief zero memory
+				@param address[in] The addres to start zeroing from'
+				@param sixty_fours The numnber of 64-byte chunks of zero to write
+			*/
+			forceinline static void bzero(void *address, size_t sixty_fours)
+				{
+				__m256i zero = _mm256_setzero_si256();
+				__m256i *into = reinterpret_cast<__m256i *>(address);
+
+				switch (sixty_fours)
+					{
+					case 16:
+						_mm256_store_si256(into + 31, zero);
+						_mm256_store_si256(into + 30, zero);
+					case 15:
+						_mm256_store_si256(into + 29, zero);
+						_mm256_store_si256(into + 28, zero);
+					case 14:
+						_mm256_store_si256(into + 27, zero);
+						_mm256_store_si256(into + 26, zero);
+					case 13:
+						_mm256_store_si256(into + 25, zero);
+						_mm256_store_si256(into + 24, zero);
+					case 12:
+						_mm256_store_si256(into + 23, zero);
+						_mm256_store_si256(into + 22, zero);
+					case 11:
+						_mm256_store_si256(into + 21, zero);
+						_mm256_store_si256(into + 20, zero);
+					case 10:
+						_mm256_store_si256(into + 19, zero);
+						_mm256_store_si256(into + 18, zero);
+					case 9:
+						_mm256_store_si256(into + 17, zero);
+						_mm256_store_si256(into + 16, zero);
+					case 8:
+						_mm256_store_si256(into + 15, zero);
+						_mm256_store_si256(into + 14, zero);
+					case 7:
+						_mm256_store_si256(into + 13, zero);
+						_mm256_store_si256(into + 12, zero);
+					case 6:
+						_mm256_store_si256(into + 11, zero);
+						_mm256_store_si256(into + 10, zero);
+					case 5:
+						_mm256_store_si256(into + 9, zero);
+						_mm256_store_si256(into + 8, zero);
+					case 4:
+						_mm256_store_si256(into + 7, zero);
+						_mm256_store_si256(into + 6, zero);
+					case 3:
+						_mm256_store_si256(into + 5, zero);
+						_mm256_store_si256(into + 4, zero);
+					case 2:
+						_mm256_store_si256(into + 3, zero);
+						_mm256_store_si256(into + 2, zero);
+					case 1:
+						_mm256_store_si256(into + 1, zero);
+						_mm256_store_si256(into + 0, zero);
+					case 0:
+						break;
+					default:
+						bzero(address, 16);
+						bzero(address, sixty_fours - 16);
+						break;
+					}
+				}
+#endif
 			/*
 				SIMD::UNITTEST()
 				----------------
