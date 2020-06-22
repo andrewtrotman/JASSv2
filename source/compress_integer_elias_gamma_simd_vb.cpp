@@ -256,6 +256,7 @@ namespace JASS
 				source += 68;
 				}
 
+			//coverity[BAD_SHIFT]
 			uint32_t width = (uint32_t)find_first_set_bit(selector);
 			mask = _mm512_loadu_si512((__m512i *)mask_set[width]);
 			_mm512_storeu_si512(into, _mm512_and_si512(payload, mask));
@@ -295,6 +296,7 @@ namespace JASS
 				source += 68;
 				}
 
+			//coverity[BAD_SHIFT]
 			uint32_t width = (uint32_t)find_first_set_bit(selector);
 			mask = _mm512_loadu_si512((__m512i *)mask_set[width]);
 			add_rsv_d1(_mm512_and_si512(payload, mask));
@@ -337,7 +339,7 @@ namespace JASS
 				payload2 = _mm256_loadu_si256((__m256i *)(source + 36));
 				source += 68;
 				}
-
+			//coverity[BAD_SHIFT]
 			uint32_t width = (uint32_t)find_first_set_bit(selector);
 			mask = _mm256_loadu_si256((__m256i *)mask_set[width]);
 			_mm256_storeu_si256(into, _mm256_and_si256(payload1, mask));
@@ -381,6 +383,7 @@ namespace JASS
 				source += 68;
 				}
 
+			//coverity[BAD_SHIFT]
 			uint32_t width = (uint32_t)find_first_set_bit(selector);
 			mask = _mm256_loadu_si256((__m256i *)mask_set[width]);
 			add_rsv_d1(_mm256_and_si256(payload1, mask));

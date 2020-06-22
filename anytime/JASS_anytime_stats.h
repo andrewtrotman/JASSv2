@@ -42,7 +42,8 @@ class JASS_anytime_stats
 			number_of_documents(0),
 			number_of_queries(0),
 			wall_time_in_ns(0),
-			sum_of_CPU_time_in_ns(0)
+			sum_of_CPU_time_in_ns(0),
+			total_run_time_in_ns(0)
 			{
 			/* Nothing */
 			}

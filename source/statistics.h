@@ -172,15 +172,14 @@ namespace JASS
 					int count = 0;
 
 					for (auto &element : source)
-						{
 						if (element == value)
 							{
 							rank++;
 							count++;
 							average += rank;
 							}
-						}
-					average /= count;
+
+					average /= (count == 0 ? 1 : count);
 
 					size_t which = 0;
 					for (auto &element : source)

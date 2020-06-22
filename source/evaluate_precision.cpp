@@ -23,7 +23,10 @@ namespace JASS
 
 		if (depth == 0)
 			return 1;
-			
+
+		if (results_list.size() == 0)
+			return 0;
+
 		for (const auto &result : results_list)
 			{
 			auto assessment = find(query_id, result);

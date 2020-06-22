@@ -170,7 +170,11 @@ namespace JASS
 #ifdef USE_QUERY_IDS
 				query_id(std::numeric_limits<decltype(query_id)>::max()),
 #endif
-				number_of_dirty_flags(0)
+				width(1),
+				shift(1),
+				number_of_dirty_flags(0),
+				number_of_accumulators_allocated(0),
+				number_of_accumulators(0)
 				{
 				/* Nothing */
 				}

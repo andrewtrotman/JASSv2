@@ -25,6 +25,12 @@ namespace JASS
 		std::vector<judgement> query_prices;
 
 		/*
+			No results scores 0.
+		*/
+		if (results_list.size() == 0)
+			return 0;
+
+		/*
 			Get the cheapest k item's prices though a linear seach for the assessments for this query
 			since this is only going to happen once per run, it doesn't seem worthwhile trying to optimise this.
 		*/

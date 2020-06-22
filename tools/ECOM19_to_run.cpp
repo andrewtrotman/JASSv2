@@ -202,6 +202,7 @@ fprintf(stderr, "Matrix the Run\n");
 		Remove the training data from the run and convert the run into trec_eval format
 	*/
 fprintf(stderr, "Dump the Run\n");
+	//coverity[format_changed]
 	std::cout << std::setprecision(2) << std::fixed;
 	for (size_t column = 1; column < run[0].size(); column++)
 		{

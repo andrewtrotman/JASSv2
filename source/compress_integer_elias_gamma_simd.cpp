@@ -260,6 +260,7 @@ namespace JASS
 
 			while (1)
 				{
+				//coverity[BAD_SHIFT]
 				uint32_t width = (uint32_t)find_first_set_bit(selector);
 				mask = _mm512_loadu_si512((__m512i *)mask_set[width]);
 				_mm512_storeu_si512(into, _mm512_and_si512(payload, mask));
@@ -288,6 +289,7 @@ namespace JASS
 					/*
 						get the low bits and write to memory
 					*/
+					//coverity[BAD_SHIFT]
 					width = (uint32_t)find_first_set_bit(selector);
 
 					high_bits = _mm512_slli_epi32(high_bits, width);
@@ -324,6 +326,7 @@ namespace JASS
 
 		while (1)
 			{
+			//coverity[BAD_SHIFT]
 			uint32_t width = (uint32_t)find_first_set_bit(selector);
 			mask = _mm256_loadu_si256((__m256i *)mask_set[width]);
 			_mm256_storeu_si256(into, _mm256_and_si256(payload1, mask));
@@ -356,6 +359,7 @@ namespace JASS
 				/*
 					get the low bits and write to memory
 				*/
+				//coverity[BAD_SHIFT]
 				width = (uint32_t)find_first_set_bit(selector);
 
 				high_bits1 = _mm256_slli_epi32(high_bits1, width);

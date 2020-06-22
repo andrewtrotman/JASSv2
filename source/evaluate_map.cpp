@@ -22,6 +22,12 @@ namespace JASS
 		double cumulative = 0;
 		size_t which = 0;
 
+		/*
+			No results scores 0.
+		*/
+		if (results_list.size() == 0)
+			return 0;
+
 		size_t number_of_relevant_assessments = relevance_count(query_id);
 
 		for (const auto &result : results_list)

@@ -150,6 +150,13 @@ namespace JASS
 				@brief Constructor
 			*/
 			query() :
+#ifdef __AVX512F__
+				impacts512(_mm512_setzero_si512()),
+#endif
+				impacts256(_mm256_setzero_si256()),
+				impact(1),
+				d1_cumulative_sum(0),
+				documents(0),
 				parser(memory),
 				parsed_query(nullptr),
 				primary_keys(nullptr),

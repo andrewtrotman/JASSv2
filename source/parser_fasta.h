@@ -68,7 +68,9 @@ namespace JASS
 				@brief Constructor
 			*/
 			parser_fasta(size_t kmer_length) :
-				kmer_length(kmer_length)
+				kmer_length(kmer_length),
+				mode(TEXT),
+				end_of_fasta_document(nullptr)
 				{
 				/*
 					We can only return alpha tokens or eof tokens so set the token type here to alpha
