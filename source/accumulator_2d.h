@@ -22,7 +22,7 @@
 #include "maths.h"
 #include "forceinline.h"
 
-#define USE_QUERY_IDS 1
+//#define USE_QUERY_IDS 1
 
 namespace JASS
 	{

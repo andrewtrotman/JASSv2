@@ -7,7 +7,7 @@
 	SIMD_ADD_RSV_AFTER_CUMSUM uses AVX instructions to process the postings in set_rsv() after the d1 decoding has already been done
 	the alternativce is to process each posting one at a time.
 */
-#define SIMD_ADD_RSV_AFTER_CUMSUM 1
+//#define SIMD_ADD_RSV_AFTER_CUMSUM 1
 
 /*
 	SIMD_JASS uses the decompressor that calls add_rsv() directly (single pass) rather than decompressng then processing (in 2 passes)
