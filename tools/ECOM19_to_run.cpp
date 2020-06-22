@@ -134,10 +134,10 @@ int usage(const char *exename)
 	}
 
 /*
-	MAIN()
-	------
+	MAIN_EVENT()
+	------------
 */
-int main(int argc, const char *argv[])
+int main_event(int argc, const char *argv[])
 	{
 	if (argc != 5)
 		exit(usage(argv[0]));
@@ -227,4 +227,21 @@ fprintf(stderr, "Dump the Run\n");
 		}
 
 	return 0;
+	}
+
+/*
+	MAIN_EVENT()
+	------------
+*/
+int main(int argc, const char *argv[])
+	{
+	try
+		{
+		return main_event(argc, argv);
+		}
+	catch (...)
+		{
+		puts("Unexpected exception");
+		return 1;
+		}
 	}

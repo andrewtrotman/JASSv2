@@ -22,7 +22,7 @@
 #include "maths.h"
 #include "forceinline.h"
 
-//#define USE_QUERY_IDS 1
+#define USE_QUERY_IDS 1
 
 namespace JASS
 	{
@@ -75,11 +75,8 @@ namespace JASS
 
 #ifdef USE_QUERY_IDS
 			flag_type query_id;
-	#ifdef __AVX512F__
-			__m512i query_ids;
-	#else
-			__m256i query_ids;
-	#endif
+			__m256i query_ids256;
+			__m512i query_ids512;
 #endif
 			/*
 				At run-time we use these parameters
@@ -308,6 +305,24 @@ namespace JASS
 				__m256i indexes = which_dirty_flag(which);
 				__m256i flags = simd::gather(&dirty_flag[0], indexes);
 
+#ifdef USE_QUERY_IDS
+				int got = _mm256_movemask_ps(_mm256_castsi256_ps(_mm256_cmpeq_epi32(flags, query_ids256)));
+				got = ~got;
+
+				if (got == 0)
+					return simd::gather(&accumulator[0], which);			// no new flags to set
+
+				/*
+					At least one bit is set, work out which ones need processing and process them.
+				*/
+				if (got & 0x000F)
+					clean_flagset(_mm256_extracti128_si256(indexes, 0), got >> 0);
+				if (got & 0x00F0)
+					clean_flagset(_mm256_extracti128_si256(indexes, 1), got >> 4);
+
+				return simd::gather(&accumulator[0], which);
+#else
+
 				uint32_t got = _mm256_movemask_epi8(flags);
 				if (got == 0)
 					return simd::gather(&accumulator[0], which);
@@ -318,6 +333,7 @@ namespace JASS
 					clean_flagset(_mm256_extracti128_si256(indexes, 1), got >> 16);
 
 				return simd::gather(&accumulator[0], which);
+#endif
 				}
 
 			/*
@@ -352,7 +368,7 @@ namespace JASS
 				__m512i flags = simd::gather(&dirty_flag[0], indexes);
 
 #ifdef USE_QUERY_IDS
-				__mmask16 got = _mm512_cmpneq_epi32_mask(flags, query_ids);
+				__mmask16 got = _mm512_cmpneq_epi32_mask(flags, query_ids512);
 
 				if (got == 0)
 					return simd::gather(&accumulator[0], which);			// no new flags to set
@@ -439,9 +455,9 @@ namespace JASS
 				query_id++;
 
 	#ifdef __AVX512F__
-			query_ids = _mm512_set1_epi32(query_id);
+			query_ids512 = _mm512_set1_epi32(query_id);
 	#else
-			query_ids = _mm256_set1_epi32(query_id);
+			query_ids256 = _mm256_set1_epi32(query_id);
 	#endif
 
 #else

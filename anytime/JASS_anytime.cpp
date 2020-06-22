@@ -282,10 +282,10 @@ uint8_t usage(const std::string &exename)
 	}
 
 /*
-	MAIN()
-	------
+	MAIN_EVENT()
+	------------
 */
-int main(int argc, const char *argv[])
+int main_event(int argc, const char *argv[])
 	{
 	auto total_run_time = JASS::timer::start();
 	/*
@@ -416,4 +416,21 @@ std::cout << "Maximum number of postings to process:" << postings_to_process << 
 	std::cout << stats;
 
 	return 0;
+	}
+
+/*
+	MAIN()
+	------
+*/
+int main(int argc, const char *argv[])
+	{
+	try
+		{
+		return main_event(argc, argv);
+		}
+	catch (...)
+		{
+		std::cout << "Unexpected Exception\n";
+		return 1;
+		}
 	}

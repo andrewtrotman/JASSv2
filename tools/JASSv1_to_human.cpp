@@ -154,9 +154,10 @@ void walk_index(JASS::deserialised_jass_v1 &index, JASS::compress_integer &decom
 /*!
 	@brief Print the usage line
 */
-uint8_t usage(const std::string &exename)
+uint8_t usage(std::string exename)
 	{
 	std::cout << JASS::commandline::usage(exename, parameters) << "\n";
+
 	return 1;
 	}
 
@@ -169,54 +170,61 @@ uint8_t usage(const std::string &exename)
 */
 int main(int argc, const char *argv[])
 	{
-	/*
-		Parse the commane line parameters
-	*/
-	auto success = JASS::commandline::parse(argc, argv, parameters, parameters_errors);
-	if (!success)
+	try
 		{
-		std::cout << parameters_errors;
-		exit(1);
+		/*
+			Parse the commane line parameters
+		*/
+		auto success = JASS::commandline::parse(argc, argv, parameters, parameters_errors);
+		if (!success)
+			{
+			std::cout << parameters_errors;
+			exit(1);
+			}
+		if (parameter_help)
+			exit(usage(argv[0]));
+
+		/*
+			Open and read the index
+		*/
+		JASS::deserialised_jass_v1 index(false);
+		index.read_index();
+
+		/*
+			Get the encoding scheme and the d-ness of the index
+		*/
+		std::string codex_name;
+		int32_t d_ness;
+		std::unique_ptr<JASS::compress_integer> decompressor = index.codex(codex_name, d_ness);
+		decompressor->init(index.primary_keys(), index.document_count());
+
+		if (!parameter_look_like_atire)
+			{
+			if (parameter_dictionary_only)
+				std::cout << "\nDICTIONARY\n----------\n";
+			else
+				std::cout << "\nPOSTINGS LISTS\n-------------\n";
+			}
+
+		/*
+			Print the postings lists
+		*/
+		walk_index(index, *decompressor);
+
+		/*
+			Print the primary key list
+		*/
+		if (!parameter_look_like_atire && !parameter_dictionary_only)
+			{
+			std::cout << "\nPRIMARY KEY LIST\n----------------\n";
+			for (const auto &key : index.primary_keys())
+				std::cout << key << '\n';
+			}
 		}
-	if (parameter_help)
-		exit(usage(argv[0]));
-
-	/*
-		Open and read the index
-	*/
-	JASS::deserialised_jass_v1 index(false);
-	index.read_index();
-
-	/*
-		Get the encoding scheme and the d-ness of the index
-	*/
-	std::string codex_name;
-	int32_t d_ness;
-	std::unique_ptr<JASS::compress_integer> decompressor = index.codex(codex_name, d_ness);
-	decompressor->init(index.primary_keys(), index.document_count());
-
-	if (!parameter_look_like_atire)
+	catch (...)
 		{
-		if (parameter_dictionary_only)
-			std::cout << "\nDICTIONARY\n----------\n";
-		else
-			std::cout << "\nPOSTINGS LISTS\n-------------\n";
+		std::cout << "Unknown exception\n";
+		return 1;
 		}
-
-	/*
-		Print the postings lists
-	*/
-	walk_index(index, *decompressor);
-
-	/*
-		Print the primary key list
-	*/
-	if (!parameter_look_like_atire && !parameter_dictionary_only)
-		{
-		std::cout << "\nPRIMARY KEY LIST\n----------------\n";
-		for (const auto &key : index.primary_keys())
-			std::cout << key << '\n';
-		}
-
 	return 0;
 	}

@@ -24,19 +24,27 @@ int usage(char *exename)
 */
 int main(int argc, char *argv[])
 	{
-	if (argc != 2)
-		exit(usage(argv[0]));
-
-	std::unique_ptr<JASS::channel> source(new JASS::channel_file(argv[1]));
-	JASS::channel_trec infile(source, "d");
-
-	std::string query;
-	do
+	try
 		{
-		infile.gets(query);
-		std::cout << query << '\n';
+		if (argc != 2)
+			exit(usage(argv[0]));
+
+		std::unique_ptr<JASS::channel> source(new JASS::channel_file(argv[1]));
+		JASS::channel_trec infile(source, "d");
+
+		std::string query;
+		do
+			{
+			infile.gets(query);
+			std::cout << query << '\n';
+			}
+		while (query.size() != 0);
 		}
-	while (query.size() != 0);
+	catch (...)
+		{
+		puts("Unhandled Exception");
+		return 1;
+		}
 
 	return 0;
 	}

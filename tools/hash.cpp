@@ -44,14 +44,21 @@ uint8_t usage(const std::string &filename)
 */
 int main(int argc, char *argv[])
 	{
-	if (argc == 0)
-		exit(usage(argv[0]));
-
-	puts("Fletcher 16 Checksum");
-	for (int parameter = 1; parameter < argc; parameter++)
+	try
 		{
-		auto checksum = JASS::checksum::fletcher_16_file(argv[parameter]);
-		printf("0x%04X : %s\n",  checksum, argv[parameter]);
+		if (argc == 0)
+			exit(usage(argv[0]));
+
+		puts("Fletcher 16 Checksum");
+		for (int parameter = 1; parameter < argc; parameter++)
+			{
+			auto checksum = JASS::checksum::fletcher_16_file(argv[parameter]);
+			printf("0x%04X : %s\n",  checksum, argv[parameter]);
+			}
+		}
+	catch (...)
+		{
+		puts("Unexpected Exception");
 		}
 
 	return 0;

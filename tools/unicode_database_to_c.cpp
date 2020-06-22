@@ -750,11 +750,11 @@ void process_casefolding(const char *line)
 	}
 
 /*
-	MAIN()
-	------
+	MAIN_EVENT()
+	------------
 	@brief Read the Unicode database files, compute the set of "C" routines and then dump them out
 */
-int main(int argc, char *argv[])
+int main_event(int argc, char *argv[])
 	{
 	/*
 		Check we have the right number of parameters
@@ -844,4 +844,21 @@ int main(int argc, char *argv[])
 		success
 	*/
 	return 0;
+	}
+
+/*
+	MAIN()
+	------
+*/
+int main(int argc, char *argv[])
+	{
+	try
+		{
+		return main_event(argc, argv);
+		}
+	catch (...)
+		{
+		puts("Unexpected exception");
+		return 1;
+		}
 	}

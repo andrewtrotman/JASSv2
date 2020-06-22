@@ -40,10 +40,10 @@
 #include "file.h"
 
 /*
-	MAIN()
-	------
+	MAIN_EVENT()
+	------------
 */
-int main(int argc, const char *argv[])
+int main_event(int argc, const char *argv[])
 	{
 	std::map<size_t, std::vector<size_t>> times_in_nanoseconds;
 	std::map<size_t, size_t> size_in_bytes;
@@ -115,4 +115,20 @@ int main(int argc, const char *argv[])
 		}
 
 	return 0;
+	}
+
+/*
+	MAIN()
+	------
+*/
+int main(int argc, const char *argv[])
+	{
+	try
+		{
+		return main_event(argc, argv);
+		}
+	catch (...)
+		{
+		return printf("Unhandled Exception");
+		}
 	}
