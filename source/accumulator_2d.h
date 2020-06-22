@@ -203,6 +203,7 @@ namespace JASS
 					number of accumulators then it ballances the number of accumulator with the number of dirty flags.  Both techniques are used.
 				*/
 				shift = maths::floor_log2((size_t)sqrt(number_of_accumulators));
+//shift = 13;
 				width = (size_t)1 << shift;
 
 				/*
