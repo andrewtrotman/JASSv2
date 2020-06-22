@@ -268,9 +268,11 @@ namespace JASS
 //						auto start = &accumulator[0] + flag * width;
 //						std::fill(start, start + width, ELEMENT());
 
-						memset(&accumulator[0] + flag * width, 0, width * sizeof(accumulator[0]));
+//						memset(&accumulator[0] + flag * width, 0, width * sizeof(accumulator[0]));
 
-//						simd::bzero(&accumulator[0] + flag * width, width >> 6);
+
+//std::cout << "Width:" << width << " BZ:" << width * sizeof(accumulator[0]) / 64 << " BZ2:" << (width >> 5) << "\n";
+						simd::bzero(&accumulator[0] + flag * width, width >> 5);
 						
 						dirty_flag[flag] = 0;
 						}
