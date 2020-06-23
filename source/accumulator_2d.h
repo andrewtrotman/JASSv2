@@ -196,7 +196,7 @@ namespace JASS
 				@param number_of_accumulators [in] The numnber of elements in the array being managed.
 				@param preferred_width [in] The preferred width of each "page" in the page table, where the actual width is 2^preferred_width (if possible)
 			*/
-			void init(size_t number_of_accumulators, size_t preferred_width)
+			void init(size_t number_of_accumulators, size_t preferred_width = 0)
 				{
 				this->number_of_accumulators = number_of_accumulators;
 				/*
@@ -274,9 +274,7 @@ namespace JASS
 
 						memset(&accumulator[0] + flag * width, 0, width * sizeof(accumulator[0]));
 
-
-//std::cout << "Width:" << width << " BZ:" << width * sizeof(accumulator[0]) / 64 << " BZ2:" << (width >> 5) << "\n";
-//						simd::bzero(&accumulator[0] + flag * width, width >> 5);
+//						simd::bzero64(&accumulator[0] + flag * width, width >> 5);
 						
 						dirty_flag[flag] = 0;
 						}
@@ -525,7 +523,7 @@ namespace JASS
 					Allocate an array of 64 accumulators and make sure the width and height are correct
 				*/
 				accumulator_2d<size_t, 64> array;
-				array.init(64, 0);
+				array.init(64);
 				JASS_assert(array.width == 8);
 				JASS_assert(array.shift == 3);
 				JASS_assert(array.number_of_dirty_flags == 8);
@@ -536,7 +534,7 @@ namespace JASS
 					Make sure it all works right when there is a single accumulator in the last row
 				*/
 				accumulator_2d<size_t, 65> array_hangover;
-				array_hangover.init(65, 0);
+				array_hangover.init(65);
 				JASS_assert(array_hangover.width == 8);
 				JASS_assert(array_hangover.shift == 3);
 				JASS_assert(array_hangover.number_of_dirty_flags == 9);
@@ -547,7 +545,7 @@ namespace JASS
 					Make sure it all works right when there is a single accumulator missing from the last row
 				*/
 				accumulator_2d<size_t, 63> array_hangunder;
-				array_hangunder.init(63, 0);
+				array_hangunder.init(63);
 				JASS_assert(array_hangunder.width == 4);
 				JASS_assert(array_hangunder.shift == 2);
 				JASS_assert(array_hangunder.number_of_dirty_flags == 16);
@@ -558,7 +556,7 @@ namespace JASS
 					Make sure it all works right when there is a single accumulator
 				*/
 				accumulator_2d<size_t, 1> array_one;
-				array_one.init(1, 0);
+				array_one.init(1);
 				JASS_assert(array_one.width == 1);
 				JASS_assert(array_one.shift == 0);
 				JASS_assert(array_one.number_of_dirty_flags == 1);
