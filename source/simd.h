@@ -702,15 +702,15 @@ namespace JASS
 
 #ifdef __AVX512F__
 			/*
-				SIMD::BZERO()
-				-------------
+				SIMD::BZERO64()
+				---------------
 			*/
 			/*!
 				@brief zero 64-byte aligned memory in 64-byte chunks
 				@param address[in] The addres to start zeroing from (must be 64-byte aligned)
 				@param sixty_fours The numnber of 64-byte chunks of zero to write
 			*/
-			forceinline static void bzero(void *address, uint32_t sixty_fours)
+			forceinline static void bzero64(void *address, uint32_t sixty_fours)
 				{
 				__m512i zero = _mm512_setzero_si512();
 				__m512i *into = reinterpret_cast<__m512i *>(address);
@@ -734,15 +734,15 @@ namespace JASS
 				}
 #else
 			/*
-				SIMD::BZERO()
-				-------------
+				SIMD::BZERO64()
+				---------------
 			*/
 			/*!
 				@brief zero 64-byte aligned memory in 64-byte chunks
 				@param address[in] The addres to start zeroing from (must be 64-byte aligned)
 				@param sixty_fours The numnber of 64-byte chunks of zero to write
 			*/
-			forceinline static void bzero(void *address, uint32_t sixty_fours)
+			forceinline static void bzero64(void *address, uint32_t sixty_fours)
 				{
 				__m256i zero = _mm256_setzero_si256();
 				__m256i *into = reinterpret_cast<__m256i *>(address);
@@ -754,6 +754,7 @@ namespace JASS
 						}
 				}
 #endif
+
 			/*
 				SIMD::UNITTEST()
 				----------------

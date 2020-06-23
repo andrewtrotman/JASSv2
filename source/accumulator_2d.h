@@ -194,16 +194,20 @@ namespace JASS
 			/*!
 				@brief Initialise this object before first use.
 				@param number_of_accumulators [in] The numnber of elements in the array being managed.
+				@param preferred_width [in] The preferred width of each "page" in the page table, where the actual width is 2^preferred_width (if possible)
 			*/
-			void init(size_t number_of_accumulators)
+			void init(size_t number_of_accumulators, size_t preferred_width = 0)
 				{
 				this->number_of_accumulators = number_of_accumulators;
 				/*
 					If the width of the accumulator array is a whole power of 2 the its quick to find the dirty flag.  If the width is the square root of the
 					number of accumulators then it ballances the number of accumulator with the number of dirty flags.  Both techniques are used.
 				*/
-				shift = maths::floor_log2((size_t)sqrt(number_of_accumulators));
-//shift = 13;
+				if (preferred_width > 1)
+					shift = preferred_width;
+				else
+					shift = maths::floor_log2((size_t)sqrt(number_of_accumulators));
+
 				width = (size_t)1 << shift;
 
 				/*
@@ -268,11 +272,9 @@ namespace JASS
 //						auto start = &accumulator[0] + flag * width;
 //						std::fill(start, start + width, ELEMENT());
 
-//						memset(&accumulator[0] + flag * width, 0, width * sizeof(accumulator[0]));
+						memset(&accumulator[0] + flag * width, 0, width * sizeof(accumulator[0]));
 
-
-//std::cout << "Width:" << width << " BZ:" << width * sizeof(accumulator[0]) / 64 << " BZ2:" << (width >> 5) << "\n";
-						simd::bzero(&accumulator[0] + flag * width, width >> 5);
+//						simd::bzero64(&accumulator[0] + flag * width, width >> 5);
 						
 						dirty_flag[flag] = 0;
 						}
