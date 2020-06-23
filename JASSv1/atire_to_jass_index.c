@@ -22,6 +22,7 @@
 #include "compress_qmx_d4.h"
 #include "compress_integer_elias_gamma_simd.h"
 #include "compress_integer_elias_delta_simd.h"
+#include "compress_integer_elias_gamma_simd_vb.h"
 
 #ifndef IMPACT_HEADER
 	#error "set IMPACT_HEADER in the ATIRE makefile and start all over again"
@@ -128,7 +129,7 @@ qsort(termlist, termlist_length, sizeof(*termlist), string_compare);
 */
 uint8_t usage(char *filename)
 {
-printf("Usage: %s <index.aspt> [<topicfile>] [-c|-s|-q|-Q] [-SSE]", filename);
+printf("Usage: %s <index.aspt> [<topicfile>] [-8|-c|-s|-q|-Q|-R|-G|-D|-g] [-SSE]\n", filename);
 puts("Generate <topicfile> with trec2query <trectopicfile>");
 puts("-8 compress the postings using simple 8b");
 puts("-c compress the postings using Variable Byte Encoding (default)");
@@ -138,6 +139,7 @@ puts("-Q compress the postings using QMX-D4 (QMX + 'D4 d-gaps)");
 puts("-R compress the postings using QMX-D0 (QMX  without d-gaps)");
 puts("-SSE SSE algn postings lists (this is the default for QMX based schemes)");
 puts("-G compress the postings using Group Elias Gamma SIMD (D1 gaps)");
+puts("-g compress the postings using Group Elias Gamma SIMD with vByte (D1 gaps)");
 puts("-D compress the postings using Group Elias Delta SIMD (D1 gaps)");
 
 return 1;
@@ -377,6 +379,13 @@ for (parameter = 2; parameter < argc; parameter++)
 		file_mode = 'G';
 		remember_should_compress = true;
 		compressor = new JASS::compress_integer_elias_gamma_simd;
+//		sse_alignment = 16;
+		}
+	else if (strcmp(argv[parameter], "-g") == 0)
+		{
+		file_mode = 'g';
+		remember_should_compress = true;
+		compressor = new compress_integer_elias_gamma_simd_vb;
 //		sse_alignment = 16;
 		}
 	else if (strcmp(argv[parameter], "-D") == 0)

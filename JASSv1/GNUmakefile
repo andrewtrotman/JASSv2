@@ -1,4 +1,4 @@
-ATIRE_DIR = ../atire
+ATIRE_DIR = ../../atire
 
 ATIRE_OBJ = \
 	$(ATIRE_DIR)/obj/stats.o			\
@@ -75,10 +75,11 @@ CI_FLAGS = -x c++ -DCI_FORCEINLINE -msse4 -std=c++11 -O3 -I$(ATIRE_DIR)/source $
 all : atire_to_jass_index jass
 
 jass : jass.c CI.c compress_qmx.c maths.c compress_qmx_d4.c process_postings.c compress_integer_elias_delta_simd.c compress_integer_elias_gamma_simd.c
-	g++ -march=native $(CI_FLAGS) jass.c CI.c compress_simple8b.c compress_qmx.c compress_qmx_d4.c maths.c process_postings.c compress_integer_elias_gamma_simd.c compress_integer_elias_delta_simd.c -o jass
+	g++ -march=native $(CI_FLAGS) jass.c CI.c compress_simple8b.c compress_qmx.c compress_qmx_d4.c maths.c process_postings.c compress_integer_elias_gamma_simd.c compress_integer_elias_delta_simd.c compress_integer_elias_gamma_simd_vb.cpp compress_integer_variable_byte.cpp -o jass
 
 atire_to_jass_index : atire_to_jass_index.c compress_integer_elias_delta_simd.c compress_integer_elias_gamma_simd.c
-	g++ -march=native $(ATIRE_OBJ) $(ATIRE_LIBS) $(CI_FLAGS) compress_integer_elias_delta_simd.c compress_integer_elias_gamma_simd.c atire_to_jass_index.c compress_variable_byte.c compress_simple8b.c compress_qmx.c compress_qmx_d4.c maths.c -o atire_to_jass_index
+	g++ -march=native $(ATIRE_OBJ) $(ATIRE_LIBS) $(CI_FLAGS) compress_integer_elias_delta_simd.c compress_integer_elias_gamma_simd.c atire_to_jass_index.c compress_variable_byte.c compress_simple8b.c compress_qmx.c compress_qmx_d4.c maths.c compress_integer_elias_gamma_simd_vb.cpp compress_integer_variable_byte.cpp -o atire_to_jass_index
+	
 
 clean:
 	-rm atire_to_jass_index jass *.o CIvocab.c CIpostings.h CIpostings.c CIdoclist.c CIvocab_heap.c CIpostings.bin CIdoclist.bin CIvocab.bin CIvocab_terms.bin
