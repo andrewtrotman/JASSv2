@@ -47,6 +47,7 @@ size_t maximum_number_of_postings_to_process = 0;	///< Computed from
 std::string parameter_queryfilename;					///< Name of file containing the queries
 size_t parameter_threads = 1;								///< Number of concurrent queries
 size_t parameter_top_k = 10;								///< Number of results to return
+size_t accumulator_width = 7;								///< The width (2^accumulator_width) of the accumulator 2-D array (if they are being used).
 bool parameter_help = false;
 
 std::string parameters_errors;							///< Any errors as a result of command line parsing
@@ -57,7 +58,8 @@ auto parameters = std::make_tuple						///< The  command line parameter block
 	JASS::commandline::parameter("-t", "--threads",   "<threadcount>     Number of threads to use (one query per thread) [default = -t1]", parameter_threads),
 	JASS::commandline::parameter("-k", "--top-k",     "<top-k>           Number of results to return to the user (top-k value) [default = -k10]", parameter_top_k),
 	JASS::commandline::parameter("-r", "--rho",       "<integer_percent> Percent of the collection size to use as max number of postings to process [default = -r100] (overrides -RHO)", rho),
-	JASS::commandline::parameter("-R", "--RHO",       "<integer_max>     Max number of postings to process [default is all] (overridden by -rho)", maximum_number_of_postings_to_process)
+	JASS::commandline::parameter("-R", "--RHO",       "<integer_max>     Max number of postings to process [default is all] (overridden by -rho)", maximum_number_of_postings_to_process),
+	JASS::commandline::parameter("-w", "--width",     "<2^w>             The width of the 2d accumulator array (2^w is used)", accumulator_width)
 	);
 
 /*
@@ -86,7 +88,7 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 
 	try
 		{
-		jass_query->init(index.primary_keys(), index.document_count(), top_k);
+		jass_query->init(index.primary_keys(), index.document_count(), top_k, accumulator_width);
 		}
 	catch (std::bad_array_new_length &)
 		{

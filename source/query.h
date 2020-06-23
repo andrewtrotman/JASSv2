@@ -173,8 +173,9 @@ namespace JASS
 				@param primary_keys [in] Vector of the document primary keys used to convert from internal document ids to external primary keys.
 				@param documents [in] The number of documents in the collection.
 				@param top_k [in]	The top-k documents to return from the query once executed.
+				@param width [in] The width of the 2-d accumulators (if they are being used).
 			*/
-			virtual void init(const std::vector<std::string> &primary_keys, DOCID_TYPE documents = 1024, size_t top_k = 10)
+			virtual void init(const std::vector<std::string> &primary_keys, DOCID_TYPE documents = 1024, size_t top_k = 10, size_t width = 7)
 				{
 				this->primary_keys = &primary_keys;
 				this->top_k = top_k;

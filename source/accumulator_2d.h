@@ -194,16 +194,20 @@ namespace JASS
 			/*!
 				@brief Initialise this object before first use.
 				@param number_of_accumulators [in] The numnber of elements in the array being managed.
+				@param preferred_width [in] The preferred width of each "page" in the page table, where the actual width is 2^preferred_width (if possible)
 			*/
-			void init(size_t number_of_accumulators)
+			void init(size_t number_of_accumulators, size_t preferred_width)
 				{
 				this->number_of_accumulators = number_of_accumulators;
 				/*
 					If the width of the accumulator array is a whole power of 2 the its quick to find the dirty flag.  If the width is the square root of the
 					number of accumulators then it ballances the number of accumulator with the number of dirty flags.  Both techniques are used.
 				*/
-				shift = maths::floor_log2((size_t)sqrt(number_of_accumulators));
-//shift = 13;
+				if (preferred_width > 1)
+					shift = preferred_width;
+				else
+					shift = maths::floor_log2((size_t)sqrt(number_of_accumulators));
+
 				width = (size_t)1 << shift;
 
 				/*
@@ -268,11 +272,11 @@ namespace JASS
 //						auto start = &accumulator[0] + flag * width;
 //						std::fill(start, start + width, ELEMENT());
 
-//						memset(&accumulator[0] + flag * width, 0, width * sizeof(accumulator[0]));
+						memset(&accumulator[0] + flag * width, 0, width * sizeof(accumulator[0]));
 
 
 //std::cout << "Width:" << width << " BZ:" << width * sizeof(accumulator[0]) / 64 << " BZ2:" << (width >> 5) << "\n";
-						simd::bzero(&accumulator[0] + flag * width, width >> 5);
+//						simd::bzero(&accumulator[0] + flag * width, width >> 5);
 						
 						dirty_flag[flag] = 0;
 						}
@@ -521,7 +525,7 @@ namespace JASS
 					Allocate an array of 64 accumulators and make sure the width and height are correct
 				*/
 				accumulator_2d<size_t, 64> array;
-				array.init(64);
+				array.init(64, 0);
 				JASS_assert(array.width == 8);
 				JASS_assert(array.shift == 3);
 				JASS_assert(array.number_of_dirty_flags == 8);
@@ -532,7 +536,7 @@ namespace JASS
 					Make sure it all works right when there is a single accumulator in the last row
 				*/
 				accumulator_2d<size_t, 65> array_hangover;
-				array_hangover.init(65);
+				array_hangover.init(65, 0);
 				JASS_assert(array_hangover.width == 8);
 				JASS_assert(array_hangover.shift == 3);
 				JASS_assert(array_hangover.number_of_dirty_flags == 9);
@@ -543,7 +547,7 @@ namespace JASS
 					Make sure it all works right when there is a single accumulator missing from the last row
 				*/
 				accumulator_2d<size_t, 63> array_hangunder;
-				array_hangunder.init(63);
+				array_hangunder.init(63, 0);
 				JASS_assert(array_hangunder.width == 4);
 				JASS_assert(array_hangunder.shift == 2);
 				JASS_assert(array_hangunder.number_of_dirty_flags == 16);
@@ -554,7 +558,7 @@ namespace JASS
 					Make sure it all works right when there is a single accumulator
 				*/
 				accumulator_2d<size_t, 1> array_one;
-				array_one.init(1);
+				array_one.init(1, 0);
 				JASS_assert(array_one.width == 1);
 				JASS_assert(array_one.shift == 0);
 				JASS_assert(array_one.number_of_dirty_flags == 1);
