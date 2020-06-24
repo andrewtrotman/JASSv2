@@ -130,7 +130,6 @@ namespace JASS
 			std::vector<metadata> vocabulary_list;			///< The (sorted in alphabetical order) array of vocbulary terms
 
 			std::string postings_memory;						///< Memory used to store the postings
-
 		protected:
 			/*
 				DESERIALISED_JASS_V1::READ_PRIMARY_KEYS()
