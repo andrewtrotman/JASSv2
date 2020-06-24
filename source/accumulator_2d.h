@@ -63,12 +63,14 @@ namespace JASS
 				to work out the maxumum sizes of the two arrays at compile time and the check at construction that no overflow
 				is happening. This code works out the maximums and allocates the arrays.
 			*/
-			static constexpr size_t maximum_shift = maths::floor_log2(maths::sqrt_compiletime(NUMBER_OF_ACCUMULATORS));					///< The amount to shift to get the right dirty flag
-			static constexpr size_t maximum_width = 1 << maximum_shift;																					///< Each dirty flag represents this number of accumulators in a "row"
+//			static constexpr size_t maximum_shift = maths::floor_log2(maths::sqrt_compiletime(NUMBER_OF_ACCUMULATORS));					///< The amount to shift to get the right dirty flag
+//			static constexpr size_t maximum_width = 1 << maximum_shift;																					///< Each dirty flag represents this number of accumulators in a "row"
 		public:
-			static constexpr size_t maximum_number_of_dirty_flags = (NUMBER_OF_ACCUMULATORS + maximum_width - 1) / maximum_width;	///< The number of "rows" (i.e. dirty flags).
+//			static constexpr size_t maximum_number_of_dirty_flags = (NUMBER_OF_ACCUMULATORS + maximum_width - 1) / maximum_width;	///< The number of "rows" (i.e. dirty flags).
+			static constexpr size_t maximum_number_of_dirty_flags = NUMBER_OF_ACCUMULATORS;
 		private:
-			static constexpr size_t maximum_number_of_accumulators_allocated = maximum_width * maximum_number_of_dirty_flags;			///< The numner of accumulators that were actually allocated (recall that this is a 2D array)
+//			static constexpr size_t maximum_number_of_accumulators_allocated = maximum_width * maximum_number_of_dirty_flags;			///< The numner of accumulators that were actually allocated (recall that this is a 2D array)
+			static constexpr size_t maximum_number_of_accumulators_allocated = NUMBER_OF_ACCUMULATORS + NUMBER_OF_ACCUMULATORS / 2;			///< The numner of accumulators that were actually allocated (recall that this is a 2D array)
 		public:
 			alignas(__m512i) flag_type dirty_flag[maximum_number_of_dirty_flags];																							///< The dirty flags are kept as bytes for faster lookup
 			alignas(__m512i) ELEMENT accumulator[maximum_number_of_accumulators_allocated];																				///< The accumulators are kept in an array
@@ -269,13 +271,9 @@ namespace JASS
 #else
 					if (dirty_flag[flag])
 						{
-//						auto start = &accumulator[0] + flag * width;
-//						std::fill(start, start + width, ELEMENT());
-
+//						simd::bzero64(&accumulator[0] + flag * width, width >> 5);
 						memset(&accumulator[0] + flag * width, 0, width * sizeof(accumulator[0]));
 
-//						simd::bzero64(&accumulator[0] + flag * width, width >> 5);
-						
 						dirty_flag[flag] = 0;
 						}
 #endif

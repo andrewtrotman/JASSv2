@@ -90,9 +90,9 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 		{
 		jass_query->init(index.primary_keys(), index.document_count(), top_k, accumulator_width);
 		}
-	catch (std::bad_array_new_length &)
+	catch (std::bad_array_new_length &ers)
 		{
-		exit(printf("Can't load index as the number of documents is too large - change MAX_DOCUMENTS in %s\n", __FILE__));
+		exit(printf("Can't load index as the number of documents is too large - change MAX_DOCUMENTS in query.h\n"));
 		}
 
 	/*
@@ -350,12 +350,27 @@ std::cout << "Maximum number of postings to process:" << postings_to_process << 
 		Read the query set and bung it into a vector
 	*/
 	std::vector<JASS_anytime_query> query_list;
+
 	input->gets(query);
+
+	std::size_t found = query.find_last_not_of(" \t\f\v\n\r");
+	if (found != std::string::npos)
+	  query.erase(found + 1);
+	else
+	  query.clear();            // str is all whitespace
+
 	while (query.size() != 0)
 		{
 		query_list.push_back(query);
-		input->gets(query);
 		stats.number_of_queries++;
+
+		input->gets(query);
+
+		std::size_t found = query.find_last_not_of(" \t\f\v\n\r");
+		if (found != std::string::npos)
+		  query.erase(found + 1);
+		else
+		  query.clear();            // str is all whitespace
 		}
 
 	/*
@@ -430,9 +445,9 @@ int main(int argc, const char *argv[])
 		{
 		return main_event(argc, argv);
 		}
-	catch (...)
+	catch (std::exception &ers)
 		{
-		std::cout << "Unexpected Exception\n";
+		std::cout << "Unexpected Exception:" << ers.what() << "\n";
 		return 1;
 		}
 	}

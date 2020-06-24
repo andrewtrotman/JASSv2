@@ -18,6 +18,7 @@ int usage(char *exename)
 	std::cout << "Usage:" << exename << " <TRECTopicFile>\n";
 	return 1;
 	}
+	
 /*
 	MAIN()
 	------
@@ -30,7 +31,7 @@ int main(int argc, char *argv[])
 			exit(usage(argv[0]));
 
 		std::unique_ptr<JASS::channel> source(new JASS::channel_file(argv[1]));
-		JASS::channel_trec infile(source, "d");
+		JASS::channel_trec infile(source, "t");
 
 		std::string query;
 		do
