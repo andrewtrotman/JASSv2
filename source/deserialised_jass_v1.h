@@ -129,7 +129,12 @@ namespace JASS
 			std::string vocabulary_terms_memory;			///< Memory used to store the vocabulary strings
 			std::vector<metadata> vocabulary_list;			///< The (sorted in alphabetical order) array of vocbulary terms
 
-			std::string postings_memory;						///< Memory used to store the postings
+
+			const uint8_t *postings_memory;					///< Memory used to store the postings
+			size_t postings_memory_length;					///< The size of postings_memory in bytes
+			bool postings_memory_is_mmap;						///< Is the postings_memory the reuslt of a call to mmap() (if not then it is a result of a call to new[]).
+			std::string postings_memory_buffer;				///< The memory if not using mmap();
+
 		protected:
 			/*
 				DESERIALISED_JASS_V1::READ_PRIMARY_KEYS()
@@ -167,8 +172,8 @@ namespace JASS
 
 		public:
 			/*
-				DESERIALISED_JASS_V1::ANYTIME_INDEX()
-				-------------------------------------
+				DESERIALISED_JASS_V1::DESERIALISED_JASS_V1()
+				--------------------------------------------
 			*/
 			/*!
 				@brief Constructor
@@ -177,10 +182,22 @@ namespace JASS
 			explicit deserialised_jass_v1(bool verbose = false) :
 				verbose(verbose),
 				documents(0),
-				terms(0)
+				terms(0),
+				postings_memory(nullptr),
+				postings_memory_length(0),
+				postings_memory_is_mmap(false)
 				{
 				/* Nothing */
 				}
+
+			/*
+				DESERIALISED_JASS_V1::~DESERIALISED_JASS_V1()
+				---------------------------------------------
+			*/
+			/*!
+				@brief Destructor
+			*/
+			~deserialised_jass_v1();
 
 			/*
 				DESERIALISED_JASS_V1::READ_INDEX()
@@ -231,7 +248,7 @@ namespace JASS
 			*/
 			const uint8_t *postings(void) const
 				{
-				return reinterpret_cast<const uint8_t *>(&postings_memory[0]);
+				return postings_memory;
 				}
 
 			/*

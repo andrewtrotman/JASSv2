@@ -4,6 +4,11 @@
 	Copyright (c) 2017 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
+
 #include <algorithm>
 
 #include "file.h"
@@ -14,6 +19,16 @@
 
 namespace JASS
 	{
+	/*
+		DESERIALISED_JASS_V1::DESERIALISED_JASS_V1()
+		--------------------------------------------
+	*/
+	deserialised_jass_v1::~deserialised_jass_v1()
+		{
+		if (postings_memory_is_mmap)
+			munmap((void *)postings_memory, postings_memory_length);
+		}
+
 	/*
 		DESERIALISED_JASS_V1::READ_PRIMARY_KEYS()
 		-----------------------------------------
@@ -103,7 +118,7 @@ namespace JASS
 			Build the vocabulary
 		*/
 		vocabulary_list.reserve(terms);
-		const char *postings_base = &postings_memory[0];
+		const uint8_t *postings_base = postings();
 		for (size_t term = 0; term < terms; term++)
 			{
 			uint64_t *base = reinterpret_cast<uint64_t *>(vocab + (3 * sizeof(uint64_t)) * term);
@@ -143,9 +158,36 @@ namespace JASS
 		/*
 			Read the postings
 		*/
-		auto bytes = file::read_entire_file(filename, postings_memory);
-		if (bytes == 0)
+#ifdef _MSC_VER
+		auto postings_memory_length = file::read_entire_file(filename, postings_memory_buffer);
+		if (postings_memory_length == 0)
 			return 0;
+
+		postings_memory = &postings_memory_buffer[0];
+		postings_memory_is_mmap = false;
+#else
+		printf("mmap()... ");
+
+		int reader = open(filename.c_str(), O_RDONLY);
+
+		if (reader < 0)
+			return 0;
+
+		struct stat statistics;
+		if (fstat(reader, &statistics) != 0)
+			{
+			close(reader);
+			return 0;
+			}
+		postings_memory_length = statistics.st_size;
+		#ifdef __APPLE__
+			postings_memory = (uint8_t *)mmap(nullptr, postings_memory_length, PROT_READ, MAP_PRIVATE, reader, 0);
+		#else
+			postings_memory = (uint8_t *)mmap(nullptr, postings_memory_length, PROT_READ, MAP_PRIVATE | MAP_HUGETLB | MAP_HUGE_2MB, reader, 0);
+		#endif
+		postings_memory_is_mmap = true;
+		close(reader);
+#endif
 
 		/*
 			This can take some time so make some noise when we're finished
@@ -159,7 +201,7 @@ namespace JASS
 		/*
 			Return the size of the posings (in bytes)
 		*/
-		return bytes;
+		return postings_memory_length;
 		}
 
 	/*
@@ -182,7 +224,7 @@ namespace JASS
 	*/
 	std::unique_ptr<compress_integer> deserialised_jass_v1::codex(std::string &name, int32_t &d_ness) const
 		{
-		if (postings_memory.size() == 0)
+		if (postings_memory == nullptr)
 			{
 			name = "None";
 			d_ness = 0;
