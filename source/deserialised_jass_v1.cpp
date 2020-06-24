@@ -159,15 +159,14 @@ namespace JASS
 			Read the postings
 		*/
 #ifdef _MSC_VER
+
 		auto postings_memory_length = file::read_entire_file(filename, postings_memory_buffer);
 		if (postings_memory_length == 0)
 			return 0;
 
-		postings_memory = &postings_memory_buffer[0];
+		postings_memory = (uint8_t *)&postings_memory_buffer[0];
 		postings_memory_is_mmap = false;
 #else
-		printf("mmap()... ");
-
 		int reader = open(filename.c_str(), O_RDONLY);
 
 		if (reader < 0)
@@ -183,20 +182,19 @@ namespace JASS
 		#ifdef __APPLE__
 			postings_memory = (uint8_t *)mmap(nullptr, postings_memory_length, PROT_READ, MAP_PRIVATE, reader, 0);
 		#else
-			postings_memory = (uint8_t *)mmap(nullptr, postings_memory_length, PROT_READ, MAP_PRIVATE | MAP_HUGETLB | MAP_HUGE_2MB, reader, 0);
+			postings_memory = (uint8_t *)mmap(nullptr, postings_memory_length, PROT_READ, MAP_PRIVATE | MAP_POPULATE, reader, 0);
 		#endif
-		postings_memory_is_mmap = true;
 		close(reader);
+		if (postings_memory == nullptr)
+			return 0;
+		postings_memory_is_mmap = true;
 #endif
 
 		/*
 			This can take some time so make some noise when we're finished
 		*/
 		if (verbose)
-			{
 			puts("done");
-			fflush(stdout);
-			}
 
 		/*
 			Return the size of the posings (in bytes)

@@ -1,7 +1,7 @@
 /*
 	QUERY_BUCKETS uses the bucket apprach to th top-k the alternative is the query_heap
 */
-#define QUERY_BUCKETS
+//#define QUERY_BUCKETS
 
 /*
 	SIMD_ADD_RSV_AFTER_CUMSUM uses AVX instructions to process the postings in set_rsv() after the d1 decoding has already been done
