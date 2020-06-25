@@ -4,31 +4,16 @@
 	Copyright (c) 2017 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-
-#include <algorithm>
-
 #include "file.h"
 #include "slice.h"
 #include "serialise_jass_v1.h"
 #include "compress_integer_all.h"
 #include "deserialised_jass_v1.h"
 
+#include <algorithm>
+
 namespace JASS
 	{
-	/*
-		DESERIALISED_JASS_V1::DESERIALISED_JASS_V1()
-		--------------------------------------------
-	*/
-	deserialised_jass_v1::~deserialised_jass_v1()
-		{
-		if (postings_memory_is_mmap)
-			munmap((void *)postings_memory, postings_memory_length);
-		}
-
 	/*
 		DESERIALISED_JASS_V1::READ_PRIMARY_KEYS()
 		-----------------------------------------
@@ -54,19 +39,21 @@ namespace JASS
 		/*
 			Numnber of documents is stored at the end of the file (as a uint64_t)
 		*/
-		documents = *reinterpret_cast<uint64_t *>(&primary_key_memory[bytes] - sizeof(uint64_t));
+		uint8_t *memory = nullptr;
+		primary_key_memory.read_entire_file(memory);
+		documents = *reinterpret_cast<uint64_t *>(&memory[bytes] - sizeof(uint64_t));
 		primary_key_list.reserve(documents);
 
 		/*
 			The file is in 2 parts, the first is the primary key the second is the poiters to the primary keys
 		*/
-		uint64_t *offset_base = (uint64_t *) (&primary_key_memory[0] + bytes - (documents * sizeof(uint64_t) + sizeof(uint64_t)));
+		uint64_t *offset_base = (uint64_t *) (&memory[0] + bytes - (documents * sizeof(uint64_t) + sizeof(uint64_t)));
 
 		/*
 			Now work through each primary key adding it to the list of primary keys
 		*/
 		for (size_t id = 0; id < documents; id++)
-			primary_key_list.push_back(&primary_key_memory[0] + offset_base[id]);
+			primary_key_list.push_back(reinterpret_cast<char *>(memory + offset_base[id]));
 
 		/*
 			This can take some time so make some noise when we're finished
@@ -103,7 +90,8 @@ namespace JASS
 		auto length = file::read_entire_file(vocab_filename, vocabulary_memory);
 		if (length == 0)
 			return 0;
-		char *vocab = &vocabulary_memory[0];
+		uint8_t *vocab;
+		vocabulary_memory.read_entire_file(vocab);
 
 		/*
 			Read the file of strings that is the vocabulary
@@ -112,7 +100,8 @@ namespace JASS
 		if (bytes == 0)
 			return 0;
 		terms = length / (sizeof(uint64_t) + sizeof(uint64_t) + sizeof(uint64_t));
-		char *vocab_terms = &vocabulary_terms_memory[0];
+		uint8_t *vocab_terms;
+		vocabulary_terms_memory.read_entire_file(vocab_terms);
 
 		/*
 			Build the vocabulary
@@ -123,7 +112,7 @@ namespace JASS
 			{
 			uint64_t *base = reinterpret_cast<uint64_t *>(vocab + (3 * sizeof(uint64_t)) * term);
 
-			vocabulary_list.push_back(metadata(slice(vocab_terms + base[0]), postings_base + base[1], base[2]));
+			vocabulary_list.push_back(metadata(slice(reinterpret_cast<char*>(vocab_terms + base[0])), postings_base + base[1], base[2]));
 			}
 
 		/*
@@ -155,40 +144,11 @@ namespace JASS
 			printf("Loading postings... ");
 			fflush(stdout);
 			}
+
 		/*
 			Read the postings
 		*/
-#ifdef _MSC_VER
-
-		auto postings_memory_length = file::read_entire_file(filename, postings_memory_buffer);
-		if (postings_memory_length == 0)
-			return 0;
-
-		postings_memory = (uint8_t *)&postings_memory_buffer[0];
-		postings_memory_is_mmap = false;
-#else
-		int reader = open(filename.c_str(), O_RDONLY);
-
-		if (reader < 0)
-			return 0;
-
-		struct stat statistics;
-		if (fstat(reader, &statistics) != 0)
-			{
-			close(reader);
-			return 0;
-			}
-		postings_memory_length = statistics.st_size;
-		#ifdef __APPLE__
-			postings_memory = (uint8_t *)mmap(nullptr, postings_memory_length, PROT_READ, MAP_PRIVATE, reader, 0);
-		#else
-			postings_memory = (uint8_t *)mmap(nullptr, postings_memory_length, PROT_READ, MAP_PRIVATE | MAP_POPULATE, reader, 0);
-		#endif
-		close(reader);
-		if (postings_memory == nullptr)
-			return 0;
-		postings_memory_is_mmap = true;
-#endif
+		auto postings_memory_length = file::read_entire_file(filename, postings_memory);
 
 		/*
 			This can take some time so make some noise when we're finished
@@ -222,13 +182,16 @@ namespace JASS
 	*/
 	std::unique_ptr<compress_integer> deserialised_jass_v1::codex(std::string &name, int32_t &d_ness) const
 		{
-		if (postings_memory == nullptr)
+		uint8_t *memory;
+
+		postings_memory.read_entire_file(memory);
+		if (memory == nullptr)
 			{
 			name = "None";
 			d_ness = 0;
 			return compress_integer_all::get_by_name("None");
 			}
 		else
-			return serialise_jass_v1::get_compressor(static_cast<serialise_jass_v1::jass_v1_codex>(postings_memory[0]), name, d_ness);
+			return serialise_jass_v1::get_compressor(static_cast<serialise_jass_v1::jass_v1_codex>(memory[0]), name, d_ness);
 		}
 	}

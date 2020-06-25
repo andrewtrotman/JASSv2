@@ -118,22 +118,18 @@ namespace JASS
 				};
 
 		private:
-			bool verbose;											///< Should this class produce diagnostics on stdout?
+			bool verbose;												///< Should this class produce diagnostics on stdout?
 
-			uint64_t documents;									///< The number of documents in the collection
-			std::string primary_key_memory;					///< Memory used to store the primary key strings
-			std::vector<std::string> primary_key_list;			///< The array of primary keys
+			uint64_t documents;										///< The number of documents in the collection
+			file::file_read_only primary_key_memory;			///< Memory used to store the primary key strings
+			std::vector<std::string> primary_key_list;		///< The array of primary keys
 
-			uint64_t terms;										///< The numner of terms in the collection
-			std::string vocabulary_memory;					///< Memory used to store the vocabulary pointers
-			std::string vocabulary_terms_memory;			///< Memory used to store the vocabulary strings
-			std::vector<metadata> vocabulary_list;			///< The (sorted in alphabetical order) array of vocbulary terms
+			uint64_t terms;											///< The number of terms in the collection
+			file::file_read_only vocabulary_memory;			///< Memory used to store the vocabulary pointers
+			file::file_read_only vocabulary_terms_memory;	///< Memory used to store the vocabulary strings
+			std::vector<metadata> vocabulary_list;				///< The (sorted in alphabetical order) array of vocbulary terms
 
-
-			const uint8_t *postings_memory;					///< Memory used to store the postings
-			size_t postings_memory_length;					///< The size of postings_memory in bytes
-			bool postings_memory_is_mmap;						///< Is the postings_memory the reuslt of a call to mmap() (if not then it is a result of a call to new[]).
-			std::string postings_memory_buffer;				///< The memory if not using mmap();
+			file::file_read_only postings_memory;				///< Memory used to store the postings
 
 		protected:
 			/*
@@ -182,22 +178,10 @@ namespace JASS
 			explicit deserialised_jass_v1(bool verbose = false) :
 				verbose(verbose),
 				documents(0),
-				terms(0),
-				postings_memory(nullptr),
-				postings_memory_length(0),
-				postings_memory_is_mmap(false)
+				terms(0)
 				{
 				/* Nothing */
 				}
-
-			/*
-				DESERIALISED_JASS_V1::~DESERIALISED_JASS_V1()
-				---------------------------------------------
-			*/
-			/*!
-				@brief Destructor
-			*/
-			~deserialised_jass_v1();
 
 			/*
 				DESERIALISED_JASS_V1::READ_INDEX()
@@ -248,7 +232,9 @@ namespace JASS
 			*/
 			const uint8_t *postings(void) const
 				{
-				return postings_memory;
+				uint8_t *buffer = nullptr;
+				postings_memory.read_entire_file(buffer);
+				return buffer;
 				}
 
 			/*

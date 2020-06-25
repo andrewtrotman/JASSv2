@@ -40,6 +40,78 @@ namespace JASS
 	*/
 	class file
 		{
+		public:
+			/*
+				CLASS FILE::FILE_READ_ONLY
+				--------------------------
+			*/
+			/*!
+				@brief A read_only file object, the memory was probably allocated with mmap() and needs deallocating accordingly
+			*/
+			class file_read_only
+				{
+				friend class file;
+				private:
+#ifdef _MSC_VER
+					std::string file_contents_buffer;			///< On windows (to start with) a buffer to hold the file.
+#endif
+					void *file_contents;								///< The contents of the file.
+					size_t size;										///< The size of the file.
+
+				public:
+					/*
+						FILE::FILE_READ_ONLY::FILE_READ_ONLY()
+						--------------------------------------
+					*/
+					/*!
+						@brief Constructor
+					*/
+					file_read_only():
+						#ifdef _MSC_VER
+							file_contents_buffer(""),
+						#endif
+						file_contents(nullptr),
+						size(0)
+						{
+						/* Nothing */
+						}
+
+					/*
+						FILE::FILE_READ_ONLY::OPEN()
+						----------------------------
+					*/
+					/*!
+						@brief Open and read the file into memory
+						@param filename [in] The name of the file to read
+						@return The size of the file
+					*/
+					size_t open(const std::string &filename);
+
+					/*
+						FILE::FILE_READ_ONLY::~FILE_READ_ONLY()
+						---------------------------------------
+					*/
+					/*!
+						@brief Destrucgtor
+					*/
+					~file_read_only();
+
+					/*
+						FILE::FILE_READ_ONLY::READ_ENTIRE_FILE()
+						----------------------------------------
+					*/
+					/*!
+						@brief Return the contents and length of the file.
+						@param into [out] The pointer to write into.
+						@return The size of the file in bytes
+					*/
+					size_t read_entire_file(uint8_t *&into) const
+						{
+						into = reinterpret_cast<uint8_t *>(file_contents);
+						return size;
+						}
+				};
+
 		protected:
 			FILE *fp; 								///< The underlying representation is a FILE *  from C (as they appear to be fast).
 			size_t file_position;				///< The ftell() position in the file.
@@ -368,7 +440,23 @@ namespace JASS
 				@return The size of the file in bytes
 			*/
 			static size_t read_entire_file(const std::string &filename, std::string &into);
-			
+
+			/*
+				FILE::READ_ENTIRE_FILE()
+				------------------------
+			*/
+			/*!
+				@brief Read the contents of file filename into the std::string into.
+				@details Because into is a string it is naturally '\0' terminated by the C++ std::string class.
+				@param filename [in] The path of the file to read.
+				@param into [out] The std::string to write into.  This string will be re-sized to the size of the file.
+				@return The size of the file in bytes
+			*/
+			static size_t read_entire_file(const std::string &filename, file_read_only &into)
+				{
+				return into.open(filename);
+				}
+
 			/*
 				FILE::WRITE_ENTIRE_FILE()
 				-------------------------

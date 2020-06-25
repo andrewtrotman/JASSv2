@@ -15,9 +15,11 @@
 #ifdef _MSC_VER
 	#include <io.h>
 #else
+	#include <fcntl.h>
 	#include <unistd.h>
-	#include <sys/types.h>
+	#include <sys/mman.h>
 	#include <sys/stat.h>
+	#include <sys/types.h>
 #endif
 #include <limits>
 
@@ -26,6 +28,75 @@
 
 namespace JASS
 	{
+
+	/*
+		FILE::FILE_READ_ONLY::OPEN()
+		----------------------------
+	*/
+	size_t file::file_read_only::open(const std::string &filename)
+		{
+		#ifdef _MSC_VER
+			size = file::read_entire_file(filename, file_contents_buffer);
+			if (size == 0)
+				return 0;
+			file_contents = file_contents_buffer.c_str();
+		#else
+			/*
+				Open the file
+			*/
+			int reader;
+
+			if ((reader = ::open(filename.c_str(), O_RDONLY)) < 0)
+				return 0;
+
+			/*
+				Find out h0w larget it is
+			*/
+			struct stat statistics;
+			if (fstat(reader, &statistics) != 0)
+				{
+				close(reader);
+				return 0;
+				}
+
+			/*
+				Allocate space for it and load it
+			*/
+			#ifdef __APPLE__
+				file_contents = (uint8_t *)mmap(nullptr, statistics.st_size, PROT_READ, MAP_PRIVATE, reader, 0);
+			#else
+				file_contents = (uint8_t *)mmap(nullptr, statistics.st_size, PROT_READ, MAP_PRIVATE | MAP_POPULATE, reader, 0);
+			#endif
+
+			/*
+				Close the file
+			*/
+			close(reader);
+
+			if (file_contents == nullptr)
+				return 0;
+
+			/*
+				Remember the file size
+			*/
+			size = statistics.st_size;
+
+			return size;
+		#endif
+		}
+
+	/*
+		FILE::FILE_READ_ONLY::~FILE_READ_ONLY()
+		---------------------------------------
+	*/
+	file::file_read_only::~file_read_only()
+		{
+		#ifndef _MSC_VER
+			munmap(reinterpret_cast<void *>(file_contents), size);
+		#endif
+		}
+
+
 	/*
 		FILE::READ_ENTIRE_FILE()
 		------------------------
