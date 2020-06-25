@@ -40,12 +40,12 @@ namespace JASS
 	template <typename TYPE, typename COMPARE>
 	class heap
 		{
-		private:
+		protected:
 			TYPE *array;					///< The array to build the heap over
 			size_t size;					///< The maximum size of the heap
 			COMPARE compare;				///< The comparison functor
 
-		private:
+		protected:
 			/*
 				HEAP::LEFT_OF()
 				---------------

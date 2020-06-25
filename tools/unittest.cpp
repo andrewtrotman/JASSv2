@@ -49,6 +49,7 @@
 #include "index_postings.h"
 #include "accumulator_2d.h"
 #include "channel_buffer.h"
+#include "heap_comparable.h"
 #include "instream_memory.h"
 #include "run_export_trec.h"
 #include "evaluate_recall.h"
@@ -461,6 +462,9 @@ int main(void)
 
 		puts("heap");
 		JASS::heap<int, int>::unittest();
+
+		puts("heap_comparable");
+		JASS::heap_comparable<int>::unittest();
 
 		puts("top_k_heap");
 		JASS::top_k_heap<int>::unittest();

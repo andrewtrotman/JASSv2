@@ -13,9 +13,9 @@
 #pragma once
 
 #include "simd.h"
-#include "heap.h"
 #include "query.h"
 #include "accumulator_2d.h"
+#include "heap_comparable.h"
 #include "accumulator_counter.h"
 #include "accumulator_counter_interleaved.h"
 
@@ -134,22 +134,35 @@ namespace JASS
 					*/
 					docid_rsv_pair operator*()
 						{
-						size_t id = parent.accumulators.get_index(parent.accumulator_pointers[where]);
-
-						return docid_rsv_pair(id, (*parent.primary_keys)[id], parent.accumulators[id]);
+#ifdef ACCUMULATOR_64s
+							DOCID_TYPE id = parent.sorted_accumulators[where] & 0xFFFF'FFFF;
+							ACCUMULATOR_TYPE rsv = parent.sorted_accumulators[where] >> 32;
+							return docid_rsv_pair(id, (*parent.primary_keys)[id], rsv);
+#else
+							size_t id = parent.accumulator_pointers[where] - parent.shadow_accumulator;
+							return docid_rsv_pair(id, (*parent.primary_keys)[id], parent.shadow_accumulator[id]);
+#endif
 						}
 					};
 
 		private:
-			ACCUMULATOR_TYPE zero;														///< Constant zero used for pointer dereferenced comparisons
-			ACCUMULATOR_TYPE *accumulator_pointers[MAX_TOP_K];					///< Array of pointers to the top k accumulators
 			accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;	///< The accumulators, one per document in the collection
 //			accumulator_counter<ACCUMULATOR_TYPE, MAX_DOCUMENTS, 8> accumulators;	///< The accumulators, one per document in the collection
 //			accumulator_counter<ACCUMULATOR_TYPE, MAX_DOCUMENTS, 4> accumulators;	///< The accumulators, one per document in the collection
 //			accumulator_counter_interleaved<ACCUMULATOR_TYPE, MAX_DOCUMENTS, 8> accumulators;	///< The accumulators, one per document in the collection
 //			accumulator_counter_interleaved<ACCUMULATOR_TYPE, MAX_DOCUMENTS, 4> accumulators;	///< The accumulators, one per document in the collection
 			size_t needed_for_top_k;													///< The number of results we still need in order to fill the top-k
-			heap<ACCUMULATOR_TYPE *, typename query::add_rsv_compare> top_results;			///< Heap containing the top-k results
+
+#ifdef ACCUMULATOR_64s
+			uint64_t sorted_accumulators[MAX_TOP_K];							///< high word is the rsv, the low word is the DocID.
+			heap_comparable<uint64_t *> top_results;								///< Heap containing the top-k results
+#else
+			ACCUMULATOR_TYPE zero;																		///< Constant zero used for pointer dereferenced comparisons
+			ACCUMULATOR_TYPE *accumulator_pointers[MAX_TOP_K];									///< Array of pointers to the top k accumulators
+			heap<ACCUMULATOR_TYPE *, typename query::add_rsv_compare> top_results;		///< Heap containing the top-k results
+#endif
+
+
 			bool sorted;																	///< has heap and accumulator_pointers been sorted (false after rewind() true after sort())
 #ifdef SIMD_JASS_GROUP_ADD_RSV
 	#ifdef __AVX512F__
@@ -170,11 +183,14 @@ namespace JASS
 			query_heap() :
 				query(),
 				zero(0),
+#ifdef ACCUMULATOR_64s
+				top_results(sorted_accumulators, top_k)
+#else
 				top_results(*accumulator_pointers, top_k)
+#endif
 				{
 				rewind();
 				}
-
 
 			/*
 				QUERY_HEAP::~QUERY_HEAP()
@@ -242,7 +258,11 @@ namespace JASS
 			virtual void rewind(ACCUMULATOR_TYPE smallest_possible_rsv = 0, ACCUMULATOR_TYPE largest_possible_rsv = 0)
 				{
 				sorted = false;
+#ifdef ACCUMULATOR_64s
+				sorted_accumulators[0] = 0;
+#else
 				accumulator_pointers[0] = &zero;
+#endif
 				accumulators.rewind();
 				needed_for_top_k = this->top_k;
 				query::rewind(largest_possible_rsv);
@@ -291,7 +311,14 @@ namespace JASS
 					By doing the add first its possible to reduce the "usual" path through the code to a single comparison.  The JASS v1 "usual" path took three comparisons.
 				*/
 				*which += score;
+
+
+#ifdef ACCUMULATOR_64s
+				uint64_t key = ((uint64_t)(*which) << ((uint64_t)32)) | document_id;
+				if (key > sorted_accumulators[0])
+#else
 				if (this->cmp(which, accumulator_pointers[0]) >= 0)			// ==0 is the case where we're the current bottom of heap so might need to be promoted
+#endif
 					{
 					/*
 						We end up in the top-k, now to work out why.  As this is a rare occurence, we've got a little bit of time on our hands
