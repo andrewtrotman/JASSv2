@@ -136,11 +136,11 @@ namespace JASS
 						{
 #ifdef ACCUMULATOR_64s
 							DOCID_TYPE id = parent.sorted_accumulators[where] & 0xFFFF'FFFF;
-							ACCUMULATOR_TYPE rsv = parent.sorted_accumulators[where] >> 32;
+							ACCUMULATOR_TYPE rsv = std::numeric_limits<ACCUMULATOR_TYPE>::max() - (parent.sorted_accumulators[where] >> 32);
 							return docid_rsv_pair(id, (*parent.primary_keys)[id], rsv);
 #else
-							size_t id = parent.accumulator_pointers[where] - parent.shadow_accumulator;
-							return docid_rsv_pair(id, (*parent.primary_keys)[id], parent.shadow_accumulator[id]);
+							size_t id = parent.accumulators.get_index(parent.accumulator_pointers[where]);
+							return docid_rsv_pair(id, (*parent.primary_keys)[id], parent.accumulators[id]);
 #endif
 						}
 					};
@@ -155,7 +155,7 @@ namespace JASS
 
 #ifdef ACCUMULATOR_64s
 			uint64_t sorted_accumulators[MAX_TOP_K];							///< high word is the rsv, the low word is the DocID.
-			heap_comparable<uint64_t *> top_results;								///< Heap containing the top-k results
+			heap_comparable<uint64_t> top_results;								///< Heap containing the top-k results
 #else
 			ACCUMULATOR_TYPE zero;																		///< Constant zero used for pointer dereferenced comparisons
 			ACCUMULATOR_TYPE *accumulator_pointers[MAX_TOP_K];									///< Array of pointers to the top k accumulators
@@ -182,10 +182,10 @@ namespace JASS
 			*/
 			query_heap() :
 				query(),
-				zero(0),
 #ifdef ACCUMULATOR_64s
-				top_results(sorted_accumulators, top_k)
+				top_results(sorted_accumulators[0], top_k)
 #else
+				zero(0),
 				top_results(*accumulator_pointers, top_k)
 #endif
 				{
@@ -286,7 +286,11 @@ namespace JASS
 				{
 				if (!sorted)
 					{
+#ifdef ACCUMULATOR_64s
+					std::sort(sorted_accumulators + needed_for_top_k, sorted_accumulators + this->top_k - needed_for_top_k);
+#else
 					top_k_qsort::sort(accumulator_pointers + needed_for_top_k, this->top_k - needed_for_top_k, this->top_k, query::final_sort_cmp);
+#endif
 					sorted = true;
 					}
 				}
@@ -302,6 +306,7 @@ namespace JASS
 			*/
 			forceinline void add_rsv(DOCID_TYPE document_id, ACCUMULATOR_TYPE score)
 				{
+#ifdef ACCUMULATOR_64s
 				ACCUMULATOR_TYPE *which = &accumulators[document_id];			// This will create the accumulator if it doesn't already exist.
 
 				/*
@@ -309,13 +314,42 @@ namespace JASS
 				*/
 				*which += score;
 
+				uint64_t key = ((uint64_t)(std::numeric_limits<ACCUMULATOR_TYPE>::max() - *which) << ((uint64_t)32)) | document_id;
 
-#ifdef ACCUMULATOR_64s
-				uint64_t key = ((uint64_t)(*which) << ((uint64_t)32)) | document_id;
-				if (key > sorted_accumulators[0])
+				if (key >= sorted_accumulators[0])			// ==0 is the case where we're the current bottom of heap so might need to be promoted
+					{
+					/*
+						We end up in the top-k, now to work out why.  As this is a rare occurence, we've got a little bit of time on our hands
+					*/
+					if (needed_for_top_k > 0)
+						{
+						/*
+							the heap isn't full yet - so change only happens if we're a new addition (i.e. the old value was a 0)
+						*/
+						if (*which == score)
+							{
+							sorted_accumulators[--needed_for_top_k] = key;
+							if (needed_for_top_k == 0)
+								top_results.make_heap();
+							}
+						}
+					else
+						{
+						uint64_t prior_key = ((uint64_t)(std::numeric_limits<ACCUMULATOR_TYPE>::max() - (*which - score)) << ((uint64_t)32)) | document_id;
+						if (prior_key < sorted_accumulators[0])
+							top_results.push_back(key);				// we're not in the heap so add this accumulator to the heap
+						else
+							top_results.promote(key);				// we're already in the heap so promote this document
+						}
+					}
 #else
+				ACCUMULATOR_TYPE *which = &accumulators[document_id];			// This will create the accumulator if it doesn't already exist.
+
+				/*
+					By doing the add first its possible to reduce the "usual" path through the code to a single comparison.  The JASS v1 "usual" path took three comparisons.
+				*/
+				*which += score;
 				if (this->cmp(which, accumulator_pointers[0]) >= 0)			// ==0 is the case where we're the current bottom of heap so might need to be promoted
-#endif
 					{
 					/*
 						We end up in the top-k, now to work out why.  As this is a rare occurence, we've got a little bit of time on our hands
@@ -344,6 +378,7 @@ namespace JASS
 							top_results.promote(which);				// we're already in the heap so promote this document
 						}
 					}
+#endif
 				}
 
 			/*
