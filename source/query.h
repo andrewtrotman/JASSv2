@@ -24,7 +24,7 @@
 	ACCUMULATOR_64s uses AVX512 verison of quick sort to do the final sort of the results list.  The alternative is the
 	top-k qsort from ATIRE.
 */
-#define ACCUMULATOR_64s 1
+//#define ACCUMULATOR_64s 1
 
 /*
 	QUERY.H
