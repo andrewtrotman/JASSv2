@@ -300,10 +300,7 @@ namespace JASS
 				@param document_id [in] which document to increment
 				@param score [in] the amount of weight to add
 			*/
-//#ifndef SIMD_JASS_GROUP_ADD_RSV
-			forceinline
-//#endif
-			void add_rsv(DOCID_TYPE document_id, ACCUMULATOR_TYPE score)
+			forceinline void add_rsv(DOCID_TYPE document_id, ACCUMULATOR_TYPE score)
 				{
 				ACCUMULATOR_TYPE *which = &accumulators[document_id];			// This will create the accumulator if it doesn't already exist.
 
