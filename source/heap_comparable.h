@@ -132,7 +132,7 @@ namespace JASS
 				@param array [in] The array to maintain the heap over
 				@param size [in] The maximum number of elements in the array (the size of the heap)
 			*/
-			heap_comparable(TYPE &array, size_t size = 0) :
+			heap_comparable(TYPE *array, size_t size = 0) :
 				heap<TYPE, privates::compare>(array, size)
 				{
 				/* Nothing */
@@ -170,7 +170,7 @@ namespace JASS
 					std::shuffle(&sequence[0], &sequence[10], random);
 
 					std::vector<int> buffer(5);
-					heap_comparable heap(buffer[0], buffer.size());
+					heap_comparable heap(&buffer[0], buffer.size());
 
 					for (const auto &element : sequence)
 						{

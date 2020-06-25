@@ -4,6 +4,11 @@
 //#define QUERY_BUCKETS
 
 /*
+	PRE_SIMD is used with the heap to make the cumulative sum code work without SIMD instructions
+*/
+//#define PRE_SIMD
+
+/*
 	SIMD_ADD_RSV_AFTER_CUMSUM uses AVX instructions to process the postings in set_rsv() after the d1 decoding has already been done
 	the alternativce is to process each posting one at a time.
 */

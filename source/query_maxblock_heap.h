@@ -161,7 +161,7 @@ namespace JASS
 			*/
 			query_maxblock_heap() :
 				zero(0),
-				top_results(*accumulator_pointers, 0)
+				top_results(accumulator_pointers, 0)
 				{
 				rewind();
 				}

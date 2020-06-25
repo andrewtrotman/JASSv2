@@ -166,8 +166,8 @@ namespace JASS
 				@param size [in] The maximum number of elements in the array (the size of the heap)
 				@param compare [in] The comparison functor
 			*/
-			heap(TYPE &array, size_t size = 0, const COMPARE &compare = COMPARE()) :
-				array(&array),
+			heap(TYPE *array, size_t size = 0, const COMPARE &compare = COMPARE()) :
+				array(array),
 				size(size),
 				compare(compare)
 				{
@@ -278,7 +278,7 @@ namespace JASS
 						};
 
 					std::vector<int> buffer(5);
-					heap<int, unittest_compare> heap(buffer[0], buffer.size());
+					heap<int, unittest_compare> heap(&buffer[0], buffer.size());
 
 					for (const auto &element : sequence)
 						{

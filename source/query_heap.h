@@ -154,7 +154,7 @@ namespace JASS
 			size_t needed_for_top_k;													///< The number of results we still need in order to fill the top-k
 
 #ifdef ACCUMULATOR_64s
-			uint64_t sorted_accumulators[MAX_TOP_K];							///< high word is the rsv, the low word is the DocID.
+			uint64_t sorted_accumulators[MAX_TOP_K];							///< high 32-bits is the rsv, the low 32-bits is the DocID.
 			heap_comparable<uint64_t> top_results;								///< Heap containing the top-k results
 #else
 			ACCUMULATOR_TYPE zero;																		///< Constant zero used for pointer dereferenced comparisons
@@ -183,10 +183,10 @@ namespace JASS
 			query_heap() :
 				query(),
 #ifdef ACCUMULATOR_64s
-				top_results(sorted_accumulators[0], top_k)
+				top_results(sorted_accumulators, top_k)
 #else
 				zero(0),
-				top_results(*accumulator_pointers, top_k)
+				top_results(accumulator_pointers, top_k)
 #endif
 				{
 				rewind();
@@ -287,7 +287,7 @@ namespace JASS
 				if (!sorted)
 					{
 #ifdef ACCUMULATOR_64s
-					std::sort(sorted_accumulators + needed_for_top_k, sorted_accumulators + this->top_k - needed_for_top_k);
+					std::sort(sorted_accumulators + needed_for_top_k, sorted_accumulators + this->top_k);
 #else
 					top_k_qsort::sort(accumulator_pointers + needed_for_top_k, this->top_k - needed_for_top_k, this->top_k, query::final_sort_cmp);
 #endif
@@ -618,7 +618,6 @@ namespace JASS
 					D1-decode inplace with SIMD instructions then process one at a time
 				*/
 
-#define PRE_SIMD
 #ifdef PRE_SIMD
 				DOCID_TYPE id = 0;
 				DOCID_TYPE *end = buffer + integers;
