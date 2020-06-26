@@ -306,6 +306,11 @@ namespace JASS
 			*/
 			forceinline void add_rsv(DOCID_TYPE document_id, ACCUMULATOR_TYPE score)
 				{
+
+if (document_id == 403730)
+	{
+	int x = 0;
+	}
 #ifdef ACCUMULATOR_64s
 				ACCUMULATOR_TYPE *which = &accumulators[document_id];			// This will create the accumulator if it doesn't already exist.
 
@@ -314,7 +319,7 @@ namespace JASS
 				*/
 				*which += score;
 
-				uint64_t key = ((uint64_t)(std::numeric_limits<ACCUMULATOR_TYPE>::max() - *which) << ((uint64_t)32)) | document_id;
+				uint64_t key = ((uint64_t)*which << (uint64_t)32) | document_id;
 
 				if (key >= sorted_accumulators[0])			// ==0 is the case where we're the current bottom of heap so might need to be promoted
 					{
@@ -328,18 +333,30 @@ namespace JASS
 						*/
 						if (*which == score)
 							{
+							std::cout << "INS: rsv:" << *which << " doc:" << document_id << "\n";
 							sorted_accumulators[--needed_for_top_k] = key;
 							if (needed_for_top_k == 0)
 								top_results.make_heap();
 							}
+						else
+							std::cout << "UPD: rsv:" << *which << " doc:" << document_id << "\n";
 						}
 					else
 						{
-						uint64_t prior_key = ((uint64_t)(std::numeric_limits<ACCUMULATOR_TYPE>::max() - (*which - score)) << ((uint64_t)32)) | document_id;
+						uint64_t prior_key = ((uint64_t)(*which - score) << (uint64_t)32) | document_id;
+
 						if (prior_key < sorted_accumulators[0])
-							top_results.push_back(key);				// we're not in the heap so add this accumulator to the heap
+							{
+std::cout << "PSH: rsv:" << *which << " doc:" << document_id << "\n";
+std::cout << " BOH: rsv:" << (sorted_accumulators[0] >> 32) << " doc:" << (sorted_accumulators[0] & 0xFFFF'FFFF) << "\n";
+							top_results.push_back(key);							// we're not in the heap so add this accumulator to the heap
+							}
 						else
-							top_results.promote(key);				// we're already in the heap so promote this document
+							{
+std::cout << "PRM: rsv:" << *which << " doc:" << document_id << "\n";
+std::cout << " BOH: rsv:" << (sorted_accumulators[0] >> 32) << " doc:" << (sorted_accumulators[0] & 0xFFFF'FFFF) << "\n";
+							top_results.promote(prior_key, key);				// we're already in the heap so promote this document
+							}
 						}
 					}
 #else
@@ -629,6 +646,7 @@ namespace JASS
 #else
 				simd::cumulative_sum(buffer, integers);
 				DOCID_TYPE *end = buffer + integers;
+
 				for (auto *current = buffer; current < end; current++)
 					add_rsv(*current, impact);
 #endif
