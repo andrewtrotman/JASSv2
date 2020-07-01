@@ -1,10 +1,17 @@
 /*
 	ACCUMULTOR_COUNTER_INTERLEAVED.H
 	--------------------------------
-	Copyright (c) 2017 Andrew Trotman
+	Copyright (c) 2020 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
- #pragma once
+/*!
+	@file
+	@brief Store the accumulator in a an array and use a query-counter array to know when to clear.
+	@author Andrew Trotman
+	@copyright 2020 Andrew Trotman
+*/
+
+#pragma once
 
 #include <new>
 #include <vector>
