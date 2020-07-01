@@ -22,6 +22,7 @@ set(JASSlib_FILES
 	ascii.cpp
 	asserts.h
 	asserts.cpp
+	beap.h
 	binary_tree.h
 	bitstream.h
 	bitstring.h

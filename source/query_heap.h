@@ -19,6 +19,10 @@
 #include "accumulator_counter.h"
 #include "accumulator_counter_interleaved.h"
 
+#ifdef ACCUMULATOR_64s
+	#include "beap.h"
+#endif
+
 namespace JASS
 	{
 	/*
@@ -136,7 +140,7 @@ namespace JASS
 						{
 #ifdef ACCUMULATOR_64s
 							DOCID_TYPE id = parent.sorted_accumulators[where] & 0xFFFF'FFFF;
-							ACCUMULATOR_TYPE rsv = std::numeric_limits<ACCUMULATOR_TYPE>::max() - (parent.sorted_accumulators[where] >> 32);
+							ACCUMULATOR_TYPE rsv = parent.largest_used_bucket - (parent.sorted_accumulators[where] >> 32);
 							return docid_rsv_pair(id, (*parent.primary_keys)[id], rsv);
 #else
 							size_t id = parent.accumulators.get_index(parent.accumulator_pointers[where]);
@@ -154,14 +158,14 @@ namespace JASS
 			size_t needed_for_top_k;													///< The number of results we still need in order to fill the top-k
 
 #ifdef ACCUMULATOR_64s
+			ACCUMULATOR_TYPE largest_used_bucket;
 			uint64_t sorted_accumulators[MAX_TOP_K];							///< high 32-bits is the rsv, the low 32-bits is the DocID.
-			heap_comparable<uint64_t> top_results;								///< Heap containing the top-k results
+			beap<uint64_t> top_results;											///< Heap containing the top-k results
 #else
 			ACCUMULATOR_TYPE zero;																		///< Constant zero used for pointer dereferenced comparisons
 			ACCUMULATOR_TYPE *accumulator_pointers[MAX_TOP_K];									///< Array of pointers to the top k accumulators
 			heap<ACCUMULATOR_TYPE *, typename query::add_rsv_compare> top_results;		///< Heap containing the top-k results
 #endif
-
 
 			bool sorted;																	///< has heap and accumulator_pointers been sorted (false after rewind() true after sort())
 #ifdef SIMD_JASS_GROUP_ADD_RSV
@@ -183,6 +187,7 @@ namespace JASS
 			query_heap() :
 				query(),
 #ifdef ACCUMULATOR_64s
+				largest_used_bucket(0),
 				top_results(sorted_accumulators, top_k)
 #else
 				zero(0),
@@ -218,7 +223,11 @@ namespace JASS
 				{
 				query::init(primary_keys, documents, top_k);
 				accumulators.init(documents, width);
+#ifdef ACCUMULATOR_64s
+				top_results.set_top_k((int64_t)top_k);
+#else
 				top_results.set_top_k(top_k);
+#endif
 				}
 
 			/*
@@ -259,7 +268,7 @@ namespace JASS
 				{
 				sorted = false;
 #ifdef ACCUMULATOR_64s
-				sorted_accumulators[0] = 0;
+				largest_used_bucket = largest_possible_rsv;
 #else
 				accumulator_pointers[0] = &zero;
 #endif
@@ -306,12 +315,11 @@ namespace JASS
 			*/
 			forceinline void add_rsv(DOCID_TYPE document_id, ACCUMULATOR_TYPE score)
 				{
-
-if (document_id == 403730)
-	{
-	int x = 0;
-	}
 #ifdef ACCUMULATOR_64s
+if (largest_used_bucket > 200)
+int x = 0;
+
+
 				ACCUMULATOR_TYPE *which = &accumulators[document_id];			// This will create the accumulator if it doesn't already exist.
 
 				/*
@@ -319,7 +327,10 @@ if (document_id == 403730)
 				*/
 				*which += score;
 
-				uint64_t key = ((uint64_t)*which << (uint64_t)32) | document_id;
+				uint64_t key = ((uint64_t)(largest_used_bucket - *which) << ((uint64_t)32)) | document_id;
+
+if (key == 360777524510)
+int x = 0;
 
 				if (key >= sorted_accumulators[0])			// ==0 is the case where we're the current bottom of heap so might need to be promoted
 					{
@@ -333,32 +344,47 @@ if (document_id == 403730)
 						*/
 						if (*which == score)
 							{
-							std::cout << "INS: rsv:" << *which << " doc:" << document_id << "\n";
 							sorted_accumulators[--needed_for_top_k] = key;
 							if (needed_for_top_k == 0)
-								top_results.make_heap();
+								top_results.make_beap();
 							}
 						else
-							std::cout << "UPD: rsv:" << *which << " doc:" << document_id << "\n";
+							{
+// here we do a "replace under" - who suports that?  We do a linear search.
+							uint64_t prior_key = ((uint64_t)(largest_used_bucket - (*which - score)) << ((uint64_t)32)) | document_id;
+							for (uint64_t *check = sorted_accumulators + needed_for_top_k; check < sorted_accumulators + top_k; check++)
+								if (*check == prior_key)
+									{
+									*check = key;
+									break;
+									}
+							}
 						}
 					else
 						{
-						uint64_t prior_key = ((uint64_t)(*which - score) << (uint64_t)32) | document_id;
+						uint64_t prior_key = ((uint64_t)(largest_used_bucket - (*which - score)) << ((uint64_t)32)) | document_id;
 
+if (largest_used_bucket > 200)
+int x = 0;
+int lll = 0;
 						if (prior_key < sorted_accumulators[0])
 							{
-std::cout << "PSH: rsv:" << *which << " doc:" << document_id << "\n";
-std::cout << " BOH: rsv:" << (sorted_accumulators[0] >> 32) << " doc:" << (sorted_accumulators[0] & 0xFFFF'FFFF) << "\n";
-							top_results.push_back(key);							// we're not in the heap so add this accumulator to the heap
+lll = 1;
+							top_results.guaranteed_replace_with_larger(sorted_accumulators[0], key);				// we're not in the heap so replace top of heap with this document
 							}
 						else
 							{
-std::cout << "PRM: rsv:" << *which << " doc:" << document_id << "\n";
-std::cout << " BOH: rsv:" << (sorted_accumulators[0] >> 32) << " doc:" << (sorted_accumulators[0] & 0xFFFF'FFFF) << "\n";
-							top_results.promote(prior_key, key);				// we're already in the heap so promote this document
+lll = 2;
+							top_results.guaranteed_replace_with_larger(prior_key, key);									// we're already in the heap so promote this document
 							}
+
+if (largest_used_bucket > 200)
+int x = 0;
+
 						}
 					}
+if (largest_used_bucket > 200)
+int x = 0;
 #else
 				ACCUMULATOR_TYPE *which = &accumulators[document_id];			// This will create the accumulator if it doesn't already exist.
 
