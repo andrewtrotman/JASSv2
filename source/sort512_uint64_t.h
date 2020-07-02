@@ -51,6 +51,8 @@
 
 namespace Sort512_uint64_t {
 
+
+
 ///////////////////////////////////////////////////////////
 /// AVX Sort functions
 ///////////////////////////////////////////////////////////
@@ -2682,7 +2684,7 @@ inline int popcount(__mmask16 mask){
 }
 
 
-template <class IndexType>
+template <class IndexType, _MM_CMPINT_ENUM sortorder>
 static inline IndexType Partition512(uint64_t array[], IndexType left, IndexType right,
                                          const uint64_t pivot){
     const IndexType S = 8;//(512/8)/sizeof(uint64_t);
@@ -2715,7 +2717,7 @@ static inline IndexType Partition512(uint64_t array[], IndexType left, IndexType
             val = _mm512_loadu_si512(&array[right]);
         }
 
-        __mmask8 mask = _mm512_cmp_epi64_mask(val, pivotvec, _MM_CMPINT_LE);
+        __mmask8 mask = _mm512_cmp_epi64_mask(val, pivotvec, sortorder);
 
         const IndexType nb_low = popcount(mask);
         const IndexType nb_high = S-nb_low;
@@ -2732,7 +2734,7 @@ static inline IndexType Partition512(uint64_t array[], IndexType left, IndexType
         __m512i val = _mm512_loadu_si512(&array[left]);
         left = right;
 
-        __mmask8 mask = _mm512_cmp_epi64_mask(val, pivotvec, _MM_CMPINT_LE);
+        __mmask8 mask = _mm512_cmp_epi64_mask(val, pivotvec, sortorder);
 
         __mmask8 mask_low = mask & ~(0xFF << remaining);
         __mmask8 mask_high = (~mask) & ~(0xFF << remaining);
@@ -2747,7 +2749,7 @@ static inline IndexType Partition512(uint64_t array[], IndexType left, IndexType
         _mm512_mask_compressstoreu_epi64(&array[right_w],mask_high,val);
     }
     {
-        __mmask8 mask = _mm512_cmp_epi64_mask(left_val, pivotvec, _MM_CMPINT_LE);
+        __mmask8 mask = _mm512_cmp_epi64_mask(left_val, pivotvec, sortorder);
 
         const IndexType nb_low = popcount(mask);
         const IndexType nb_high = S-nb_low;
@@ -2759,7 +2761,7 @@ static inline IndexType Partition512(uint64_t array[], IndexType left, IndexType
         _mm512_mask_compressstoreu_epi64(&array[right_w],~mask,left_val);
     }
     {
-        __mmask8 mask = _mm512_cmp_epi64_mask(right_val, pivotvec, _MM_CMPINT_LE);
+        __mmask8 mask = _mm512_cmp_epi64_mask(right_val, pivotvec, sortorder);
 
         const IndexType nb_low = popcount(mask);
         const IndexType nb_high = S-nb_low;
@@ -2790,40 +2792,43 @@ static inline IndexType CoreSortGetPivot(const SortType array[], const IndexType
 }
 
 
-template <class SortType, class IndexType = size_t>
+template <class SortType, class IndexType = size_t,  _MM_CMPINT_ENUM sortorder = _MM_CMPINT_LE>
 static inline IndexType CoreSortPivotPartition(SortType array[], const IndexType left, const IndexType right){
     if(right-left > 1){
         const IndexType pivotIdx = CoreSortGetPivot(array, left, right);
         std::swap(array[pivotIdx], array[right]);
-        const IndexType part = Partition512(array, left, right-1, array[right]);
+        const IndexType part = Partition512<IndexType, sortorder>(array, left, right-1, array[right]);
         std::swap(array[part], array[right]);
         return part;
     }
     return left;
 }
 
-template <class SortType, class IndexType = size_t>
+template <class SortType, class IndexType = size_t, _MM_CMPINT_ENUM sortorder = _MM_CMPINT_LE>
 static inline IndexType CoreSortPartition(SortType array[], const IndexType left, const IndexType right,
                                   const SortType pivot){
-    return  Partition512(array, left, right, pivot);
+    return  Partition512<IndexType, sortorder>(array, left, right, pivot);
 }
 
-template <class SortType, class IndexType = size_t>
+template <class SortType, class IndexType = size_t, _MM_CMPINT_ENUM sortorder = _MM_CMPINT_LE>
 static void CoreSort(SortType array[], const IndexType left, const IndexType right){
     static const int SortLimite = 16*64/sizeof(SortType);
     if(right-left < SortLimite){
         SmallSort16V(array+left, right-left+1);
     }
     else{
-        const IndexType part = CoreSortPivotPartition<SortType,IndexType>(array, left, right);
+        const IndexType part = CoreSortPivotPartition<SortType,IndexType,sortorder>(array, left, right);
         if(part+1 < right) CoreSort<SortType,IndexType>(array,part+1,right);
         if(part && left < part-1)  CoreSort<SortType,IndexType>(array,left,part - 1);
     }
 }
 
-template <class SortType, class IndexType = size_t>
+constexpr _MM_CMPINT_ENUM ASCENDING = _MM_CMPINT_LE;
+constexpr _MM_CMPINT_ENUM DESCENDING = _MM_CMPINT_GE;
+
+template <class SortType, class IndexType = size_t, _MM_CMPINT_ENUM sortorder = _MM_CMPINT_LE>
 static inline void Sort(SortType array[], const IndexType size){
-    CoreSort<SortType,IndexType>(array, 0, size-1);
+    CoreSort<SortType,IndexType,sortorder>(array, 0, size-1);
 }
 
 }

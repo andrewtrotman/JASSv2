@@ -10,6 +10,8 @@
 	@author Andrew Trotman
 	@copyright 2020 Andrew Trotman
 */
+#pragma once
+
 #include <math.h>
 
 #include <vector>
@@ -100,7 +102,7 @@ namespace JASS
 				{
 				int64_t parent = current_location - current_height;
 
-				while (current_height > 0 && key <= array[parent])
+				while (current_height > 0 && array[parent] > key)
 					{
 					array[current_location] = array[parent];
 					current_height--;
@@ -125,7 +127,7 @@ namespace JASS
 			int64_t right_push(const TYPE &key, int64_t current_location, int64_t current_height)
 				{
 				int64_t parent = current_location - current_height - 1;
-				while (current_height > 0 && key <= array[parent])
+				while (current_height > 0 && array[parent] > key)
 					{
 					array[current_location] = array[parent];
 					current_height--;
@@ -134,6 +136,161 @@ namespace JASS
 					}
 				array[current_location] = key;
 				return current_location;
+				}
+
+		public:
+			/*
+				BEAP::BEAP()
+				------------
+				min beap (the lowest value is at array[0]
+			*/
+			/*!
+				@brief Constructor of min-beap (array[0] is the smallest element and values increase as you go down the tree).
+				@param array [in] The array to use as the beap.  This is assumed to be pre-populated, full, and out of order
+				@param elements [in] The number of elements in the array (and therefore the beap) to use
+			*/
+			beap(TYPE *array, int64_t elements):
+				array(array),
+				elements(elements),
+				height(get_height(elements))
+				{
+				/* Nothing */
+				}
+
+			/*
+				BEAP::SET_TOP_K()
+				-----------------
+			*/
+			/*!
+				@brief Set the new size of the beap.  Useful when constructed
+			*/
+			void set_top_k(int64_t elements)
+				{
+				this->elements = elements;
+				height = get_height(elements);
+				}
+
+			/*
+				BEAP::MAKE_BEAP()
+				-----------------
+			*/
+			/*!
+				@brief Construct the beap over array[]
+			*/
+			void make_beap()
+				{
+				std::sort(array, array + elements);
+				}
+
+			/*
+				BEAP::ISBEAP()
+				--------------
+			*/
+			/*!
+				@brief Check the beap to make sure it is, indeed, a beap.
+				@return true if array[] is a beap, false otherwise.
+			*/
+			bool isbeap(void) const
+				{
+				int64_t end_of_row = 0;
+				for (int64_t current_height = 0; current_height < height; current_height++)
+					{
+					end_of_row += get_last(current_height + 1);
+					size_t end_of_current_row = get_last(current_height);
+					for (int64_t current_location = get_first(current_height); current_location <= end_of_current_row; current_location++)
+						{
+						int64_t child1 = current_location + current_height + 1;
+						int64_t child2 = std::min(current_location + current_height + 2, elements - 1);
+
+						if (child1 >= elements)
+							return true;
+						if (array[current_location] > array[child1] || array[current_location] > array[child2])
+							return false;
+						}
+					}
+				return true;
+				}
+				
+			/*
+				BEAP::FIND()
+				------------
+			*/
+			/*!
+				@brief Find an instance of key in the beap and return its index into array[].
+				@param key [in] The key to look for.
+				@return The index into array[] of an instance of key, or -1 if key cannot be found in the beap.
+			*/
+			int64_t find(const TYPE &key) const
+				{
+				/*
+					Start in the bottom right corner of the beap
+				*/
+				int64_t current_height = height;
+				int64_t current_location = get_first(height);
+				int64_t end_of_row = get_last(height);
+
+				do
+					{
+					if (array[current_location] > key)
+						{
+						/*
+							If key is less then the current location them move up one level of the beap
+						*/
+						current_location -= current_height;
+						current_height--;
+						end_of_row -= current_height + 2;
+						if (current_location < 0)
+							return -1;
+						}
+					else if (key > array[current_location])
+						{
+						/*
+							If key is greater then either go down (if we can) or accoss (if we're on the bottom row)
+						*/
+						if (current_height == height || current_location + current_height + 2 >= elements)
+							{
+							/*
+								Can't go down so go across
+							*/
+							current_location++;
+							if (current_location > end_of_row)
+								return -1;
+							if (current_location >= elements)
+								{
+								/*
+									In this case we can't go across because we're on the bottom row and have a partially full row that we're at the edge of, so
+									the next largest value might be up and to the right (i.e. the bottom row of the previous full row).  In other words, the
+									full row above are the leaves and we need to go across a leaf, but that leaf isn't on the bottom ro because bottom row isn't full.
+								*/
+								current_location -= current_height;
+								current_height--;
+								end_of_row -= current_height + 2;
+								// in this case we went accross, but we went past the end of the array so we now need to go up
+								}
+							}
+						else
+							{
+							/*
+								Go down because we can.
+							*/
+							current_location += current_height + 2;
+							current_height++;
+							end_of_row += current_height + 1;
+							if (current_location > end_of_row)
+								return -1;
+							}
+						}
+					else
+						{
+						/*
+							Not less than and not greater than so we've found the key in the beap
+						*/
+						return current_location;
+						}
+					}
+				while (1);
+
+				return -1;
 				}
 
 			/*
@@ -147,10 +304,6 @@ namespace JASS
 			*/
 			int64_t beap_down(const TYPE &key, int64_t current_location)
 				{
-if (current_location < 0)
-{
-std::cout << *this << "\n" << "Missing key:" << key << "\n";
-}
 				int64_t current_height = get_height(current_location);
 
 				do
@@ -184,7 +337,7 @@ std::cout << *this << "\n" << "Missing key:" << key << "\n";
 						/*
 							Swap with the smallest child
 						*/
-						if (array[child1] <= array[child2])
+						if (array[child2] > array[child1])
 							{
 							array[current_location] = array[child1];
 							current_location = child1;
@@ -260,12 +413,12 @@ std::cout << *this << "\n" << "Missing key:" << key << "\n";
 							array[0] = key;
 							return 0;
 							}
-						else if (key < array[parent1])
+						else if (array[parent1] > key)
 							{
 							/*
 								We need to shuffle up towards the root, so swap with the largest parent.
 							*/
-							if (array[parent1] >= array[parent2])
+							if (array[parent1] > array[parent2])
 								{
 								array[current_location] = array[parent1];
 								current_location = parent1;
@@ -276,7 +429,7 @@ std::cout << *this << "\n" << "Missing key:" << key << "\n";
 								current_location = parent2;
 								}
 							}
-						else if (key < array[parent2])
+						else if (array[parent2] > key)
 							{
 							/*
 								We're between each parent so swap with the largest parent.
@@ -302,160 +455,6 @@ std::cout << *this << "\n" << "Missing key:" << key << "\n";
 				return -1;
 				}
 
-		public:
-			/*
-				BEAP::BEAP()
-				------------
-				min beap (the lowest value is at array[0]
-			*/
-			/*!
-				@brief Constructor of min-beap (array[0] is the smallest element and values increase as you go down the tree).
-				@param array [in] The array to use as the beap.  This is assumed to be pre-populated, full, and out of order
-				@param elements [in] The number of elements in the array (and therefore the beap) to use
-			*/
-			beap(TYPE *array, int64_t elements):
-				array(array),
-				elements(elements),
-				height(get_height(elements))
-				{
-				/* Nothing */
-				}
-
-			/*
-				BEAP::SET_TOP_K()
-				-----------------
-			*/
-			/*!
-				@brief Set the new size of the beap.  Useful when constructed
-			*/
-			void set_top_k(int64_t elements)
-				{
-				this->elements = elements;
-				height = get_height(elements);
-				}
-
-			/*
-				BEAP::MAKE_BEAP()
-				-----------------
-			*/
-			/*!
-				@brief Construct the beap over array[]
-			*/
-			void make_beap()
-				{
-				std::sort(array, array + elements);
-				}
-
-			/*
-				BEAP::ISBEAP()
-				--------------
-			*/
-			/*!
-				@brief Check the beap to make sure it is, indeed, a beap.
-				@return true if array[] is a beap, false otherwise.
-			*/
-			bool isbeap(void) const
-				{
-				int64_t end_of_row = 0;
-				for (int64_t current_height = 0; current_height < height; current_height++)
-					{
-					end_of_row += get_last(current_height + 1);
-					size_t end_of_current_row = get_last(current_height);
-					for (int64_t current_location = get_first(current_height); current_location <= end_of_current_row; current_location++)
-						{
-						int64_t child1 = current_location + current_height + 1;
-						int64_t child2 = std::min(current_location + current_height + 2, elements - 1);
-
-						if (child1 >= elements)
-							return true;
-						if (array[current_location] > array[child1] || array[current_location] > array[child2])
-							return false;
-						}
-					}
-				return true;
-				}
-
-			/*
-				BEAP::FIND()
-				------------
-			*/
-			/*!
-				@brief Find an instance of key in the beap and return its index into array[].
-				@param key [in] The key to look for.
-				@return The index into array[] of an instance of key, or -1 if key cannot be found in the beap.
-			*/
-			int64_t find(const TYPE &key) const
-				{
-				/*
-					Start in the bottom right corner of the beap
-				*/
-				int64_t current_height = height;
-				int64_t current_location = get_first(height);
-				int64_t end_of_row = get_last(height);
-
-				do
-					{
-					if (key < array[current_location])
-						{
-						/*
-							If key is less then the current location them move up one level of the beap
-						*/
-						current_location -= current_height;
-						current_height--;
-						end_of_row -= current_height + 2;
-						if (current_location < 0)
-							return -1;
-						}
-					else if (key > array[current_location])
-						{
-						/*
-							If key is greater then either go down (if we can) or accoss (if we're on the bottom row)
-						*/
-						if (current_height == height || current_location + current_height + 2 >= elements)
-							{
-							/*
-								Can't go down so go across
-							*/
-							current_location++;
-							if (current_location > end_of_row)
-								return -1;
-							if (current_location >= elements)
-								{
-								/*
-									In this case we can't go across because we're on the bottom row and have a partially full row that we're at the edge of, so
-									the next largest value might be up and to the right (i.e. the bottom row of the previous full row).  In other words, the
-									full row above are the leaves and we need to go across a leaf, but that leaf isn't on the bottom ro because bottom row isn't full.
-								*/
-								current_location -= current_height;
-								current_height--;
-								end_of_row -= current_height + 2;
-								// in this case we went accross, but we went past the end of the array so we now need to go up
-								}
-							}
-						else
-							{
-							/*
-								Go down because we can.
-							*/
-							current_location += current_height + 2;
-							current_height++;
-							end_of_row += current_height + 1;
-							if (current_location > end_of_row)
-								return -1;
-							}
-						}
-					else
-						{
-						/*
-							Not less than and not greater than so we've found the key in the beap
-						*/
-						return current_location;
-						}
-					}
-				while (1);
-
-				return -1;
-				}
 
 			/*
 				BEAP::GUARANTEED_REPLACE_WITH_SMALLER()
@@ -549,7 +548,7 @@ std::cout << *this << "\n" << "Missing key:" << key << "\n";
 			*/
 			int64_t replace(const TYPE &old_key, const TYPE &new_key)
 				{
-				return new_key < old_key ? replace_with_smaller(old_key, new_key) : replace_with_larger(old_key, new_key);
+				return old_key > new_key ? replace_with_smaller(old_key, new_key) : replace_with_larger(old_key, new_key);
 				}
 
 			/*
@@ -569,11 +568,11 @@ std::cout << *this << "\n" << "Missing key:" << key << "\n";
 				std::random_device random_number_generator;
 				std::shuffle(sequence.begin(), sequence.end(), std::knuth_b(random_number_generator()));
 
-
 				/*
 					Turn that list of integers into a beap
 				*/
 				JASS::beap<int> my_beap(sequence.data(), sequence.size());
+				my_beap.make_beap();
 
 				/*
 					Check the helper functions.

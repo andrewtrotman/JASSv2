@@ -4,6 +4,7 @@
 	Copyright (c) 2016-2019 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
+#include "beap.h"
 #include "simd.h"
 #include "file.h"
 #include "heap.h"
@@ -139,7 +140,9 @@ int main(void)
 		puts("compress_integer_elias_gamma_simd_vb");
 		JASS::compress_integer_elias_gamma_simd_vb::unittest();
 
-
+		puts("beap");
+		JASS::beap<int>::unittest();
+		
 		if (hardware.AVX2)
 			{
 			puts("simd");
