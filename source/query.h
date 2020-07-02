@@ -32,10 +32,9 @@
 //#define ACCUMULATOR_64s 1
 
 /*
-	ACCUMULATOR_64s uses AVX512 verison of quick sort to do the final sort of the results list.  The alternative is the
-	top-k qsort from ATIRE.
+	ACCUMULATOR_POINTER_BEAP uses a beap of pointers (rather than a heap of pointers) to store the top-k in the query_heap code.
 */
-#define ACCUMULATOR_POINTER_BEAP 1
+//#define ACCUMULATOR_POINTER_BEAP 1
 
 /*
 	QUERY.H
