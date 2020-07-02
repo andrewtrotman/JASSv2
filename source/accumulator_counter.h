@@ -72,8 +72,8 @@ namespace JASS
 					Clear the clean flags and accumulators ready for use.
 				*/
 				clean_id = min_clean_id;
-				std::fill(clean_flag, clean_flag + number_of_accumulators, decltype(clean_flag[0])());
-				std::fill(accumulator, accumulator + number_of_accumulators, decltype(accumulator[0])());
+				std::fill(clean_flag, clean_flag + number_of_accumulators, uint8_t());
+				std::fill(accumulator, accumulator + number_of_accumulators, ELEMENT());
 				}
 
 			/*

@@ -196,7 +196,7 @@ namespace JASS
 				for (int64_t current_height = 0; current_height < height; current_height++)
 					{
 					end_of_row += get_last(current_height + 1);
-					size_t end_of_current_row = get_last(current_height);
+					int64_t end_of_current_row = get_last(current_height);
 					for (int64_t current_location = get_first(current_height); current_location <= end_of_current_row; current_location++)
 						{
 						int64_t child1 = current_location + current_height + 1;

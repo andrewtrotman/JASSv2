@@ -2684,7 +2684,7 @@ inline int popcount(__mmask16 mask){
 }
 
 
-template <class IndexType, _MM_CMPINT_ENUM sortorder>
+template <class IndexType, int sortorder>
 static inline IndexType Partition512(uint64_t array[], IndexType left, IndexType right,
                                          const uint64_t pivot){
     const IndexType S = 8;//(512/8)/sizeof(uint64_t);
@@ -2792,7 +2792,7 @@ static inline IndexType CoreSortGetPivot(const SortType array[], const IndexType
 }
 
 
-template <class SortType, class IndexType = size_t,  _MM_CMPINT_ENUM sortorder = _MM_CMPINT_LE>
+template <class SortType, class IndexType = size_t,  int sortorder = _MM_CMPINT_LE>
 static inline IndexType CoreSortPivotPartition(SortType array[], const IndexType left, const IndexType right){
     if(right-left > 1){
         const IndexType pivotIdx = CoreSortGetPivot(array, left, right);
@@ -2804,13 +2804,13 @@ static inline IndexType CoreSortPivotPartition(SortType array[], const IndexType
     return left;
 }
 
-template <class SortType, class IndexType = size_t, _MM_CMPINT_ENUM sortorder = _MM_CMPINT_LE>
+template <class SortType, class IndexType = size_t, int sortorder = _MM_CMPINT_LE>
 static inline IndexType CoreSortPartition(SortType array[], const IndexType left, const IndexType right,
                                   const SortType pivot){
     return  Partition512<IndexType, sortorder>(array, left, right, pivot);
 }
 
-template <class SortType, class IndexType = size_t, _MM_CMPINT_ENUM sortorder = _MM_CMPINT_LE>
+template <class SortType, class IndexType = size_t, int sortorder = _MM_CMPINT_LE>
 static void CoreSort(SortType array[], const IndexType left, const IndexType right){
     static const int SortLimite = 16*64/sizeof(SortType);
     if(right-left < SortLimite){
@@ -2823,10 +2823,10 @@ static void CoreSort(SortType array[], const IndexType left, const IndexType rig
     }
 }
 
-constexpr _MM_CMPINT_ENUM ASCENDING = _MM_CMPINT_LE;
-constexpr _MM_CMPINT_ENUM DESCENDING = _MM_CMPINT_GE;
+constexpr int ASCENDING = _MM_CMPINT_LE;
+constexpr int DESCENDING = _MM_CMPINT_GE;
 
-template <class SortType, class IndexType = size_t, _MM_CMPINT_ENUM sortorder = _MM_CMPINT_LE>
+template <class SortType, class IndexType = size_t, int sortorder = _MM_CMPINT_LE>
 static inline void Sort(SortType array[], const IndexType size){
     CoreSort<SortType,IndexType,sortorder>(array, 0, size-1);
 }
