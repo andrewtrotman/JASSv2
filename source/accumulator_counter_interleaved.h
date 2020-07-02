@@ -44,7 +44,6 @@ namespace JASS
 
 		/*
 			This somewhat bizar line is so that unittest() can see the private members of different type instance of the class.
-			Does anyone know what the actual syntax is to make it only unittest() that can see the private members?
 		*/
 		template<typename A, size_t B, size_t C, typename D> friend class accumulator_counter_interleaved;
 

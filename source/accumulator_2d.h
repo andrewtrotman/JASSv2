@@ -52,7 +52,6 @@ namespace JASS
 		{
 		/*
 			This somewhat bizar line is so that unittest() can see the private members of another instance of the class.
-			Does anyone know what the actual syntax is to make it only unittest() that can see the private members?
 		*/
 		template<typename A, size_t B, typename C> friend class accumulator_2d;
 

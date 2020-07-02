@@ -45,7 +45,6 @@ namespace JASS
 		static_assert(COUNTER_BITSIZE == 8 || COUNTER_BITSIZE == 4);
 		/*
 			This somewhat bizar line is so that unittest() can see the private members of different type instance of the class.
-			Does anyone know what the actual syntax is to make it only unittest() that can see the private members?
 		*/
 		template<typename A, size_t B, size_t C, typename D> friend class accumulator_counter;
 
@@ -73,8 +72,8 @@ namespace JASS
 					Clear the clean flags and accumulators ready for use.
 				*/
 				clean_id = min_clean_id;
-				std::fill(clean_flag, clean_flag + number_of_accumulators, 0);
-				std::fill(accumulator, accumulator + number_of_accumulators, 0);
+				std::fill(clean_flag, clean_flag + number_of_accumulators, decltype(clean_flag[0])());
+				std::fill(accumulator, accumulator + number_of_accumulators, decltype(accumulator[0])());
 				}
 
 			/*

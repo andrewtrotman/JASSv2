@@ -16,36 +16,85 @@
 #include "simd.h"
 #include "query.h"
 #include "accumulator_2d.h"
-#include "heap_comparable.h"
 #include "sort512_uint64_t.h"
 #include "accumulator_counter.h"
 #include "accumulator_counter_interleaved.h"
 
 namespace JASS
 	{
+	/*
+		CLASS QUERY_HEAP
+		----------------
+	*/
+	/*!
+		@brief Everything necessary to process a query (using a heap) is encapsulated in an object of this type
+	*/
+	class query_heap : public query
+		{
 #ifdef ACCUMULATOR_POINTER_BEAP
+		public:
+			/*
+				CLASS QUERY_HEAP::ACCUMULATOR_POINTER
+				-------------------------------------
+			*/
+			/*!
+				@brief wrapper call for a pointer to an accumulator
+			*/
 			class accumulator_pointer
 				{
 				public:
-					query::ACCUMULATOR_TYPE *value;
+					query::ACCUMULATOR_TYPE *value;				///< This class just wraps this pointer.
 
 				public:
+					/*
+						QUERY_HEAP::ACCUMULATOR_POINTER::ACCUMULATOR_POINTER()
+						------------------------------------------------------
+					*/
+					/*!
+						@brief Constructor
+					*/
 					accumulator_pointer()
 						{
 						value = nullptr;
 						}
 
+					/*
+						QUERY_HEAP::ACCUMULATOR_POINTER::ACCUMULATOR_POINTER()
+						------------------------------------------------------
+					*/
+					/*!
+						@brief Constructor
+						@param with [in] The pointer to wrap
+					*/
 					accumulator_pointer(query::ACCUMULATOR_TYPE *with)
 						{
 						value = with;
 						}
 
+					/*
+						QUERY_HEAP::ACCUMULATOR_POINTER::OPERATOR=()
+						--------------------------------------------
+					*/
+					/*!
+						@brief Assignment operator
+						@param with [in] The pointer to wrap
+						@return A reference this object
+					*/
 					accumulator_pointer &operator=(query::ACCUMULATOR_TYPE *with)
 						{
 						value = with;
 						return *this;
 						}
 
+					/*
+						QUERY_HEAP::ACCUMULATOR_POINTER::OPERATOR<()
+						--------------------------------------------
+					*/
+					/*!
+						@brief Less than operator
+						@param rhs [in] The right hand side of the comparison
+						@return true or false
+					*/
 					bool operator<(const accumulator_pointer &rhs) const
 						{
 						if (*value < *rhs.value)
@@ -56,6 +105,15 @@ namespace JASS
 							return false;
 						}
 
+					/*
+						QUERY_HEAP::ACCUMULATOR_POINTER::OPERATOR<=()
+						---------------------------------------------
+					*/
+					/*!
+						@brief Less than or equal to operator
+						@param rhs [in] The right hand side of the comparison
+						@return true or false
+					*/
 					bool operator<=(const accumulator_pointer &rhs) const
 						{
 						if (*value < *rhs.value)
@@ -66,6 +124,15 @@ namespace JASS
 							return false;
 						}
 
+					/*
+						QUERY_HEAP::ACCUMULATOR_POINTER::OPERATOR<()
+						--------------------------------------------
+					*/
+					/*!
+						@brief Greater than operator
+						@param rhs [in] The right hand side of the comparison
+						@return true or false
+					*/
 					bool operator>(const accumulator_pointer &rhs) const
 						{
 						if (*value > *rhs.value)
@@ -76,6 +143,15 @@ namespace JASS
 							return false;
 						}
 
+					/*
+						QUERY_HEAP::ACCUMULATOR_POINTER::OPERATOR>=()
+						--------------------------------------------
+					*/
+					/*!
+						@brief Greater than or equal to operator
+						@param rhs [in] The right hand side of the comparison
+						@return true or false
+					*/
 					bool operator>=(const accumulator_pointer &rhs) const
 						{
 						if (*value > *rhs.value)
@@ -85,30 +161,9 @@ namespace JASS
 						else
 							return false;
 						}
-
 				};
-
-	/*
-		OPERATOR<<()
-		------------
-	*/
-	static std::ostream &operator<<(std::ostream &stream, const accumulator_pointer &object)
-		{
-		stream << "[" << (object.value == nullptr ? ' ' : *object.value) << "," << object.value << "]";
-		return stream;
-		}
-
 #endif
-	/*
-		CLASS QUERY_HEAP
-		----------------
-	*/
-	/*!
-		@brief Everything necessary to process a query (using a heap) is encapsulated in an object of this type
-	*/
-	class query_heap : public query
-		{
-		public:
+
 			/*
 				CLASS QUERY_HEAP::ITERATOR
 				--------------------------
@@ -863,4 +918,18 @@ namespace JASS
 				puts("query_heap::PASSED");
 				}
 		};
+
+#ifdef ACCUMULATOR_POINTER_BEAP
+	/*
+		OPERATOR<<()
+		------------
+	*/
+	inline std::ostream &operator<<(std::ostream &stream, const query_heap::accumulator_pointer &object)
+		{
+		stream << "[" << (object.value == nullptr ? ' ' : *object.value) << "," << object.value << "]";
+		return stream;
+		}
+
+#endif
+
 	}

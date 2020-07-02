@@ -144,7 +144,6 @@ set(JASSlib_FILES
 	hash_pearson.h
 	hash_pearson.cpp
 	heap.h
-	heap_comparable.h
 	index_manager.h
 	index_manager_sequential.h
 	index_postings.h
