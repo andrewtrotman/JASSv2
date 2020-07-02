@@ -13,6 +13,7 @@
 #pragma once
 
 #include "beap.h"
+#include "heap.h"
 #include "simd.h"
 #include "query.h"
 #include "accumulator_2d.h"
