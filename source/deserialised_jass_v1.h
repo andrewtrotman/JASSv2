@@ -232,7 +232,7 @@ namespace JASS
 			*/
 			const uint8_t *postings(void) const
 				{
-				uint8_t *buffer = nullptr;
+				const uint8_t *buffer = nullptr;
 				postings_memory.read_entire_file(buffer);
 				return buffer;
 				}

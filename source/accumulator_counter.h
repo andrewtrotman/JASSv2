@@ -6,7 +6,7 @@
 */
 /*!
 	@file
-	@brief Store the accumulator in a an array and use a query-counter array to know when to clear.
+	@brief Store the accumulator in an array and use a query-counter array to know when to clear.
 	@author Andrew Trotman
 	@copyright 2020 Andrew Trotman
 */
@@ -63,16 +63,32 @@ namespace JASS
 			*/
 			/*!
 				@brief Constructor.
-				@param number_of_accumulators [in] The numnber of elements in the array being managed.
 			*/
-			accumulator_counter(size_t number_of_accumulators) :
-				number_of_accumulators(number_of_accumulators)
+			accumulator_counter() :
+				number_of_accumulators(0),
+				clean_id(min_clean_id)
 				{
+				/* Nothing */
+				}
+
+			/*
+				ACCUMULATOR_COUNTER::INIT()
+				---------------------------
+			*/
+			/*!
+				@brief Initialise this object before first use.
+				@param number_of_accumulators [in] The numnber of elements in the array being managed.
+				@param preferred_width [in] Not used (for comparibility with other classes)
+			*/
+			void init(size_t number_of_accumulators, size_t preferred_width = 0)
+				{
+				this->number_of_accumulators = number_of_accumulators;
+				clean_id = min_clean_id;
+
 				/*
 					Clear the clean flags and accumulators ready for use.
 				*/
-				clean_id = min_clean_id;
-				std::fill(clean_flag, clean_flag + number_of_accumulators, uint8_t());
+				std::fill(clean_flag, clean_flag + number_of_accumulators, min_clean_id);
 				std::fill(accumulator, accumulator + number_of_accumulators, ELEMENT());
 				}
 
@@ -111,8 +127,8 @@ namespace JASS
 				}
 
 			/*
-				ACCUMULTOR_COUNTER_INTERLEAVED::GET_INDEX()
-				-------------------------------------------
+				ACCUMULTOR_COUNTER::GET_INDEX()
+				-------------------------------
 			*/
 			/*!
 				@brief Given a pointer to an accumulator, return the acumulator index
@@ -170,7 +186,8 @@ namespace JASS
 				/*
 					Allocate an array of 64 accumulators and make sure the width and height are correct
 				*/
-				accumulator_counter<size_t, 64, 8> array(64);
+				accumulator_counter<size_t, 64, 8> array;
+				array.init(64);
 
 				/*
 					Populate an array with the shuffled sequence 0..instance.size()

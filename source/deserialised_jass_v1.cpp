@@ -39,9 +39,9 @@ namespace JASS
 		/*
 			Numnber of documents is stored at the end of the file (as a uint64_t)
 		*/
-		uint8_t *memory = nullptr;
+		const uint8_t *memory = nullptr;
 		primary_key_memory.read_entire_file(memory);
-		documents = *reinterpret_cast<uint64_t *>(&memory[bytes] - sizeof(uint64_t));
+		documents = *reinterpret_cast<const uint64_t *>(&memory[bytes] - sizeof(uint64_t));
 		primary_key_list.reserve(documents);
 
 		/*
@@ -53,7 +53,7 @@ namespace JASS
 			Now work through each primary key adding it to the list of primary keys
 		*/
 		for (size_t id = 0; id < documents; id++)
-			primary_key_list.push_back(reinterpret_cast<char *>(memory + offset_base[id]));
+			primary_key_list.push_back(reinterpret_cast<const char *>(memory + offset_base[id]));
 
 		/*
 			This can take some time so make some noise when we're finished
@@ -90,7 +90,7 @@ namespace JASS
 		auto length = file::read_entire_file(vocab_filename, vocabulary_memory);
 		if (length == 0)
 			return 0;
-		uint8_t *vocab;
+		const uint8_t *vocab;
 		vocabulary_memory.read_entire_file(vocab);
 
 		/*
@@ -100,7 +100,7 @@ namespace JASS
 		if (bytes == 0)
 			return 0;
 		terms = length / (sizeof(uint64_t) + sizeof(uint64_t) + sizeof(uint64_t));
-		uint8_t *vocab_terms;
+		const uint8_t *vocab_terms;
 		vocabulary_terms_memory.read_entire_file(vocab_terms);
 
 		/*
@@ -110,9 +110,9 @@ namespace JASS
 		const uint8_t *postings_base = postings();
 		for (size_t term = 0; term < terms; term++)
 			{
-			uint64_t *base = reinterpret_cast<uint64_t *>(vocab + (3 * sizeof(uint64_t)) * term);
+			const uint64_t *base = reinterpret_cast<const uint64_t *>(vocab + (3 * sizeof(uint64_t)) * term);
 
-			vocabulary_list.push_back(metadata(slice(reinterpret_cast<char*>(vocab_terms + base[0])), postings_base + base[1], base[2]));
+			vocabulary_list.push_back(metadata(slice(reinterpret_cast<const char*>(vocab_terms + base[0])), postings_base + base[1], base[2]));
 			}
 
 		/*
@@ -182,7 +182,7 @@ namespace JASS
 	*/
 	std::unique_ptr<compress_integer> deserialised_jass_v1::codex(std::string &name, int32_t &d_ness) const
 		{
-		uint8_t *memory;
+		const uint8_t *memory;
 
 		postings_memory.read_entire_file(memory);
 		if (memory == nullptr)

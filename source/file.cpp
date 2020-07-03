@@ -92,7 +92,7 @@ namespace JASS
 	file::file_read_only::~file_read_only()
 		{
 		#ifndef _MSC_VER
-			munmap(reinterpret_cast<void *>(file_contents), size);
+			munmap(const_cast<void *>(reinterpret_cast<const void *>(file_contents)), size);
 		#endif
 		}
 

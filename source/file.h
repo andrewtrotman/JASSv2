@@ -55,7 +55,7 @@ namespace JASS
 #ifdef _MSC_VER
 					std::string file_contents_buffer;			///< On windows (to start with) a buffer to hold the file.
 #endif
-					void *file_contents;								///< The contents of the file.
+					const void *file_contents;								///< The contents of the file.
 					size_t size;										///< The size of the file.
 
 				public:
@@ -105,9 +105,9 @@ namespace JASS
 						@param into [out] The pointer to write into.
 						@return The size of the file in bytes
 					*/
-					size_t read_entire_file(uint8_t *&into) const
+					size_t read_entire_file(const uint8_t *&into) const
 						{
-						into = reinterpret_cast<uint8_t *>(file_contents);
+						into = reinterpret_cast<const uint8_t *>(file_contents);
 						return size;
 						}
 				};
