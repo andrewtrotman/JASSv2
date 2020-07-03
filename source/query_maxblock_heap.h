@@ -320,6 +320,81 @@ namespace JASS
 				}
 
 			/*
+				QUERY_MAXBLOCK_HEAP::DECODE_WITH_WRITER()
+				-----------------------------------------
+			*/
+			/*!
+				@brief Given the integer decoder, the number of integes to decode, and the compressed sequence, decompress (but do not process).
+				@param integers [in] The number of integers that are compressed.
+				@param compressed [in] The compressed sequence.
+				@param compressed_size [in] The length of the compressed sequence.
+			*/
+			virtual void decode_with_writer(size_t integers, const void *compressed, size_t compressed_size)
+				{
+				DOCID_TYPE *buffer = reinterpret_cast<DOCID_TYPE *>(decompress_buffer.data());
+				decode(buffer, integers, compressed, compressed_size);
+
+#ifdef PRE_SIMD
+				DOCID_TYPE id = 0;
+				DOCID_TYPE *end = buffer + integers;
+				for (auto *current = buffer; current < end; current++)
+					{
+					id += *current;
+					add_rsv(id, impact);
+					}
+#else
+				/*
+					D1-decode inplace with SIMD instructions then process one at a time
+				*/
+				simd::cumulative_sum(buffer, integers);
+
+				/*
+					Process the d1-decoded postings list.
+				*/
+				DOCID_TYPE *end;
+				DOCID_TYPE *current = buffer;
+				end = buffer + (integers & ~0x03);
+				while (current < end)
+					{
+					add_rsv(*(current + 0), impact);
+					add_rsv(*(current + 1), impact);
+					add_rsv(*(current + 2), impact);
+					add_rsv(*(current + 3), impact);
+					current += 4;
+					}
+				end = buffer + integers;
+				while (current < end)
+					add_rsv(*current++, impact);
+#endif
+				}
+
+			/*
+				QUERY_MAXBLOCK_HEAP::DECODE_WITH_WRITER()
+				-----------------------------------------
+			*/
+			/*!
+				@brief Given the integer decoder, the number of integes to decode, and the compressed sequence, decompress (but do not process).
+				@details Typically used to export an index, not used to process queries.
+				@param integers [in] The number of integers that are compressed.
+				@param compressed [in] The compressed sequence.
+				@param compressed_size [in] The length of the compressed sequence.
+			*/
+			template <typename WRITER>
+			void decode_with_writer(WRITER &writer, size_t integers, const void *compressed, size_t compressed_size)
+				{
+				DOCID_TYPE *buffer = reinterpret_cast<DOCID_TYPE *>(decompress_buffer.data());
+				decode(buffer, integers, compressed, compressed_size);
+
+				DOCID_TYPE id = 0;
+				DOCID_TYPE *end = buffer + integers;
+				for (auto *current = buffer; current < end; current++)
+					{
+					id += *current;
+					writer.add_rsv(id, impact);
+					}
+				}
+
+			/*
 				QUERY_MAXBLOCK_HEAP::UNITTEST()
 				-------------------------------
 			*/

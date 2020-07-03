@@ -19,8 +19,9 @@
 
 #include "asserts.h"
 #include "query_heap.h"
-#include "query_maxblock.h"
 #include "query_bucket.h"
+#include "query_maxblock.h"
+#include "query_maxblock_heap.h"
 
 namespace JASS
 	{
@@ -38,6 +39,8 @@ namespace JASS
 	class compress_integer : public query_bucket
 #elif defined(QUERY_MAXBLOCK)
 	class compress_integer : public query_maxblock
+#elif defined(QUERY_MAXBLOCK_HEAP)
+	class compress_integer : public query_maxblock_heap
 #else
 	class compress_integer : public query_heap
 #endif

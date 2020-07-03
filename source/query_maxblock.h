@@ -138,10 +138,10 @@ namespace JASS
 						}
 					};
 
-		private:
+		protected:
 			ACCUMULATOR_TYPE *accumulator_pointers[MAX_DOCUMENTS];					///< Array of pointers to the top k accumulators
 			accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;			///< The accumulators, one per document in the collection
-			ACCUMULATOR_TYPE page_maximum[accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS>::maximum_number_of_dirty_flags];		///< The current maximum value of the accumulator block
+			ACCUMULATOR_TYPE page_maximum[MAX_DOCUMENTS];		///< The current maximum value of the accumulator block
 			bool sorted;																			///< has heap and accumulator_pointers been sorted (false after rewind() true after sort())
 			size_t non_zero_accumulators;														///< The number of non-zero accumulators (should be top-k or less)
 
@@ -228,6 +228,7 @@ namespace JASS
 				sorted = false;
 				accumulators.rewind();
 				non_zero_accumulators = 0;
+//				std::fill(page_maximum, page_maximum + accumulators.number_of_dirty_flags, 0);
 				query::rewind();
 				}
 
@@ -238,12 +239,12 @@ namespace JASS
 			/*!
 				@brief sort this resuls list before iteration over it.
 			*/
-			void sort(void)
+			virtual void sort(void)
 				{
 				if (!sorted)
 					{
 					/*
-						Walk through the pages looking for the case where an accumulator in the page might appear in the results list
+						Walk through all the pages looking for the case where an accumulator in the page might appear in the results list
 					*/
 					non_zero_accumulators = 0;
 					for (size_t page = 0; page < accumulators.number_of_dirty_flags; page++)
@@ -361,6 +362,35 @@ namespace JASS
 					}
 				}
 
+
+			/*
+				QUERY_MAXBLOCK::UNITTEST_THIS()
+				-------------------------------
+			*/
+			/*!
+				@brief Unit test an instance of this class
+			*/
+			static void unittest_this(query_maxblock &&query_object)
+				{
+				std::vector<std::string> keys = {"one", "two", "three", "four"};
+				query_object.init(keys, 1024, 2);
+				query_object.rewind();
+				std::ostringstream string;
+
+				/*
+					Check the rsv stuff
+				*/
+				query_object.add_rsv(2, 10);
+				query_object.add_rsv(3, 20);
+				query_object.add_rsv(2, 2);
+				query_object.add_rsv(1, 1);
+				query_object.add_rsv(1, 14);
+
+				for (const auto rsv : query_object)
+					string << "<" << rsv.document_id << "," << rsv.rsv << ">";
+				JASS_assert(string.str() == "<3,20><1,15>");
+				}
+
 			/*
 				QUERY_MAXBLOCK::UNITTEST()
 				--------------------------
@@ -371,25 +401,8 @@ namespace JASS
 			static void unittest(void)
 				{
 				std::vector<std::string> keys = {"one", "two", "three", "four"};
-				query_maxblock *query_object = new query_maxblock;
-				query_object->init(keys, 1024, 2);
-				query_object->rewind();
-				std::ostringstream string;
+				unittest_this(query_maxblock());
 
-				/*
-					Check the rsv stuff
-				*/
-				query_object->add_rsv(2, 10);
-				query_object->add_rsv(3, 20);
-				query_object->add_rsv(2, 2);
-				query_object->add_rsv(1, 1);
-				query_object->add_rsv(1, 14);
-
-				for (const auto rsv : *query_object)
-					string << "<" << rsv.document_id << "," << rsv.rsv << ">";
-				JASS_assert(string.str() == "<3,20><1,15>");
-
-				delete query_object;
 				puts("query_maxblock::PASSED");
 				}
 		};

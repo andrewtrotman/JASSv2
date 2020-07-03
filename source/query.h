@@ -1,9 +1,11 @@
 /*
 	QUERY_BUCKETS uses the bucket apprach to the top-k, the alternative is the query_heap
 	QUERY_MAXBLOCK uses the max-block approach to the top-k, the alternative is the query_heap
+	QUERY_MAXBLOCK_HEAP uses the max-block approach to the top-k (in a heap), the alternative is the query_heap
 */
 //#define QUERY_BUCKETS
-#define QUERY_MAXBLOCK
+//#define QUERY_MAXBLOCK
+//#define QUERY_MAXBLOCK_HEAP
 
 /*
 	PRE_SIMD is used with the heap to make the cumulative sum code work without SIMD instructions

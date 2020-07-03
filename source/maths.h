@@ -110,7 +110,7 @@ namespace JASS
 			template <typename TYPE>
 			static const TYPE &maximum(const TYPE &first, const TYPE &second)
 				{
-				return first >= second ? first : second;
+				return first >= second ? first : second;		// The assembler will produce a CMOV instruction for ordinal types
 				}
 			
 			/*
