@@ -33,13 +33,8 @@ namespace JASS
 	class compress_integer_all
 		{
 		public:
-#ifdef NEVER
 			static constexpr size_t compressors_size = 26;					///< There are currently this many compressors known to JASS
 			static constexpr size_t default_compressor = 8;					///< The default one to use is at this position in the compressors array
-#else
-			static constexpr size_t compressors_size = 4;					///< There are currently this many compressors known to JASS
-			static constexpr size_t default_compressor = 2;					///< The default one to use is at this position in the compressors array
-#endif
 
 		private:
 			/*
@@ -52,10 +47,9 @@ namespace JASS
 			class details
 				{
 				public:
-					const char *shortname;					///< The short command line parameter.
-					const char *longname;					///< The long command line parameter.
-					const char *description;				///< The name of the scheme, in command line use other stuff is wrapped around this.
-					compress_integer *codex;				///< An instance of the compressor.
+					std::string shortname;					///< The short command line parameter.
+					std::string longname;					///< The long command line parameter.
+					std::string description;				///< The name of the scheme, in command line use other stuff is wrapped around this.
 				};
 
 		private:
@@ -102,7 +96,7 @@ namespace JASS
 				@param codex [in] one of the objects in compress_integer_all::compressors[]
 				@return A dynamically allocated object of the same type
 			*/
-			static std::unique_ptr<compress_integer> replicate(compress_integer *codex);
+			static std::unique_ptr<compress_integer> replicate(std::string &shortname);
 
 		public:
 			/*
@@ -132,9 +126,9 @@ namespace JASS
 				{
 				for (size_t which = 0; which < compressors_size; which++)
 					if (option[which])
-						return replicate(compressors[which].codex);
+						return replicate(compressors[which].shortname);
 					
-				return replicate(compressors[default_compressor].codex);
+				return replicate(compressors[default_compressor].shortname);
 				}
 			
 			/*
@@ -168,9 +162,9 @@ namespace JASS
 				{
 				for (size_t which = 0; which < compressors_size; which++)
 					if (compressors[which].description == name)
-						return replicate(compressors[which].codex);
+						return replicate(compressors[which].shortname);
 
-				return replicate(compressors[0].codex);
+				return replicate(compressors[0].shortname);
 				}
 
 			/*

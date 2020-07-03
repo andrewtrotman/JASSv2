@@ -228,7 +228,6 @@ namespace JASS
 				sorted = false;
 				accumulators.rewind();
 				non_zero_accumulators = 0;
-//				std::fill(page_maximum, page_maximum + accumulators.number_of_dirty_flags, 0);
 				query::rewind();
 				}
 
@@ -248,7 +247,7 @@ namespace JASS
 					*/
 					non_zero_accumulators = 0;
 					for (size_t page = 0; page < accumulators.number_of_dirty_flags; page++)
-						if (accumulators.dirty_flag[page] != 0xFF)
+						if (accumulators.dirty_flag[page] == 0)
 							{
 							ACCUMULATOR_TYPE *start = &accumulators.accumulator[page * accumulators.width];
 							for (ACCUMULATOR_TYPE *which = start; which < start + accumulators.width; which++)
@@ -278,13 +277,88 @@ namespace JASS
 			forceinline void add_rsv(size_t document_id, ACCUMULATOR_TYPE score)
 				{
 				size_t page = accumulators.which_dirty_flag(document_id);		// get the page number
-				if (accumulators.dirty_flag[page])
+				if (accumulators.dirty_flag[page] == 0)
 					page_maximum[page] = 0;
 				ACCUMULATOR_TYPE *which = &accumulators[document_id];				// This will create the accumulator if it doesn't already exist.
 
 				*which += score;
 
 				page_maximum[page] = maths::maximum(page_maximum[page], *which);
+				}
+
+			/*
+				QUERY_MAXBLOCK::DECODE_WITH_WRITER()
+				------------------------------------
+			*/
+			/*!
+				@brief Given the integer decoder, the number of integes to decode, and the compressed sequence, decompress (but do not process).
+				@param integers [in] The number of integers that are compressed.
+				@param compressed [in] The compressed sequence.
+				@param compressed_size [in] The length of the compressed sequence.
+			*/
+			virtual void decode_with_writer(size_t integers, const void *compressed, size_t compressed_size)
+				{
+				DOCID_TYPE *buffer = reinterpret_cast<DOCID_TYPE *>(decompress_buffer.data());
+				decode(buffer, integers, compressed, compressed_size);
+
+#ifdef PRE_SIMD
+				DOCID_TYPE id = 0;
+				DOCID_TYPE *end = buffer + integers;
+				for (auto *current = buffer; current < end; current++)
+					{
+					id += *current;
+					add_rsv(id, impact);
+					}
+#else
+				/*
+					D1-decode inplace with SIMD instructions then process one at a time
+				*/
+				simd::cumulative_sum(buffer, integers);
+
+				/*
+					Process the d1-decoded postings list.
+				*/
+				DOCID_TYPE *end;
+				DOCID_TYPE *current = buffer;
+				end = buffer + (integers & ~0x03);
+				while (current < end)
+					{
+					add_rsv(*(current + 0), impact);
+					add_rsv(*(current + 1), impact);
+					add_rsv(*(current + 2), impact);
+					add_rsv(*(current + 3), impact);
+					current += 4;
+					}
+				end = buffer + integers;
+				while (current < end)
+					add_rsv(*current++, impact);
+#endif
+				}
+
+			/*
+				QUERY_MAXBLOCK::DECODE_WITH_WRITER()
+				------------------------------------
+			*/
+			/*!
+				@brief Given the integer decoder, the number of integes to decode, and the compressed sequence, decompress (but do not process).
+				@details Typically used to export an index, not used to process queries.
+				@param integers [in] The number of integers that are compressed.
+				@param compressed [in] The compressed sequence.
+				@param compressed_size [in] The length of the compressed sequence.
+			*/
+			template <typename WRITER>
+			void decode_with_writer(WRITER &writer, size_t integers, const void *compressed, size_t compressed_size)
+				{
+				DOCID_TYPE *buffer = reinterpret_cast<DOCID_TYPE *>(decompress_buffer.data());
+				decode(buffer, integers, compressed, compressed_size);
+
+				DOCID_TYPE id = 0;
+				DOCID_TYPE *end = buffer + integers;
+				for (auto *current = buffer; current < end; current++)
+					{
+					id += *current;
+					writer.add_rsv(id, impact);
+					}
 				}
 
 			/*

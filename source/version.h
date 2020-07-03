@@ -64,7 +64,6 @@ namespace JASS
 				return std::string("JASS Version ") + std::string(version_string) + std::string(" ") + std::to_string(bitness) + std::string("-bit ") + std::string(debugness) + std::string("Copyright (c) 2016-2019 Andrew Trotman, University of Otago");
 				}
 
-
 			/*
 				VERSION::CREDITS()
 				------------------
@@ -102,6 +101,11 @@ namespace JASS
 					"Carry-8b         - Andrew Trotman\n"
 					"QMX Original     - Andrew Trotman\n"
 					"QMX Improved     - Andrew Trotman\n"
+					"\n"
+
+					"OTHER STUFF\n"
+					"-----------\n"
+					"AVX512 Quicksort - Berenger Bramas (MIT licence)\n"
 					"";
 				}
 		};

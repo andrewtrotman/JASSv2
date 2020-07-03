@@ -827,10 +827,6 @@ namespace JASS
 				DOCID_TYPE *buffer = reinterpret_cast<DOCID_TYPE *>(decompress_buffer.data());
 				decode(buffer, integers, compressed, compressed_size);
 
-				/*
-					D1-decode inplace with SIMD instructions then process one at a time
-				*/
-
 #ifdef PRE_SIMD
 				DOCID_TYPE id = 0;
 				DOCID_TYPE *end = buffer + integers;
@@ -840,11 +836,28 @@ namespace JASS
 					add_rsv(id, impact);
 					}
 #else
+				/*
+					D1-decode inplace with SIMD instructions then process one at a time
+				*/
 				simd::cumulative_sum(buffer, integers);
-				DOCID_TYPE *end = buffer + integers;
 
-				for (auto *current = buffer; current < end; current++)
-					add_rsv(*current, impact);
+				/*
+					Process the d1-decoded postings list.
+				*/
+				DOCID_TYPE *end;
+				DOCID_TYPE *current = buffer;
+				end = buffer + (integers & ~0x03);
+				while (current < end)
+					{
+					add_rsv(*(current + 0), impact);
+					add_rsv(*(current + 1), impact);
+					add_rsv(*(current + 2), impact);
+					add_rsv(*(current + 3), impact);
+					current += 4;
+					}
+				end = buffer + integers;
+				while (current < end)
+					add_rsv(*current++, impact);
 #endif
 				}
 
