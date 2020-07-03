@@ -210,7 +210,7 @@ namespace JASS
 					If the width of the accumulator array is a whole power of 2 the its quick to find the dirty flag.  If the width is the square root of the
 					number of accumulators then it ballances the number of accumulator with the number of dirty flags.  Both techniques are used.
 				*/
-				if (preferred_width > 1)
+				if (preferred_width >= 1)
 					shift = preferred_width;
 				else
 					shift = maths::floor_log2((size_t)sqrt(number_of_accumulators));

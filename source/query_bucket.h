@@ -77,7 +77,7 @@ namespace JASS
 
 				public:
 					query_bucket &parent;	///< The query object that this is iterating over
-					size_t where;																		///< Where in the results list we are
+					size_t where;				///< Where in the results list we are
 
 				public:
 					/*

@@ -75,7 +75,7 @@ namespace JASS
 
 				public:
 					query_maxblock &parent;	///< The query object that this is iterating over
-					size_t where;																		///< Where in the results list we are
+					size_t where;				///< Where in the results list we are
 
 				public:
 					/*
@@ -140,10 +140,10 @@ namespace JASS
 
 		private:
 			ACCUMULATOR_TYPE *accumulator_pointers[MAX_DOCUMENTS];					///< Array of pointers to the top k accumulators
-			accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;	///< The accumulators, one per document in the collection
+			accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;			///< The accumulators, one per document in the collection
 			ACCUMULATOR_TYPE page_maximum[accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS>::maximum_number_of_dirty_flags];		///< The current maximum value of the accumulator block
-			bool sorted;																	///< has heap and accumulator_pointers been sorted (false after rewind() true after sort())
-			size_t non_zero_accumulators;												///< The number of non-zero accumulators (should be top-k or less)
+			bool sorted;																			///< has heap and accumulator_pointers been sorted (false after rewind() true after sort())
+			size_t non_zero_accumulators;														///< The number of non-zero accumulators (should be top-k or less)
 
 		public:
 			/*

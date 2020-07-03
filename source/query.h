@@ -1,7 +1,9 @@
 /*
-	QUERY_BUCKETS uses the bucket apprach to th top-k the alternative is the query_heap
+	QUERY_BUCKETS uses the bucket apprach to the top-k, the alternative is the query_heap
+	QUERY_MAXBLOCK uses the max-block approach to the top-k, the alternative is the query_heap
 */
 //#define QUERY_BUCKETS
+#define QUERY_MAXBLOCK
 
 /*
 	PRE_SIMD is used with the heap to make the cumulative sum code work without SIMD instructions
@@ -29,7 +31,7 @@
 	ACCUMULATOR_64s uses AVX512 verison of quick sort to do the final sort of the results list.  The alternative is the
 	top-k qsort from ATIRE.
 */
-#define ACCUMULATOR_64s 1
+//#define ACCUMULATOR_64s 1
 
 /*
 	ACCUMULATOR_POINTER_BEAP uses a beap of pointers (rather than a heap of pointers) to store the top-k in the query_heap code.
