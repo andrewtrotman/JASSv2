@@ -1,11 +1,40 @@
 /*
+	Which top-k algorithm to use.  There is no default, one of these MUST be defined
+
+	QUERY_HEAP uses the heap to store the rsvs
 	QUERY_BUCKETS uses the bucket apprach to the top-k, the alternative is the query_heap
 	QUERY_MAXBLOCK uses the max-block approach to the top-k, the alternative is the query_heap
 	QUERY_MAXBLOCK_HEAP uses the max-block approach to the top-k (in a heap), the alternative is the query_heap
 */
+#define QUERY_HEAP
 //#define QUERY_BUCKETS
 //#define QUERY_MAXBLOCK
 //#define QUERY_MAXBLOCK_HEAP
+
+/*
+	ACCUMULATOR_POINTER_BEAP uses a beap of pointers (rather than a heap of pointers) to store the top-k in the query_heap code.
+	The other query_ classes don't change values in a heap and so a beap will always be slower (as heap is O(log(n)) but beap is O(sqrt(N)))
+*/
+//#define ACCUMULATOR_POINTER_BEAP 1
+
+/*
+	ACCUMULATOR_64s uses the 64-bit unsigned integer encoding of the RSV and DocID - useful for faster sorting (see AVX512_SORT)
+	The alternative is to use pointers to accumulators and sort the pointers.
+*/
+//#define ACCUMULATOR_64s 1
+
+/*
+	Which sort algorithm to use.  There is no default, one of these MUST be defined
+
+	JASS_TOPK_SORT use the JASS top_k_sort() which is a custom median of three medians quick sort
+	CPP_TOPK_SORT use the C++ std::partial_sort() method
+	CPP_SORT do a full sort using C++ std::sort()
+	AVX512_SORT use the AVX512 sort Sort512_uint64_t::Sort() on 64-bit integers
+*/
+#define JASS_TOPK_SORT
+//#define CPP_TOPK_SORT
+//#define CPP_SORT
+//#define AVX512_SORT
 
 /*
 	PRE_SIMD is used with the heap to make the cumulative sum code work without SIMD instructions
@@ -28,17 +57,6 @@
 	is to extract each doc id and process them one at a time
 */
 //#define SIMD_JASS_GROUP_ADD_RSV 1
-
-/*
-	ACCUMULATOR_64s uses AVX512 verison of quick sort to do the final sort of the results list.  The alternative is the
-	top-k qsort from ATIRE.
-*/
-//#define ACCUMULATOR_64s 1
-
-/*
-	ACCUMULATOR_POINTER_BEAP uses a beap of pointers (rather than a heap of pointers) to store the top-k in the query_heap code.
-*/
-//#define ACCUMULATOR_POINTER_BEAP 1
 
 /*
 	QUERY.H

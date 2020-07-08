@@ -41,8 +41,10 @@ namespace JASS
 	class compress_integer : public query_maxblock
 #elif defined(QUERY_MAXBLOCK_HEAP)
 	class compress_integer : public query_maxblock_heap
-#else
+#elif defined(QUERY_HEAP)
 	class compress_integer : public query_heap
+#else
+	static_assert(false, "One of the RSV managers must be defined");
 #endif
 		{
 		private:

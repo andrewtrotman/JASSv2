@@ -133,15 +133,25 @@ namespace JASS
 					*/
 					docid_rsv_pair operator*()
 						{
+#ifdef ACCUMULATOR_64s
+						DOCID_TYPE id = parent.sorted_accumulators[where] & 0xFFFF'FFFF;
+						ACCUMULATOR_TYPE rsv = parent.sorted_accumulators[where] >> 32;
+						return docid_rsv_pair(id, (*parent.primary_keys)[id], rsv);
+#else
 						size_t id = parent.accumulators.get_index(parent.accumulator_pointers[where]);
 						return docid_rsv_pair(id, (*parent.primary_keys)[id], parent.accumulators[id]);
+#endif
 						}
 					};
 
 		protected:
+#ifdef ACCUMULATOR_64s
+			uint64_t sorted_accumulators[MAX_DOCUMENTS];									///< high word is the rsv, the low word is the DocID.
+#else
 			ACCUMULATOR_TYPE *accumulator_pointers[MAX_DOCUMENTS];					///< Array of pointers to the top k accumulators
+#endif
 			accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;			///< The accumulators, one per document in the collection
-			ACCUMULATOR_TYPE page_maximum[MAX_DOCUMENTS];		///< The current maximum value of the accumulator block
+			ACCUMULATOR_TYPE page_maximum[MAX_DOCUMENTS];								///< The current maximum value of the accumulator block
 			bool sorted;																			///< has heap and accumulator_pointers been sorted (false after rewind() true after sort())
 			size_t non_zero_accumulators;														///< The number of non-zero accumulators (should be top-k or less)
 
@@ -253,15 +263,48 @@ namespace JASS
 							ACCUMULATOR_TYPE *start = &accumulators.accumulator[page * accumulators.width];
 							for (ACCUMULATOR_TYPE *which = start; which < start + accumulators.width; which++)
 								if (*which != 0)
+									{
+#ifdef ACCUMULATOR_64s
+									sorted_accumulators[non_zero_accumulators++] = ((uint64_t)*which << (uint64_t)32) | (which - &accumulators.accumulator[0]);
+#else
 									accumulator_pointers[non_zero_accumulators++] = which;
+#endif
+									}
 							}
 
 					/*
 						We now sort the array over which the heap is built so that we have a sorted list of docids from highest to lowest rsv.
 					*/
+#ifdef ACCUMULATOR_64s
+	#ifdef JASS_TOPK_SORT
+					top_k_qsort::sort(sorted_accumulators, non_zero_accumulators, top_k, query::final_sort_cmp);
+					non_zero_accumulators = maths::minimum(non_zero_accumulators, top_k);
+	#elif defined(CPP_TOPK_SORT)
+					size_t sort_point = maths::minimum(non_zero_accumulators, top_k);
+					std::partial_sort(sorted_accumulators, sorted_accumulators + sort_point, sorted_accumulators + non_zero_accumulators);
+					non_zero_accumulators = sort_point;
+	#elif defined(CPP_SORT)
+					std::sort(sorted_accumulators, sorted_accumulators + non_zero_accumulators);
+					non_zero_accumulators = maths::minimum(non_zero_accumulators, top_k);
+	#elif defined(AVX512_SORT)
+					Sort512_uint64_t::Sort(sorted_accumulators, non_zero_accumulators);
+					non_zero_accumulators = maths::minimum(non_zero_accumulators, top_k);
+	#endif
+#else
+	#ifdef JASS_TOPK_SORT
 					top_k_qsort::sort(accumulator_pointers, non_zero_accumulators, top_k, query::final_sort_cmp);
 					non_zero_accumulators = maths::minimum(non_zero_accumulators, top_k);
-
+	#elif defined(CPP_TOPK_SORT)
+					size_t sort_point = maths::minimum(non_zero_accumulators, top_k);
+					std::partial_sort(accumulator_pointers, accumulator_pointers + sort_point, accumulator_pointers + non_zero_accumulators);
+					non_zero_accumulators = sort_point;
+	#elif defined(CPP_SORT)
+					std::sort(accumulator_pointers, accumulator_pointers + non_zero_accumulators);
+					non_zero_accumulators = maths::minimum(non_zero_accumulators, top_k);
+	#elif defined(AVX512_SORT)
+					assert(false);
+	#endif
+#endif
 					sorted = true;
 					}
 				}
