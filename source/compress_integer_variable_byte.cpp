@@ -57,7 +57,7 @@ namespace JASS
 	*/
 	void compress_integer_variable_byte::unittest(void)
 		{
-		compress_integer_variable_byte codex;								// so that encode() and decode() can be called
+		compress_integer_variable_byte *codex = new compress_integer_variable_byte;								// so that encode() and decode() can be called
 		size_t bytes_used;														// the number of bytes used to encode the integer sequence
 		uint8_t encoded_buffer[2048];											// sequences are encoded into this buffer
 		integer decoded_buffer[2048];											// sequences are decoded into this buffer
@@ -66,7 +66,7 @@ namespace JASS
 			Check what happens if it won't fit
 		*/
 		const integer too_big[] = {1 << 21,  (1 << 28) - 1};		// the bounds on 4-byte encodings
-		bytes_used = codex.encode(encoded_buffer, 1, too_big, sizeof(too_big) / sizeof(*too_big));
+		bytes_used = codex->encode(encoded_buffer, 1, too_big, sizeof(too_big) / sizeof(*too_big));
 		JASS_assert(bytes_used == 0);
 		
 		/*
@@ -75,8 +75,8 @@ namespace JASS
 		const integer one_byte[] = {0, (1 << 7) - 1};					// the bounds on 1-byte encodings
 		memset(encoded_buffer, 0, sizeof(encoded_buffer));
 		memset(decoded_buffer, 0, sizeof(decoded_buffer));
-		bytes_used = codex.encode(encoded_buffer, sizeof(encoded_buffer), one_byte, sizeof(one_byte) / sizeof(*one_byte));
-		codex.decode(decoded_buffer, sizeof(one_byte) / sizeof(*one_byte), encoded_buffer, bytes_used);
+		bytes_used = codex->encode(encoded_buffer, sizeof(encoded_buffer), one_byte, sizeof(one_byte) / sizeof(*one_byte));
+		codex->decode(decoded_buffer, sizeof(one_byte) / sizeof(*one_byte), encoded_buffer, bytes_used);
 		JASS_assert(bytes_used == 2);
 		JASS_assert(memcmp(decoded_buffer, one_byte, sizeof(one_byte)) == 0);
 		
@@ -86,8 +86,8 @@ namespace JASS
 		const integer two_byte[] = {1 << 7,  (1 << 14) - 1};			// the bounds on 2-byte encodings
 		memset(encoded_buffer, 0, sizeof(encoded_buffer));
 		memset(decoded_buffer, 0, sizeof(decoded_buffer));
-		bytes_used = codex.encode(encoded_buffer, sizeof(encoded_buffer), two_byte, sizeof(two_byte) / sizeof(*two_byte));
-		codex.decode(decoded_buffer, sizeof(two_byte) / sizeof(*two_byte), encoded_buffer, bytes_used);
+		bytes_used = codex->encode(encoded_buffer, sizeof(encoded_buffer), two_byte, sizeof(two_byte) / sizeof(*two_byte));
+		codex->decode(decoded_buffer, sizeof(two_byte) / sizeof(*two_byte), encoded_buffer, bytes_used);
 		JASS_assert(bytes_used == 4);
 		JASS_assert(memcmp(decoded_buffer, two_byte, sizeof(two_byte)) == 0);
 		
@@ -97,8 +97,8 @@ namespace JASS
 		const integer three_byte[] = {1 << 14,  (1 << 21) - 1};		// the bounds on 3-byte encodings
 		memset(encoded_buffer, 0, sizeof(encoded_buffer));
 		memset(decoded_buffer, 0, sizeof(decoded_buffer));
-		bytes_used = codex.encode(encoded_buffer, sizeof(encoded_buffer), three_byte, sizeof(three_byte) / sizeof(*three_byte));
-		codex.decode(decoded_buffer, sizeof(three_byte) / sizeof(*three_byte), encoded_buffer, bytes_used);
+		bytes_used = codex->encode(encoded_buffer, sizeof(encoded_buffer), three_byte, sizeof(three_byte) / sizeof(*three_byte));
+		codex->decode(decoded_buffer, sizeof(three_byte) / sizeof(*three_byte), encoded_buffer, bytes_used);
 		JASS_assert(bytes_used == 6);
 		JASS_assert(memcmp(decoded_buffer, three_byte, sizeof(three_byte)) == 0);
 
@@ -108,8 +108,8 @@ namespace JASS
 		const integer four_byte[] = {1 << 21,  (1 << 28) - 1};		// the bounds on 4-byte encodings
 		memset(encoded_buffer, 0, sizeof(encoded_buffer));
 		memset(decoded_buffer, 0, sizeof(decoded_buffer));
-		bytes_used = codex.encode(encoded_buffer, sizeof(encoded_buffer), four_byte, sizeof(four_byte) / sizeof(*four_byte));
-		codex.decode(decoded_buffer, sizeof(four_byte) / sizeof(*four_byte), encoded_buffer, bytes_used);
+		bytes_used = codex->encode(encoded_buffer, sizeof(encoded_buffer), four_byte, sizeof(four_byte) / sizeof(*four_byte));
+		codex->decode(decoded_buffer, sizeof(four_byte) / sizeof(*four_byte), encoded_buffer, bytes_used);
 		JASS_assert(bytes_used == 8);
 		JASS_assert(memcmp(decoded_buffer, four_byte, sizeof(four_byte)) == 0);
 		
@@ -119,8 +119,8 @@ namespace JASS
 		const integer five_byte[] = {1 << 28,  0xFFFFFFFF};			// the bounds on 5-byte encodings
 		memset(encoded_buffer, 0, sizeof(encoded_buffer));
 		memset(decoded_buffer, 0, sizeof(decoded_buffer));
-		bytes_used = codex.encode(encoded_buffer, sizeof(encoded_buffer), five_byte, sizeof(five_byte) / sizeof(*five_byte));
-		codex.decode(decoded_buffer, sizeof(five_byte) / sizeof(*five_byte), encoded_buffer, bytes_used);
+		bytes_used = codex->encode(encoded_buffer, sizeof(encoded_buffer), five_byte, sizeof(five_byte) / sizeof(*five_byte));
+		codex->decode(decoded_buffer, sizeof(five_byte) / sizeof(*five_byte), encoded_buffer, bytes_used);
 		JASS_assert(bytes_used == 10);
 		JASS_assert(memcmp(decoded_buffer, five_byte, sizeof(five_byte)) == 0);
 		
@@ -139,8 +139,8 @@ namespace JASS
 
 		memset(encoded_buffer, 0, sizeof(encoded_buffer));
 		memset(decoded_buffer, 0, sizeof(decoded_buffer));
-		bytes_used = codex.encode(encoded_buffer, sizeof(encoded_buffer), raw_buffer, sizeof(raw_buffer) / sizeof(*raw_buffer));
-		codex.decode(decoded_buffer, sizeof(raw_buffer) / sizeof(*raw_buffer), encoded_buffer, bytes_used);
+		bytes_used = codex->encode(encoded_buffer, sizeof(encoded_buffer), raw_buffer, sizeof(raw_buffer) / sizeof(*raw_buffer));
+		codex->decode(decoded_buffer, sizeof(raw_buffer) / sizeof(*raw_buffer), encoded_buffer, bytes_used);
 		JASS_assert(memcmp(decoded_buffer, raw_buffer, sizeof(raw_buffer)) == 0);
 		
 		/*
@@ -161,8 +161,8 @@ namespace JASS
 		const integer ten_byte[] = {(uint64_t)1 << 63,  0xFFFFFFFFFFFFFFFF};
 		memset(encoded_buffer, 0, sizeof(encoded_buffer));
 		memset(decoded_buffer, 0, sizeof(decoded_buffer));
-		bytes_used = codex.encode(encoded_buffer, sizeof(encoded_buffer), ten_byte, sizeof(ten_byte) / sizeof(*ten_byte));
-		codex.decode(decoded_buffer, sizeof(ten_byte) / sizeof(*five_byte), encoded_buffer, bytes_used);
+		bytes_used = codex->encode(encoded_buffer, sizeof(encoded_buffer), ten_byte, sizeof(ten_byte) / sizeof(*ten_byte));
+		codex->decode(decoded_buffer, sizeof(ten_byte) / sizeof(*five_byte), encoded_buffer, bytes_used);
 		JASS_assert(bytes_used == 20);
 		JASS_assert(memcmp(decoded_buffer, ten_byte, sizeof(five_byte)) == 0);
 #endif
@@ -170,6 +170,7 @@ namespace JASS
 		/*
 			The tests have passed
 		*/
+		delete codex;
 		puts("compress_integer_variable_byte::PASSED");
 		}
 	}

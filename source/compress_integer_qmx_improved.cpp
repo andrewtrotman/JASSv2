@@ -699,14 +699,15 @@ namespace JASS
 	*/
 	void compress_integer_qmx_improved::unittest_one(const std::vector<uint32_t> &sequence)
 		{
-		compress_integer_qmx_improved compressor;
+		compress_integer_qmx_improved *compressor = new compress_integer_qmx_improved;
 		std::vector<uint32_t>compressed(sequence.size() * 2);
 		std::vector<uint32_t>decompressed(sequence.size() + 256);
 
-		auto size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &sequence[0], sequence.size());
-		compressor.decode(&decompressed[0], sequence.size(), &compressed[0], size_once_compressed);
+		auto size_once_compressed = compressor->encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &sequence[0], sequence.size());
+		compressor->decode(&decompressed[0], sequence.size(), &compressed[0], size_once_compressed);
 		decompressed.resize(sequence.size());
 		JASS_assert(decompressed == sequence);
+		delete compressor;
 		}
 
 	/*
@@ -731,13 +732,13 @@ namespace JASS
 		/*
 			Allocatte a compresser
 		*/
-		compress_integer_qmx_improved compressor;
+		compress_integer_qmx_improved *compressor = new compress_integer_qmx_improved;
 
 		/*
 			Make sure the place we're putting the compresed data is alligned to an odd address location, then compress.
 		*/
 		uint8_t *compress_buffer = &compress_buffer_memory[1];
-		size_t size_once_compressed = compressor.encode(compress_buffer, compress_buffer_memory.size() - 1, &sequence[0], sequence.size());
+		size_t size_once_compressed = compressor->encode(compress_buffer, compress_buffer_memory.size() - 1, &sequence[0], sequence.size());
 
 		/*
 			Shove a lode of 0's on the end of the buffer so that any overflow will result in failure.
@@ -751,7 +752,7 @@ namespace JASS
 			Make sure we're decompressing to an odd memory address, then decompress the compressed sequence
 		*/
 		uint32_t *decompress_buffer = (uint32_t *)(((uint8_t *)&decompress_buffer_memory[0]) + 1);
-		compressor.decode(decompress_buffer, sequence.size(), compress_buffer, size_once_compressed);
+		compressor->decode(decompress_buffer, sequence.size(), compress_buffer, size_once_compressed);
 
 		uint32_t pass;
 
@@ -806,10 +807,10 @@ namespace JASS
 			every_case.push_back(0x1FFFFF);
 
 		std::vector<uint32_t> every_case_compressed(every_case.size());
-		size_once_compressed = compressor.encode(&every_case_compressed[0], every_case_compressed.size() * sizeof(every_case_compressed[0]), &every_case[0], every_case.size());
+		size_once_compressed = compressor->encode(&every_case_compressed[0], every_case_compressed.size() * sizeof(every_case_compressed[0]), &every_case[0], every_case.size());
 
 		std::vector<uint32_t> every_case_decompressed(every_case.size());
-		compressor.decode(&every_case_decompressed[0], every_case.size(), &every_case_compressed[0], size_once_compressed);
+		compressor->decode(&every_case_decompressed[0], every_case.size(), &every_case_compressed[0], size_once_compressed);
 
 		JASS_assert(every_case_decompressed == every_case);
 
@@ -876,6 +877,7 @@ namespace JASS
 		static const std::vector<uint32_t> remainder ={0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFFF};
 		unittest_one(remainder);
 
+		delete compressor;
 		puts("compress_integer_qmx_improved::PASSED");
 		}
 

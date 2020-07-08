@@ -370,23 +370,23 @@ namespace JASS
 			/*!
 				@brief Unit test an instance of this class
 			*/
-			static void unittest_this(query_maxblock &&query_object)
+			static void unittest_this(query_maxblock *query_object)
 				{
 				std::vector<std::string> keys = {"one", "two", "three", "four"};
-				query_object.init(keys, 1024, 2);
-				query_object.rewind();
+				query_object->init(keys, 1024, 2);
+				query_object->rewind();
 				std::ostringstream string;
 
 				/*
 					Check the rsv stuff
 				*/
-				query_object.add_rsv(2, 10);
-				query_object.add_rsv(3, 20);
-				query_object.add_rsv(2, 2);
-				query_object.add_rsv(1, 1);
-				query_object.add_rsv(1, 14);
+				query_object->add_rsv(2, 10);
+				query_object->add_rsv(3, 20);
+				query_object->add_rsv(2, 2);
+				query_object->add_rsv(1, 1);
+				query_object->add_rsv(1, 14);
 
-				for (const auto rsv : query_object)
+				for (const auto rsv : *query_object)
 					string << "<" << rsv.document_id << "," << rsv.rsv << ">";
 				JASS_assert(string.str() == "<3,20><1,15>");
 				}
@@ -401,7 +401,9 @@ namespace JASS
 			static void unittest(void)
 				{
 				std::vector<std::string> keys = {"one", "two", "three", "four"};
-				unittest_this(query_maxblock());
+				auto object = new query_maxblock;
+				unittest_this(object);
+				delete object;
 
 				puts("query_maxblock::PASSED");
 				}

@@ -182,8 +182,8 @@ namespace JASS
 		/*
 			Make sure we got the correct parameter selected
 		*/
-		JASS_assert(parameters[0] == true);
-		JASS_assert(name(parameters) == compressors[0].description);
+		JASS_assert(parameters[5] == true);
+		JASS_assert(name(parameters) == compressors[5].description);
 
 		/*
 			Check what happens if we don't have any parameters.
@@ -197,7 +197,7 @@ namespace JASS
 			if (param)
 				parameters_selected++;					// LCOV_EXCL_LINE		// if the unit test is successful then this should not be called.
 		JASS_assert(parameters_selected == 0);
-		JASS_assert(name(parameters) == "None");
+		JASS_assert(name(parameters) == compressors[default_compressor].description);
 
 		puts("compress_integer_all::PASSED");
 		}

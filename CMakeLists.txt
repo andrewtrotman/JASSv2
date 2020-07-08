@@ -166,3 +166,9 @@ if(DOXYGEN_FOUND)
 		VERBATIM
 		)
 endif(DOXYGEN_FOUND)
+
+#
+# Do this to build for debugging:
+#
+#cmake -D FORCE_CMAKE_BUILD_TYPE=Debug ..
+#

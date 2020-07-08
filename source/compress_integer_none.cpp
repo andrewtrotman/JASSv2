@@ -45,7 +45,7 @@ namespace JASS
 	*/
 	void compress_integer_none::unittest(void)
 		{
-		compress_integer_none codex;											// so that encode() and decode() can be called
+		compress_integer_none *codex = new compress_integer_none;											// so that encode() and decode() can be called
 		std::array<integer, 2048> encoded_buffer = {};					// sequences are encoded into this buffer
 		std::array<integer, 2048> decoded_buffer = {};					// sequences are decoded into this buffer
 		
@@ -61,19 +61,20 @@ namespace JASS
 		for (auto &element : raw_buffer)
 			element = distribution(generator);
 
-		size_t bytes_used = codex.encode(&encoded_buffer[0], encoded_buffer.size() * sizeof(encoded_buffer[0]), &raw_buffer[0], raw_buffer.size());
-		codex.decode(&decoded_buffer[0], raw_buffer.size(), &encoded_buffer[0], bytes_used);
+		size_t bytes_used = codex->encode(&encoded_buffer[0], encoded_buffer.size() * sizeof(encoded_buffer[0]), &raw_buffer[0], raw_buffer.size());
+		codex->decode(&decoded_buffer[0], raw_buffer.size(), &encoded_buffer[0], bytes_used);
 		JASS_assert(memcmp(&decoded_buffer[0], &raw_buffer[0], raw_buffer.size() * sizeof(raw_buffer[0])) == 0);
 
 		/*
 			Check the overflow case
 		*/
-		bytes_used = codex.encode(&encoded_buffer[0], 1, &raw_buffer[0], raw_buffer.size());
+		bytes_used = codex->encode(&encoded_buffer[0], 1, &raw_buffer[0], raw_buffer.size());
 		JASS_assert(bytes_used == 0);
 		
 		/*
 			The tests have passed
 		*/
+		delete codex;
 		puts("compress_integer_none::PASSED");
 		}
 	}

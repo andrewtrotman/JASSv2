@@ -48,7 +48,7 @@ namespace JASS
 	*/
 	void compress_integer_stream_vbyte::unittest(void)
 		{
-		compress_integer_stream_vbyte compressor;
+		compress_integer_stream_vbyte *compressor = new compress_integer_stream_vbyte;
 		std::vector<uint32_t> sequence;
 		size_t instance;
 
@@ -72,8 +72,8 @@ namespace JASS
 		std::vector<uint32_t>compressed(sequence.size() * 2);
 		std::vector<uint32_t>decompressed(sequence.size() + 256);
 
-		auto size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &sequence[0], sequence.size());
-		compressor.decode(&decompressed[0], sequence.size(), &compressed[0], size_once_compressed);
+		auto size_once_compressed = compressor->encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &sequence[0], sequence.size());
+		compressor->decode(&decompressed[0], sequence.size(), &compressed[0], size_once_compressed);
 		decompressed.resize(sequence.size());
 		JASS_assert(decompressed == sequence);
 
@@ -82,17 +82,18 @@ namespace JASS
 
 		sequence.clear();
 		uint32_t empty = 0;
-		size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &empty, sequence.size());
+		size_once_compressed = compressor->encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &empty, sequence.size());
 		JASS_assert(size_once_compressed == 0);
 
 		/*
 			Try decompressing 0 bytes - streamvbyte::streamvbyte_decode() should return 0 which is then ignored (but the coverage tool notices that we've done the check).
 		*/
-		compressor.decode(&decompressed[0], 0, &compressed[0], size_once_compressed);
+		compressor->decode(&decompressed[0], 0, &compressed[0], size_once_compressed);
 
 		/*
 			The tests have passed
 		*/
+		delete compressor;
 		puts("compress_integer_stream_vbyte::PASSED");
 		}
 	}

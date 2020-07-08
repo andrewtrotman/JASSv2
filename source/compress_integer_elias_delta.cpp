@@ -168,20 +168,21 @@ namespace JASS
 	*/
 	void compress_integer_elias_delta::unittest(void)
 		{
-		compress_integer_elias_delta codec;
+		compress_integer_elias_delta *codec = new compress_integer_elias_delta;
 
 		std::vector<uint8_t> buffer(1024);
 		std::vector<integer> sequence = {1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, };
 		std::vector<integer> into(sequence.size());
 
-		auto encoded_length = codec.encode(&buffer[0], buffer.size(), &sequence[0], sequence.size());
-		codec.decode(&into[0], sequence.size(), &buffer[0], encoded_length);
+		auto encoded_length = codec->encode(&buffer[0], buffer.size(), &sequence[0], sequence.size());
+		codec->decode(&into[0], sequence.size(), &buffer[0], encoded_length);
 
 		JASS_assert(into == sequence);
 
 		compress_integer_elias_delta *compressor = new compress_integer_elias_delta;
 		compress_integer::unittest(*compressor, 1);
 		delete compressor;
+		delete codec;
 		puts("compress_integer_elias_delta::PASSED");
 		}
 	}

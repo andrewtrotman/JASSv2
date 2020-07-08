@@ -47,18 +47,19 @@ namespace JASS
 		*/
 		template<typename A, size_t B, size_t C, size_t D, typename E> friend class accumulator_counter_interleaved;
 
-		/*
-			A cache line is 64 bytes so at uint16_t for an accumumulator we get 64 / 2 = 32 accumulators per cache line
-			but we need clean flags (8 bits per flag) so we really only get (64 * 8) / (16 + 8) = 21 accumulators per
-			cache line that means we need 21 bytes for the clean flags.  21 * 2 + 21 = 64  so there is 1 byte of padding.
-			With 4 bits per flag we get  (64 * 8) / (16 + 4) = 25 accumulators and 1 byte of adding
-		*/
-//		static constexpr size_t accumulators_per_chunk = (COUNTER_BITSIZE == 8 ? 21 : 25);
-//		static constexpr size_t accumulators_per_chunk = 1;
-		static constexpr size_t accumulators_per_chunk = ACCUMULATORS_PER_CHUNK;
-		static constexpr size_t clean_flag_bytes = COUNTER_BITSIZE == 8 ? accumulators_per_chunk : (accumulators_per_chunk / 2) + (accumulators_per_chunk & 1);
+		private:
+			/*
+				A cache line is 64 bytes so at uint16_t for an accumumulator we get 64 / 2 = 32 accumulators per cache line
+				but we need clean flags (8 bits per flag) so we really only get (64 * 8) / (16 + 8) = 21 accumulators per
+				cache line that means we need 21 bytes for the clean flags.  21 * 2 + 21 = 64  so there is 1 byte of padding.
+				With 4 bits per flag we get  (64 * 8) / (16 + 4) = 25 accumulators and 1 byte of adding
+			*/
+	//		static constexpr size_t accumulators_per_chunk = (COUNTER_BITSIZE == 8 ? 21 : 25);
+	//		static constexpr size_t accumulators_per_chunk = 1;
+			static constexpr size_t accumulators_per_chunk = ACCUMULATORS_PER_CHUNK;
+			static constexpr size_t clean_flag_bytes = COUNTER_BITSIZE == 8 ? accumulators_per_chunk : (accumulators_per_chunk / 2) + (accumulators_per_chunk & 1);
 
-		typedef uint16_t query_counter_type;
+			typedef uint16_t query_counter_type;
 
 		/*
 			CLASS ACCUMULTOR_COUNTER_INTERLEAVED::CHUNK
@@ -69,62 +70,63 @@ namespace JASS
 		*/
 
 #pragma pack(push, 1)
-		class chunk
-			{
-			public:
-				/*
-					We put the accumulators first so that we can do pointer arithmatic to go from an accumulator pointer to an index (it also helps with alignment)
-				*/
-				ELEMENT accumulator[accumulators_per_chunk];							///< The accumulators
-				query_counter_type clean_flag[clean_flag_bytes];					///< The clean flags for this block
+		private:
+			class chunk
+				{
+				public:
+					/*
+						We put the accumulators first so that we can do pointer arithmatic to go from an accumulator pointer to an index (it also helps with alignment)
+					*/
+					ELEMENT accumulator[accumulators_per_chunk];							///< The accumulators
+					query_counter_type clean_flag[clean_flag_bytes];					///< The clean flags for this block
 
-			public:
-				/*
-					ACCUMULTOR_COUNTER_INTERLEAVED::CHUNK::REWIND()
-					-----------------------------------------------
-				*/
-				/*!
-					@brief Clear the clean flags marking each accumulator as dirty
-				*/
-				forceinline void rewind(void)
-					{
-					std::fill(clean_flag, clean_flag + clean_flag_bytes, min_clean_id);
-//					::memset(clean_flag, min_clean_id, clean_flag_bytes);
-					}
-
-				/*
-					ACCUMULTOR_COUNTER_INTERLEAVED::CHUNK::ALLOCATE_ACCUMULATOR()
-					-------------------------------------------------------------
-				*/
-				/*!
-					@brief Return a correctly cleared accumulator
-					@param part_of_chunk [in] The accumulator within this chunk to use
-					@param clean_id [in] The current query ID
-				*/
-				forceinline ELEMENT &allocate_accumulator(size_t part_of_chunk, query_counter_type clean_id)
-					{
-					if constexpr (COUNTER_BITSIZE == 8)
+				public:
+					/*
+						ACCUMULTOR_COUNTER_INTERLEAVED::CHUNK::REWIND()
+						-----------------------------------------------
+					*/
+					/*!
+						@brief Clear the clean flags marking each accumulator as dirty
+					*/
+					forceinline void rewind(void)
 						{
-						if (clean_flag[part_of_chunk] != clean_id)
-							{
-							clean_flag[part_of_chunk] = clean_id;
-							accumulator[part_of_chunk] = 0;
-							}
+						std::fill(clean_flag, clean_flag + clean_flag_bytes, min_clean_id);
+	//					::memset(clean_flag, min_clean_id, clean_flag_bytes);
 						}
-					else
-						{
-						size_t clean_flag_byte = part_of_chunk >> 1;
-						size_t clean_shift = (part_of_chunk & 1) * 4;
 
-						if (((clean_flag[clean_flag_byte] >> clean_shift) & max_clean_id) != clean_id)
+					/*
+						ACCUMULTOR_COUNTER_INTERLEAVED::CHUNK::ALLOCATE_ACCUMULATOR()
+						-------------------------------------------------------------
+					*/
+					/*!
+						@brief Return a correctly cleared accumulator
+						@param part_of_chunk [in] The accumulator within this chunk to use
+						@param clean_id [in] The current query ID
+					*/
+					forceinline ELEMENT &allocate_accumulator(size_t part_of_chunk, query_counter_type clean_id)
+						{
+						if constexpr (COUNTER_BITSIZE == 8)
 							{
-							clean_flag[clean_flag_byte] = (clean_flag[clean_flag_byte] & ~(max_clean_id << clean_shift)) | (clean_id << clean_shift);
-							accumulator[part_of_chunk] = 0;
+							if (clean_flag[part_of_chunk] != clean_id)
+								{
+								clean_flag[part_of_chunk] = clean_id;
+								accumulator[part_of_chunk] = 0;
+								}
 							}
+						else
+							{
+							size_t clean_flag_byte = part_of_chunk >> 1;
+							size_t clean_shift = (part_of_chunk & 1) * 4;
+
+							if (((clean_flag[clean_flag_byte] >> clean_shift) & max_clean_id) != clean_id)
+								{
+								clean_flag[clean_flag_byte] = (clean_flag[clean_flag_byte] & ~(max_clean_id << clean_shift)) | (clean_id << clean_shift);
+								accumulator[part_of_chunk] = 0;
+								}
+							}
+						return accumulator[part_of_chunk];
 						}
-					return accumulator[part_of_chunk];
-					}
-			};
+				};
 
 #pragma pack(pop)
 
@@ -148,7 +150,7 @@ namespace JASS
 			accumulator_counter_interleaved() :
 				number_of_accumulators(0),
 				number_of_chunks(0),
-				clean_id(0)
+				clean_id(1)
 				{
 				/*	Nothing */
 				}
@@ -170,7 +172,7 @@ namespace JASS
 				/*
 					Clear the clean flags ready for use.
 				*/
-				clean_id = min_clean_id;
+				clean_id = min_clean_id + 1;
 				for (size_t which = 0; which < number_of_chunks; which++)
 					accumulator_chunk[which].rewind();
 				}
@@ -289,7 +291,7 @@ namespace JASS
 				std::shuffle(sequence.begin(), sequence.end(), std::knuth_b(random_number_generator()));
 
 				/*
-					Set elemenets and make sure they're correct
+					Set elements and make sure they're correct
 				*/
 				for (const auto &position : sequence)
 					{

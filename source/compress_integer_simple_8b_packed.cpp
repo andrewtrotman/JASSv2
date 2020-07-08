@@ -988,12 +988,12 @@ namespace JASS
 		/*
 			Check it works
 		*/
-		compress_integer_simple_8b_packed compressor;
+		compress_integer_simple_8b_packed *compressor = new compress_integer_simple_8b_packed;
 		std::vector<uint32_t>compressed(every_case.size() * 2);
 		std::vector<uint32_t>decompressed(every_case.size() + 256);
 
-		auto size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &every_case[0], every_case.size());
-		compressor.decode(&decompressed[0], every_case.size(), &compressed[0], size_once_compressed);
+		auto size_once_compressed = compressor->encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &every_case[0], every_case.size());
+		compressor->decode(&decompressed[0], every_case.size(), &compressed[0], size_once_compressed);
 		decompressed.resize(every_case.size());
 		JASS_assert(decompressed == every_case);
 		
@@ -1005,20 +1005,21 @@ namespace JASS
 			Note that integer too large can't happen as simple-8b can encode up-to 2^60 which is greater than 2^32.
 		*/
 		integer one = 1;
-		size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &one, 0);
+		size_once_compressed = compressor->encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &one, 0);
 		JASS_assert(size_once_compressed == 0);
 
 		every_case.clear();
 		for (instance = 0; instance < 28; instance++)
 			every_case.push_back(0x01);
-		size_once_compressed = compressor.encode(&compressed[0], 4, &every_case[0], every_case.size());
+		size_once_compressed = compressor->encode(&compressed[0], 4, &every_case[0], every_case.size());
 		JASS_assert(size_once_compressed == 0);
 
 		every_case.clear();
 		every_case.push_back(0xFFFF);
-		size_once_compressed = compressor.encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &every_case[0], every_case.size());
+		size_once_compressed = compressor->encode(&compressed[0], compressed.size() * sizeof(compressed[0]), &every_case[0], every_case.size());
 		JASS_assert(size_once_compressed == 8);
 
+		delete compressor;
 		puts("compress_integer_simple_8b_packed::PASSED");
 		}
 	}

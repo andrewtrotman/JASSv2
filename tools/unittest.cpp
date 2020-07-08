@@ -147,18 +147,14 @@ int main(void)
 			puts("simd");
 			JASS::simd::unittest();
 
-#ifdef NEVER
 			puts("compress_integer_bitpack_256");
 			JASS::compress_integer_bitpack_256::unittest();
-#endif
 
 			puts("compress_integer_elias_gamma_simd");
 			JASS::compress_integer_elias_gamma_simd::unittest();
 
-#ifdef NEVER
 			puts("compress_integer_elias_delta_simd");
 			JASS::compress_integer_elias_delta_simd::unittest();
-#endif
 			}
 		else
 			{
@@ -176,13 +172,11 @@ int main(void)
 
 		if (hardware.BMI1)
 			{
-#ifdef NEVER
 			puts("compress_integer_elias_gamma");
 			JASS::compress_integer_elias_gamma::unittest();
 
 			puts("compress_integer_elias_delta");
 			JASS::compress_integer_elias_delta::unittest();
-#endif
 			}
 		else
 			{
@@ -395,7 +389,6 @@ int main(void)
 		puts("serialise_forward_index");
 		JASS::serialise_forward_index::unittest();
 
-#ifdef NEVER
 		puts("compress_integer_elias_gamma_bitwise");
 		JASS::compress_integer_elias_gamma_bitwise::unittest();
 
@@ -416,10 +409,10 @@ int main(void)
 
 		puts("compress_integer_qmx_improved");
 		JASS::compress_integer_qmx_improved::unittest();
-#endif
+
 		puts("compress_integer_qmx_jass_v1");
 		JASS::compress_integer_qmx_jass_v1::unittest();
-#ifdef NEVER
+
 		puts("compress_integer_simple_9");
 		JASS::compress_integer_simple_9::unittest();
 
@@ -455,7 +448,7 @@ int main(void)
 
 		puts("compress_integer_bitpack_128");
 		JASS::compress_integer_bitpack_128::unittest();
-#endif
+
 		puts("accumulator_2d");
 		JASS::accumulator_2d<uint32_t, 1>::unittest();
 
