@@ -297,6 +297,31 @@ namespace JASS
 #endif
 						}
 					};
+				/*
+					CLASS QUERY_HEAP::UINT64_T_COMPARE
+					----------------------------------
+				*/
+				/*!
+					@brief comparison functor for uint32_t
+				*/
+				class uint64_t_compare
+					{
+					public:
+						/*
+							QUERY_HEAP::UINT64_T_COMPARE::OPERATOR()()
+							------------------------------------------
+						*/
+						/*!
+							@brief compare() function
+							@param a [in] The right hand side of the comparison
+							@param b [in] The left hand side of the comparison
+							@return -1 for less, 0 for equal, 1 for greater
+						*/
+						forceinline int operator() (uint64_t a, uint64_t b) const
+							{
+							return a > b ? -1 : a == b ? 0 : 1;
+							}
+				} uint64_t_compare_method;
 
 		private:
 			accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;	///< The accumulators, one per document in the collection
@@ -456,10 +481,13 @@ namespace JASS
 					{
 #ifdef ACCUMULATOR_64s
 	#ifdef JASS_TOPK_SORT
-					top_k_qsort::sort(sorted_accumulators + needed_for_top_k, top_k - needed_for_top_k, top_k, std::greater<decltype(sorted_accumulators[0])>());
+					// CHECKED
+					top_k_qsort::sort(sorted_accumulators + needed_for_top_k, top_k - needed_for_top_k, top_k, uint64_t_compare_method);
 	#elif defined(CPP_TOPK_SORT)
+					// CHECKED
 					std::partial_sort(sorted_accumulators + needed_for_top_k,  sorted_accumulators + top_k, sorted_accumulators + top_k, std::greater<decltype(sorted_accumulators[0])>());
 	#elif defined(CPP_SORT)
+					// CHECKED
 					std::sort(sorted_accumulators + needed_for_top_k, sorted_accumulators + top_k, std::greater<decltype(sorted_accumulators[0])>());
 	#elif defined(AVX512_SORT)
 					Sort512_uint64_t::Sort<uint64_t, size_t, Sort512_uint64_t::ASCENDING>(sorted_accumulators + needed_for_top_k, top_k - needed_for_top_k);
