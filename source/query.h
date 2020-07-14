@@ -31,9 +31,9 @@
 	CPP_SORT do a full sort using C++ std::sort()
 	AVX512_SORT use the AVX512 sort Sort512_uint64_t::Sort() on 64-bit integers
 */
-//#define JASS_TOPK_SORT
+#define JASS_TOPK_SORT
 //#define CPP_TOPK_SORT
-#define CPP_SORT
+//#define CPP_SORT
 //#define AVX512_SORT
 
 /*
