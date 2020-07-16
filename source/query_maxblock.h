@@ -176,7 +176,21 @@ namespace JASS
 #else
 			ACCUMULATOR_TYPE *accumulator_pointers[MAX_DOCUMENTS];					///< Array of pointers to the top k accumulators
 #endif
-			accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;			///< The accumulators, one per document in the collection
+
+#ifdef ACCUMULATOR_STRATEGY_2D
+			accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;	///< The accumulators, one per document in the collection
+#elif defined(ACCUMULATOR_COUNTER_8)
+			accumulator_counter<ACCUMULATOR_TYPE, MAX_DOCUMENTS, 8> accumulators;	///< The accumulators, one per document in the collection
+#elif defined(ACCUMULATOR_COUNTER_4)
+			accumulator_counter<ACCUMULATOR_TYPE, MAX_DOCUMENTS, 4> accumulators;	///< The accumulators, one per document in the collection
+#elif defined(ACCUMULATOR_COUNTER_INTERLEAVED_8)
+			accumulator_counter_interleaved<ACCUMULATOR_TYPE, MAX_DOCUMENTS, 8> accumulators;	///< The accumulators, one per document in the collection
+#elif defined(ACCUMULATOR_COUNTER_INTERLEAVED_8_1)
+			accumulator_counter_interleaved<ACCUMULATOR_TYPE, MAX_DOCUMENTS, 8, 1> accumulators;	///< The accumulators, one per document in the collection
+#elif defined(ACCUMULATOR_COUNTER_INTERLEAVED_4)
+			accumulator_counter_interleaved<ACCUMULATOR_TYPE, MAX_DOCUMENTS, 4> accumulators;	///< The accumulators, one per document in the collection
+#endif
+
 			ACCUMULATOR_TYPE page_maximum[MAX_DOCUMENTS];								///< The current maximum value of the accumulator block
 			bool sorted;																			///< has heap and accumulator_pointers been sorted (false after rewind() true after sort())
 			size_t non_zero_accumulators;														///< The number of non-zero accumulators (should be top-k or less)

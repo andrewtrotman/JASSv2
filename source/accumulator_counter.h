@@ -49,12 +49,12 @@ namespace JASS
 		template<typename A, size_t B, size_t C, typename D> friend class accumulator_counter;
 
 		private:
-			size_t number_of_accumulators;									///< The number of accumulators that the user asked for
-			uint8_t clean_id;														///< If clean_flag[x] == clean_id then accumulator[x] is valid
-			static constexpr decltype(clean_id) max_clean_id = (1 << COUNTER_BITSIZE) - 1;	///< The largest allowable clean id
-			static constexpr decltype(clean_id) min_clean_id = 0;									///< The smallest allowable clean id
-			decltype(clean_id) clean_flag[NUMBER_OF_ACCUMULATORS];	///< The clean flags are kept as bytes for faster lookup
-			ELEMENT accumulator[NUMBER_OF_ACCUMULATORS];					///< The accumulators are kept in an array
+			size_t number_of_accumulators;																///< The number of accumulators that the user asked for
+			uint8_t clean_id;																					///< If clean_flag[x] == clean_id then accumulator[x] is valid
+			static constexpr uint8_t max_clean_id = (COUNTER_BITSIZE == 8 ? 0xFF : 0x0F);	///< The largest allowable clean id
+			static constexpr uint8_t min_clean_id = 0;												///< The smallest allowable clean id
+			uint8_t clean_flag[NUMBER_OF_ACCUMULATORS];												///< The clean flags are kept as bytes for faster lookup
+			ELEMENT accumulator[NUMBER_OF_ACCUMULATORS];												///< The accumulators are kept in an array
 
 		public:
 			/*

@@ -52,14 +52,12 @@ namespace JASS
 				A cache line is 64 bytes so at uint16_t for an accumumulator we get 64 / 2 = 32 accumulators per cache line
 				but we need clean flags (8 bits per flag) so we really only get (64 * 8) / (16 + 8) = 21 accumulators per
 				cache line that means we need 21 bytes for the clean flags.  21 * 2 + 21 = 64  so there is 1 byte of padding.
-				With 4 bits per flag we get  (64 * 8) / (16 + 4) = 25 accumulators and 1 byte of adding
+				With 4 bits per flag we get  (64 * 8) / (16 + 4) = 25 accumulators and 1 byte of padding
 			*/
-	//		static constexpr size_t accumulators_per_chunk = (COUNTER_BITSIZE == 8 ? 21 : 25);
-	//		static constexpr size_t accumulators_per_chunk = 1;
 			static constexpr size_t accumulators_per_chunk = ACCUMULATORS_PER_CHUNK;
 			static constexpr size_t clean_flag_bytes = COUNTER_BITSIZE == 8 ? accumulators_per_chunk : (accumulators_per_chunk / 2) + (accumulators_per_chunk & 1);
 
-			typedef uint16_t query_counter_type;
+			typedef uint8_t query_counter_type;
 
 		/*
 			CLASS ACCUMULTOR_COUNTER_INTERLEAVED::CHUNK

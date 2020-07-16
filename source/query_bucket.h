@@ -16,6 +16,8 @@
 #include "query.h"
 #include "accumulator_2d.h"
 #include "sort512_uint64_t.h"
+#include "accumulator_counter.h"
+#include "accumulator_counter_interleaved.h"
 
 namespace JASS
 	{
@@ -180,7 +182,21 @@ namespace JASS
 			ACCUMULATOR_TYPE shadow_accumulator[MAX_DOCUMENTS];				///< Used to deduplicate the top-k
 #endif
 			uint64_t accumulators_used;												///< The number of accumulator_pointers used (can be smaller than top_k)
+
+#ifdef ACCUMULATOR_STRATEGY_2D
 			accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;	///< The accumulators, one per document in the collection
+#elif defined(ACCUMULATOR_COUNTER_8)
+			accumulator_counter<ACCUMULATOR_TYPE, MAX_DOCUMENTS, 8> accumulators;	///< The accumulators, one per document in the collection
+#elif defined(ACCUMULATOR_COUNTER_4)
+			accumulator_counter<ACCUMULATOR_TYPE, MAX_DOCUMENTS, 4> accumulators;	///< The accumulators, one per document in the collection
+#elif defined(ACCUMULATOR_COUNTER_INTERLEAVED_8)
+			accumulator_counter_interleaved<ACCUMULATOR_TYPE, MAX_DOCUMENTS, 8> accumulators;	///< The accumulators, one per document in the collection
+#elif defined(ACCUMULATOR_COUNTER_INTERLEAVED_8_1)
+			accumulator_counter_interleaved<ACCUMULATOR_TYPE, MAX_DOCUMENTS, 8, 1> accumulators;	///< The accumulators, one per document in the collection
+#elif defined(ACCUMULATOR_COUNTER_INTERLEAVED_4)
+			accumulator_counter_interleaved<ACCUMULATOR_TYPE, MAX_DOCUMENTS, 4> accumulators;	///< The accumulators, one per document in the collection
+#endif
+
 			bool sorted;																	///< has heap and accumulator_pointers been sorted (false after rewind() true after sort())
 
 #ifdef NEVER

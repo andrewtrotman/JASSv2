@@ -12,6 +12,24 @@
 //#define QUERY_MAXBLOCK_HEAP
 
 /*
+	Which accmulator allocator strategy to use
+
+	ACCUMULATOR_STRATEGY_2D uses the ATIRE 2D accumulator dirty pages strategy
+	ACCUMULATOR_COUNTER_8 uses an 8-bit counter per accumulator incremented with each query, in they do not match then zero just that one accumulator
+	ACCUMULATOR_COUNTER_4 uses an 4-bit counter per accumulator incremented with each query, in they do not match then zero just that one accumulator
+	ACCUMULATOR_COUNTER_INTERLEAVED_8 same as ACCUMULATOR_COUNTER_8, but interleaved the flags with the accumulators, and uses 21 accumulators per chunk (so flag + accumulators approximately equals cachline size)
+	ACCUMULATOR_COUNTER_INTERLEAVED_8_1 same as ACCUMULATOR_COUNTER_8, but interleaved the flags with the accumulators, one flag per accumulator
+	ACCUMULATOR_COUNTER_INTERLEAVED_4 same as ACCUMULATOR_COUNTER_4, but interleaved the flags with the accumulators, and uses 25 accumulators per chunk (so flag + accumulators approximately equals cachline size)
+*/
+#define ACCUMULATOR_STRATEGY_2D
+//#define ACCUMULATOR_COUNTER_8
+//#define ACCUMULATOR_COUNTER_4
+//#define ACCUMULATOR_COUNTER_INTERLEAVED_8
+//#define ACCUMULATOR_COUNTER_INTERLEAVED_8_1
+//#define ACCUMULATOR_COUNTER_INTERLEAVED_4
+
+
+/*
 	ACCUMULATOR_POINTER_BEAP uses a beap of pointers (rather than a heap of pointers) to store the top-k in the query_heap code.
 	The other query_ classes don't change values in a heap and so a beap will always be slower (as heap is O(log(n)) but beap is O(sqrt(N)))
 */
