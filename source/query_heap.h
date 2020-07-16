@@ -297,6 +297,7 @@ namespace JASS
 #endif
 						}
 					};
+#if defined(JASS_TOPK_SORT) && defined(ACCUMULATOR_64s)
 				/*
 					CLASS QUERY_HEAP::UINT64_T_COMPARE
 					----------------------------------
@@ -322,6 +323,7 @@ namespace JASS
 							return a > b ? -1 : a == b ? 0 : 1;
 							}
 				} uint64_t_compare_method;
+#endif
 
 		private:
 		
