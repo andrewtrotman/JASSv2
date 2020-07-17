@@ -254,6 +254,33 @@ namespace JASS
 				}
 
 			/*
+				ACCUMULATOR_2D::GET_VALUE()
+				---------------------------
+			*/
+			/*!
+				@brief Return the value of the given accumulator
+				@details This interface does not initialise an accumulator, it returns 0 if the accumulator is uninitialised
+				@param which [in] The accumulator to return.
+				@return The accumulator value or 0.
+			*/
+			forceinline ELEMENT get_value(size_t which)
+				{
+				size_t flag = which_dirty_flag(which);
+
+#ifdef USE_QUERY_IDS
+				if (dirty_flag[flag] != query_id)
+					return 0;
+				else
+					return accumulator[which];
+#else
+				if (dirty_flag[flag])
+					return 0;
+				else
+					return accumulator[which];
+#endif
+				}
+
+			/*
 				ACCUMULATOR_2D::OPERATOR[]()
 				----------------------------
 			*/
@@ -262,6 +289,7 @@ namespace JASS
 				@details The only valid way to access the accumulators is through this interface.  It ensures the accumulator
 				has been initialised before the first time it is returned to the caller.
 				@param which [in] The accumulator to return.
+				@return The accumulator.
 			*/
 			forceinline ELEMENT &operator[](size_t which)
 				{
@@ -274,13 +302,13 @@ namespace JASS
 					dirty_flag[flag] = query_id;
 					}
 #else
-					if (dirty_flag[flag])
-						{
-//						simd::bzero64(&accumulator[0] + flag * width, width >> 5);
-						memset(&accumulator[0] + flag * width, 0, width * sizeof(accumulator[0]));
+				if (dirty_flag[flag])
+					{
+//					simd::bzero64(&accumulator[0] + flag * width, width >> 5);
+					memset(&accumulator[0] + flag * width, 0, width * sizeof(accumulator[0]));
 
-						dirty_flag[flag] = 0;
-						}
+					dirty_flag[flag] = 0;
+					}
 #endif
 
 				return accumulator[which];

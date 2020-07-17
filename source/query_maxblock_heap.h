@@ -210,7 +210,9 @@ namespace JASS
 #elif defined(ACCUMULATOR_COUNTER_INTERLEAVED_4)
 			accumulator_counter_interleaved<ACCUMULATOR_TYPE, MAX_DOCUMENTS, 4> accumulators;	///< The accumulators, one per document in the collection
 #endif
-
+			size_t block_width;																	///< The number of documents per block
+			size_t bucket_shift;																	///< The amount to shift to get the right bucket
+			size_t number_of_blocks;													///< The number of blocks
 			size_t needed_for_top_k;													///< The number of results we still need in order to fill the top-k
 #ifdef ACCUMULATOR_64s
 			uint64_t sorted_accumulators[MAX_DOCUMENTS];									///< high word is the rsv, the low word is the DocID.
@@ -258,8 +260,8 @@ namespace JASS
 				}
 
 			/*
-				QUERY_MAXBLOCK::INIT()
-				----------------------
+				QUERY_MAXBLOCK_HEAP::INIT()
+				---------------------------
 			*/
 			/*!
 				@brief Initialise the object. MUST be called before first use.
@@ -268,12 +270,26 @@ namespace JASS
 				@param top_k [in]	The top-k documents to return from the query once executed.
 				@param width [in] The width of the 2-d accumulators (if they are being used).
 			*/
-			virtual void init(const std::vector<std::string> &primary_keys, DOCID_TYPE documents = 1024, size_t top_k = 10, size_t width = 7)
+			virtual void init(const std::vector<std::string> &primary_keys, DOCID_TYPE documents = 1024, size_t top_k = 10, size_t preferred_width = 7)
 				{
 				query::init(primary_keys, documents, top_k);
-				accumulators.init(documents, width);
+				accumulators.init(documents, preferred_width);
 				top_results.set_top_k(top_k);
-				for (size_t which = 0; which < accumulators.number_of_dirty_flags; which++)
+#ifdef ACCUMULATOR_STRATEGY_2D
+				number_of_blocks = accumulators.number_of_dirty_flags;
+				block_width = accumulators.width;
+				bucket_shift = accumulators.shift;
+#else
+				if (preferred_width >= 1)
+					bucket_shift = preferred_width;
+				else
+					bucket_shift = maths::floor_log2((size_t)sqrt(documents));
+
+				block_width = (size_t)1 << bucket_shift;
+				number_of_blocks = (documents + block_width - 1) / block_width;
+
+#endif
+				for (size_t which = 0; which < number_of_blocks; which++)
 					page_maximum_pointers[which] = &page_maximum[which];
 				}
 
@@ -321,7 +337,7 @@ namespace JASS
 #endif
 				accumulators.rewind();
 				needed_for_top_k = this->top_k;
-				std::fill(page_maximum, page_maximum + accumulators.number_of_dirty_flags, 0);
+				std::fill(page_maximum, page_maximum + number_of_blocks, 0);
 				query::rewind();
 				}
 
@@ -339,7 +355,7 @@ namespace JASS
 					/*
 						Sort the page maximum values from highest to lowest.
 					*/
-					std::sort(page_maximum_pointers, page_maximum_pointers + accumulators.number_of_dirty_flags,
+					std::sort(page_maximum_pointers, page_maximum_pointers + number_of_blocks,
 						[](const ACCUMULATOR_TYPE *a, const ACCUMULATOR_TYPE *b) -> bool
 						{
 						return *a > *b ? true : *a < *b ? false : a < b;
@@ -354,16 +370,16 @@ namespace JASS
 						Walk through the pages looking for the case where an accumulator in the page should appear in the heap
 					*/
 #ifdef ACCUMULATOR_64s
-					for (size_t page = 0; page < accumulators.number_of_dirty_flags; page++)
+					for (size_t page = 0; page < number_of_blocks; page++)
 						{
 //std::cout << "page:" << *page_maximum_pointers[page] << " heap[0]:" << (sorted_accumulators[0] >> 32) << "\n";
 						if (*page_maximum_pointers[page] != 0 && *page_maximum_pointers[page] >= (sorted_accumulators[0] >> 32))
 							{
-							ACCUMULATOR_TYPE *start = &accumulators.accumulator[(page_maximum_pointers[page] - page_maximum) * accumulators.width];
-							for (ACCUMULATOR_TYPE *which = start; which < start + accumulators.width; which++)
+							size_t start = (page_maximum_pointers[page] - page_maximum) * block_width;
+							for (size_t which = start; which < start + block_width; which++)
 								{
-								uint64_t key = ((uint64_t)*which << (uint64_t)32) | (which - &accumulators.accumulator[0]);
-								if (*which > 0 && key > sorted_accumulators[0])			// == 0 is the case where we're the current bottom of heap so might need to be promoted
+								uint64_t key = ((uint64_t)accumulators[which] << (uint64_t)32) | which;
+								if (accumulators.get_value(which) > 0 && key > sorted_accumulators[0])			// == 0 is the case where we're the current bottom of heap so might need to be promoted
 									{
 									if (needed_for_top_k > 0)
 										{
@@ -380,23 +396,23 @@ namespace JASS
 							break;
 						}
 #else
-					for (size_t page = 0; page < accumulators.number_of_dirty_flags; page++)
+					for (size_t page = 0; page < number_of_blocks; page++)
 						{
 						if (*page_maximum_pointers[page] != 0 && *page_maximum_pointers[page] >= *accumulator_pointers[0])
 							{
-							ACCUMULATOR_TYPE *start = &accumulators.accumulator[(page_maximum_pointers[page] - page_maximum) * accumulators.width];
-							for (ACCUMULATOR_TYPE *which = start; which < start + accumulators.width; which++)
+							size_t start = (page_maximum_pointers[page] - page_maximum) * block_width;
+							for (size_t which = start; which < start + block_width; which++)
 								{
-								if (*which > 0 && this->cmp(which, accumulator_pointers[0]) > 0)			// == 0 is the case where we're the current bottom of heap so might need to be promoted
+								if (accumulators.get_value(which) > 0 && this->cmp(&accumulators[which], accumulator_pointers[0]) > 0)			// == 0 is the case where we're the current bottom of heap so might need to be promoted
 									{
 									if (needed_for_top_k > 0)
 										{
-										accumulator_pointers[--needed_for_top_k] = which;
+										accumulator_pointers[--needed_for_top_k] = &accumulators[which];
 										if (needed_for_top_k == 0)
 											top_results.make_heap();
 										}
 									else
-										top_results.push_back(which);				// we're not in the heap so add this accumulator to the heap
+										top_results.push_back(&accumulators[which]);				// we're not in the heap so add this accumulator to the heap
 									}
 								}
 							}
@@ -450,7 +466,7 @@ namespace JASS
 			*/
 			forceinline void add_rsv(size_t document_id, ACCUMULATOR_TYPE score)
 				{
-				size_t page = accumulators.which_dirty_flag(document_id);		// get the page number
+				size_t page = document_id >> bucket_shift;							// get the page number
 				ACCUMULATOR_TYPE *which = &accumulators[document_id];				// This will create the accumulator if it doesn't already exist.
 
 				*which += score;

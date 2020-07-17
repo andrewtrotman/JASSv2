@@ -322,7 +322,7 @@ namespace JASS
 							{
 							return a > b ? -1 : a == b ? 0 : 1;
 							}
-				} uint64_t_compare_method;
+					} uint64_t_compare_method;
 #endif
 
 		private:

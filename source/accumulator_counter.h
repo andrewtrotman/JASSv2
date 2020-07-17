@@ -93,6 +93,30 @@ namespace JASS
 				}
 
 			/*
+				ACCUMULATOR_COUNTER::GET_VALUE()
+				--------------------------------
+			*/
+			/*!
+				@brief Return the value of the given accumulator
+				@details This interface does not initialise an accumulator, it returns 0 if the accumulator is uninitialised
+				@param which [in] The accumulator to return.
+				@return The accumulator value or 0.
+			*/
+			forceinline ELEMENT get_value(size_t which)
+				{
+				if constexpr (COUNTER_BITSIZE == 8)
+					if (clean_flag[which] != clean_id)
+						return 0;
+					else
+						return accumulator[which];
+				else
+					if (((clean_flag[which >> 1] >> ((which & 1) * 4)) & max_clean_id) != clean_id)
+						return 0;
+					else
+						return accumulator[which];
+				}
+
+			/*
 				ACCUMULATOR_COUNTER::OPERATOR[]()
 				---------------------------------
 			*/
@@ -101,6 +125,7 @@ namespace JASS
 				@details The only valid way to access the accumulators is through this interface.  It ensures the accumulator
 				has been initialised before the first time it is returned to the caller.
 				@param which [in] The accumulator to return.
+				@return The accumulator.
 			*/
 			forceinline ELEMENT &operator[](size_t which)
 				{

@@ -139,7 +139,7 @@ namespace JASS
 						{
 #ifdef ACCUMULATOR_64s
 						DOCID_TYPE id = parent.sorted_accumulators[where] & 0xFFFF'FFFF;
-						ACCUMULATOR_TYPE rsv = parent.largest_used_bucket - (parent.sorted_accumulators[where] >> 32);
+						ACCUMULATOR_TYPE rsv = parent.sorted_accumulators[where] >> 32;
 						return docid_rsv_pair(id, (*parent.primary_keys)[id], rsv);
 #else
 						size_t id = parent.accumulator_pointers[where] - parent.shadow_accumulator;
@@ -172,7 +172,7 @@ namespace JASS
 							{
 							return a > b ? -1 : a == b ? 0 : 1;
 							}
-				} uint64_t_compare_method;
+					} uint64_t_compare_method;
 
 		private:
 #ifdef ACCUMULATOR_64s
@@ -199,11 +199,9 @@ namespace JASS
 
 			bool sorted;																	///< has heap and accumulator_pointers been sorted (false after rewind() true after sort())
 
-#ifdef NEVER
-			static constexpr size_t rounded_top_k = ((size_t)1) << maths::ceiling_log2(MAX_TOP_K); ///< Sets the bucket depth based on top-k
-#else
+//			static constexpr size_t rounded_top_k = ((size_t)1) << maths::ceiling_log2(MAX_TOP_K); ///< Sets the bucket depth based on top-k
 			static constexpr size_t rounded_top_k = 256;															///< Sets the bucket depth to 256
-#endif
+
 			static constexpr size_t rounded_top_k_filter = rounded_top_k - 1;
 
 			static constexpr size_t number_of_buckets = std::numeric_limits<ACCUMULATOR_TYPE>::max();
@@ -332,11 +330,11 @@ namespace JASS
 						for (size_t which = 0; which < end_looking_at; which++)
 							{
 							uint64_t doc_id = bucket[current_bucket][which];
-							uint64_t rsv = accumulators.accumulator[doc_id];
+							uint64_t rsv = accumulators.get_value(doc_id);
 							if (rsv != 0)		// only include those not already in the top-k
 								{
-								sorted_accumulators[accumulators_used] = ((uint64_t)(largest_used_bucket - rsv) << ((uint64_t)32)) | doc_id;
-								accumulators.accumulator[doc_id] = 0;		// mark it as already in the top-k
+								sorted_accumulators[accumulators_used] = (rsv << ((uint64_t)32)) | doc_id;
+								accumulators[doc_id] = 0;		// mark it as already in the top-k
 
 								accumulators_used++;
 
@@ -351,16 +349,13 @@ namespace JASS
 						Sort on the top-k
 					*/
 	#ifdef JASS_TOPK_SORT
-					// CHECKED
 					top_k_qsort::sort(sorted_accumulators, accumulators_used, top_k, uint64_t_compare_method);
 	#elif defined(CPP_TOPK_SORT)
-					// CHECKED
-					std::partial_sort(sorted_accumulators, sorted_accumulators + (top_k > accumulators_used ? accumulators_used : top_k), sorted_accumulators + accumulators_used);
+					std::partial_sort(sorted_accumulators, sorted_accumulators + (top_k > accumulators_used ? accumulators_used : top_k), sorted_accumulators + accumulators_used, std::greater<decltype(sorted_accumulators[0])>());
 	#elif defined(CPP_SORT)
-					// CHECKED
-					std::sort(sorted_accumulators, sorted_accumulators + accumulators_used);
+					std::sort(sorted_accumulators, sorted_accumulators + accumulators_used, std::greater<decltype(sorted_accumulators[0])>());
 	#elif defined(AVX512_SORT)
-					Sort512_uint64_t::Sort(sorted_accumulators, accumulators_used);
+					Sort512_uint64_t::Sort<uint64_t, size_t, Sort512_uint64_t::ASCENDING>(sorted_accumulators, accumulators_used);
 	#endif
 #else
 					/*
@@ -373,11 +368,12 @@ namespace JASS
 						for (size_t which = 0; which < end_looking_at; which++)
 							{
 							size_t doc_id = bucket[current_bucket][which];
-							if (accumulators.accumulator[doc_id] != 0)		// only include those not already in the top-k
+							auto rsv = accumulators.get_value(doc_id);
+							if (rsv != 0)		// only include those not already in the top-k
 								{
-								shadow_accumulator[doc_id] = accumulators.accumulator[doc_id];
+								shadow_accumulator[doc_id] = rsv;
 								accumulator_pointers[accumulators_used] = &shadow_accumulator[doc_id];
-								accumulators.accumulator[doc_id] = 0;		// mark it as already in the top-k
+								accumulators[doc_id] = 0;		// mark it as already in the top-k (as it can appear in multiple buckets)
 
 								accumulators_used++;
 
@@ -457,6 +453,7 @@ namespace JASS
 				set_bucket(document_id, *which);
 				}
 
+#ifdef ACCUMULATOR_STRATEGY_2D
 			/*
 				QUERY_BUCKET::ADD_RSV()
 				-----------------------
@@ -545,6 +542,7 @@ namespace JASS
 				set_bucket(_mm512_extracti32x4_epi32(document_ids, 3), _mm512_extracti32x4_epi32(values, 3));
 #endif
 				}
+#endif
 
 			/*
 				QUERY_BUCKET::ADD_RSV_D1()
@@ -563,6 +561,8 @@ namespace JASS
 				*which += impact;
 				set_bucket(document_id, *which);
 				}
+
+#ifdef ACCUMULATOR_STRATEGY_2D
 
 			/*
 				QUERY_BUCKET::ADD_RSV_D1()
@@ -619,6 +619,7 @@ namespace JASS
 				*/
 				add_rsv(document_ids);
 				}
+#endif
 
 			/*
 				QUERY_BUCKET::DECODE_WITH_WRITER()

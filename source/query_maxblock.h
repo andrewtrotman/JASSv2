@@ -191,6 +191,9 @@ namespace JASS
 			accumulator_counter_interleaved<ACCUMULATOR_TYPE, MAX_DOCUMENTS, 4> accumulators;	///< The accumulators, one per document in the collection
 #endif
 
+			size_t block_width;																	///< The number of documents per block
+			size_t bucket_shift;																	///< The amount to shift to get the right bucket
+			size_t number_of_blocks;															///< The number of blocks
 			ACCUMULATOR_TYPE page_maximum[MAX_DOCUMENTS];								///< The current maximum value of the accumulator block
 			bool sorted;																			///< has heap and accumulator_pointers been sorted (false after rewind() true after sort())
 			size_t non_zero_accumulators;														///< The number of non-zero accumulators (should be top-k or less)
@@ -233,10 +236,24 @@ namespace JASS
 				@param top_k [in]	The top-k documents to return from the query once executed.
 				@param width [in] The width of the 2-d accumulators (if they are being used).
 			*/
-			virtual void init(const std::vector<std::string> &primary_keys, DOCID_TYPE documents = 1024, size_t top_k = 10, size_t width = 7)
+			virtual void init(const std::vector<std::string> &primary_keys, DOCID_TYPE documents = 1024, size_t top_k = 10, size_t preferred_width = 7)
 				{
 				query::init(primary_keys, documents, top_k);
-				accumulators.init(documents, width);
+				accumulators.init(documents, preferred_width);
+
+#ifdef ACCUMULATOR_STRATEGY_2D
+				number_of_blocks = accumulators.number_of_dirty_flags;
+				block_width = accumulators.width;
+				bucket_shift = accumulators.shift;
+#else
+				if (preferred_width >= 1)
+					bucket_shift = preferred_width;
+				else
+					bucket_shift = maths::floor_log2((size_t)sqrt(documents));
+
+				block_width = (size_t)1 << bucket_shift;
+				number_of_blocks = (documents + block_width - 1) / block_width;
+#endif
 				}
 
 			/*
@@ -278,7 +295,11 @@ namespace JASS
 				sorted = false;
 				accumulators.rewind();
 				non_zero_accumulators = 0;
-//				std::fill(page_maximum, page_maximum + accumulators.number_of_dirty_flags, 0);
+#ifdef ACCUMULATOR_STRATEGY_2D
+				/* Nothing */
+#else
+				std::fill(page_maximum, page_maximum + number_of_blocks, 0);
+#endif
 				query::rewind();
 				}
 
@@ -293,24 +314,48 @@ namespace JASS
 				{
 				if (!sorted)
 					{
+#ifdef ACCUMULATOR_STRATEGY_2D
 					/*
 						Walk through all the pages looking for the case where an accumulator in the page might appear in the results list
 					*/
 					non_zero_accumulators = 0;
-					for (size_t page = 0; page < accumulators.number_of_dirty_flags; page++)
+					for (size_t page = 0; page < number_of_blocks; page++)
 						if (accumulators.dirty_flag[page] == 0)
 							{
 							ACCUMULATOR_TYPE *start = &accumulators.accumulator[page * accumulators.width];
 							for (ACCUMULATOR_TYPE *which = start; which < start + accumulators.width; which++)
+								{
 								if (*which != 0)
 									{
-#ifdef ACCUMULATOR_64s
+	#ifdef ACCUMULATOR_64s
 									sorted_accumulators[non_zero_accumulators++] = ((uint64_t)*which << (uint64_t)32) | (which - &accumulators.accumulator[0]);
-#else
+	#else
 									accumulator_pointers[non_zero_accumulators++] = which;
-#endif
+	#endif
 									}
+								}
 							}
+#else
+					/*
+						Walk through all the pages looking for the case where an accumulator in the page might appear in the results list
+					*/
+					non_zero_accumulators = 0;
+					for (size_t page = 0; page < number_of_blocks; page++)
+						if (page_maximum[page] != 0)
+							{
+							for (size_t which = page * block_width; which < page * block_width + block_width; which++)
+								{
+								if (accumulators.get_value(which) != 0)
+									{
+	#ifdef ACCUMULATOR_64s
+									sorted_accumulators[non_zero_accumulators++] = ((uint64_t)accumulators.get_value(which) << (uint64_t)32) | which;
+	#else
+									accumulator_pointers[non_zero_accumulators++] = &accumulators[which];
+	#endif
+									}
+								}
+							}
+#endif
 
 					/*
 						We now sort the array over which the heap is built so that we have a sorted list of docids from highest to lowest rsv.
@@ -366,9 +411,13 @@ namespace JASS
 			*/
 			forceinline void add_rsv(size_t document_id, ACCUMULATOR_TYPE score)
 				{
+#ifdef ACCUMULATOR_STRATEGY_2D
 				size_t page = accumulators.which_dirty_flag(document_id);		// get the page number
 				if (accumulators.dirty_flag[page] == 0)
 					page_maximum[page] = 0;
+#else
+				size_t page = document_id >> bucket_shift;							// get the page number
+#endif
 				ACCUMULATOR_TYPE *which = &accumulators[document_id];				// This will create the accumulator if it doesn't already exist.
 
 				*which += score;

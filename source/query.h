@@ -1,3 +1,11 @@
+#ifdef JASS_HAS_EXTERNAL_CONFIGURATION
+	#include #JASS_HAS_EXTERNAL_CONFIGURATION
+#else
+	#define QUERY_HEAP
+	#define ACCUMULATOR_STRATEGY_2D
+	#define JASS_TOPK_SORT
+#endif
+
 /*
 	Which top-k algorithm to use.  There is no default, one of these MUST be defined
 
@@ -6,7 +14,7 @@
 	QUERY_MAXBLOCK uses the max-block approach to the top-k, the alternative is the query_heap
 	QUERY_MAXBLOCK_HEAP uses the max-block approach to the top-k (in a heap), the alternative is the query_heap
 */
-#define QUERY_HEAP
+//#define QUERY_HEAP
 //#define QUERY_BUCKETS
 //#define QUERY_MAXBLOCK
 //#define QUERY_MAXBLOCK_HEAP
@@ -21,13 +29,12 @@
 	ACCUMULATOR_COUNTER_INTERLEAVED_8_1 same as ACCUMULATOR_COUNTER_8, but interleaved the flags with the accumulators, one flag per accumulator
 	ACCUMULATOR_COUNTER_INTERLEAVED_4 same as ACCUMULATOR_COUNTER_4, but interleaved the flags with the accumulators, and uses 25 accumulators per chunk (so flag + accumulators approximately equals cachline size)
 */
-#define ACCUMULATOR_STRATEGY_2D
+//#define ACCUMULATOR_STRATEGY_2D
 //#define ACCUMULATOR_COUNTER_8
 //#define ACCUMULATOR_COUNTER_4
 //#define ACCUMULATOR_COUNTER_INTERLEAVED_8
 //#define ACCUMULATOR_COUNTER_INTERLEAVED_8_1
 //#define ACCUMULATOR_COUNTER_INTERLEAVED_4
-
 
 /*
 	ACCUMULATOR_POINTER_BEAP uses a beap of pointers (rather than a heap of pointers) to store the top-k in the query_heap code.
@@ -49,7 +56,7 @@
 	CPP_SORT do a full sort using C++ std::sort()
 	AVX512_SORT use the AVX512 sort Sort512_uint64_t::Sort() on 64-bit integers
 */
-#define JASS_TOPK_SORT
+//#define JASS_TOPK_SORT
 //#define CPP_TOPK_SORT
 //#define CPP_SORT
 //#define AVX512_SORT

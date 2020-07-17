@@ -93,6 +93,38 @@ namespace JASS
 						}
 
 					/*
+						ACCUMULTOR_COUNTER_INTERLEAVED::CHUNK::GET_VALUE()
+						--------------------------------------------------
+					*/
+					/*!
+						@brief Return the value of the given accumulator
+						@details This interface does not initialise an accumulator, it returns 0 if the accumulator is uninitialised
+						@param part_of_chunk [in] The accumulator within this chunk to use
+						@param clean_id [in] The current query ID
+						@return The accumulator value or 0.
+					*/
+					forceinline ELEMENT get_value(size_t part_of_chunk, query_counter_type clean_id)
+						{
+						if constexpr (COUNTER_BITSIZE == 8)
+							{
+							if (clean_flag[part_of_chunk] != clean_id)
+								return 0;
+							else
+								return accumulator[part_of_chunk];
+							}
+						else
+							{
+							size_t clean_flag_byte = part_of_chunk >> 1;
+							size_t clean_shift = (part_of_chunk & 1) * 4;
+
+							if (((clean_flag[clean_flag_byte] >> clean_shift) & max_clean_id) != clean_id)
+								return 0;
+							else
+								return accumulator[part_of_chunk];
+							}
+						}
+
+					/*
 						ACCUMULTOR_COUNTER_INTERLEAVED::CHUNK::ALLOCATE_ACCUMULATOR()
 						-------------------------------------------------------------
 					*/
@@ -100,6 +132,7 @@ namespace JASS
 						@brief Return a correctly cleared accumulator
 						@param part_of_chunk [in] The accumulator within this chunk to use
 						@param clean_id [in] The current query ID
+						@return The accumulator
 					*/
 					forceinline ELEMENT &allocate_accumulator(size_t part_of_chunk, query_counter_type clean_id)
 						{
@@ -176,6 +209,42 @@ namespace JASS
 				}
 
 			/*
+				ACCUMULTOR_COUNTER_INTERLEAVED::GET_VALUE()
+				-------------------------------------------
+			*/
+			/*!
+				@brief Return the value of the given accumulator
+				@details This interface does not initialise an accumulator, it returns 0 if the accumulator is uninitialised
+				@param which [in] The accumulator to return.
+				@return The accumulator value or 0.
+			*/
+			forceinline ELEMENT get_value(size_t which)
+				{
+				size_t chunk;
+				size_t part_of_chunk;
+
+				if constexpr (accumulators_per_chunk == (1 << maths::floor_log2(accumulators_per_chunk)))
+					{
+					/*
+						Whole power of 2 so do a division with a shift
+					*/
+					constexpr uint32_t shift = maths::floor_log2(accumulators_per_chunk);
+					chunk = which >> shift;
+					part_of_chunk = which & (accumulators_per_chunk - 1);
+					}
+				else
+					{
+					/*
+						Slow division
+					*/
+					chunk = which / accumulators_per_chunk;
+					part_of_chunk = which % accumulators_per_chunk;
+					}
+
+				return accumulator_chunk[chunk].get_value(part_of_chunk, clean_id);
+				}
+
+			/*
 				ACCUMULTOR_COUNTER_INTERLEAVED::OPERATOR[]()
 				--------------------------------------------
 			*/
@@ -184,6 +253,8 @@ namespace JASS
 				@details The only valid way to access the accumulators is through this interface.  It ensures the accumulator
 				has been initialised before the first time it is returned to the caller.
 				@param which [in] The accumulator to return.
+				@return The accumulator.
+
 			*/
 			forceinline ELEMENT &operator[](size_t which)
 				{
