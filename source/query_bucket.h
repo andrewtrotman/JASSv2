@@ -355,7 +355,7 @@ namespace JASS
 	#elif defined(CPP_SORT)
 					std::sort(sorted_accumulators, sorted_accumulators + accumulators_used, std::greater<decltype(sorted_accumulators[0])>());
 	#elif defined(AVX512_SORT)
-					Sort512_uint64_t::Sort<uint64_t, size_t, Sort512_uint64_t::ASCENDING>(sorted_accumulators, accumulators_used);
+					Sort512_uint64_t::Sort(sorted_accumulators, accumulators_used);
 	#endif
 #else
 					/*

@@ -52,6 +52,16 @@ message("Build Type:" ${CMAKE_BUILD_TYPE})
 # add_definitions("-fprofile-instr-generate -fcoverage-mapping")
 # set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fprofile-instr-generate -fcoverage-mapping")
 
+
+#
+# These lines add an externally configured #define to the compile line
+#
+
+if (JASS_EXTERNAL_DEFINE)
+	message("Adding comile parameter:" ${JASS_EXTERNAL_DEFINE})
+	add_definitions(${JASS_EXTERNAL_DEFINE})
+endif()
+
 #
 #	Set the debug flags based on the compiler
 #	_GLIBCXX_USE_CXX11_ABI=1 is necessary for g++ to allow C++ stateful custom allocators in std::string

@@ -2823,12 +2823,9 @@ static void CoreSort(SortType array[], const IndexType left, const IndexType rig
     }
 }
 
-constexpr int ASCENDING = _MM_CMPINT_LE;
-constexpr int DESCENDING = _MM_CMPINT_GE;
-
-template <class SortType, class IndexType = size_t, int sortorder = _MM_CMPINT_LE>
+template <class SortType, class IndexType = size_t>
 static inline void Sort(SortType array[], const IndexType size){
-    CoreSort<SortType,IndexType,sortorder>(array, 0, size-1);
+    CoreSort<SortType,IndexType,_MM_CMPINT_LE>(array, 0, size-1);
 }
 
 }

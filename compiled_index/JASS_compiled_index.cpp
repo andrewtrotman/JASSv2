@@ -123,7 +123,7 @@ int main(int argc, char *argv[])
 			/*
 				Dump the top-k to the output in trec_eval format.
 			*/
-			JASS::run_export_trec(std::cout, query_id, jass_query, "JASSv2");
+			JASS::run_export_trec(std::cout, query_id, jass_query, "JASSv2", true, false);
 			}
 		}
 	catch (std::exception &error)

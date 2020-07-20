@@ -1,5 +1,8 @@
 #ifdef JASS_HAS_EXTERNAL_CONFIGURATION
-	#include #JASS_HAS_EXTERNAL_CONFIGURATION
+	#define QUOTEME(x) QUOTEME_1(x)
+	#define QUOTEME_1(x) #x
+	#define INCLUDE_FILE(x) QUOTEME(x)
+	#include INCLUDE_FILE(JASS_HAS_EXTERNAL_CONFIGURATION)
 #else
 	#define QUERY_HEAP
 	#define ACCUMULATOR_STRATEGY_2D
@@ -122,6 +125,40 @@ namespace JASS
 			static constexpr size_t MAX_TOP_K = 1'000;						///< the maximum top-k value
 
 		public:
+			/*
+				CLASS QUERY::DOCID_RSV_PAIR()
+				-----------------------------
+			*/
+			/*!
+				@brief Literally a <document_id, rsv> ordered pair.
+			*/
+			class docid_rsv_pair
+				{
+				public:
+					size_t document_id;							///< The document identifier
+					const std::string &primary_key;			///< The external identifier of the document (the primary key)
+					ACCUMULATOR_TYPE rsv;						///< The rsv (Retrieval Status Value) relevance score
+
+				public:
+					/*
+						QUERY::DOCID_RSV_PAIR::DOCID_RSV_PAIR()
+						------------------------------------------------------
+					*/
+					/*!
+						@brief Constructor.
+						@param document_id [in] The document Identifier.
+						@param key [in] The external identifier of the document (the primary key).
+						@param rsv [in] The rsv (Retrieval Status Value) relevance score.
+					*/
+					docid_rsv_pair(size_t document_id, const std::string &key, ACCUMULATOR_TYPE rsv) :
+						document_id(document_id),
+						primary_key(key),
+						rsv(rsv)
+						{
+						/* Nothing */
+						}
+				};
+
 			/*
 				CLASS QUERY::ADD_RSV_COMPARE
 				----------------------------

@@ -190,40 +190,6 @@ namespace JASS
 			*/
 			class iterator
 				{
-				/*
-					CLASS QUERY_HEAP::ITERATOR::DOCID_RSV_PAIR()
-					--------------------------------------------
-				*/
-				/*!
-					@brief Literally a <document_id, rsv> ordered pair.
-				*/
-				class docid_rsv_pair
-					{
-					public:
-						size_t document_id;							///< The document identifier
-						const std::string &primary_key;			///< The external identifier of the document (the primary key)
-						ACCUMULATOR_TYPE rsv;						///< The rsv (Retrieval Status Value) relevance score
-
-					public:
-						/*
-							QUERY_HEAP::ITERATOR::DOCID_RSV_PAIR::DOCID_RSV_PAIR()
-							------------------------------------------------------
-						*/
-						/*!
-							@brief Constructor.
-							@param document_id [in] The document Identifier.
-							@param key [in] The external identifier of the document (the primary key).
-							@param rsv [in] The rsv (Retrieval Status Value) relevance score.
-						*/
-						docid_rsv_pair(size_t document_id, const std::string &key, ACCUMULATOR_TYPE rsv) :
-							document_id(document_id),
-							primary_key(key),
-							rsv(rsv)
-							{
-							/* Nothing */
-							}
-					};
-
 				public:
 					query_heap &parent;	///< The query object that this is iterating over
 					size_t where;			///< Where in the results list we are
@@ -266,7 +232,7 @@ namespace JASS
 					/*!
 						@brief Increment this iterator.
 					*/
-					iterator &operator++(void)
+					virtual iterator &operator++(void)
 						{
 						where++;
 						return *this;
@@ -297,6 +263,33 @@ namespace JASS
 #endif
 						}
 					};
+
+			/*
+				CLASS QUERY_HEAP::REVERSE_ITERATOR
+				----------------------------------
+			*/
+			/*!
+				@brief Reverse iterate over the top-k
+			*/
+			class reverse_iterator : public iterator
+				{
+				public:
+					using iterator::iterator;
+
+					/*
+						QUERY_HEAP::REVERSE_ITERATOR::OPERATOR++()
+						------------------------------------------
+					*/
+					/*!
+						@brief Increment this iterator.
+					*/
+					virtual iterator &operator++(void)
+						{
+						where--;
+						return *this;
+						}
+				};
+
 #if defined(JASS_TOPK_SORT) && defined(ACCUMULATOR_64s)
 				/*
 					CLASS QUERY_HEAP::UINT64_T_COMPARE
@@ -451,6 +444,33 @@ namespace JASS
 				}
 
 			/*
+				QUERY_HEAP::RBEGIN()
+				--------------------
+			*/
+			/*!
+				@brief Return a reverse iterator pointing to start of the top-k
+				@return Iterator pointing to start of the top-k
+			*/
+			auto rbegin(void)
+				{
+				sort();
+				return reverse_iterator(*this, this->top_k - 1);
+				}
+
+			/*
+				QUERY_HEAP::REND()
+				------------------
+			*/
+			/*!
+				@brief Return a reverse iterator pointing to end of the top-k
+				@return Iterator pointing to the end of the top-k
+			*/
+			auto rend(void)
+				{
+				return reverse_iterator(*this, needed_for_top_k - 1);
+				}
+
+			/*
 				QUERY_HEAP::REWIND()
 				--------------------
 			*/
@@ -501,7 +521,8 @@ namespace JASS
 					// CHECKED
 					std::sort(sorted_accumulators + needed_for_top_k, sorted_accumulators + top_k, std::greater<decltype(sorted_accumulators[0])>());
 	#elif defined(AVX512_SORT)
-					Sort512_uint64_t::Sort<uint64_t, size_t, Sort512_uint64_t::ASCENDING>(sorted_accumulators + needed_for_top_k, top_k - needed_for_top_k);
+					// CHECKED
+					Sort512_uint64_t::Sort(sorted_accumulators + needed_for_top_k, top_k - needed_for_top_k);
 	#endif
 #elif defined (ACCUMULATOR_POINTER_BEAP)
 	#ifdef JASS_TOPK_SORT

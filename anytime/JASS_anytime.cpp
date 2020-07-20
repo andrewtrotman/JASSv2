@@ -233,7 +233,12 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 		/*
 			Serialise the results list (don't time this)
 		*/
-		JASS::run_export(JASS::run_export::TREC, output.results_list, query_id.c_str(), *jass_query, "JASSv2", true);
+#if (defined(ACCUMULATOR_64s) && defined(AVX512_SORT))
+		JASS::run_export(JASS::run_export::TREC, output.results_list, query_id.c_str(), *jass_query, "JASSv2", true, true);
+#else
+		JASS::run_export(JASS::run_export::TREC, output.results_list, query_id.c_str(), *jass_query, "JASSv2", true, false);
+#endif
+
 
 		/*
 			Re-start the timer
