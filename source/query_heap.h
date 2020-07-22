@@ -614,7 +614,7 @@ namespace JASS
 						uint64_t prior_key = ((uint64_t)(*which - score) << (uint64_t)32) | document_id;
 
 						if (prior_key < sorted_accumulators[0])
-							top_results.guaranteed_replace_with_larger(sorted_accumulators[0], key);				// we're not in the heap so replace top of heap with this document
+							top_results.replace_smallest_with(key);															// we're not in the heap so replace top of heap with this document
 						else
 							top_results.guaranteed_replace_with_larger(prior_key, key);									// we're already in the heap so promote this document
 						}

@@ -152,7 +152,7 @@ namespace JASS
 			beap(TYPE *array, int64_t elements):
 				array(array),
 				elements(elements),
-				height(get_height(elements))
+				height(get_height(elements - 1))
 				{
 				/* Nothing */
 				}
@@ -167,7 +167,7 @@ namespace JASS
 			void set_top_k(int64_t elements)
 				{
 				this->elements = elements;
-				height = get_height(elements);
+				height = get_height(elements - 1);
 				}
 
 			/*
@@ -245,7 +245,7 @@ namespace JASS
 					else if (key > array[current_location])
 						{
 						/*
-							If key is greater then either go down (if we can) or accoss (if we're on the bottom row)
+							If key is greater then either go down (if we can) or across (if we're on the bottom row)
 						*/
 						if (current_height == height || current_location + current_height + 2 >= elements)
 							{
@@ -455,7 +455,6 @@ namespace JASS
 				return -1;
 				}
 
-
 			/*
 				BEAP::GUARANTEED_REPLACE_WITH_SMALLER()
 				---------------------------------------
@@ -495,6 +494,21 @@ namespace JASS
 				*/
 				return beap_up(new_key, location);
 				}
+
+			/*
+				BEAP::REPLACE_SMALLEST_WITH()
+				-----------------------------
+			*/
+			/*!
+				@brief Replace the smallest element in the beap with guaranteed larger key, new_key, and reshuffle the beap to maintain the beap property
+				@param new_key [in] The new key (an instance old_key is replaced by new_key).
+				@return -1 if old_key cannot be found, or the index into array of the new location of new_key
+			*/
+			int64_t replace_smallest_with(const TYPE &new_key)
+				{
+				return beap_down(new_key, 0);
+				}
+
 
 			/*
 				BEAP::GUARANTEED_REPLACE_WITH_LARGER()
