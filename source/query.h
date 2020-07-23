@@ -4,15 +4,9 @@
 	#define INCLUDE_FILE(x) QUOTEME(x)
 	#include INCLUDE_FILE(JASS_HAS_EXTERNAL_CONFIGURATION)
 #else
-	#define ACCUMULATOR_64s
 	#define QUERY_HEAP
 	#define ACCUMULATOR_STRATEGY_2D
 	#define JASS_TOPK_SORT
-	/*
-	#define QUERY_HEAP
-	#define ACCUMULATOR_STRATEGY_2D
-	#define JASS_TOPK_SORT
-	*/
 #endif
 
 /*
