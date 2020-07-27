@@ -42,7 +42,7 @@ std::string parameter_assessments_filename;							///< Name of file assessment f
 std::string parameter_run_filenames;									///< Name of the run file to evaluate
 bool parameter_help = false;												///< Output the usage() help
 bool parameter_output_per_query_scores = false;						///< Shopuld we output per-query scores or not?
-size_t parameter_depth = std::numeric_limits<size_t>::max();	///< How far down the results list to look (i.e. n in precision@n)
+size_t parameter_depth = (std::numeric_limits<size_t>::max)();	///< How far down the results list to look (i.e. n in precision@n)
 std::string parameters_errors;											///< Any errors as a result of command line parsing
 size_t parameter_k = 10;													///< The n parameter to a metric (for example k in buying_power_at_k).
 bool parameter_ttest = false;												///< Conduct t-tests over multiple runs.

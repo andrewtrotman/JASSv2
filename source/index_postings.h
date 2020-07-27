@@ -271,7 +271,7 @@ std::ostream &operator<<(std::ostream &stream, const index_postings &data);
 				std::array<compress_integer::integer, index_postings_impact::largest_impact + 1> frequencies = {};			// +1 because it counts from 0.
 //				size_t number_of_postings = 0;
 				index_postings_impact::impact_type highest_impact = 0;
-				index_postings_impact::impact_type lowest_impact = std::numeric_limits<decltype(lowest_impact)>::max();
+				index_postings_impact::impact_type lowest_impact = (std::numeric_limits<decltype(lowest_impact)>::max)();
 
 				/*
 					Count up the number of times each impact is seen and compute the highest and lowest impact scores

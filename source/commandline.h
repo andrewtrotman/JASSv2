@@ -141,7 +141,7 @@ namespace JASS
 
 				if (answer > (std::numeric_limits<TYPE>::max)())
 					messages << parameter << " Numeric overflow on parameter\n";
-				else if (answer < std::numeric_limits<TYPE>::min())
+				else if (answer < (std::numeric_limits<TYPE>::min)())
 					messages << parameter << " Numeric underflow on parameter\n";
 				else
 					element.parameter = static_cast<TYPE>(answer);

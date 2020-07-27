@@ -138,8 +138,8 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 			Parse the query and extract the list of impact segments
 		*/
 		uint64_t *current_segment = segment_order;
-		uint16_t largest_possible_rsv = std::numeric_limits<decltype(largest_possible_rsv)>::min();
-		uint16_t smallest_possible_rsv = std::numeric_limits<decltype(smallest_possible_rsv)>::max();
+		uint16_t largest_possible_rsv = (std::numeric_limits<decltype(largest_possible_rsv)>::min)();
+		uint16_t smallest_possible_rsv = (std::numeric_limits<decltype(smallest_possible_rsv)>::max)();
 		for (const auto &term : terms)
 			{
 //std::cout << "TERM:" << term << "\n";

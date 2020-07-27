@@ -452,7 +452,7 @@ namespace JASS
 							/*
 								On error move to the end of the stream and mark the stream as bad
 							*/
-							which = std::numeric_limits<decltype(which)>::max();
+							which = (std::numeric_limits<decltype(which)>::max)();
 							source.status = FAIL;
 							}
 
@@ -584,7 +584,7 @@ namespace JASS
 							/*
 								On error move to the end of the stream and mark the stream as bad
 							*/
-							which = std::numeric_limits<decltype(which)>::max();
+							which = (std::numeric_limits<decltype(which)>::max)();
 							source.status = FAIL;
 							}
 

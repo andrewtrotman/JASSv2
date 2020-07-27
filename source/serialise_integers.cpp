@@ -33,9 +33,9 @@ namespace JASS
 		for (const auto &header : reverse(impact_ordered))
 			{
 			auto actual_size = header.size();
-			if (actual_size > std::numeric_limits<uint32_t>::max())
+			if (actual_size > (std::numeric_limits<uint32_t>::max)())
 				{
-				std::cout << "Numeric overflow - can't write length as a 32-bit integer " << actual_size << " > " << std::numeric_limits<uint32_t>::max() << "\n";
+				std::cout << "Numeric overflow - can't write length as a 32-bit integer " << actual_size << " > " << (std::numeric_limits<uint32_t>::max)() << "\n";
 				exit(1);
 				}
 			uint32_t length = static_cast<uint32_t>(actual_size);

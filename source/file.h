@@ -19,6 +19,10 @@
 #include <stddef.h>
 #include <string.h>
 
+#ifdef _MSC_VER
+	#include <windows.h>
+#endif
+
 #include <string>
 #include <vector>
 #include <memory>
@@ -53,10 +57,11 @@ namespace JASS
 				friend class file;
 				private:
 #ifdef _MSC_VER
-					std::string file_contents_buffer;			///< On windows (to start with) a buffer to hold the file.
+					HANDLE hFile;							///< The file being mapped
+					HANDLE hMapFile;						///< The mapping of that file
 #endif
 					const void *file_contents;								///< The contents of the file.
-					size_t size;										///< The size of the file.
+					size_t size;											///< The size of the file.
 
 				public:
 					/*
@@ -67,9 +72,6 @@ namespace JASS
 						@brief Constructor
 					*/
 					file_read_only():
-						#ifdef _MSC_VER
-							file_contents_buffer(""),
-						#endif
 						file_contents(nullptr),
 						size(0)
 						{

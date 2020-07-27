@@ -36,10 +36,33 @@ namespace JASS
 	size_t file::file_read_only::open(const std::string &filename)
 		{
 		#ifdef _MSC_VER
-			size = file::read_entire_file(filename, file_contents_buffer);
-			if (size == 0)
+			hFile = CreateFile(filename.c_str(), GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, NULL);
+			if (hFile == INVALID_HANDLE_VALUE)
 				return 0;
-			file_contents = file_contents_buffer.c_str();
+
+			hMapFile = CreateFileMapping(hFile, NULL, PAGE_READONLY, 0, 0, NULL);
+			if (hMapFile == NULL)
+				{
+				CloseHandle(hFile);
+				return 0;
+				}
+
+			void *lpMapAddress = MapViewOfFile(hMapFile, FILE_MAP_READ, 0, 0, 0);
+			if (lpMapAddress == NULL)
+				{
+				CloseHandle(hFile);
+				CloseHandle(hMapFile);
+				return 0;
+				}
+
+			file_contents = (uint8_t *)lpMapAddress;
+
+			DWORD high;
+			DWORD low = GetFileSize(hFile, &high);
+
+			size = ((uint64_t)high << (uint64_t)32) + (uint64_t)low;
+
+			return size;
 		#else
 			/*
 				Open the file
@@ -91,8 +114,12 @@ namespace JASS
 	*/
 	file::file_read_only::~file_read_only()
 		{
-		#ifndef _MSC_VER
-			munmap(const_cast<void *>(reinterpret_cast<const void *>(file_contents)), size);
+		#ifdef _MSC_VER
+			UnmapViewOfFile((void *)file_contents);
+			CloseHandle(hMapFile); // close the file mapping object
+			CloseHandle(hFile);   // close the file itself
+		#else
+			munmap((void *)file_contents, size);
 		#endif
 		}
 
