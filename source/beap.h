@@ -55,7 +55,7 @@ namespace JASS
 			*/
 			static int64_t get_height(int64_t element)
 				{
-				return ceil((sqrt(8 * element + 2) - 1) / 2) - 1;
+				return (int64_t)(ceil((sqrt(8 * element + 2) - 1) / 2) - 1);
 				}
 
 			/*

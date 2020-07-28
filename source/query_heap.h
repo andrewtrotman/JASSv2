@@ -467,7 +467,7 @@ namespace JASS
 			*/
 			auto rend(void)
 				{
-				return reverse_iterator(*this, needed_for_top_k - 1);
+				return reverse_iterator(*this, needed_for_top_k);
 				}
 
 			/*
