@@ -126,7 +126,7 @@ namespace JASS
 						}
 
 					/*
-						QUERY_HEAP::ACCUMULATOR_POINTER::OPERATOR<()
+						QUERY_HEAP::ACCUMULATOR_POINTER::OPERATOR>()
 						--------------------------------------------
 					*/
 					/*!
@@ -175,7 +175,7 @@ namespace JASS
 					*/
 					forceinline int operator() (accumulator_pointer a, accumulator_pointer b) const
 						{
-						return *(a.value) < *(b.value) ? 1 : *(a.value) > *(b.value) ? -1 : a.value < b.value ? 1 : a.value == b.value ? 0 : -1;
+						return *(a.value) < *(b.value) ? -1 : *(a.value) > *(b.value) ? 1 : a.value < b.value ? -1 : a.value == b.value ? 0 : 1;
 						}
 				};
 			accumulator_pointer accumulator_pointer_final_sort_compare;
@@ -192,7 +192,7 @@ namespace JASS
 				{
 				public:
 					query_heap &parent;	///< The query object that this is iterating over
-					size_t where;			///< Where in the results list we are
+					int64_t where;			///< Where in the results list we are
 
 				public:
 					/*
@@ -313,7 +313,7 @@ namespace JASS
 						*/
 						forceinline int operator() (uint64_t a, uint64_t b) const
 							{
-							return a > b ? -1 : a == b ? 0 : 1;
+							return a < b ? -1 : a == b ? 0 : 1;
 							}
 					} uint64_t_compare_method;
 #endif
@@ -467,7 +467,7 @@ namespace JASS
 			*/
 			auto rend(void)
 				{
-				return reverse_iterator(*this, needed_for_top_k);
+				return reverse_iterator(*this, needed_for_top_k - 1);
 				}
 
 			/*
@@ -516,12 +516,12 @@ namespace JASS
 					top_k_qsort::sort(sorted_accumulators + needed_for_top_k, top_k - needed_for_top_k, top_k, uint64_t_compare_method);
 	#elif defined(CPP_TOPK_SORT)
 					// CHECKED
-					std::partial_sort(sorted_accumulators + needed_for_top_k,  sorted_accumulators + top_k, sorted_accumulators + top_k, std::greater<decltype(sorted_accumulators[0])>());
+					std::partial_sort(sorted_accumulators + needed_for_top_k,  sorted_accumulators + top_k, sorted_accumulators + top_k);
 	#elif defined(CPP_SORT)
 					// CHECKED
-					std::sort(sorted_accumulators + needed_for_top_k, sorted_accumulators + top_k, std::greater<decltype(sorted_accumulators[0])>());
+					std::sort(sorted_accumulators + needed_for_top_k, sorted_accumulators + top_k);
 	#elif defined(AVX512_SORT)
-					// CHECKED
+puts("4");
 					Sort512_uint64_t::Sort(sorted_accumulators + needed_for_top_k, top_k - needed_for_top_k);
 	#endif
 #elif defined (ACCUMULATOR_POINTER_BEAP)
@@ -530,10 +530,10 @@ namespace JASS
 					top_k_qsort::sort(accumulator_pointers + needed_for_top_k, top_k - needed_for_top_k, top_k, accumulator_pointer_final_sort_compare);
 	#elif defined(CPP_TOPK_SORT)
 					// CHECKED
-					std::partial_sort(accumulator_pointers + needed_for_top_k, accumulator_pointers + top_k, accumulator_pointers + top_k, std::greater<decltype(accumulator_pointers[0])>());
+					std::partial_sort(accumulator_pointers + needed_for_top_k, accumulator_pointers + top_k, accumulator_pointers + top_k);
 	#elif defined(CPP_SORT)
 					// CHECKED
-					std::sort(accumulator_pointers + needed_for_top_k, accumulator_pointers + top_k, std::greater<decltype(accumulator_pointers[0])>());
+					std::sort(accumulator_pointers + needed_for_top_k, accumulator_pointers + top_k);
 	#elif defined(AVX512_SORT)
 					// CHECKED
 					assert(false);
@@ -541,10 +541,12 @@ namespace JASS
 #else
 	#ifdef JASS_TOPK_SORT
 					// CHECKED
-					top_k_qsort::sort(accumulator_pointers + needed_for_top_k, top_k - needed_for_top_k, top_k, query::final_sort_cmp);
+					//top_k_qsort::sort(accumulator_pointers + needed_for_top_k, top_k - needed_for_top_k, top_k, query::final_sort_cmp);
+
+					top_k_qsort::sort(accumulator_pointers + needed_for_top_k, top_k - needed_for_top_k, top_k, [](const ACCUMULATOR_TYPE *a, const ACCUMULATOR_TYPE *b) -> int { return *a < *b ? 1 : *a > *b ? -1 : a < b ? 1 : a == b ? 0 : -1; });
 	#elif defined(CPP_TOPK_SORT)
 					// CHECKED
-					std::partial_sort(accumulator_pointers + needed_for_top_k, accumulator_pointers + top_k, accumulator_pointers + top_k, [](const ACCUMULATOR_TYPE *a, const ACCUMULATOR_TYPE *b) -> bool { return *a > *b ? true : *a < *b ? false : a > b; });  // CHECKED
+					std::partial_sort(accumulator_pointers + needed_for_top_k, accumulator_pointers + top_k, accumulator_pointers + top_k, [](const ACCUMULATOR_TYPE *a, const ACCUMULATOR_TYPE *b) -> bool { return *a > *b ? true : *a < *b ? false : a > b; });
 	#elif defined(CPP_SORT)
 					// CHECKED
 					std::sort(accumulator_pointers + needed_for_top_k, accumulator_pointers + top_k, [](const ACCUMULATOR_TYPE *a, const ACCUMULATOR_TYPE *b) -> bool { return *a > *b ? true : *a < *b ? false : a > b; });
