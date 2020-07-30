@@ -440,7 +440,7 @@ namespace JASS
 			*/
 			auto end(void)
 				{
-				return iterator(*this, this->top_k);
+				return iterator(*this, top_k);
 				}
 
 			/*
@@ -454,7 +454,7 @@ namespace JASS
 			auto rbegin(void)
 				{
 				sort();
-				return reverse_iterator(*this, this->top_k - 1);
+				return reverse_iterator(*this, top_k - 1);
 				}
 
 			/*

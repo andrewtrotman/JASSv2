@@ -233,7 +233,7 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 		/*
 			Serialise the results list (don't time this)
 		*/
-#if (defined(ACCUMULATOR_64s) || defined(ACCUMULATOR_POINTER_BEAP))
+#if ((defined(ACCUMULATOR_64s) || defined(ACCUMULATOR_POINTER_BEAP)) && !defined(QUERY_MAXBLOCK))
 		JASS::run_export(JASS::run_export::TREC, output.results_list, query_id.c_str(), *jass_query, "JASSv2", true, true);
 #else
 		JASS::run_export(JASS::run_export::TREC, output.results_list, query_id.c_str(), *jass_query, "JASSv2", true, false);

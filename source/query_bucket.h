@@ -119,7 +119,7 @@ namespace JASS
 					/*!
 						@brief Increment this iterator.
 					*/
-					iterator &operator++(void)
+					virtual iterator &operator++(void)
 						{
 						where++;
 						return *this;
@@ -148,6 +148,33 @@ namespace JASS
 						}
 					};
 
+			/*
+				CLASS QUERY_BUCKET::REVERSE_ITERATOR
+				------------------------------------
+			*/
+			/*!
+				@brief Reverse iterate over the top-k
+			*/
+			class reverse_iterator : public iterator
+				{
+				public:
+					using iterator::iterator;
+
+					/*
+						QUERY_BUCKET::REVERSE_ITERATOR::OPERATOR++()
+						--------------------------------------------
+					*/
+					/*!
+						@brief Increment this iterator.
+					*/
+					virtual iterator &operator++(void)
+						{
+						where--;
+						return *this;
+						}
+				};
+
+
 				/*
 					CLASS QUERY_BUCKET::UINT64_T_COMPARE
 					------------------------------------
@@ -170,7 +197,7 @@ namespace JASS
 						*/
 						forceinline int operator() (uint64_t a, uint64_t b) const
 							{
-							return a > b ? -1 : a == b ? 0 : 1;
+							return a < b ? -1 : a == b ? 0 : 1;
 							}
 					} uint64_t_compare_method;
 
@@ -288,6 +315,33 @@ namespace JASS
 				}
 
 			/*
+				QUERY_BUCKET::RBEGIN()
+				----------------------
+			*/
+			/*!
+				@brief Return a reverse iterator pointing to start of the top-k
+				@return Iterator pointing to start of the top-k
+			*/
+			auto rbegin(void)
+				{
+				sort();
+				return reverse_iterator(*this, accumulators_used - 1);
+				}
+
+			/*
+				QUERY_BUCKET::REND()
+				--------------------
+			*/
+			/*!
+				@brief Return a reverse iterator pointing to end of the top-k
+				@return Iterator pointing to the end of the top-k
+			*/
+			auto rend(void)
+				{
+				return reverse_iterator(*this, -1);
+				}
+
+			/*
 				QUERY_BUCKET::REWIND()
 				----------------------
 			*/
@@ -321,7 +375,7 @@ namespace JASS
 					{
 #ifdef ACCUMULATOR_64s
 					/*
-						Copy to the array of pointers for sorting
+						Turn into keys for sorting
 					*/
 					accumulators_used = 0;
 					for (size_t current_bucket = largest_used_bucket; current_bucket >= smallest_used_bucket; current_bucket--)
@@ -349,12 +403,16 @@ namespace JASS
 						Sort on the top-k
 					*/
 	#ifdef JASS_TOPK_SORT
+					// CHECKED
 					top_k_qsort::sort(sorted_accumulators, accumulators_used, top_k, uint64_t_compare_method);
 	#elif defined(CPP_TOPK_SORT)
-					std::partial_sort(sorted_accumulators, sorted_accumulators + (top_k > accumulators_used ? accumulators_used : top_k), sorted_accumulators + accumulators_used, std::greater<decltype(sorted_accumulators[0])>());
+					// CHECKED
+					std::partial_sort(sorted_accumulators, sorted_accumulators + (top_k > accumulators_used ? accumulators_used : top_k), sorted_accumulators + accumulators_used);
 	#elif defined(CPP_SORT)
-					std::sort(sorted_accumulators, sorted_accumulators + accumulators_used, std::greater<decltype(sorted_accumulators[0])>());
+					// CHECKED
+					std::sort(sorted_accumulators, sorted_accumulators + accumulators_used);
 	#elif defined(AVX512_SORT)
+puts("4buckets");
 					Sort512_uint64_t::Sort(sorted_accumulators, accumulators_used);
 	#endif
 #else
@@ -398,6 +456,7 @@ namespace JASS
 					// CHECKED
 					std::sort(accumulator_pointers, accumulator_pointers + accumulators_used, [](const ACCUMULATOR_TYPE *a, const ACCUMULATOR_TYPE *b) -> bool { return *a > *b ? true : *a < *b ? false : a > b; });
 	#elif defined(AVX512_SORT)
+					// CHECKED
 					assert(false);
 	#endif
 #endif

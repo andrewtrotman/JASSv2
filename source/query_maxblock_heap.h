@@ -115,7 +115,7 @@ namespace JASS
 					/*!
 						@brief Increment this iterator.
 					*/
-					iterator &operator++(void)
+					virtual iterator &operator++(void)
 						{
 						where++;
 						return *this;
@@ -142,6 +142,32 @@ namespace JASS
 						return docid_rsv_pair(id, (*parent.primary_keys)[id], parent.accumulators[id]);
 #endif
 						}
+					};
+
+				/*
+					CLASS QUERY_MAXBLOCK_HEAP::REVERSE_ITERATOR
+					-------------------------------------------
+				*/
+				/*!
+					@brief Reverse iterate over the top-k
+				*/
+				class reverse_iterator : public iterator
+					{
+					public:
+						using iterator::iterator;
+
+						/*
+							QUERY_MAXBLOCK_HEAP::REVERSE_ITERATOR::OPERATOR++()
+							---------------------------------------------------
+						*/
+						/*!
+							@brief Increment this iterator.
+						*/
+						virtual iterator &operator++(void)
+							{
+							where--;
+							return *this;
+							}
 					};
 
 				/*
@@ -317,7 +343,34 @@ namespace JASS
 			*/
 			auto end(void)
 				{
-				return iterator(*this, this->top_k);
+				return iterator(*this, top_k);
+				}
+
+			/*
+				QUERY_MAXBLOCK_HEAP::RBEGIN()
+				-----------------------------
+			*/
+			/*!
+				@brief Return a reverse iterator pointing to start of the top-k
+				@return Iterator pointing to start of the top-k
+			*/
+			auto rbegin(void)
+				{
+				sort();
+				return reverse_iterator(*this, top_k - 1);
+				}
+
+			/*
+				QUERY_MAXBLOCK_HEAP::REND()
+				---------------------------
+			*/
+			/*!
+				@brief Return a reverse iterator pointing to end of the top-k
+				@return Iterator pointing to the end of the top-k
+			*/
+			auto rend(void)
+				{
+				return reverse_iterator(*this, needed_for_top_k - 1);
 				}
 
 			/*
@@ -427,14 +480,15 @@ namespace JASS
 #ifdef ACCUMULATOR_64s
 	#ifdef JASS_TOPK_SORT
 					// CHECKED
-					top_k_qsort::sort(sorted_accumulators + needed_for_top_k, top_k - needed_for_top_k, top_k, uint64_t_compare_greater_method);
+					top_k_qsort::sort(sorted_accumulators + needed_for_top_k, top_k - needed_for_top_k, top_k, uint64_t_compare_less_method);
 	#elif defined(CPP_TOPK_SORT)
 					// CHECKED
-					std::partial_sort(sorted_accumulators + needed_for_top_k, sorted_accumulators + top_k, sorted_accumulators + top_k, std::greater<decltype(sorted_accumulators[0])>());
+					std::partial_sort(sorted_accumulators + needed_for_top_k, sorted_accumulators + top_k, sorted_accumulators + top_k);
 	#elif defined(CPP_SORT)
 					// CHECKED
-					std::sort(sorted_accumulators + needed_for_top_k, sorted_accumulators + top_k, std::greater<decltype(sorted_accumulators[0])>());
+					std::sort(sorted_accumulators + needed_for_top_k, sorted_accumulators + top_k);
 	#elif defined(AVX512_SORT)
+puts("4maxblock_heap");
 					Sort512_uint64_t::Sort(sorted_accumulators + needed_for_top_k, top_k - needed_for_top_k);
 	#endif
 #else
@@ -448,6 +502,7 @@ namespace JASS
 					// CHECKED
 					std::sort(accumulator_pointers + needed_for_top_k, accumulator_pointers + top_k, [](const ACCUMULATOR_TYPE *a, const ACCUMULATOR_TYPE *b) -> bool { return *a > *b ? true : *a < *b ? false : a > b; });
 	#elif defined(AVX512_SORT)
+					// CHECKED
 					assert(false);
 	#endif
 #endif
