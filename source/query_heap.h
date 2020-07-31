@@ -178,7 +178,6 @@ namespace JASS
 						return *(a.value) < *(b.value) ? -1 : *(a.value) > *(b.value) ? 1 : a.value < b.value ? -1 : a.value == b.value ? 0 : 1;
 						}
 				};
-			accumulator_pointer accumulator_pointer_final_sort_compare;
 #endif
 
 			/*
@@ -1044,18 +1043,4 @@ namespace JASS
 				puts("query_heap::PASSED");
 				}
 		};
-
-#ifdef ACCUMULATOR_POINTER_BEAP
-	/*
-		OPERATOR<<()
-		------------
-	*/
-	inline std::ostream &operator<<(std::ostream &stream, const query_heap::accumulator_pointer &object)
-		{
-		stream << "[" << (object.value == nullptr ? ' ' : *object.value) << "," << object.value << "]";
-		return stream;
-		}
-
-#endif
-
 	}
