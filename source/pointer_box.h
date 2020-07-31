@@ -35,11 +35,11 @@ namespace JASS
 		pointers are into an array then the earlier memeber of the array compares to less than the
 		
 */
-	template <typename POINTER>
+	template <typename TYPE>
 	class pointer_box
 		{
 		private:
-			POINTER *element;				///< We actually store a reference to the object rather than a pointer, but they're the same size.
+			TYPE *element;				///< We actually store a reference to the object rather than a pointer, but they're the same size.
 			
 		public:
 			/*
@@ -48,14 +48,53 @@ namespace JASS
 			*/
 			/*!
 				@brief Constructor
+			*/
+			pointer_box()
+				{
+				/* Nothing */
+				}
+
+			/*
+				POINTER_BOX::POINTER_BOX()
+				--------------------------
+			*/
+			/*!
+				@brief Constructor
 				@param to [in] The object we are being a pointer to.
 			*/
-			pointer_box(POINTER *to) :
+			pointer_box(TYPE *to) :
 				element(to)
 				{
 				/* Nothing */
 				}
-			
+
+			/*
+				POINTER_BOX::CMP()
+				------------------
+			*/
+			/*!
+				@brief Compare for less than, equal, or greater than
+				@param first [in] The object we are Compareing to.
+				@param to [in] The object we are Compareing to.
+				@return -ve for less, 0 for equal, +ve for greater.
+			*/
+			static int cmp(const pointer_box<TYPE> first, const pointer_box<TYPE> to)
+				{
+				if (*first.element < *to.element)
+					return -1;
+				else if (*first.element > *to.element)
+					return 1;
+				else
+					{
+					if (first.element < to.element)
+						return -1;
+					else if (first.element > to.element)
+						return 1;
+					else
+						return 0;
+					}
+				}
+
 			/*
 				POINTER_BOX::COMPARE()
 				----------------------
@@ -65,21 +104,9 @@ namespace JASS
 				@param to [in] The object we are Compareing to.
 				@return -ve for less, 0 for equal, +ve for greater.
 			*/
-			int compare(const pointer_box<POINTER> to) const
+			int compare(const pointer_box<TYPE> to) const
 				{
-				if (*element < *to.element)
-					return -1;
-				else if (*element > *to.element)
-					return 1;
-				else
-					{
-					if (element < to.element)
-						return -1;
-					else if (element > to.element)
-						return 1;
-					else
-						return 0;
-					}
+				return cmp(*this, to);
 				}
 
 			/*
@@ -92,7 +119,7 @@ namespace JASS
 				@param to [in] The object we are comparing to.
 				@return true or false.
 			*/
-			static bool less_than(POINTER *first, POINTER *to)
+			static bool less_than(TYPE *first, TYPE *to)
 				{
 				return *first < *to || (*first == *to && first < to);
 				}
@@ -107,7 +134,7 @@ namespace JASS
 				@param to [in] The object we are comparing to.
 				@return true or false.
 			*/
-			static bool less_than(POINTER *first, const pointer_box<POINTER> to)
+			static bool less_than(TYPE *first, const pointer_box<TYPE> to)
 				{
 				return less_than(first, to.element);
 				}
@@ -121,7 +148,7 @@ namespace JASS
 				@param to [in] The object we are comparing to.
 				@return true or false.
 			*/
-			bool operator<(const pointer_box<POINTER> to) const
+			bool operator<(const pointer_box<TYPE> to) const
 				{
 				return less_than(element, to.element);
 				}
@@ -135,9 +162,9 @@ namespace JASS
 				@param to [in] The object we are Compareing to.
 				@return true or false.
 			*/
-			bool operator<=(const pointer_box<POINTER> to) const
+			bool operator<=(const pointer_box<TYPE> to) const
 				{
-				return *element <= *to.element || (*element == *to.element && element <= to.element);
+				return *element < *to.element || (*element == *to.element && element <= to.element);
 				}
 
 			/*
@@ -150,7 +177,7 @@ namespace JASS
 				@param to [in] The object we are comparing to.
 				@return true or false.
 			*/
-			static bool greater_than(POINTER *first, POINTER *to)
+			static bool greater_than(TYPE *first, TYPE *to)
 				{
 				return *first > *to || (*first == *to && first > to);
 				}
@@ -165,7 +192,7 @@ namespace JASS
 				@param to [in] The object we are comparing to.
 				@return true or false.
 			*/
-			static bool greater_than(POINTER *first, pointer_box<POINTER> to)
+			static bool greater_than(TYPE *first, pointer_box<TYPE> to)
 				{
 				return greater_than(first, to.element);
 				}
@@ -179,7 +206,7 @@ namespace JASS
 				@param to [in] The object we are Compareing to.
 				@return true or false.
 			*/
-			bool operator>(const pointer_box<POINTER> to) const
+			bool operator>(const pointer_box<TYPE> to) const
 				{
 				return greater_than(element, to.element);
 				}
@@ -193,9 +220,9 @@ namespace JASS
 				@param to [in] The object we are Compareing to.
 				@return true or false.
 			*/
-			bool operator>=(const pointer_box<POINTER> to) const
+			bool operator>=(const pointer_box<TYPE> to) const
 				{
-				return *element >= *to.element || (*element == *to.element && element >= to.element);
+				return *element > *to.element || (*element == *to.element && element >= to.element);
 				}
 
 			/*
@@ -207,7 +234,7 @@ namespace JASS
 				@param to [in] The object we are Compareing to.
 				@return true or false.
 			*/
-			bool operator==(const pointer_box<POINTER> to) const
+			bool operator==(const pointer_box<TYPE> to) const
 				{
 				return element == to.element && *element == *to.element;
 				}
@@ -221,7 +248,7 @@ namespace JASS
 				@param to [in] The object we are Compareing to.
 				@return true or false.
 			*/
-			bool operator!=(const pointer_box<POINTER> to) const
+			bool operator!=(const pointer_box<TYPE> to) const
 				{
 				return element != to.element || *element != *to.element;
 				}
@@ -234,7 +261,7 @@ namespace JASS
 				@brief Return the pointer this box holds.
 				@return The boxed pointer
 			*/
-			POINTER *pointer() const
+			TYPE *pointer() const
 				{
 				return element;
 				}
@@ -247,7 +274,7 @@ namespace JASS
 				@brief Pointer to member operator.
 				@return A pointer to the object
 			*/
-			POINTER *operator->() const
+			TYPE *operator->() const
 				{
 				return element;
 				}
@@ -260,7 +287,7 @@ namespace JASS
 				@brief Value of operator.
 				@return A reference to the value stored in the object
 			*/
-			POINTER &operator*() const
+			TYPE &operator*() const
 				{
 				return *element;
 				}

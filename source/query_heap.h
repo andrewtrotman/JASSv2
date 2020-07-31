@@ -16,6 +16,7 @@
 #include "heap.h"
 #include "simd.h"
 #include "query.h"
+#include "pointer_box.h"
 #include "accumulator_2d.h"
 #include "sort512_uint64_t.h"
 #include "accumulator_counter.h"
@@ -33,6 +34,8 @@ namespace JASS
 	class query_heap : public query
 		{
 		private:
+			typedef pointer_box<ACCUMULATOR_TYPE> accumulator_pointer;
+
 			/*
 				CLASS QUERY_HEAP::ITERATOR
 				--------------------------
@@ -107,7 +110,7 @@ namespace JASS
 							ACCUMULATOR_TYPE rsv = parent.sorted_accumulators[where] >> 32;
 							return docid_rsv_pair(id, (*parent.primary_keys)[id], rsv);
 #elif defined (ACCUMULATOR_POINTER_BEAP)
-							size_t id = parent.accumulators.get_index(parent.accumulator_pointers[where].value);
+							size_t id = parent.accumulators.get_index(parent.accumulator_pointers[where].pointer());
 							return docid_rsv_pair(id, (*parent.primary_keys)[id], parent.accumulators[id]);
 #else
 							size_t id = parent.accumulators.get_index(parent.accumulator_pointers[where]);
@@ -193,8 +196,8 @@ namespace JASS
 			beap<uint64_t> top_results;											///< Heap containing the top-k results
 #elif defined (ACCUMULATOR_POINTER_BEAP)
 			ACCUMULATOR_TYPE zero;																		///< Constant zero used for pointer dereferenced comparisons
-			pointer_box<ACCUMULATOR_TYPE> accumulator_pointers[MAX_TOP_K];									///< Array of pointers to the top k accumulators
-			beap<pointer_box<ACCUMULATOR_TYPE>> top_results;		///< Heap containing the top-k results
+			accumulator_pointer accumulator_pointers[MAX_TOP_K];									///< Array of pointers to the top k accumulators
+			beap<accumulator_pointer> top_results;		///< Heap containing the top-k results
 #else
 			ACCUMULATOR_TYPE zero;																		///< Constant zero used for pointer dereferenced comparisons
 			ACCUMULATOR_TYPE *accumulator_pointers[MAX_TOP_K];									///< Array of pointers to the top k accumulators
@@ -379,7 +382,7 @@ namespace JASS
 #elif defined (ACCUMULATOR_POINTER_BEAP)
 	#ifdef JASS_TOPK_SORT
 					// CHECKED
-					top_k_qsort::sort(accumulator_pointers + needed_for_top_k, top_k - needed_for_top_k, top_k, accumulator_pointer_final_sort_compare);
+					top_k_qsort::sort(accumulator_pointers + needed_for_top_k, top_k - needed_for_top_k, top_k, accumulator_pointer::cmp);
 	#elif defined(CPP_TOPK_SORT)
 					// CHECKED
 					std::partial_sort(accumulator_pointers + needed_for_top_k, accumulator_pointers + top_k, accumulator_pointers + top_k);
@@ -484,7 +487,7 @@ namespace JASS
 				/*
 					By doing the add first its possible to reduce the "usual" path through the code to a single comparison.  The JASS v1 "usual" path took three comparisons.
 				*/
-				*which.value += score;
+				*which.pointer() += score;
 				if (which >= accumulator_pointers[0])			// ==0 is the case where we're the current bottom of heap so might need to be promoted
 					{
 					/*
@@ -495,7 +498,7 @@ namespace JASS
 						/*
 							the heap isn't full yet - so change only happens if we're a new addition (i.e. the old value was a 0)
 						*/
-						if (*which.value == score)
+						if (*which.pointer() == score)
 							{
 							accumulator_pointers[--needed_for_top_k] = which;
 							if (needed_for_top_k == 0)
@@ -504,16 +507,16 @@ namespace JASS
 						}
 					else
 						{
-						*which.value -= score;
+						*which.pointer() -= score;
 						if (which <= accumulator_pointers[0])
 							{
-							*which.value += score;					// we weren't in there before but we are now so replace element 0
+							*which.pointer() += score;					// we weren't in there before but we are now so replace element 0
 							top_results.beap_down(which, 0);
 							}
 						else
 							{
 							auto at = top_results.find(which);		// we're already in there so find us and reshuffle the beap.
-							*which.value += score;
+							*which.pointer() += score;
 							top_results.beap_down(which, at);
 							}
 						}
