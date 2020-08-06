@@ -154,6 +154,21 @@ namespace JASS
 				}
 
 			/*
+				POINTER_BOX::OPERATOR<()
+				------------------------
+			*/
+			/*!
+				@brief Compare for less than (*a < *b) || (*a == *b && a < b).
+				@param to [in] The object we are comparing to.
+				@return true or false.
+			*/
+			bool operator<(TYPE *to) const
+				{
+				return less_than(element, to);
+				}
+
+
+			/*
 				POINTER_BOX::OPERATOR<=()
 				-------------------------
 			*/
@@ -236,7 +251,7 @@ namespace JASS
 			*/
 			bool operator==(const pointer_box<TYPE> to) const
 				{
-				return element == to.element && *element == *to.element;
+				return element == to.element;	// two objects are equal only if the values AND the pointers are the same, and so we can just check the pointers.
 				}
 
 			/*
@@ -250,7 +265,7 @@ namespace JASS
 			*/
 			bool operator!=(const pointer_box<TYPE> to) const
 				{
-				return element != to.element || *element != *to.element;
+				return element != to.element;  // two objects are equal only if the value AND the pointers are the same, so if the pointers are different they are not equal.
 				}
 
 			/*

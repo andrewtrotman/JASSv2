@@ -142,7 +142,7 @@ namespace JASS
 						return docid_rsv_pair(id, (*parent.primary_keys)[id], rsv);
 #else
 						size_t id = parent.accumulators.get_index(parent.accumulator_pointers[where].pointer());
-						return docid_rsv_pair(id, (*parent.primary_keys)[id], parent.accumulators[id]);
+						return docid_rsv_pair(id, (*parent.primary_keys)[id], parent.accumulators.get_value(id));
 #endif
 						}
 					};
@@ -173,58 +173,6 @@ namespace JASS
 							}
 					};
 
-				/*
-					CLASS QUERY_MAXBLOCK_HEAP::UINT64_T_COMPARE_GREATER
-					---------------------------------------------------
-				*/
-				/*!
-					@brief comparison functor for uint32_t
-				*/
-				class uint64_t_compare_greater
-					{
-					public:
-						/*
-							QUERY_MAXBLOCK_HEAP::UINT64_T_COMPARE_GREATER::OPERATOR()()
-							-----------------------------------------------------------
-						*/
-						/*!
-							@brief compare() function
-							@param a [in] The right hand side of the comparison
-							@param b [in] The left hand side of the comparison
-							@return -1 for less, 0 for equal, 1 for greater
-						*/
-						forceinline int operator() (uint64_t a, uint64_t b) const
-							{
-							return a > b ? -1 : a == b ? 0 : 1;
-							}
-					} uint64_t_compare_greater_method;
-
-				/*
-					CLASS QUERY_MAXBLOCK_HEAP::UINT64_T_COMPARE_LESS
-					------------------------------------------------
-				*/
-				/*!
-					@brief comparison functor for uint32_t
-				*/
-				class uint64_t_compare_less
-					{
-					public:
-						/*
-							QUERY_MAXBLOCK_HEAP::UINT64_T_COMPARE::OPERATOR()()
-							---------------------------------------------------
-						*/
-						/*!
-							@brief compare() function
-							@param a [in] The right hand side of the comparison
-							@param b [in] The left hand side of the comparison
-							@return -1 for less, 0 for equal, 1 for greater
-						*/
-						forceinline int operator() (uint64_t a, uint64_t b) const
-							{
-							return a < b ? -1 : a == b ? 0 : 1;
-							}
-					} uint64_t_compare_less_method;
-
 		private:
 #ifdef ACCUMULATOR_STRATEGY_2D
 			accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;	///< The accumulators, one per document in the collection
@@ -245,7 +193,7 @@ namespace JASS
 			size_t needed_for_top_k;													///< The number of results we still need in order to fill the top-k
 #ifdef ACCUMULATOR_64s
 			uint64_t sorted_accumulators[MAX_DOCUMENTS];									///< high word is the rsv, the low word is the DocID.
-			heap<uint64_t, typename query_maxblock_heap::uint64_t_compare_less> top_results;			///< Heap containing the top-k results
+			heap<uint64_t> top_results;			///< Heap containing the top-k results
 #else
 			ACCUMULATOR_TYPE zero;															///< Constant zero used for pointer dereferenced comparisons
 			accumulator_pointer accumulator_pointers[MAX_TOP_K];					///< Array of pointers to the top k accumulators
@@ -459,16 +407,19 @@ namespace JASS
 							size_t start = (page_maximum_pointers[page] - page_maximum) * block_width;
 							for (size_t which = start; which < start + block_width; which++)
 								{
-								if (accumulators.get_value(which) > 0 && &accumulators[which] > accumulator_pointers[0].pointer())			// == 0 is the case where we're the current bottom of heap so might need to be promoted
+								if (accumulators.get_value(which) > 0)
 									{
-									if (needed_for_top_k > 0)
+									if (accumulator_pointers[0] < &accumulators[which])
 										{
-										accumulator_pointers[--needed_for_top_k] = &accumulators[which];
-										if (needed_for_top_k == 0)
-											top_results.make_heap();
+										if (needed_for_top_k > 0)
+											{
+											accumulator_pointers[--needed_for_top_k] = &accumulators[which];
+											if (needed_for_top_k == 0)
+												top_results.make_heap();
+											}
+										else
+											top_results.push_back(&accumulators[which]);				// we're not in the heap so add this accumulator to the heap
 										}
-									else
-										top_results.push_back(&accumulators[which]);				// we're not in the heap so add this accumulator to the heap
 									}
 								}
 							}
@@ -483,7 +434,7 @@ namespace JASS
 #ifdef ACCUMULATOR_64s
 	#ifdef JASS_TOPK_SORT
 					// CHECKED
-					top_k_qsort::sort(sorted_accumulators + needed_for_top_k, top_k - needed_for_top_k, top_k, uint64_t_compare_less_method);
+					top_k_qsort::sort(sorted_accumulators + needed_for_top_k, top_k - needed_for_top_k, top_k);
 	#elif defined(CPP_TOPK_SORT)
 					// CHECKED
 					std::partial_sort(sorted_accumulators + needed_for_top_k, sorted_accumulators + top_k, sorted_accumulators + top_k);
@@ -491,7 +442,7 @@ namespace JASS
 					// CHECKED
 					std::sort(sorted_accumulators + needed_for_top_k, sorted_accumulators + top_k);
 	#elif defined(AVX512_SORT)
-puts("4maxblock_heap");
+// NOT CHECKED
 					Sort512_uint64_t::Sort(sorted_accumulators + needed_for_top_k, top_k - needed_for_top_k);
 	#endif
 #else

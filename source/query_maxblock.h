@@ -170,32 +170,6 @@ namespace JASS
 							}
 					};
 
-				/*
-					CLASS QUERY_MAXBLOCK::UINT64_T_COMPARE
-					--------------------------------------
-				*/
-				/*!
-					@brief comparison functor for uint32_t
-				*/
-				class uint64_t_compare
-					{
-					public:
-						/*
-							QUERY_MAXBLOCK::UINT64_T_COMPARE::OPERATOR()()
-							----------------------------------------------
-						*/
-						/*!
-							@brief compare() function
-							@param a [in] The right hand side of the comparison
-							@param b [in] The left hand side of the comparison
-							@return -1 for less, 0 for equal, 1 for greater
-						*/
-						forceinline int operator() (uint64_t a, uint64_t b) const
-							{
-							return a > b ? -1 : a == b ? 0 : 1;
-							}
-				} uint64_t_compare_method;
-
 		protected:
 #ifdef ACCUMULATOR_64s
 			uint64_t sorted_accumulators[MAX_DOCUMENTS];									///< high word is the rsv, the low word is the DocID.
@@ -416,7 +390,7 @@ namespace JASS
 #ifdef ACCUMULATOR_64s
 	#ifdef JASS_TOPK_SORT
 					//CHECKED
-					top_k_qsort::sort(sorted_accumulators, non_zero_accumulators, top_k, uint64_t_compare_method);
+					top_k_qsort::sort(sorted_accumulators, non_zero_accumulators, top_k);
 					non_zero_accumulators = maths::minimum(non_zero_accumulators, top_k);
 	#elif defined(CPP_TOPK_SORT)
 					//CHECKED
@@ -428,7 +402,7 @@ namespace JASS
 					std::sort(sorted_accumulators, sorted_accumulators + non_zero_accumulators, std::greater<decltype(sorted_accumulators[0])>());
 					non_zero_accumulators = maths::minimum(non_zero_accumulators, top_k);
 	#elif defined(AVX512_SORT)
-puts("4a maxblock");
+// NOT CHECKED
 					Sort512_uint64_t::Sort(sorted_accumulators, non_zero_accumulators);
 					non_zero_accumulators = maths::minimum(non_zero_accumulators, top_k);
 	#endif

@@ -92,7 +92,7 @@ namespace JASS
 				else
 					smallest = position;
 
-				if (right < size && array[right] < array[smallest] < 0)
+				if (right < size && array[right] < array[smallest])
 					smallest = right;
 
 				if (smallest != position)

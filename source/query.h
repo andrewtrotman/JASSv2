@@ -7,7 +7,6 @@
 	#define QUERY_HEAP
 	#define ACCUMULATOR_STRATEGY_2D
 	#define JASS_TOPK_SORT
-	#define ACCUMULATOR_POINTER_BEAP
 #endif
 
 /*

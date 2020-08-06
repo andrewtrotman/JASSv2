@@ -111,7 +111,7 @@ namespace JASS
 							return docid_rsv_pair(id, (*parent.primary_keys)[id], rsv);
 #else
 							size_t id = parent.accumulators.get_index(parent.accumulator_pointers[where].pointer());
-							return docid_rsv_pair(id, (*parent.primary_keys)[id], parent.accumulators.accumulator[id]);
+							return docid_rsv_pair(id, (*parent.primary_keys)[id], parent.accumulators.get_value(id));
 #endif
 						}
 					};
@@ -141,34 +141,6 @@ namespace JASS
 						return *this;
 						}
 				};
-
-#if defined(JASS_TOPK_SORT) && defined(ACCUMULATOR_64s)
-				/*
-					CLASS QUERY_HEAP::UINT64_T_COMPARE
-					----------------------------------
-				*/
-				/*!
-					@brief comparison functor for uint32_t
-				*/
-				class uint64_t_compare
-					{
-					public:
-						/*
-							QUERY_HEAP::UINT64_T_COMPARE::OPERATOR()()
-							------------------------------------------
-						*/
-						/*!
-							@brief compare() function
-							@param a [in] The right hand side of the comparison
-							@param b [in] The left hand side of the comparison
-							@return -1 for less, 0 for equal, 1 for greater
-						*/
-						forceinline int operator() (uint64_t a, uint64_t b) const
-							{
-							return a < b ? -1 : a == b ? 0 : 1;
-							}
-					} uint64_t_compare_method;
-#endif
 
 		private:
 		
@@ -358,7 +330,7 @@ namespace JASS
 #ifdef ACCUMULATOR_64s
 	#ifdef JASS_TOPK_SORT
 					// CHECKED
-					top_k_qsort::sort(sorted_accumulators + needed_for_top_k, top_k - needed_for_top_k, top_k, uint64_t_compare_method);
+					top_k_qsort::sort(sorted_accumulators + needed_for_top_k, top_k - needed_for_top_k, top_k);
 	#elif defined(CPP_TOPK_SORT)
 					// CHECKED
 					std::partial_sort(sorted_accumulators + needed_for_top_k,  sorted_accumulators + top_k, sorted_accumulators + top_k);
@@ -366,7 +338,7 @@ namespace JASS
 					// CHECKED
 					std::sort(sorted_accumulators + needed_for_top_k, sorted_accumulators + top_k);
 	#elif defined(AVX512_SORT)
-					// CHECKED
+// NOT CHECKED
 					Sort512_uint64_t::Sort(sorted_accumulators + needed_for_top_k, top_k - needed_for_top_k);
 	#endif
 #else
@@ -377,13 +349,13 @@ namespace JASS
 						On Windows, std::sort() is faster than the others when top-k == 10 or top-k == 100.  When top-k == 1000, top_k_qsort::sort is faster
 					*/
 	#ifdef JASS_TOPK_SORT
-puts("1");
+					// CHECKED
 					top_k_qsort::sort(accumulator_pointers + needed_for_top_k, top_k - needed_for_top_k, top_k);
 	#elif defined(CPP_TOPK_SORT)
-puts("2");
+					// CHECKED
 					std::partial_sort(accumulator_pointers + needed_for_top_k, accumulator_pointers + top_k, accumulator_pointers + top_k);
 	#elif defined(CPP_SORT)
-puts("3");
+					// CHECKED
 					std::sort(accumulator_pointers + needed_for_top_k, accumulator_pointers + top_k);
 	#elif defined(AVX512_SORT)
 					// CHECKED
