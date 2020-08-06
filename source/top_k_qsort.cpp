@@ -1,6 +1,6 @@
 /*
 	TOP_K_QSORT.CPP
-	-------------
+	---------------
 	Copyright (c) 2017 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
@@ -14,31 +14,6 @@
 
 namespace JASS
 	{
-	/*
-		STRUCT UNITTEST_COMPARE
-		-----------------------
-	*/
-	/*!
-		@brief functor for unit testing top_k_qsort
-	*/
-	struct unittest_compare
-		{
-		/*
-			UNITTEST_COMPARE::OPERATOR()()
-			------------------------------
-		*/
-		/*!
-			@brief Comparison function
-			@param a [in] pointer to first parameter
-			@param b [in] pointer to second parameter
-			@return 1 if *a > *b, 0 if *a == *b, -1 if *a < *b
-		*/
-		int operator()(const size_t a, const size_t b)
-			{
-			return a < b ? -1 : a == b ? 0 : 1;
-			}
-		} comparison;			///< Object to perform an comparison
-
 	/*
 		TOP_K_SORT::UNITTEST()
 		----------------------
@@ -64,7 +39,7 @@ namespace JASS
 			/*
 				Sort the top-k elements of the array
 			*/
-			top_k_qsort::sort(&sequence[0], sequence.size(), top_k, comparison);
+			top_k_qsort::sort(&sequence[0], sequence.size(), top_k);
 
 			/*
 				Check that the top-k are in order, and compute the largest
@@ -100,7 +75,7 @@ namespace JASS
 			/*
 				Try a full sort
 			*/
-			top_k_qsort::sort(&sequence[0], sequence.size(), comparison);
+			top_k_qsort::sort(&sequence[0], sequence.size());
 
 			/*
 				Now verify

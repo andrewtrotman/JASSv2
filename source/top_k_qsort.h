@@ -43,15 +43,14 @@ namespace JASS
 				@param a [in] pointer to one of the values
 				@param b [in] pointer to one of the values
 				@param c [in] pointer to one of the values
-				@param cmp [in] the comparison functor
 				@return pointer to the median element
 			*/
-			template <typename TYPE, typename COMPARE>
-			static forceinline TYPE *med3(TYPE &a, TYPE &b, TYPE &c, COMPARE cmp)
+			template <typename TYPE>
+			static forceinline TYPE *med3(TYPE &a, TYPE &b, TYPE &c)
 				{
-				return cmp(a, b) < 0 ?
-					(cmp(b, c) < 0 ? &b : cmp(a, c) < 0 ? &c : &a) :
-					(cmp(b, c) > 0 ? &b : cmp(a, c) > 0 ? &c : &a);
+				return a < b ?
+					(b < c ? &b : a < c ? &c : &a) :
+					(b > c ? &b : a > c ? &c : &a);
 				}
 
 			/*
@@ -84,10 +83,9 @@ namespace JASS
 				@param a [in] a pointer to an array to sort
 				@param n [in] The number of elements in the array to sort
 				@param top_k [in] Sort so that the top-k elements are sorted
-				@param cmp [in] the comparison functor
 			*/
-			template <typename TYPE, typename COMPARE>
-			static void sort(TYPE *a, size_t n, size_t top_k, COMPARE cmp)
+			template <typename TYPE>
+			static void sort(TYPE *a, size_t n, size_t top_k)
 				{
 				TYPE *pa, *pb, *pc, *pd, *pl, *pm, *pn;
 				TYPE pv;
@@ -96,7 +94,7 @@ namespace JASS
 				if (n < 7)
 					{ /* Insertion sort on smallest arrays */
 					for (pm = a + 1; pm < a + n; pm++)
-						for (pl = pm; pl > a && cmp(*(pl - 1), *pl) > 0; pl--)
+						for (pl = pm; pl > a && *(pl - 1) > *pl; pl--)
 							std::swap(*pl, *(pl - 1));
 					return;
 					}
@@ -108,11 +106,11 @@ namespace JASS
 					if (n > 40)
 						{ /* Big arrays, pseudomedian of 9 */
 						s = (n / 8);
-						pl = med3(*pl, *(pl + s), *(pl + 2 * s), cmp);
-						pm = med3(*(pm - s), *pm, *(pm + s), cmp);
-						pn = med3(*(pn - 2 * s), *(pn - s), *pn, cmp);
+						pl = med3(*pl, *(pl + s), *(pl + 2 * s));
+						pm = med3(*(pm - s), *pm, *(pm + s));
+						pn = med3(*(pn - 2 * s), *(pn - s), *pn);
 						}
-					pm = med3(*pl, *pm, *pn, cmp); /* Mid-size, med of 3 */
+					pm = med3(*pl, *pm, *pn); /* Mid-size, med of 3 */
 					}
 
 				pv = *pm;		/* pv is the partition value */
@@ -121,19 +119,18 @@ namespace JASS
 				pc = pd = a + (n - 1);
 				for (;;)
 					{
-					int r;
-					while (pb <= pc && (r = cmp(*pb, pv)) <= 0)
+					while (pb <= pc && *pb <= pv)
 						{
-						if (r == 0)
+						if (*pb == pv)
 							{
 							std::swap(*pa, *pb);
 							pa++;
 							}
 						pb++;
 						}
-					while (pc >= pb && (r = cmp(*pc, pv)) >= 0)
+					while (pc >= pb && *pc >= pv)
 						{
-						if (r == 0)
+						if (*pc == pv)
 							{
 							std::swap(*pc, *pd);
 							pd--;
@@ -158,13 +155,13 @@ namespace JASS
 
 				s = pb - pa;
 				if (s > 1)
-					sort(a, s, top_k, cmp);
+					sort(a, s, top_k);
 
 				if (s < top_k)
 					{
 					size_t s2;
 					if ((s2 = pd - pc) > 1)
-						sort(pn - s2, s2, top_k - s, cmp);
+						sort(pn - s2, s2, top_k - s);
 					}
 				}
 
@@ -178,10 +175,10 @@ namespace JASS
 				@param n [in] The number of elements in the array to sort
 				@param cmp [in] the comparison functor
 			*/
-			template <typename TYPE, typename COMPARE>
-			static forceinline void sort(TYPE *a, size_t n, COMPARE cmp)
+			template <typename TYPE>
+			static forceinline void sort(TYPE *a, size_t n)
 				{
-				sort(a, n, n, cmp);
+				sort(a, n, n);
 				}
 
 			/*

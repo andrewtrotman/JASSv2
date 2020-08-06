@@ -449,8 +449,8 @@ namespace JASS
 				}
 
 			/*
-				ACCUMULTOR_COUNTER_INTERLEAVED::GET_INDEX()
-				-------------------------------------------
+				ACCUMULATOR_2D::GET_INDEX()
+				---------------------------
 			*/
 			/*!
 				@brief Given a pointer to an accumulator, return the acumulator index

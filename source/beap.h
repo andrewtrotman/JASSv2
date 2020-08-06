@@ -299,7 +299,7 @@ namespace JASS
 			*/
 			/*!
 				@brief Re-shuffle the beap from current_location towards the leaves.
-				@param current_location [in] The locaiton to reshuffle from.
+				@param current_location [in] The location to reshuffle from.
 				@return The new location in array[] of the element that was at current_location.
 			*/
 			int64_t beap_down(const TYPE &key, int64_t current_location)

@@ -109,12 +109,9 @@ namespace JASS
 							DOCID_TYPE id = parent.sorted_accumulators[where] & 0xFFFF'FFFF;
 							ACCUMULATOR_TYPE rsv = parent.sorted_accumulators[where] >> 32;
 							return docid_rsv_pair(id, (*parent.primary_keys)[id], rsv);
-#elif defined (ACCUMULATOR_POINTER_BEAP)
-							size_t id = parent.accumulators.get_index(parent.accumulator_pointers[where].pointer());
-							return docid_rsv_pair(id, (*parent.primary_keys)[id], parent.accumulators[id]);
 #else
-							size_t id = parent.accumulators.get_index(parent.accumulator_pointers[where]);
-							return docid_rsv_pair(id, (*parent.primary_keys)[id], parent.accumulators[id]);
+							size_t id = parent.accumulators.get_index(parent.accumulator_pointers[where].pointer());
+							return docid_rsv_pair(id, (*parent.primary_keys)[id], parent.accumulators.accumulator[id]);
 #endif
 						}
 					};
@@ -194,14 +191,14 @@ namespace JASS
 #ifdef ACCUMULATOR_64s
 			uint64_t sorted_accumulators[MAX_TOP_K];							///< high 32-bits is the rsv, the low 32-bits is the DocID.
 			beap<uint64_t> top_results;											///< Heap containing the top-k results
-#elif defined (ACCUMULATOR_POINTER_BEAP)
-			ACCUMULATOR_TYPE zero;																		///< Constant zero used for pointer dereferenced comparisons
-			accumulator_pointer accumulator_pointers[MAX_TOP_K];									///< Array of pointers to the top k accumulators
-			beap<accumulator_pointer> top_results;		///< Heap containing the top-k results
 #else
 			ACCUMULATOR_TYPE zero;																		///< Constant zero used for pointer dereferenced comparisons
-			ACCUMULATOR_TYPE *accumulator_pointers[MAX_TOP_K];									///< Array of pointers to the top k accumulators
-			heap<ACCUMULATOR_TYPE *, typename query::add_rsv_compare> top_results;		///< Heap containing the top-k results
+			accumulator_pointer accumulator_pointers[MAX_TOP_K];									///< Array of pointers to the top k accumulators
+	#ifdef ACCUMULATOR_POINTER_BEAP
+			beap<accumulator_pointer> top_results;		///< Heap containing the top-k results
+	#else
+			heap<accumulator_pointer> top_results;		///< Heap containing the top-k results
+	#endif
 #endif
 
 			bool sorted;																	///< has heap and accumulator_pointers been sorted (false after rewind() true after sort())
@@ -225,9 +222,6 @@ namespace JASS
 				query(),
 #ifdef ACCUMULATOR_64s
 				top_results(sorted_accumulators, top_k)
-#elif defined (ACCUMULATOR_POINTER_BEAP)
-				zero(0),
-				top_results(accumulator_pointers, top_k)
 #else
 				zero(0),
 				top_results(accumulator_pointers, top_k)
@@ -264,8 +258,6 @@ namespace JASS
 				accumulators.init(documents, width);
 #ifdef ACCUMULATOR_64s
 				top_results.set_top_k((int64_t)top_k);
-#elif defined (ACCUMULATOR_POINTER_BEAP)
-				top_results.set_top_k(top_k);
 #else
 				top_results.set_top_k(top_k);
 #endif
@@ -337,8 +329,6 @@ namespace JASS
 				sorted = false;
 #ifdef ACCUMULATOR_64s
 				sorted_accumulators[0] = 0;
-#elif defined (ACCUMULATOR_POINTER_BEAP)
-				accumulator_pointers[0] = &zero;
 #else
 				accumulator_pointers[0] = &zero;
 #endif
@@ -379,20 +369,6 @@ namespace JASS
 					// CHECKED
 					Sort512_uint64_t::Sort(sorted_accumulators + needed_for_top_k, top_k - needed_for_top_k);
 	#endif
-#elif defined (ACCUMULATOR_POINTER_BEAP)
-	#ifdef JASS_TOPK_SORT
-					// CHECKED
-					top_k_qsort::sort(accumulator_pointers + needed_for_top_k, top_k - needed_for_top_k, top_k, accumulator_pointer::cmp);
-	#elif defined(CPP_TOPK_SORT)
-					// CHECKED
-					std::partial_sort(accumulator_pointers + needed_for_top_k, accumulator_pointers + top_k, accumulator_pointers + top_k);
-	#elif defined(CPP_SORT)
-					// CHECKED
-					std::sort(accumulator_pointers + needed_for_top_k, accumulator_pointers + top_k);
-	#elif defined(AVX512_SORT)
-					// CHECKED
-					assert(false);
-	#endif
 #else
 					/*
 						On Linux, using top-k == 10 or top-k == 100, and using Gov2 and ClueWeb12-B13, std::partial_sort() is faster than either top_k_qsort::sort() or std::sort()
@@ -401,15 +377,14 @@ namespace JASS
 						On Windows, std::sort() is faster than the others when top-k == 10 or top-k == 100.  When top-k == 1000, top_k_qsort::sort is faster
 					*/
 	#ifdef JASS_TOPK_SORT
-					// CHECKED
-					//top_k_qsort::sort(accumulator_pointers + needed_for_top_k, top_k - needed_for_top_k, top_k, query::final_sort_cmp);
-					top_k_qsort::sort(accumulator_pointers + needed_for_top_k, top_k - needed_for_top_k, top_k, [](const ACCUMULATOR_TYPE *a, const ACCUMULATOR_TYPE *b) -> int { return *a < *b ? 1 : *a > *b ? -1 : a < b ? 1 : a == b ? 0 : -1; });
+puts("1");
+					top_k_qsort::sort(accumulator_pointers + needed_for_top_k, top_k - needed_for_top_k, top_k);
 	#elif defined(CPP_TOPK_SORT)
-					// CHECKED
-					std::partial_sort(accumulator_pointers + needed_for_top_k, accumulator_pointers + top_k, accumulator_pointers + top_k, [](const ACCUMULATOR_TYPE *a, const ACCUMULATOR_TYPE *b) -> bool { return *a > *b ? true : *a < *b ? false : a > b; });
+puts("2");
+					std::partial_sort(accumulator_pointers + needed_for_top_k, accumulator_pointers + top_k, accumulator_pointers + top_k);
 	#elif defined(CPP_SORT)
-					// CHECKED
-					std::sort(accumulator_pointers + needed_for_top_k, accumulator_pointers + top_k, [](const ACCUMULATOR_TYPE *a, const ACCUMULATOR_TYPE *b) -> bool { return *a > *b ? true : *a < *b ? false : a > b; });
+puts("3");
+					std::sort(accumulator_pointers + needed_for_top_k, accumulator_pointers + top_k);
 	#elif defined(AVX512_SORT)
 					// CHECKED
 					assert(false);
@@ -481,7 +456,7 @@ namespace JASS
 							top_results.guaranteed_replace_with_larger(prior_key, key);									// we're already in the heap so promote this document
 						}
 					}
-#elif defined (ACCUMULATOR_POINTER_BEAP)
+#else
 				accumulator_pointer which = &accumulators[document_id];			// This will create the accumulator if it doesn't already exist.
 
 				/*
@@ -502,59 +477,37 @@ namespace JASS
 							{
 							accumulator_pointers[--needed_for_top_k] = which;
 							if (needed_for_top_k == 0)
+								{
+	#ifdef ACCUMULATOR_POINTER_BEAP
 								top_results.make_beap();
+	#else
+								top_results.make_heap();
+	#endif
+								}
 							}
 						}
 					else
 						{
 						*which.pointer() -= score;
-						if (which <= accumulator_pointers[0])
+/**/					if (which < accumulator_pointers[0])		// HERE: BEAP USES <=, HEAP USES <
 							{
 							*which.pointer() += score;					// we weren't in there before but we are now so replace element 0
+	#ifdef ACCUMULATOR_POINTER_BEAP
 							top_results.beap_down(which, 0);
+	#else
+							top_results.push_back(which);				// we're not in the heap so add this accumulator to the heap
+	#endif
 							}
 						else
 							{
 							auto at = top_results.find(which);		// we're already in there so find us and reshuffle the beap.
 							*which.pointer() += score;
+	#ifdef ACCUMULATOR_POINTER_BEAP
 							top_results.beap_down(which, at);
+	#else
+							top_results.promote(which, at);				// we're already in the heap so promote this document
+	#endif
 							}
-						}
-					}
-#else
-				ACCUMULATOR_TYPE *which = &accumulators[document_id];			// This will create the accumulator if it doesn't already exist.
-
-				/*
-					By doing the add first its possible to reduce the "usual" path through the code to a single comparison.  The JASS v1 "usual" path took three comparisons.
-				*/
-				*which += score;
-				if (this->cmp(which, accumulator_pointers[0]) >= 0)			// ==0 is the case where we're the current bottom of heap so might need to be promoted
-					{
-					/*
-						We end up in the top-k, now to work out why.  As this is a rare occurence, we've got a little bit of time on our hands
-					*/
-					if (needed_for_top_k > 0)
-						{
-						/*
-							the heap isn't full yet - so change only happens if we're a new addition (i.e. the old value was a 0)
-						*/
-						if (*which == score)
-							{
-							accumulator_pointers[--needed_for_top_k] = which;
-							if (needed_for_top_k == 0)
-								top_results.make_heap();
-							}
-						}
-					else
-						{
-						*which -= score;
-						int prior_compare = this->cmp(which, accumulator_pointers[0]);
-						*which += score;
-
-						if (prior_compare < 0)
-							top_results.push_back(which);				// we're not in the heap so add this accumulator to the heap
-						else
-							top_results.promote(which);				// we're already in the heap so promote this document
 						}
 					}
 #endif

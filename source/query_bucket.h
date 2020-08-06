@@ -448,7 +448,7 @@ puts("4buckets");
 
 	#ifdef JASS_TOPK_SORT
 					// CHECKED
-					top_k_qsort::sort(accumulator_pointers, accumulators_used, top_k, query::final_sort_cmp);
+					top_k_qsort::sort(accumulator_pointers, accumulators_used, top_k);
 	#elif defined(CPP_TOPK_SORT)
 					// CHECKED
 					std::partial_sort(accumulator_pointers, accumulator_pointers + (top_k < accumulators_used ? top_k : accumulators_used), accumulator_pointers + accumulators_used, [](const ACCUMULATOR_TYPE *a, const ACCUMULATOR_TYPE *b) -> bool { return *a > *b ? true : *a < *b ? false : a > b; });

@@ -435,7 +435,7 @@ puts("4a maxblock");
 #else
 	#ifdef JASS_TOPK_SORT
 					//CHECKED
-					top_k_qsort::sort(accumulator_pointers, non_zero_accumulators, top_k, query::final_sort_cmp);
+					top_k_qsort::sort(accumulator_pointers, non_zero_accumulators, top_k);
 					non_zero_accumulators = maths::minimum(non_zero_accumulators, top_k);
 	#elif defined(CPP_TOPK_SORT)
 					//CHECKED

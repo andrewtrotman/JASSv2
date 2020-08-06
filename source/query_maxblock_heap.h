@@ -29,6 +29,9 @@ namespace JASS
 	*/
 	class query_maxblock_heap : public query
 		{
+		private:
+			typedef pointer_box<ACCUMULATOR_TYPE> accumulator_pointer;
+
 		public:
 			/*
 				CLASS QUERY_MAXBLOCK_HEAP::ITERATOR
@@ -138,7 +141,7 @@ namespace JASS
 						ACCUMULATOR_TYPE rsv = parent.sorted_accumulators[where] >> 32;
 						return docid_rsv_pair(id, (*parent.primary_keys)[id], rsv);
 #else
-						size_t id = parent.accumulators.get_index(parent.accumulator_pointers[where]);
+						size_t id = parent.accumulators.get_index(parent.accumulator_pointers[where].pointer());
 						return docid_rsv_pair(id, (*parent.primary_keys)[id], parent.accumulators[id]);
 #endif
 						}
@@ -244,9 +247,9 @@ namespace JASS
 			uint64_t sorted_accumulators[MAX_DOCUMENTS];									///< high word is the rsv, the low word is the DocID.
 			heap<uint64_t, typename query_maxblock_heap::uint64_t_compare_less> top_results;			///< Heap containing the top-k results
 #else
-			ACCUMULATOR_TYPE zero;														///< Constant zero used for pointer dereferenced comparisons
-			ACCUMULATOR_TYPE *accumulator_pointers[MAX_TOP_K];					///< Array of pointers to the top k accumulators
-			heap<ACCUMULATOR_TYPE *, typename query::add_rsv_compare> top_results;			///< Heap containing the top-k results
+			ACCUMULATOR_TYPE zero;															///< Constant zero used for pointer dereferenced comparisons
+			accumulator_pointer accumulator_pointers[MAX_TOP_K];					///< Array of pointers to the top k accumulators
+			heap<accumulator_pointer> top_results;										///< Heap containing the top-k results
 #endif
 			ACCUMULATOR_TYPE page_maximum[accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS>::maximum_number_of_dirty_flags];		///< The current maximum value of the accumulator block
 			ACCUMULATOR_TYPE *page_maximum_pointers[accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS>::maximum_number_of_dirty_flags];		///< Poointers to the current maximum value of the accumulator block
@@ -456,7 +459,7 @@ namespace JASS
 							size_t start = (page_maximum_pointers[page] - page_maximum) * block_width;
 							for (size_t which = start; which < start + block_width; which++)
 								{
-								if (accumulators.get_value(which) > 0 && this->cmp(&accumulators[which], accumulator_pointers[0]) > 0)			// == 0 is the case where we're the current bottom of heap so might need to be promoted
+								if (accumulators.get_value(which) > 0 && &accumulators[which] > accumulator_pointers[0].pointer())			// == 0 is the case where we're the current bottom of heap so might need to be promoted
 									{
 									if (needed_for_top_k > 0)
 										{
@@ -494,13 +497,13 @@ puts("4maxblock_heap");
 #else
 	#ifdef JASS_TOPK_SORT
 					// CHECKED
-					top_k_qsort::sort(accumulator_pointers + needed_for_top_k, top_k - needed_for_top_k, top_k, query::final_sort_cmp);
+					top_k_qsort::sort(accumulator_pointers + needed_for_top_k, top_k - needed_for_top_k, top_k);
 	#elif defined(CPP_TOPK_SORT)
 					// CHECKED
-					std::partial_sort(accumulator_pointers + needed_for_top_k, accumulator_pointers + top_k, accumulator_pointers + top_k, [](const ACCUMULATOR_TYPE *a, const ACCUMULATOR_TYPE *b) -> bool { return *a > *b ? true : *a < *b ? false : a > b; });
+					std::partial_sort(accumulator_pointers + needed_for_top_k, accumulator_pointers + top_k, accumulator_pointers + top_k);
 	#elif defined(CPP_SORT)
 					// CHECKED
-					std::sort(accumulator_pointers + needed_for_top_k, accumulator_pointers + top_k, [](const ACCUMULATOR_TYPE *a, const ACCUMULATOR_TYPE *b) -> bool { return *a > *b ? true : *a < *b ? false : a > b; });
+					std::sort(accumulator_pointers + needed_for_top_k, accumulator_pointers + top_k);
 	#elif defined(AVX512_SORT)
 					// CHECKED
 					assert(false);

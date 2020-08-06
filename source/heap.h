@@ -35,15 +35,13 @@ namespace JASS
 	/*!
 		@brief A bare-bones implementaiton of a min-heap over an array passed by the caller.
 		@tparam TYPE The type to build the heap over (normall a pointer type).
-		@tparam COMPARE Function returning -1=ve on smaller, 0 on same, or +ve on larger.
 	*/
-	template <typename TYPE, typename COMPARE>
+	template <typename TYPE>
 	class heap
 		{
 		protected:
 			TYPE *array;					///< The array to build the heap over
 			size_t size;					///< The maximum size of the heap
-			COMPARE compare;				///< The comparison functor
 
 		protected:
 			/*
@@ -89,12 +87,12 @@ namespace JASS
 				size_t left = left_of(position);
 				size_t right = right_of(position);
 
-				if ((left < size) && (compare(array[left], array[position]) < 0))
+				if (left < size && array[left] < array[position])
 					smallest = left;
 				else
 					smallest = position;
 
-				if ((right < size) && (compare(array[right], array[smallest]) < 0))
+				if (right < size && array[right] < array[smallest] < 0)
 					smallest = right;
 
 				if (smallest != position)
@@ -125,9 +123,9 @@ namespace JASS
 					// check array out of bound, it's also the stopping condition
 					if (left < size && right < size)
 						{
-						if (compare(key, array[left]) <= 0 && compare(key, array[right]) <= 0)
+						if (key <= array[left] && key <= array[right])
 							break;			// we're smaller then the left and the right so we're done
-						else if (compare(array[left], array[right]) < 0)
+						else if (array[left] < array[right])
 							{
 							array[position] = array[left];
 							position = left;
@@ -140,7 +138,7 @@ namespace JASS
 						}
 					else if (left < size)			// and right > size (because this is an else)
 						{
-						if (compare(key, array[left]) > 0)
+						if (key > array[left])
 							{
 							array[position] = array[left];
 							position = left;
@@ -164,12 +162,10 @@ namespace JASS
 				@brief Constructor
 				@param array [in] The array to maintain the heap over
 				@param size [in] The maximum number of elements in the array (the size of the heap)
-				@param compare [in] The comparison functor
 			*/
-			heap(TYPE *array, size_t size = 0, const COMPARE &compare = COMPARE()) :
+			heap(TYPE *array, size_t size = 0) :
 				array(array),
-				size(size),
-				compare(compare)
+				size(size)
 				{
 				/* Nothing */
 				}
@@ -216,6 +212,27 @@ namespace JASS
 				}
 
 			/*
+				HEAP::FIND()
+				------------
+			*/
+			/*!
+				@brief Find an instance of key in the heap and return its index into array[].
+				@param key [in] The key to look for.
+				@return The index into array[] of an instance of key, or -1 if key cannot be found in the heap.
+			*/
+			int64_t find(const TYPE &key) const
+				{
+				size_t position;
+
+				for (position = 0; position < size; position++)
+					if (array[position] == key)
+						return position;
+
+				return -1;
+				}
+
+
+			/*
 				HEAP::PROMOTE()
 				--------------
 			*/
@@ -223,14 +240,8 @@ namespace JASS
 				@brief Key has changed its value so re-build the heap from that point onwards
 				@param key [in] The element that has changed
 			*/
-			forceinline void promote(TYPE key)
+			forceinline void promote(TYPE key, size_t position)
 				{
-				size_t position;
-
-				for (position = 0; position < size; position++)
-					if (array[position] == key)
-						break;
-
 				insert_from(key, position);
 				}
 
@@ -268,17 +279,8 @@ namespace JASS
 					/*
 						Add them to a heap that keeps a top-k of less than the number of elements in the sequence
 					*/
-					class unittest_compare
-						{
-						public:
-							int operator()(int a, int b)
-								{
-								return a < b ? -1 : a == b ? 0 : 1;
-								}
-						};
-
 					std::vector<int> buffer(5);
-					heap<int, unittest_compare> heap(&buffer[0], buffer.size());
+					heap<int> heap(&buffer[0], buffer.size());
 
 					for (const auto &element : sequence)
 						{
