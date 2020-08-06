@@ -583,7 +583,7 @@ namespace JASS
 
 				for (const auto rsv : *query_object)
 					string << "<" << rsv.document_id << "," << rsv.rsv << ">";
-				JASS_assert(string.str() == "<3,20><1,15>");
+				JASS_assert(string.str() == "<1,15><3,20>");
 
 				delete query_object;
 				puts("query_maxblock_heap::PASSED");

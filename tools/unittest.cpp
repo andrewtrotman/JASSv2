@@ -456,7 +456,7 @@ int main(void)
 		JASS::pointer_box<int>::unittest();
 
 		puts("heap");
-		JASS::heap<int, int>::unittest();
+		JASS::heap<int>::unittest();
 
 		puts("top_k_heap");
 		JASS::top_k_heap<int>::unittest();

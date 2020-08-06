@@ -101,13 +101,12 @@ namespace JASS
 				run_export_trec(result, "qid", *identity, "unittest", true, false);
 
 				std::string correct_answer =
-					"qid Q0 six 1 1 unittest(ID:6->1)\n"
-					"qid Q0 five 2 1 unittest(ID:5->1)\n"
-					"qid Q0 four 3 1 unittest(ID:4->1)\n"
-					"qid Q0 three 4 1 unittest(ID:3->1)\n"
-					"qid Q0 two 5 1 unittest(ID:2->1)\n"
-					"qid Q0 one 6 1 unittest(ID:1->1)\n";
-
+					"qid Q0 one 1 1 unittest(ID:1->1)\n"
+					"qid Q0 two 2 1 unittest(ID:2->1)\n"
+					"qid Q0 three 3 1 unittest(ID:3->1)\n"
+					"qid Q0 four 4 1 unittest(ID:4->1)\n"
+					"qid Q0 five 5 1 unittest(ID:5->1)\n"
+					"qid Q0 six 6 1 unittest(ID:6->1)\n";
 
 				JASS_assert(result.str() == correct_answer);
 				puts("run_export_trec::PASSED");
