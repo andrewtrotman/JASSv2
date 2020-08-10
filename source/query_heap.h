@@ -338,7 +338,7 @@ namespace JASS
 					// CHECKED
 					std::sort(sorted_accumulators + needed_for_top_k, sorted_accumulators + top_k);
 	#elif defined(AVX512_SORT)
-// NOT CHECKED
+					// CHECKED
 					Sort512_uint64_t::Sort(sorted_accumulators + needed_for_top_k, top_k - needed_for_top_k);
 	#endif
 #else
