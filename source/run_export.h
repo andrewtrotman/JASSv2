@@ -23,9 +23,6 @@ namespace JASS
 	*/
 	/*!
 		@brief Export a run in an evaluation forum format.
-		@tparam QUERY_ID [in] the ID of the query, an alphanumeric sequence, normally a positive integer
-		@tparam QUERY [in] The type of the query, nornally a JASS::query type
-		@tparam NAME [in] the name of the run, normally a std::string or a char *
 	*/
 	class run_export
 		{

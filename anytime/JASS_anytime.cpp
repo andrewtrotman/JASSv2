@@ -236,7 +236,7 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 		/*
 			Store the results (and the time it took)
 		*/
-		output.push_back(query_id, query, results_list.str(), time_taken);
+		output.push_back(query_id, query, results_list.str(), postings_processed, time_taken);
 
 		/*
 			Re-start the timer
@@ -424,7 +424,7 @@ std::cout << "Maximum number of postings to process:" << postings_to_process << 
 	for (size_t which = 0; which < parameter_threads ; which++)
 		for (const auto &[query_id, result] : output[which])
 			{
-			stats_file << "<id>" << result.query_id << "</id><query>" << result.query << "</query><time_ns>" << result.search_time_in_ns << "</time_ns>\n";
+			stats_file << "<id>" << result.query_id << "</id><query>" << result.query << "</query><postings>" << result.postings_processed << "</postings><time_ns>" << result.search_time_in_ns << "</time_ns>\n";
 			stats.sum_of_CPU_time_in_ns += result.search_time_in_ns;
 			TREC_file << result.results_list;
 			}

@@ -163,66 +163,9 @@ namespace JASS
 						}
 				};
 
-			/*
-				CLASS QUERY::ADD_RSV_COMPARE
-				----------------------------
-			*/
-			/*!
-				@brief Functor that does the comparison (looking for a < b, if a == b then pointer compare).
-			*/
-			class add_rsv_compare
-				{
-				public:
-					/*
-						QUERY::ADD_RSV_COMPARE::OPERATOR()
-						----------------------------------
-					*/
-					/*!
-						@brief Compare value then pointer for greater, equal, less then.
-						@param a [in] first pointer.
-						@param b [in] second pointer
-						@return 1 if greater, 0 if equal, -1 is less
-					*/
-					forceinline int operator() (ACCUMULATOR_TYPE *a, ACCUMULATOR_TYPE *b) const
-						{
-						/*
-							The most likely case is that the value at a is less than the value at b so do that check first.
-						*/
-						return *a < *b ? -1 : *a > *b ? 1 : a < b ? -1 : a == b ? 0 : 1;
-						}
-				};
-			/*
-				CLASS QUERY::SORT_RSV_COMPARE
-				-----------------------------
-			*/
-			/*!
-				@brief Functor that does the comparison (looking for a > b, if a == b then pointer compare).
-			*/
-			class sort_rsv_compare
-				{
-				public:
-					/*
-						QUERY::SORT_RSV_COMPARE::OPERATOR()
-						----------------------------------
-					*/
-					/*!
-						@brief Compare value then pointer for greater, equal, less then.
-						@param a [in] first pointer.
-						@param b [in] second pointer
-						@return 1 if greater, 0 if equal, -1 is less
-					*/
-					forceinline int operator() (ACCUMULATOR_TYPE *a, ACCUMULATOR_TYPE *b) const
-						{
-						/*
-							The most likely case is that the value at a is less than the value at b so do that check first.
-						*/
-						return *a < *b ? 1 : *a > *b ? -1 : a < b ? 1 : a == b ? 0 : -1;
-						}
-				};
-
 		protected:
-			__m512i impacts512;																///< The impact score to be added on a call to add_rsv()
-			__m256i impacts256;																///< The impact score to be added on a call to add_rsv()
+			__m512i impacts512;															///< The impact score to be added on a call to add_rsv()
+			__m256i impacts256;															///< The impact score to be added on a call to add_rsv()
 			ACCUMULATOR_TYPE impact;													///< The impact score to be added on a call to add_rsv()
 			DOCID_TYPE d1_cumulative_sum;												///<< The current cumulative sum from d1 decoding
 
@@ -236,8 +179,6 @@ namespace JASS
 
 		public:
 			size_t top_k;																	///< The number of results to track.
-			add_rsv_compare cmp;															///< Comparison during addition (used to order low to high a min heap)
-			sort_rsv_compare final_sort_cmp;											///< Comparison after search (used to order high to low)
 
 		public:
 			/*
