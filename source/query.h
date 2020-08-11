@@ -7,6 +7,10 @@
 	#define QUERY_HEAP
 	#define ACCUMULATOR_STRATEGY_2D
 	#define JASS_TOPK_SORT
+
+	/*
+		On Windows the use of std::sort() appears to be the best trade-off (that is, CPP_SORT)
+	*/
 #endif
 
 /*

@@ -342,12 +342,6 @@ namespace JASS
 					Sort512_uint64_t::Sort(sorted_accumulators + needed_for_top_k, top_k - needed_for_top_k);
 	#endif
 #else
-					/*
-						On Linux, using top-k == 10 or top-k == 100, and using Gov2 and ClueWeb12-B13, std::partial_sort() is faster than either top_k_qsort::sort() or std::sort()
-						When using top-k == 1000, top_k_qsort::sort is faster than std::partial_sort() or std::sort().
-
-						On Windows, std::sort() is faster than the others when top-k == 10 or top-k == 100.  When top-k == 1000, top_k_qsort::sort is faster
-					*/
 	#ifdef JASS_TOPK_SORT
 					// CHECKED
 					top_k_qsort::sort(accumulator_pointers + needed_for_top_k, top_k - needed_for_top_k, top_k);

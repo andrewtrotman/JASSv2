@@ -79,12 +79,7 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 	std::string codex_name;
 	int32_t d_ness;
 	std::unique_ptr<JASS::compress_integer> jass_query = index.codex(codex_name, d_ness);
-#ifdef NEVER
-//	typedef JASS::query_maxblock<uint16_t, MAX_DOCUMENTS, MAX_TOP_K> QUERY_TYPE;
 	typedef JASS::query_heap QUERY_TYPE;
-//	typedef JASS::query_bucket<uint16_t, MAX_DOCUMENTS, MAX_TOP_K> QUERY_TYPE;
-//	typedef JASS::query_maxblock_heap<uint16_t, MAX_DOCUMENTS, MAX_TOP_K> QUERY_TYPE;
-#endif
 
 	try
 		{
@@ -110,7 +105,6 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 	while (query.size() != 0)
 		{
 		static const std::string seperators_between_id_and_query = " \t:";
-		output.queries_executed++;
 
 		/*
 			Extract the query ID from the query
@@ -228,16 +222,21 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 		/*
 			stop the timer
 		*/
-		output.search_time_in_ns += JASS::timer::stop(total_search_time).nanoseconds();
+		auto time_taken = JASS::timer::stop(total_search_time).nanoseconds();
 
 		/*
 			Serialise the results list (don't time this)
 		*/
+		std::ostringstream results_list;
 #if defined(ACCUMULATOR_64s) || defined(QUERY_HEAP) || defined(QUERY_MAXBLOCK_HEAP)
-		JASS::run_export(JASS::run_export::TREC, output.results_list, query_id.c_str(), *jass_query, "JASSv2", true, true);
+		JASS::run_export(JASS::run_export::TREC, results_list, query_id.c_str(), *jass_query, "JASSv2", true, true);
 #else
-		JASS::run_export(JASS::run_export::TREC, output.results_list, query_id.c_str(), *jass_query, "JASSv2", true, false);
+		JASS::run_export(JASS::run_export::TREC, results_list, query_id.c_str(), *jass_query, "JASSv2", true, false);
 #endif
+		/*
+			Store the results (and the time it took)
+		*/
+		output.push_back(query_id, query, results_list.str(), time_taken);
 
 		/*
 			Re-start the timer
@@ -417,21 +416,22 @@ std::cout << "Maximum number of postings to process:" << postings_to_process << 
 	stats.wall_time_in_ns = JASS::timer::stop(total_search_time).nanoseconds();
 
 	/*
-		Compute the per-thread stats
-	*/
-	for (size_t which = 0; which < parameter_threads ; which++)
-		stats.sum_of_CPU_time_in_ns += output[which].search_time_in_ns;
-
-	/*
-		Dump the answer
+		Compute the per-thread stats and dump the results in TREC format
 	*/
 	std::ostringstream TREC_file;
-	for (auto &result : output)
-		if ((size_t)result.results_list.tellp() != 0)
-			TREC_file << result.results_list.str();
+	std::ostringstream stats_file;
+	stats_file << "<JASSv2stats>\n";
+	for (size_t which = 0; which < parameter_threads ; which++)
+		for (const auto &[query_id, result] : output[which])
+			{
+			stats_file << "<id>" << result.query_id << "</id><query>" << result.query << "</query><time_ns>" << result.search_time_in_ns << "</time_ns>\n";
+			stats.sum_of_CPU_time_in_ns += result.search_time_in_ns;
+			TREC_file << result.results_list;
+			}
+	stats_file << "</JASSv2stats>\n";
 
-	if ((size_t)TREC_file.tellp() != 0)
-		JASS::file::write_entire_file("ranking.txt", TREC_file.str());
+	JASS::file::write_entire_file("ranking.txt", TREC_file.str());
+	JASS::file::write_entire_file("JASSv2Stats.txt", stats_file.str());
 
 	stats.total_run_time_in_ns = JASS::timer::stop(total_run_time).nanoseconds();
 	std::cout << stats;

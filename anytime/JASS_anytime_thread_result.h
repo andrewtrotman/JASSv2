@@ -12,6 +12,8 @@
 */
 #pragma once
 
+#include <map>
+
 /*
 	CLASS JASS_ANYTIME_THREAD_RESULT
 	--------------------------------
@@ -22,19 +24,94 @@
 class JASS_anytime_thread_result
 	{
 	public:
-		std::ostringstream results_list;				///< The results lists from this thread
-		size_t queries_executed;						///< The number of queries that this thread executed
-		size_t search_time_in_ns;						///< The total time this thread spent searching
-		
+		/*
+			CLASS JASS_ANYTIME_THREAD_RESULT::QUERY_DETAILS
+			-----------------------------------------------
+		*/
+		class query_details
+			{
+			public:
+				std::string query_id;				///< The query ID
+				std::string query;					///< The query
+				std::string results_list;			///< The results list
+				size_t search_time_in_ns;			///< The time it took to resolve the query
+
+			/*
+				JASS_ANYTIME_THREAD_RESULT::QUERY_DETAILS::QUERY_DETAILS()
+				----------------------------------------------------------
+			*/
+			query_details() :
+				query_id(),
+				query(),
+				results_list(),
+				search_time_in_ns(0)
+				{
+				/* Nothing */
+				}
+
+			/*
+				JASS_ANYTIME_THREAD_RESULT::QUERY_DETAILS::QUERY_DETAILS()
+				----------------------------------------------------------
+			*/
+			/*!
+				@param query_id [in] The query ID
+				@param query [in] The query
+				@param results_list [in] The results list (normally in TREC format)
+				@param search_time_in_ns [in] The time it took to resolve the query
+			*/
+			query_details(const std::string &query_id, const std::string &query, const std::string &results_list, size_t search_time_in_ns) :
+				query_id(query_id),
+				query(query),
+				results_list(results_list),
+				search_time_in_ns(search_time_in_ns)
+				{
+				/* Nothing */
+				}
+			};
+
+	public:
+		std::map<std::string, query_details> results;		///< The results from each query (keyed on the query id)
+
 	public:
 		/*
-			JASS_anytime_thread_result::JASS_anytime_thread_result()
+			JASS_ANYTIME_THREAD_RESULT::JASS_ANYTIME_THREAD_RESULT()
 			--------------------------------------------------------
 		*/
-		JASS_anytime_thread_result() :
-			queries_executed(0),
-			search_time_in_ns(0)
+		JASS_anytime_thread_result()
 			{
 			/* Nothing */
+			}
+
+		/*
+			JASS_ANYTIME_THREAD_RESULT::PUSH_BACK()
+			---------------------------------------
+		*/
+		/*!
+			@param query_id [in] The query ID
+			@param query [in] The query
+			@param results_list [in] The results list (normally in TREC format)
+			@param search_time_in_ns [in] The time it took to resolve the query
+		*/
+		void push_back(const std::string &query_id, const std::string &query, const std::string &results_list, size_t search_time_in_ns)
+			{
+			results[query_id] = query_details(query_id, query, results_list, search_time_in_ns);
+			}
+
+		/*
+			JASS_ANYTIME_THREAD_RESULT::BEGIN()
+			-----------------------------------
+		*/
+		auto begin()
+			{
+			return results.begin();
+			}
+
+		/*
+			JASS_ANYTIME_THREAD_RESULT::END()
+			---------------------------------
+		*/
+		auto end()
+			{
+			return results.end();
 			}
 	};
