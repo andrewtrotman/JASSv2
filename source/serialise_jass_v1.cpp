@@ -220,7 +220,7 @@ namespace JASS
 		switch (codex)
 			{
 			case elias_gamma_simd_vb:
-				name = "Group Elias Delta SIMD with Variable Byte";
+				name = "Group Elias Gamma SIMD with Variable Byte";
 				break;
 			case serialise_jass_v1::jass_v1_codex::elias_delta_simd:
 				name = "Group Elias Delta SIMD";
