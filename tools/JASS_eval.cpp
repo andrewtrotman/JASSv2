@@ -29,6 +29,7 @@
 #include "evaluate_rank_biased_precision.h"
 #include "evaluate_mean_reciprocal_rank4k.h"
 #include "evaluate_expected_search_length.h"
+#include "evaluate_price_based_normalized_discounted_cumulative_gain.h"
 
 #ifdef _MSC_VER
 	#define strtok_r strtok_s
@@ -111,6 +112,7 @@ enum metric_index
 	SELLING_POWER,								///< selling power (if we are an eCommerce metric).
 	BUYING_POWER,								///< buying power (if we are an eCommerce metric).
 	BUYING_POWER4K,							///< buying power for K results (if we are an eCommerce metric).
+	PRICE_BASED_NORMALIZED_DISCOUNTED_CUMULATIVE_GAIN,		///< priced based normalized discounted cumulative gain (if we are an eCommerce metric).
 	METRICS_SENTINAL 		// MUST BE LAST. DO NOT MOVE
 	};
 
@@ -161,6 +163,7 @@ const std::vector<std::string> metric_name =
 	"Selling Power (SP)",
 	"Buying Power (BP)",
 	"Buying Power for k (BP4K)",
+	"Price Based Normalized Discounted Cumulative Gain (PBnDCG)",
 	"SENTINAL"
 	};
 
@@ -235,12 +238,14 @@ class metric_set
 			@param selling_power [in] The selling power of this query.
 			@param buying_power [in] The buying power of this query.
 			@param buying_power4k [in] The buying power for k relevant of this query.
+			@param price_based_normalized_discounted_cumulative_gain [in] The price based nDCG of this query.
 		*/
 		metric_set(const std::string &run_id, const std::string &query_id, size_t relevant_count, size_t returned, size_t relevant_returned, double mean_reciprocal_rank, double mean_reciprocal_rank_4k, double precision, double recall, double expected_search_length, double f1,
 			double p_at_5, double p_at_10, double p_at_15, double p_at_20, double p_at_30, double p_at_100, double p_at_200, double p_at_500, double p_at_1000,
 			double r_at_5, double r_at_10, double r_at_15, double r_at_20, double r_at_30, double r_at_100, double r_at_200, double r_at_500, double r_at_1000,
 			double f1_at_5, double f1_at_10, double f1_at_15, double f1_at_20, double f1_at_30, double f1_at_100, double f1_at_200, double f1_at_500, double f1_at_1000,
-			double mean_average_precision, double rank_biased_precision, double cheapest_precision, double selling_power, double buying_power, double buying_power4k) :
+			double mean_average_precision, double rank_biased_precision, double cheapest_precision, double selling_power, double buying_power, double buying_power4k,
+			double price_based_normalized_discounted_cumulative_gain) :
 			run_id(run_id),
 			query_id(query_id)
 			{
@@ -288,6 +293,7 @@ class metric_set
 			metric[SELLING_POWER] = selling_power;
 			metric[BUYING_POWER] = buying_power;
 			metric[BUYING_POWER4K] = buying_power4k;
+			metric[PRICE_BASED_NORMALIZED_DISCOUNTED_CUMULATIVE_GAIN] = price_based_normalized_discounted_cumulative_gain;
 			}
 
 		/*
@@ -881,6 +887,7 @@ metric_set evaluate_query(const std::string &run_id, const std::string &query_id
 	double buying_power = 0;
 	double buying_power4k = 0;
 	double selling_power = 0;
+	double price_based_normalized_discounted_cumulative_gain = 0;
 
 	if (gold_standard_price->assessments.size() != 0)
 		{
@@ -895,13 +902,16 @@ metric_set evaluate_query(const std::string &run_id, const std::string &query_id
 
 		JASS::evaluate_selling_power selling_power_computer(gold_standard_price, gold_standard_assessments);
 		selling_power = selling_power_computer.compute(query_id, results_list, depth);
+
+		JASS::evaluate_price_based_normalized_discounted_cumulative_gain price_based_normalized_discounted_cumulative_gain_computer(gold_standard_price, gold_standard_assessments);
+		price_based_normalized_discounted_cumulative_gain = price_based_normalized_discounted_cumulative_gain_computer.compute(query_id, results_list, depth);
 		}
 
 	return metric_set(run_id, query_id, number_of_relvant_assessments, returned, relevant_returned, mrr, mrr4k, precision, recall, esl, f1,
 		p5, p10, p15, p20, p30, p100, p200, p500, p1000,
 		r5, r10, r15, r20, r30, r100, r200, r500, r1000,
 		f1_5, f1_10, f1_15, f1_20, f1_30, f1_100, f1_200, f1_500, f1_1000,
-		map, rbp, cheapest_precision, selling_power, buying_power, buying_power4k);
+		map, rbp, cheapest_precision, selling_power, buying_power, buying_power4k, price_based_normalized_discounted_cumulative_gain);
 	}
 
 /*

@@ -107,6 +107,7 @@
 #include "compress_integer_bitpack_32_reduced.h"
 #include "compress_integer_elias_gamma_bitwise.h"
 #include "compress_integer_elias_delta_bitwise.h"
+#include "evaluate_price_based_normalized_discounted_cumulative_gain.h"
 
 /*
 	MAIN()
@@ -280,6 +281,9 @@ int main(void)
 
 		puts("evaluate_rank_biased_precision");
 		JASS::evaluate_rank_biased_precision::unittest();
+
+		puts("evaluate_price_based_normalized_discounted_cumulative_gain");
+		JASS::evaluate_price_based_normalized_discounted_cumulative_gain::unittest();
 
 		puts("bitstring");
 		JASS::bitstring::unittest();
