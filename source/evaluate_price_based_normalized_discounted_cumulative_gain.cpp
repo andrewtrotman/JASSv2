@@ -53,11 +53,6 @@ namespace JASS
 		std::sort(query_prices.begin(), query_prices.end());
 
 		/*
-			If there are fewer then top_k relevant items then reduce k
-		*/
-		size_t query_depth = maths::minimum(query_prices.size(), depth);
-
-		/*
 			Make up the exponential bins which form the basis of the nDCG "judgments"
 		*/
 
@@ -71,7 +66,7 @@ namespace JASS
 			Only includes the start boundary. Use 'i < no_bins + 1' to include end of range
 		*/
 		for (int i = 0; i < no_bins; i++) {
-			double boundary = lowest_price + price_range * ((1 - exp(i)) / (1 - exp(no_bins))); 
+			double boundary = lowest_price + price_range * ((1 - exp(i)) / (1 - exp(no_bins)));
 			bins.push_back(boundary);
 		}
 
@@ -96,8 +91,11 @@ namespace JASS
 			double relevancy_score = no_bins + 1 - bin_no;
 			ideal_dcg += relevancy_score / log2(which + 2);
 
+			/*
+				Have we exceeded the search depth?
+			*/
 			which++;
-			if (which >= query_depth)
+			if (which >= depth)
 				break;
 			}
 
@@ -128,11 +126,13 @@ namespace JASS
 
 				double relevancy_score = no_bins + 1 - bin_no;
 				results_dcg += relevancy_score / log2(which + 2);
-
-				which++;
-				if (which >= query_depth)
-					break;
 				}
+			/*
+				Have we exceeded the search depth?
+			*/
+			which++;
+			if (which >= depth)
+				break;
 			}
 
 		double ndcg = results_dcg / ideal_dcg;
@@ -192,14 +192,19 @@ namespace JASS
 		/*
 			Compare to 5 decimal places
 		*/
-		double true_precision_one = 0;		// 0 because there is 1 relevant item so the effective depth is 1 and result[1] is not relevant
+		double dcg_one = 5 / log2(1 + 2);		// Only one bin. Result at second rank
+		double ideal_dcg_one = 5 / log2(0 + 2);		// Only one bin. Result at rank 1
+		double true_precision_one = dcg_one / ideal_dcg_one;	// 0.63093
+		std::cout << calculated_precision << " " << true_precision_one << std::endl;
 		JASS_assert(std::round(calculated_precision * 10000) == std::round(true_precision_one * 10000));
 
 		/*
 			Evaluate the second results list and check the result to 5 decimal places
 		*/
 		calculated_precision = calculator.compute("2", results_list_two, 5);
-		double true_precision_two = 2.0 / 3.0;
+		double dcg_two = 5 / log2(1 + 2) + 1 / log2(2 + 2) + 1 / log2(3 + 2); // Price relevance 5, 1, 1. Positions 2, 3, 4
+		double ideal_dcg_two = 5 / log2(0 + 2) + 1 / log2(1 + 2) + 1 / log2(2 + 2); // Price relevance 5, 1, 1. Position 1, 2, 3
+		double true_precision_two = dcg_two / ideal_dcg_two; // 0.66635
 		JASS_assert(std::round(calculated_precision * 10000) == std::round(true_precision_two * 10000));
 
 		puts("evaluate_price_based_normalized_discounted_cumulative_gain::PASSED");
