@@ -58,8 +58,6 @@ namespace JASS
 
 		double lowest_price = query_prices[0];
 
-		std::cout << "lowest_price " << lowest_price << std::endl;
-
 		/*
 			Compute the ideal vector
 		*/
@@ -67,7 +65,6 @@ namespace JASS
 		size_t which = 0;
 		for (const auto &query_price : query_prices)
 			{
-			std::cout << "query_price " << query_price << std::endl;
 			ideal_dcg += lowest_price / query_price / log2(which + 2);
 
 			/*
@@ -102,7 +99,6 @@ namespace JASS
 				break;
 			}
 
-		std::cout << "n " << ideal_dcg << " " << results_dcg << std::endl;
 		double ndcg = results_dcg / ideal_dcg;
 		return ndcg;
 		}
