@@ -195,7 +195,6 @@ namespace JASS
 		double dcg_one = 5 / log2(1 + 2);		// Only one bin. Result at second rank
 		double ideal_dcg_one = 5 / log2(0 + 2);		// Only one bin. Result at rank 1
 		double true_precision_one = dcg_one / ideal_dcg_one;	// 0.63093
-		std::cout << calculated_precision << " " << true_precision_one << std::endl;
 		JASS_assert(std::round(calculated_precision * 10000) == std::round(true_precision_one * 10000));
 
 		/*
