@@ -108,6 +108,7 @@
 #include "compress_integer_elias_gamma_bitwise.h"
 #include "compress_integer_elias_delta_bitwise.h"
 #include "evaluate_price_based_normalized_discounted_cumulative_gain.h"
+#include "evaluate_buying_power_normalized_discounted_cumulative_gain.h"
 
 /*
 	MAIN()
@@ -284,6 +285,9 @@ int main(void)
 
 		puts("evaluate_price_based_normalized_discounted_cumulative_gain");
 		JASS::evaluate_price_based_normalized_discounted_cumulative_gain::unittest();
+
+		puts("evaluate_buying_power_normalized_discounted_cumulative_gain");
+		JASS::evaluate_buying_power_normalized_discounted_cumulative_gain::unittest();
 
 		puts("bitstring");
 		JASS::bitstring::unittest();
