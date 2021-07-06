@@ -95,6 +95,7 @@
 #include "compress_integer_carryover_12.h"
 #include "evaluate_rank_biased_precision.h"
 #include "compress_integer_variable_byte.h"
+#include "instream_document_unicoil_json.h"
 #include "accumulator_counter_interleaved.h"
 #include "evaluate_mean_reciprocal_rank4k.h"
 #include "evaluate_expected_search_length.h"
@@ -135,6 +136,9 @@ int main(void)
 	try
 		{
 		JASS::hardware_support hardware;
+
+		puts("instream_document_unicoil_json");
+		JASS::instream_document_unicoil_json::unittest();
 
 		puts("compress_integer_elias_gamma_simd_vb");
 		JASS::compress_integer_elias_gamma_simd_vb::unittest();

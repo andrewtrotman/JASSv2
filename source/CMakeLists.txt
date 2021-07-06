@@ -152,6 +152,8 @@ set(JASSlib_FILES
 	instream_document_fasta.cpp
 	instream_document_trec.h
 	instream_document_trec.cpp
+	instream_document_unicoil_json.h
+	instream_document_unicoil_json.cpp
 	instream_document_warc.h
 	instream_document_warc.cpp
 	instream_file.h

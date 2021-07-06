@@ -76,6 +76,7 @@ namespace JASS
 					We can only return alpha tokens or eof tokens so set the token type here to alpha
 				*/
 				current_token.type = current_token.alpha;
+				current_token.count = 1;
 				}
 			
 			/*

@@ -69,7 +69,6 @@ auto command_line_parameters = std::make_tuple
 	JASS::commandline::note("\nTERM PROCESSING\n---------------"),
 	JASS::commandline::parameter("-tp", "--term_steming_porter", "Term stemming with Porter v1 (JASS implementation)", parameter_stem_porter),
 
-
 	JASS::commandline::note("\nINDEX GENERATION\n----------------"),
 	JASS::commandline::parameter("-I1", "--index_jass_v1", "Generate a JASS version 1 index.", parameter_jass_v1_index),
 	JASS::commandline::parameter("-Ib", "--index_binary", "Generate a binary dump of just the postings segments.", parameter_uint32_index),
@@ -157,7 +156,7 @@ int main(int argc, const char *argv[])
 			);
 
 	/*
-		set up the stemmer
+		Set up the stemmer
 	*/
 	JASS::stem *stem = nullptr;
 	if (parameter_stem_porter)

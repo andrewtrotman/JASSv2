@@ -407,7 +407,7 @@ namespace JASS
 		stem_porter stemmer;
 		char result[1024];
 
-		for (const auto example : test_data)
+		for (const auto &example : test_data)
 			{
 			stemmer.tostem(result, example.first.c_str(), example.first.size());
 			JASS_assert(result == example.second);

@@ -17,6 +17,7 @@
 
 #include "slice.h"
 #include "document.h"
+#include "index_postings_impact.h"
 
 namespace JASS
 	{
@@ -80,9 +81,10 @@ namespace JASS
 					static constexpr size_t max_token_length = 1024;		///< Any token longer that this will be truncated at this length
 
 				public:
-					uint8_t buffer[max_token_length];	///< The token manages its memory through this buffer
-					slice lexeme;								///< The token itself, stored as a slice (pointer / length pair)
-					token_type type;							///< The type of this token (See token_type)
+					uint8_t buffer[max_token_length];				///< The token manages its memory through this buffer
+					slice lexeme;											///< The token itself, stored as a slice (pointer / length pair)
+					token_type type;										///< The type of this token (See token_type)
+					index_postings_impact::impact_type count;		///< The number of times the token is seen (normally 1, but if parsing a forward index it might be known to be larget).
 
 				public:
 					/*
@@ -110,6 +112,7 @@ namespace JASS
 						*buffer = '\0';
 						lexeme = term;
 						type = other;
+						count = 1;
 						}
 				};
 
@@ -164,6 +167,7 @@ namespace JASS
 				the_document = NULL;
 				end_of_document = NULL;
 				eof_token.type =  token::eof;
+				current_token.count = 1;			// We're generating a stream of individual tokens, so each all counts are 1.
 				}
 			
 			/*

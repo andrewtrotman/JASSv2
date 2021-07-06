@@ -104,9 +104,14 @@ namespace JASS
 				---------------------------
 			*/
 			/*!
-				@brief Add to the end of the postings list.
+				@brief Add to the end of the postings list for this term a term frequency of the given amount.
+				@param document_id [in] The document whose term count is to be incremented.
+				@param amount [in] The amount to add to the score.  default = 1.
+				@details The amount is generally not useful unless pre-computed term frequencies (or impact scores) are known in advance.  This might
+				happen if a forward index is being inverted (i.e. term:count values are known).
+
 			*/
-			virtual void push_back(JASS::compress_integer::integer document_id)
+			virtual void push_back(JASS::compress_integer::integer document_id, index_postings_impact::impact_type amount = 1)
 				{
 				if (document_id == highest_document)
 					{
@@ -114,8 +119,12 @@ namespace JASS
 						If this is the second or subseqent occurrence then just add 1 to the term frequency (and make sure it doesn't overflow).
 					*/
 					index_postings_impact::impact_type &frequency = term_frequencies.back();
-					if (frequency < index_postings_impact::largest_impact)
-						frequency++;			// cppcheck produces a false positive "Variable 'frequency' is modified but its new value is never used." - it looks like it doesn't fully understand that frequency is a reference.
+
+
+					if (index_postings_impact::largest_impact - frequency > amount)			// that is, without overflow: if (frequency + amount < index_postings_impact::largest_impact)
+						frequency += amount;			// cppcheck produces a false positive "Variable 'frequency' is modified but its new value is never used." - it looks like it doesn't fully understand that frequency is a reference.
+					else
+						frequency = index_postings_impact::largest_impact;
 					}
 				else
 					{
@@ -132,7 +141,7 @@ namespace JASS
 
 					for (uint8_t *byte = space; byte < ending; byte++)
 						document_ids.push_back(*byte);
-					term_frequencies.push_back(1);
+					term_frequencies.push_back(amount);
 
 					highest_document = document_id;
 					}

@@ -230,7 +230,7 @@ namespace JASS
 			*/
 			virtual void term(const parser::token &term)
 				{
-				index[term.lexeme].push_back(get_highest_document_id());
+				index[term.lexeme].push_back(get_highest_document_id(), term.count);
 				}
 
 			/*
