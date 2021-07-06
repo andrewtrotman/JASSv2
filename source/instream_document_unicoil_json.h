@@ -55,7 +55,7 @@ namespace JASS
 			instream_document_unicoil_json(std::shared_ptr<instream> &source) :
 				instream(source)
 				{
-				buffer_size = 56;
+				buffer_size = 1024 * 1024;
 				buffer.resize(buffer_size);
 				buffer_start = &buffer[0];
 				size_t bytes = source->fetch(&buffer[0], buffer_size);

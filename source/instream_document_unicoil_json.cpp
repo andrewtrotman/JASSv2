@@ -123,7 +123,7 @@ namespace JASS
 			An example JSON file
 		*/
 		std::string example_file =
-			"{\"id\": \"0\", \"contents\": \"The.\", \"vector\": {\"the\": 94}}"
+			"{\"id\": \"0\", \"contents\": \"The.\", \"vector\": {\"the\": 94}}\n\n"
 			"{\"id\": \"1\", \"contents\": \"id\", \"vector\": {\"id\": 101}}";
 
 		/*
