@@ -169,6 +169,8 @@ set(JASSlib_FILES
 	parser_fasta.cpp
 	parser_query.h
 	parser_query.cpp
+	parser_unicoil_json.h
+	parser_unicoil_json.cpp
 	pointer_box.h
 	posting.h
 	quantize.h
