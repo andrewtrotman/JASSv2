@@ -32,7 +32,7 @@
 #include "serialise_forward_index.h"
 #include "index_manager_sequential.h"
 #include "ranking_function_atire_bm25.h"
-
+#include "instream_document_unicoil_json.h"
 /*
 	Declare the command line parameters
 */
@@ -49,6 +49,9 @@ size_t parameter_fasta_kmer_length = 0;
 
 bool parameter_stem_porter = false;
 
+bool parameter_document_format_trec = true;
+bool parameter_document_format_JSON_uniCOIL = false;
+
 auto command_line_parameters = std::make_tuple
 	(
 	JASS::commandline::note("\nMISCELLANEOUS\n-------------"),
@@ -62,6 +65,10 @@ auto command_line_parameters = std::make_tuple
 
 	JASS::commandline::note("\nFILE HANDLING\n-------------"),
 	JASS::commandline::parameter("-f", "--filename", "<filename> Filename to index.", parameter_filename),
+
+	JASS::commandline::note("\nDOCUMENT FORMATS\n-------------"),
+	JASS::commandline::parameter("-dt",  "--document_TREC", "TREC format: <DOC><DOCNO></DOCNO></DOC> formatted documents (default)", parameter_document_format_trec),
+	JASS::commandline::parameter("-djc", "--document_JSON_uniCOIL", "JSON uniCOIL forward index format: {\"id\": \"0\", \"vector\": {\"term\": 94 }}", parameter_document_format_JSON_uniCOIL),
 
 	JASS::commandline::note("\nCOMPATIBILITY\n-------------"),
 	JASS::commandline::parameter("-A", "--atire", "ATIRE-like parsing (errors and all)", parameter_atire_similar),
@@ -77,6 +84,19 @@ auto command_line_parameters = std::make_tuple
 	JASS::commandline::parameter("-IF", "--index_FASTA", "<k> Generate a k-mer index from FASTA documents.", parameter_fasta_kmer_length)
 	);
 
+
+/*
+	ENUM DOCUMENT_FORMAT
+	--------------------
+*/
+enum document_format
+	{
+	NONE,
+	TREC,
+	K_MER,
+	JSON_uniCOIL
+	};
+
 /*
 	USAGE()
 	-------
@@ -85,6 +105,28 @@ uint8_t usage(const std::string &exename)
 	{
 	std::cout << JASS::commandline::usage(exename, command_line_parameters) << "\n";
 	return 1;
+	}
+
+/*
+	GET_DOCUMENT_FORMAT()
+	---------------------
+*/
+document_format get_document_format()
+	{
+	if
+		(
+		parameter_fasta_kmer_length != 0 &&
+		parameter_document_format_JSON_uniCOIL
+		)
+		return document_format::NONE;
+
+
+	if (parameter_fasta_kmer_length != 0)
+		return document_format::K_MER;
+	else if (parameter_document_format_JSON_uniCOIL)
+		return document_format::JSON_uniCOIL;
+	else
+		return document_format::TREC;
 	}
 
 /*
@@ -103,6 +145,13 @@ int main(int argc, const char *argv[])
 	if (!success)
 		{
 		std::cout << error;
+		exit(1);
+		}
+
+	document_format format = get_document_format();
+	if (format == NONE)
+		{
+		std::cout << argv[0] << "only one input format at a time";
 		exit(1);
 		}
 
@@ -135,25 +184,35 @@ int main(int argc, const char *argv[])
 		std::cout << "filename needed";
 
 	/*
-		Either we're a regular text parser of a FASTA k-mer parser
+		Set up the parser
 	*/
-	std::shared_ptr<JASS::parser> parser_ptr(
-		parameter_fasta_kmer_length == 0 ?
-			(JASS::parser *)new JASS::parser()
-		:
-			(JASS::parser *)new JASS::parser_fasta(parameter_fasta_kmer_length));
-	JASS::parser &parser = *parser_ptr;
+	JASS::parser *parser;
+	switch (format)
+		{
+		case TREC:
+			parser = new JASS::parser();
+			break;
+		case K_MER:
+			parser = new JASS::parser_fasta(parameter_fasta_kmer_length);
+			break;
+		case JSON_uniCOIL:
+		default:
+			std::cout << "Unknown parser type";
+			break;
+		}
 
 	/*
 		Set up the input pipeline
 	*/
 	std::shared_ptr<JASS::instream> file(new JASS::instream_file(parameter_filename));
+
 	std::shared_ptr<JASS::instream> source(
-		parameter_fasta_kmer_length == 0 ?
-			(JASS::instream *)new JASS::instream_document_trec(file)
-		:
-			(JASS::instream *)new JASS::instream_document_fasta(file)
-			);
+		format == K_MER ?
+			(JASS::instream *)new JASS::instream_document_fasta(file) :
+		format == JSON_uniCOIL ?
+			(JASS::instream *)new JASS::instream_document_unicoil_json(file) :
+		(JASS::instream *)new JASS::instream_document_trec(file)
+		);
 
 	/*
 		Set up the stemmer
@@ -198,7 +257,7 @@ int main(int argc, const char *argv[])
 		/*
 			parse the current document
 		*/
-		parser.set_document(document);
+		parser->set_document(document);
 		index.begin_document(document.primary_key);
 
 		/*
@@ -208,7 +267,7 @@ int main(int argc, const char *argv[])
 		JASS::compress_integer::integer document_length = 0;				// measured in terms
 		do
 			{
-			auto &token = const_cast<JASS::parser::token &>(parser.get_next_token());
+			auto &token = const_cast<JASS::parser::token &>(parser->get_next_token());
 			
 			switch (token.type)
 				{
@@ -289,6 +348,8 @@ int main(int argc, const char *argv[])
 	std::cout << "Serialise time   :" << serialise_time << "ns (" << serialise_time / 1000000000 << " seconds)\n";
 	std::cout << "=================\n";
 	std::cout << "Total time       :" << time_to_end << "ns (" << time_to_end / 1000000000 << " seconds)\n";
+
+	delete parser;
 
 	/*
 		Done.

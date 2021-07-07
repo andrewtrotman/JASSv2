@@ -60,6 +60,7 @@
 #include "serialise_integers.h"
 #include "evaluate_precision.h"
 #include "instream_file_star.h"
+#include "parser_unicoil_json.h"
 #include "query_maxblock_heap.h"
 #include "accumulator_counter.h"
 #include "compress_integer_all.h"
@@ -109,6 +110,7 @@
 #include "compress_integer_elias_gamma_bitwise.h"
 #include "compress_integer_elias_delta_bitwise.h"
 
+
 /*
 	MAIN()
 	------
@@ -136,6 +138,9 @@ int main(void)
 	try
 		{
 		JASS::hardware_support hardware;
+
+		puts("parser_unicoil_json::unittest");
+		JASS::parser_unicoil_json::unittest();
 
 		puts("instream_document_unicoil_json");
 		JASS::instream_document_unicoil_json::unittest();

@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include <memory>
+#include <algorithm>
 
 #include "ascii.h"
 #include "instream_memory.h"
