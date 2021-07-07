@@ -72,7 +72,7 @@ namespace JASS
 				-------------------------------------
 			*/
 			/*!
-				@brief Continue parsing the input looking for the next token.
+				@brief Continue parsing the input looking for the next token.  Note that the definition of token here is no the normal JASS definition, ##term (and worse) are considered tokens!
 				@return A reference to a token object that is valid until either the next call to get_next_token() or the parser is destroyed.
 			*/
 			virtual const class parser::token &get_next_token(void)
@@ -94,17 +94,19 @@ namespace JASS
 				*/
 				while (current < end_of_document)
 					{
-					if (unicode::isalpha(*current))
+					if (*current == '"')
 						break;
 					current++;
 					}
+
+				current++;
 
 				/*
 					Copy the term to the token buffer
 				*/
 				while (current < end_of_document)
 					{
-					if (!unicode::isalpha(*current))
+					if (*current == '"')
 						break;
 					if (buffer_pos < buffer_end)
 						*buffer_pos++ = *current;
@@ -130,7 +132,7 @@ namespace JASS
 					current++;
 					}
 
-				const uint8_t *count_finish = current - 1;
+				const uint8_t *count_finish = current;
 
 				/*
 					Construct a token object

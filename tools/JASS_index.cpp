@@ -24,9 +24,11 @@
 #include "serialise_ci.h"
 #include "instream_file.h"
 #include "instream_memory.h"
+#include "instream_deflate.h"
 #include "compress_integer.h"
 #include "serialise_jass_v1.h"
 #include "serialise_integers.h"
+#include "parser_unicoil_json.h"
 #include "instream_document_trec.h"
 #include "instream_document_fasta.h"
 #include "serialise_forward_index.h"
@@ -196,8 +198,11 @@ int main(int argc, const char *argv[])
 			parser = new JASS::parser_fasta(parameter_fasta_kmer_length);
 			break;
 		case JSON_uniCOIL:
+			parser = new JASS::parser_unicoil_json();
+			break;
 		default:
 			std::cout << "Unknown parser type";
+			exit(1);
 			break;
 		}
 
@@ -205,14 +210,28 @@ int main(int argc, const char *argv[])
 		Set up the input pipeline
 	*/
 	std::shared_ptr<JASS::instream> file(new JASS::instream_file(parameter_filename));
+	JASS::instream *data_source;
+	switch (format)
+		{
+		case TREC:
+			data_source = new JASS::instream_document_trec(file);
+			break;
+		case K_MER:
+			data_source = new JASS::instream_document_fasta(file);
+			break;
+		case JSON_uniCOIL:
+			{
+			std::shared_ptr<JASS::instream> deflater(new JASS::instream_deflate(file));
+			data_source = new JASS::instream_document_unicoil_json(deflater);
+			break;
+			}
+		default:
+			std::cout << "Unknown parser type";
+			exit(1);
+			break;
+		}
 
-	std::shared_ptr<JASS::instream> source(
-		format == K_MER ?
-			(JASS::instream *)new JASS::instream_document_fasta(file) :
-		format == JSON_uniCOIL ?
-			(JASS::instream *)new JASS::instream_document_unicoil_json(file) :
-		(JASS::instream *)new JASS::instream_document_trec(file)
-		);
+	std::shared_ptr<JASS::instream> source(data_source);
 
 	/*
 		Set up the stemmer
@@ -247,6 +266,7 @@ int main(int argc, const char *argv[])
 		source->read(document);
 		if (document.isempty())
 			break;
+
 		total_documents++;
 		if (total_documents % parameter_report_every_n == 0)
 			{
@@ -268,7 +288,7 @@ int main(int argc, const char *argv[])
 		do
 			{
 			auto &token = const_cast<JASS::parser::token &>(parser->get_next_token());
-			
+
 			switch (token.type)
 				{
 				case JASS::parser::token::eof:

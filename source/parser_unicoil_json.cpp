@@ -35,25 +35,13 @@ namespace JASS
 		/*
 			Get as many tokens as it'll return until we reach eof, checking each one for correctness
 		*/
-		size_t count = 0;
-		parser::token::token_type type;
-		do
-			{
-			const auto &token = tokenizer.get_next_token();
+		const auto &token1 = tokenizer.get_next_token();
+		const auto &token2 = tokenizer.get_next_token();
+		const auto &token3 = tokenizer.get_next_token();
 
-			if (token.type != token::eof)
-				{
-				std::cout << token.get() << ' ' <<  token.count << '\n';
-				}
-			count++;
-			type = token.type;
-			}
-		while (type != token::eof);
-
-		/*
-			make sure we got the right number of tokens
-		*/
-		JASS_assert(count == 2);
+		JASS_assert(token1.count == 94);
+		JASS_assert(token2.count == 101);
+		JASS_assert(token3.type == token::eof);
 
 		/*
 			Success

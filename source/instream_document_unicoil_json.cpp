@@ -14,7 +14,7 @@
 static const char *start_of_document = "{\"id\":";
 static const char *document_id_marker = "\"id\": \"";
 static const char *vector_marker = "\"vector\": {";
-static const char *end_of_document = "}}";
+static const char *end_of_document = "}}\n";
 
 namespace JASS
 	{
@@ -36,7 +36,7 @@ namespace JASS
 			{
 			doc_start = std::search(buffer_start, buffer_end, start_of_document, start_of_document + 6);
 			docid_start = std::search(buffer_start, buffer_end, document_id_marker, document_id_marker + 7);
-			doc_end = std::search(buffer_start, buffer_end, end_of_document, end_of_document + 2);
+			doc_end = std::search(buffer_start, buffer_end, end_of_document, end_of_document + 3);
 
 			if (doc_end == buffer_end)
 				{

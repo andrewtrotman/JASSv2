@@ -140,7 +140,7 @@ target_link_libraries(unittest JASSlib ${ZLIB_STATIC_LIB} ${ZSTD_STATIC_LIB} ${C
 # build the indexer
 #
 add_executable(JASS_index tools/JASS_index.cpp)
-target_link_libraries(JASS_index JASSlib ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(JASS_index JASSlib ${ZLIB_STATIC_LIB} ${CMAKE_THREAD_LIBS_INIT})
 
 #
 # build the compiled_indexes stubs

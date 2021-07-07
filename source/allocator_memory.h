@@ -39,9 +39,6 @@ namespace JASS
 				buffer((uint8_t *)buffer)
 				{
 				allocated = length;
-				/*
-					Nothing
-				*/
 				}
 
 			/*

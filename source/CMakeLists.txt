@@ -156,6 +156,8 @@ set(JASSlib_FILES
 	instream_document_unicoil_json.cpp
 	instream_document_warc.h
 	instream_document_warc.cpp
+	instream_deflate.h
+	instream_deflate.cpp
 	instream_file.h
 	instream_file.cpp
 	instream_file_star.h
