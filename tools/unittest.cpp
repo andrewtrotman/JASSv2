@@ -83,6 +83,7 @@
 #include "evaluate_cheapest_precision.h"
 #include "compress_integer_bitpack_64.h"
 #include "ranking_function_atire_bm25.h"
+#include "instream_directory_iterator.h"
 #include "compress_integer_elias_gamma.h"
 #include "compress_integer_elias_delta.h"
 #include "compress_integer_bitpack_128.h"
@@ -110,7 +111,6 @@
 #include "compress_integer_elias_gamma_bitwise.h"
 #include "compress_integer_elias_delta_bitwise.h"
 
-
 /*
 	MAIN()
 	------
@@ -128,7 +128,7 @@ int main(void)
  	/*
  		Output basic statistics about the machine we're running on.
  	*/
- 	std::cout << JASS::hardware_support();
+// 	std::cout << JASS::hardware_support();
 
 	/*
 		Test the JASS classes
@@ -138,6 +138,9 @@ int main(void)
 	try
 		{
 		JASS::hardware_support hardware;
+
+//		puts("instream_directory_iterator");
+//		JASS::instream_directory_iterator::unittest();
 
 		puts("parser_unicoil_json::unittest");
 		JASS::parser_unicoil_json::unittest();

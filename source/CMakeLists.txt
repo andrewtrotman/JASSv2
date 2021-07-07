@@ -148,6 +148,8 @@ set(JASSlib_FILES
 	index_postings.h
 	index_postings_impact.h
 	instream.h
+	instream_directory_iterator.h
+	instream_directory_iterator.cpp
 	instream_document_fasta.h
 	instream_document_fasta.cpp
 	instream_document_trec.h

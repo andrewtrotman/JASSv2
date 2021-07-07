@@ -61,7 +61,10 @@ namespace JASS
 			/*!
 				@brief Destructor.
 			*/
-			virtual ~instream_file() {};
+			virtual ~instream_file()
+				{
+				/* Nothing */
+				}
 
 			/*
 				INSTREAM_FILE::READ()
