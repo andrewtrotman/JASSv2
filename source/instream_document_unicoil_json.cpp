@@ -50,7 +50,6 @@ namespace JASS
 					*/
 					size_t bytes_in_use = buffer_end - buffer_start;
 					size_t bytes_remaining = buffer_size - bytes_in_use;
-					size_t bytes_to_read = buffer_size + bytes_remaining;
 
 					if (bytes_in_use != 0)
 						{
@@ -61,9 +60,11 @@ namespace JASS
 						buffer.resize(buffer_size);		// create space and move the old contents into the new space
 						buffer_start = &buffer[0];
 						buffer_end = &buffer[0] + bytes_in_use;
+
+						bytes_remaining += buffer_size;
 						}
 
-					size_t bytes = source->fetch((void *)buffer_end, bytes_to_read);
+					size_t bytes = source->fetch((void *)buffer_end, bytes_remaining);
 					doc_end = buffer_end += bytes;
 
 					/*
@@ -81,9 +82,16 @@ namespace JASS
 						We're not at the start of the buffer so move the remaining data and go to the start of the buffer
 					*/
 					memmove(&buffer[0], buffer_start, buffer_end - buffer_start);
-					size_t gap = buffer_end - buffer_start;
+					size_t bytes_in_use = buffer_end - buffer_start;
+					size_t bytes_remaining = buffer_size - bytes_in_use;
 					buffer_start = &buffer[0];
-					doc_end = buffer_end = buffer_start + gap;
+					doc_end = buffer_end = buffer_start + bytes_in_use;
+
+					/*
+						Now fill the remainder of the buffer
+					*/
+					size_t bytes = source->fetch((void *)buffer_end, bytes_remaining);
+					doc_end = buffer_end += bytes;
 					}
 				}
 			}
