@@ -75,7 +75,7 @@ namespace JASS
 			/*!
 				@brief Destructor
 			*/
-			~quantize()
+			virtual ~quantize()
 				{
 //				std::cout << "RSVmin:" << smallest_rsv << '\n';
 //				std::cout << "RSVmax:" << largest_rsv << '\n';

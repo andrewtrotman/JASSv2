@@ -178,6 +178,7 @@ set(JASSlib_FILES
 	pointer_box.h
 	posting.h
 	quantize.h
+	quantize_none.h
 	query.h
 	query_bucket.h
 	query_heap.h

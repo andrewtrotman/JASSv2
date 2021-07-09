@@ -7,6 +7,8 @@
 #include <string.h>
 
 #include "assert.h"
+#include "instream_file.h"
+#include "instream_deflate.h"
 #include "instream_directory_iterator.h"
 
 namespace JASS
@@ -16,7 +18,8 @@ namespace JASS
 		----------------------------------------------------------
 	*/
 	instream_directory_iterator::instream_directory_iterator(const std::string &directory_name) :
-		source(directory_name)
+		source(directory_name),
+		reader(nullptr)
 		{
 		current = begin(source);
 		last = end(source);
@@ -27,20 +30,53 @@ namespace JASS
 		-----------------------------------
 	*/
 	void instream_directory_iterator::read(document &document)
-	{
-#ifdef NEVER
-	if (reader == nullptr)
-
-	std::shared_ptr<JASS::instream> deflater(new JASS::instream_deflate(file));
-	data_source = new JASS::instream_document_unicoil_json(deflater);
-
-#endif
-	if (current != last)
 		{
-		std::cout << current->path() << "\n";
-		current++;
+		/*
+			Is this the first time this method is called?
+		*/
+		if (reader == nullptr)
+			if (current != last)
+				{
+				reader = std::shared_ptr<instream>(new instream_file(current->path().c_str()));
+				if (current->path().string().rfind(".gz") != std::string::npos)
+					reader = std::shared_ptr<JASS::instream>(new instream_deflate(reader));
+				current++;
+				}
+
+		/*
+			Now we can get data from the reader and return it, after making sure we're not at EOF.
+		*/
+		size_t amount_to_read = document.contents.size();
+		void *read_into = document.contents.address();
+
+		do
+			{
+			size_t bytes_read = reader->fetch(read_into, amount_to_read);
+			amount_to_read -= bytes_read;
+
+			if (amount_to_read == 0)
+				return;
+
+			read_into = ((uint8_t *)read_into) + bytes_read;
+
+			/*
+				We're at EOF so move on to the next disk file
+			*/
+			if (current != last)
+				{
+				reader = std::shared_ptr<instream>(new instream_file(current->path().c_str()));
+				if (current->path().string().rfind(".gz") != std::string::npos)
+					reader = std::shared_ptr<JASS::instream>(new instream_deflate(reader));
+				current++;
+				}
+			else
+				{
+				document.contents.resize(document.contents.size() - amount_to_read);
+				return;				// because we're read past the last file so there is no more data to read
+				}
+			}
+		while (amount_to_read != 0);
 		}
-	}
 
 	/*
 		INSTREAM_DIRECTORY_ITERATOR::UNITTEST()
@@ -52,26 +88,6 @@ namespace JASS
 
 		document blob;
 		source.read(blob);
-		source.read(blob);
-		source.read(blob);
-		source.read(blob);
-		source.read(blob);
-		source.read(blob);
-		source.read(blob);
-		source.read(blob);
-		source.read(blob);
-		source.read(blob);
-		source.read(blob);
-		source.read(blob);
-		source.read(blob);
-		source.read(blob);
-		source.read(blob);
-		source.read(blob);
-		source.read(blob);
-		source.read(blob);
-		source.read(blob);
-		source.read(blob);
-
 		/*
 			Yay, we passed!
 		*/

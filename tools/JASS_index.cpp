@@ -13,6 +13,7 @@
 #include <string.h>
 
 #include <vector>
+#include <filesystem>
 
 #include "timer.h"
 #include "parser.h"
@@ -22,6 +23,7 @@
 #include "stem_porter.h"
 #include "parser_fasta.h"
 #include "serialise_ci.h"
+#include "quantize_none.h"
 #include "instream_file.h"
 #include "instream_memory.h"
 #include "instream_deflate.h"
@@ -34,7 +36,9 @@
 #include "serialise_forward_index.h"
 #include "index_manager_sequential.h"
 #include "ranking_function_atire_bm25.h"
+#include "instream_directory_iterator.h"
 #include "instream_document_unicoil_json.h"
+
 /*
 	Declare the command line parameters
 */
@@ -221,8 +225,16 @@ int main(int argc, const char *argv[])
 			break;
 		case JSON_uniCOIL:
 			{
-			std::shared_ptr<JASS::instream> deflater(new JASS::instream_deflate(file));
-			data_source = new JASS::instream_document_unicoil_json(deflater);
+			if (std::filesystem::is_directory(std::filesystem::path(parameter_filename)))
+				{
+				std::shared_ptr<JASS::instream> source(new JASS::instream_directory_iterator(parameter_filename));
+				data_source = new JASS::instream_document_unicoil_json(source);
+				}
+			else
+				{
+				std::shared_ptr<JASS::instream> deflater(new JASS::instream_deflate(file));
+				data_source = new JASS::instream_document_unicoil_json(deflater);
+				}
 			break;
 			}
 		default:
@@ -331,8 +343,16 @@ int main(int argc, const char *argv[])
 		quantize the index
 	*/
 	std::shared_ptr<JASS::ranking_function_atire_bm25> ranker(new JASS::ranking_function_atire_bm25(0.9, 0.4, index.get_document_length_vector()));
-	JASS::quantize<JASS::ranking_function_atire_bm25> quantizer(total_documents, ranker);
-	index.iterate(quantizer);
+
+	JASS::quantize<JASS::ranking_function_atire_bm25> *quantizer;
+	if (format == JSON_uniCOIL)
+		quantizer = new JASS::quantize_none<JASS::ranking_function_atire_bm25>(total_documents, ranker);
+	else
+		{
+		quantizer = new JASS::quantize<JASS::ranking_function_atire_bm25>(total_documents, ranker);
+		index.iterate(*quantizer);
+		}
+
 	auto time_to_end_quantization = JASS::timer::stop(timer).nanoseconds();
 
 	/*
@@ -352,7 +372,7 @@ int main(int argc, const char *argv[])
 		Write out the index in the desired formats.
 	*/
 	if (exporters.size() != 0)
-		quantizer.serialise_index(index, exporters);
+		quantizer->serialise_index(index, exporters);
 
 	/*
 		Dump the statistics to the console.
@@ -370,6 +390,7 @@ int main(int argc, const char *argv[])
 	std::cout << "Total time       :" << time_to_end << "ns (" << time_to_end / 1000000000 << " seconds)\n";
 
 	delete parser;
+	delete quantizer;
 
 	/*
 		Done.

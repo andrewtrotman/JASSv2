@@ -107,7 +107,8 @@ namespace JASS
 				while (current < end_of_document)
 					{
 					if (*current == '"')
-						break;
+						if (*(current - 1) != '\\')		// protect against escaped quotes "\"example\""
+							break;
 					if (buffer_pos < buffer_end)
 						*buffer_pos++ = *current;
 					current++;
