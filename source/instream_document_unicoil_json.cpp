@@ -108,7 +108,7 @@ namespace JASS
 			Get and store the document. In this case we're only looking for the data marked "vector"
 		*/
 		doc_start = std::search(doc_start, doc_end, vector_marker, vector_marker + 11) + 11;
-		doc_end = std::find(doc_start, doc_end, '}');
+//		doc_end = std::search(doc_start, doc_end, '}');
 		object.contents = slice(object.contents_allocator, doc_start, doc_end);
 		
 		buffer_start = doc_end + 2;
