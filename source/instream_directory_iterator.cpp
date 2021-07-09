@@ -37,6 +37,7 @@ namespace JASS
 		if (reader == nullptr)
 			if (current != last)
 				{
+puts(current->path().string().c_str());
 				reader = std::shared_ptr<instream>(new instream_file(current->path().string()));
 				if (current->path().string().rfind(".gz") != std::string::npos)
 					reader = std::shared_ptr<JASS::instream>(new instream_deflate(reader));
@@ -64,6 +65,7 @@ namespace JASS
 			*/
 			if (current != last)
 				{
+puts(current->path().string().c_str());
 				reader = std::shared_ptr<instream>(new instream_file(current->path().string()));
 				if (current->path().string().rfind(".gz") != std::string::npos)
 					reader = std::shared_ptr<JASS::instream>(new instream_deflate(reader));
