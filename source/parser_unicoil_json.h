@@ -142,6 +142,15 @@ namespace JASS
 				current_token.type = token::alpha;
 				std::from_chars((char *)count_start, (char *)count_finish, current_token.count);
 
+#ifdef NEVER
+				if (current_token.count > index_postings_impact::largest_impact)
+					{
+					std::cout << current_token.lexeme;
+					std::cout << " " << current_token.count << "\n";
+					current_token.count = index_postings_impact::largest_impact;
+					}
+#endif
+
 				return current_token;
 				}
 
