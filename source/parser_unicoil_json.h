@@ -106,9 +106,14 @@ namespace JASS
 				*/
 				while (current < end_of_document)
 					{
-					if (*current == '"')
-						if (*(current - 1) != '\\')		// protect against escaped quotes "\"example\""
-							break;
+					if (*current == '\\')
+						{
+						if (buffer_pos < buffer_end)
+							*buffer_pos++ = *current;
+						current++;				// escaped characters in JSON
+						}
+					else if (*current == '"')
+						break;
 					if (buffer_pos < buffer_end)
 						*buffer_pos++ = *current;
 					current++;
@@ -142,14 +147,12 @@ namespace JASS
 				current_token.type = token::alpha;
 				std::from_chars((char *)count_start, (char *)count_finish, current_token.count);
 
-#ifdef NEVER
 				if (current_token.count > index_postings_impact::largest_impact)
 					{
 					std::cout << current_token.lexeme;
 					std::cout << " " << current_token.count << "\n";
 					current_token.count = index_postings_impact::largest_impact;
 					}
-#endif
 
 				return current_token;
 				}
