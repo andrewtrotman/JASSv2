@@ -30,12 +30,20 @@ namespace JASS
 		const char *doc_end = nullptr;
 
 		/*
+			Check for EOF
+		*/
+		if (buffer_end < buffer_start)
+			{
+			object.primary_key = object.contents = slice();
+			return;
+			}
+
+		/*
 			Get the document start and end
 		*/
 		do
 			{
 			doc_start = std::search(buffer_start, buffer_end, start_of_document, start_of_document + 6);
-			docid_start = std::search(buffer_start, buffer_end, document_id_marker, document_id_marker + 7);
 			doc_end = std::search(buffer_start, buffer_end, end_of_document, end_of_document + 3);
 
 			if (doc_end == buffer_end)
@@ -56,10 +64,12 @@ namespace JASS
 						/*
 							Double the size of the buffer if its got data in it - because its too small.
 						*/
+						size_t gap = doc_start - buffer_start;
 						buffer_size += buffer_size;
 						buffer.resize(buffer_size);		// create space and move the old contents into the new space
 						buffer_start = &buffer[0];
 						buffer_end = &buffer[0] + bytes_in_use;
+						doc_start = &buffer[0] + gap;
 
 						bytes_remaining += buffer_size;
 						}
@@ -72,6 +82,12 @@ namespace JASS
 					*/
 					if (bytes == 0)
 						{
+						if (doc_start != nullptr)
+							{
+							doc_end = buffer_end;			// the last document might not end in a '\n'.
+							break;
+							}
+
 						object.primary_key = object.contents = slice();
 						return;
 						}
@@ -81,6 +97,7 @@ namespace JASS
 					/*
 						We're not at the start of the buffer so move the remaining data and go to the start of the buffer
 					*/
+					doc_start -= buffer_start - &buffer[0];
 					memmove(&buffer[0], buffer_start, buffer_end - buffer_start);
 					size_t bytes_in_use = buffer_end - buffer_start;
 					size_t bytes_remaining = buffer_size - bytes_in_use;
@@ -100,6 +117,7 @@ namespace JASS
 		/*
 			Get the document primary key
 		*/
+		docid_start = std::search(doc_start, doc_end, document_id_marker, document_id_marker + 7);
 		if (docid_start != nullptr)
 			if ((docid_start = strchr(docid_start + 6, '"')) != nullptr)
 				docid_end = strchr(++docid_start, '"');
@@ -116,10 +134,9 @@ namespace JASS
 			Get and store the document. In this case we're only looking for the data marked "vector"
 		*/
 		doc_start = std::search(doc_start, doc_end, vector_marker, vector_marker + 11) + 11;
-//		doc_end = std::search(doc_start, doc_end, '}');
 		object.contents = slice(object.contents_allocator, doc_start, doc_end);
 		
-		buffer_start = doc_end + 2;
+		buffer_start = doc_end +2;
 		}
 
 	/*

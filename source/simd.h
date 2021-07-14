@@ -764,13 +764,13 @@ namespace JASS
 			*/
 			static void unittest(void)
 				{
-				uint16_t source_8[8];
-				uint16_t source_16[8];
-				uint32_t source_32[8];
-				uint8_t destination_8[8];
-				uint16_t destination_16[8];
-				uint32_t destination_32[8];
-				uint32_t indexes_32[8];
+				uint16_t source_8[16];
+				uint16_t source_16[16];
+				uint32_t source_32[16];
+				uint8_t destination_8[16];
+				uint16_t destination_16[16];
+				uint32_t destination_32[16];
+				uint32_t indexes_32[16];
 
 				/*
 					Initialise
@@ -824,7 +824,7 @@ namespace JASS
 
 				cumulative_sum(destination_32, 8);
 				uint32_t sum_answer[8] = {0, 1, 3, 6, 10, 15, 21, 28};
-				JASS_assert(::memcmp(destination_32, sum_answer, sizeof(destination_32)) == 0);
+				JASS_assert(::memcmp(destination_32, sum_answer, sizeof(sum_answer)) == 0);
 
 #ifdef __AVX512F__
 				uint32_t numbers[] = {0, 1, 3, 7, 15, 31, 63, 127, 255, 511, 1023, 2047, 4095, 8191, 16383, 32767};
@@ -832,9 +832,7 @@ namespace JASS
 				auto set_bits = popcount(bit_vector);
 				for (size_t pos = 0; pos < 16; pos++)
 					JASS_assert(((uint32_t *)&set_bits)[pos] == pos);
-
 #endif
-
 
 				puts("simd::PASSED");
 				}

@@ -139,8 +139,8 @@ int main(void)
 		{
 		JASS::hardware_support hardware;
 
-//		puts("instream_directory_iterator");
-//		JASS::instream_directory_iterator::unittest();
+		puts("instream_directory_iterator");
+		JASS::instream_directory_iterator::unittest();
 
 		puts("parser_unicoil_json::unittest");
 		JASS::parser_unicoil_json::unittest();
