@@ -445,6 +445,8 @@ std::cout << "Maximum number of postings to process:" << postings_to_process << 
 */
 int main(int argc, const char *argv[])
 	{
+	if (argc == 1)
+		exit(usage(argv[0]));
 	try
 		{
 		return main_event(argc, argv);
