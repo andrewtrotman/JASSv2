@@ -85,7 +85,8 @@ namespace JASS
 						if (doc_start != nullptr)
 							{
 							doc_end = buffer_end;			// the last document might not end in a '\n'.
-							break;
+							if (doc_end != doc_start)
+								break;							// the last document isn't empty
 							}
 
 						object.primary_key = object.contents = slice();
