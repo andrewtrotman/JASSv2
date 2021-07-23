@@ -114,7 +114,7 @@ namespace JASS
 	std::string parser_query::unittest_test_one(parser_query &parser, allocator &memory, const std::string &query)
 		{
 		std::ostringstream buffer;
-		query_term_list tokens(memory);
+		query_term_list tokens;
 
 		parser.parse(tokens, query);
 		for (const auto &term : tokens)

@@ -34,6 +34,7 @@ namespace JASS
 	class query_term
 		{
 		friend std::ostream &operator<<(std::ostream &stream, const query_term &term);
+		friend class query_term_list;
 
 		private:
 			slice term;						///< The term.  Note that the memory is kept elsewhere
@@ -115,6 +116,33 @@ namespace JASS
 			slice token(void) const
 				{
 				return term;
+				}
+
+			/*
+				QUERY_TERM::FREQUENCY()
+				-----------------------
+			*/
+			/*!
+				@brief Return the frequency of this term in this query.
+				@return The frequency
+			*/
+			size_t frequency() const
+				{
+				return query_frequency;
+				}
+
+			/*
+				QUERY_TERM::OPERATOR<()
+				-----------------------
+			*/
+			/*!
+				@brief Convert to a std::string.  Useful for serialising.
+			*/
+			bool operator<(const query_term &with) const
+				{
+				return term.size() < with.term.size() ? true :
+					term.size() > with.term.size() ? false :
+					memcmp((char *)term.address(), (char *)with.term.address(), term.size()) < 0;
 				}
 
 			/*

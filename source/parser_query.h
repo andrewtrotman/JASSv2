@@ -113,12 +113,19 @@ namespace JASS
 					return;				// LCOV_EXCL_LINE			// At time of writing this can't happen because either malloc will assert or delatyed allocation will not return nullptr!
 				buffer_end = buffer_pos + worse_case_normalised_query_length;
 
+				/*
+					Parse the query to get all of the search terms
+				*/
 				slice term;												// Each term as returned by the parser.
-
 				token_status status;
 				while ((status = get_next_token(term)) != eof_token)		// get the next token
 					if (status == valid_token)
-						parsed_query.push_back(query_term(term));
+						parsed_query.push_back(term);
+
+				/*
+					Now unique the terms in the query and increment the occurence accounts appropriately.
+				*/
+				parsed_query.sort_unique();
 				}
 
 			/*

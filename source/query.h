@@ -273,7 +273,7 @@ namespace JASS
 			virtual void rewind(ACCUMULATOR_TYPE smallest_possible_rsv = 0, ACCUMULATOR_TYPE largest_possible_rsv = 0)
 				{
 				delete parsed_query;
-				parsed_query = new query_term_list(memory);
+				parsed_query = new query_term_list;
 				d1_cumulative_sum = 0;
 				impact = 0;
 				}

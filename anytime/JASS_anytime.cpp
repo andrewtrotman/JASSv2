@@ -71,7 +71,7 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 	/*
 		Allocate the Score-at-a-Time table
 	*/
-	uint64_t *segment_order = new uint64_t [MAX_TERMS_PER_QUERY * MAX_QUANTUM];
+	JASS::deserialised_jass_v1::segment_header *segment_order = new JASS::deserialised_jass_v1::segment_header [MAX_TERMS_PER_QUERY * MAX_QUANTUM];
 
 	/*
 		Allocate a JASS query object
@@ -79,7 +79,6 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 	std::string codex_name;
 	int32_t d_ness;
 	std::unique_ptr<JASS::compress_integer> jass_query = index.codex(codex_name, d_ness);
-	typedef JASS::query_heap QUERY_TYPE;
 
 	try
 		{
@@ -131,7 +130,7 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 		/*
 			Parse the query and extract the list of impact segments
 		*/
-		uint64_t *current_segment = segment_order;
+		JASS::deserialised_jass_v1::segment_header *current_segment = segment_order;
 		uint16_t largest_possible_rsv = (std::numeric_limits<decltype(largest_possible_rsv)>::min)();
 		uint16_t smallest_possible_rsv = (std::numeric_limits<decltype(smallest_possible_rsv)>::max)();
 		for (const auto &term : terms)
@@ -148,16 +147,30 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 			/*
 				Add to the list of impact segments that need to be processed
 			*/
-			std::copy((uint64_t *)(metadata.offset), (uint64_t *)(metadata.offset) + metadata.impacts, current_segment);
+			for (uint64_t segment = 0; segment < metadata.impacts; segment++)
+				{
+				uint64_t *postings_list = (uint64_t *)metadata.offset;
+				JASS::deserialised_jass_v1::segment_header *next_segment_in_postings_list = (JASS::deserialised_jass_v1::segment_header *)(index.postings() + postings_list[segment]);
+
+				current_segment->impact = next_segment_in_postings_list->impact * term.frequency();
+				current_segment->offset = next_segment_in_postings_list->offset;
+				current_segment->end = next_segment_in_postings_list->end;
+				current_segment->segment_frequency = next_segment_in_postings_list->segment_frequency;
+
+//std::cout << current_segment->impact << " ";
+				current_segment++;
+				}
 
 			/*
 				Normally the highest impact is the first impact, but binary_to_JASS gets it wrong and puts the highest impact last!
 			*/
-			size_t highest_term_impact = JASS::maths::maximum(((JASS::deserialised_jass_v1::segment_header *)(index.postings() + current_segment[0]))->impact, ((JASS::deserialised_jass_v1::segment_header *)(index.postings() + current_segment[metadata.impacts - 1]))->impact);
-			largest_possible_rsv += highest_term_impact;
-			smallest_possible_rsv = JASS::maths::minimum(smallest_possible_rsv, ((JASS::deserialised_jass_v1::segment_header *)(index.postings() + current_segment[0]))->impact, ((JASS::deserialised_jass_v1::segment_header *)(index.postings() + current_segment[metadata.impacts - 1]))->impact);
+			auto *first_segment_in_postings_list = (JASS::deserialised_jass_v1::segment_header *)(index.postings() + ((uint64_t *)metadata.offset)[0]);
+			auto *last_segment_in_postings_list = (JASS::deserialised_jass_v1::segment_header *)(index.postings() + ((uint64_t *)metadata.offset)[metadata.impacts - 1]);
 
-			current_segment += metadata.impacts;
+			size_t highest_term_impact = JASS::maths::maximum(first_segment_in_postings_list->impact, last_segment_in_postings_list->impact);
+			largest_possible_rsv += highest_term_impact;
+
+			smallest_possible_rsv = JASS::maths::minimum(smallest_possible_rsv, first_segment_in_postings_list->impact, last_segment_in_postings_list->impact);
 			}
 
 		/*
@@ -167,54 +180,50 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 			(
 			segment_order,
 			current_segment,
-			[postings = index.postings()](uint64_t first, uint64_t second)
+			[postings = index.postings()](JASS::deserialised_jass_v1::segment_header &lhs, JASS::deserialised_jass_v1::segment_header &rhs)
 				{
-				JASS::deserialised_jass_v1::segment_header *lhs = (JASS::deserialised_jass_v1::segment_header *)(postings + first);
-				JASS::deserialised_jass_v1::segment_header *rhs = (JASS::deserialised_jass_v1::segment_header *)(postings + second);
 
 				/*
-					sort from highest to lowest impact, but break ties by placing the lowest quantum-frequency first and the highest quantum-drequency last
+					sort from highest to lowest impact, but break ties by placing the lowest quantum-frequency first and the highest quantum-frequency last
 				*/
-				if (lhs->impact < rhs->impact)
+				if (lhs.impact < rhs.impact)
 					return false;
-				else if (lhs->impact > rhs->impact)
+				else if (lhs.impact > rhs.impact)
 					return true;
 				else			// impact scores are the same, so tie break on the length of the segment
-					return lhs->segment_frequency < rhs->segment_frequency;
+					return lhs.segment_frequency < rhs.segment_frequency;
 				}
 			);
 
 		/*
-			0 terminate the list of segments
+			0 terminate the list of segments by setting the impact score to zero
 		*/
-		*current_segment = 0;
+		current_segment->impact = 0;
 
 		/*
 			Process the segments
 		*/
 		jass_query->rewind(smallest_possible_rsv, largest_possible_rsv);
-//std::cout << "MAXRSV:" << largest_possible_rsv << "\n";
+//std::cout << "MAXRSV:" << largest_possible_rsv << " MINRSV:" << smallest_possible_rsv << "\n";
 
 		size_t postings_processed = 0;
-		for (uint64_t *current = segment_order; current < current_segment; current++)
+		for (auto *header = segment_order; header < current_segment; header++)
 			{
-//std::cout << "Process Segment->(" << ((JASS::deserialised_jass_v1::segment_header *)(index.postings() + *current))->impact << ":" << ((JASS::deserialised_jass_v1::segment_header *)(index.postings() + *current))->segment_frequency << ")\n";
-			const JASS::deserialised_jass_v1::segment_header &header = *reinterpret_cast<const JASS::deserialised_jass_v1::segment_header *>(index.postings() + *current);
-
+//std::cout << "Process Segment->(" << header->impact << ":" << header->segment_frequency << ")\n";
 			/*
 				The anytime algorithms basically boils down to this... have we processed enough postings yet?  If so then stop
 				The definition of "enough" is that processing the next segment will exceed postings_to_process so we wil be over
 				the "time limit" so we must not do it.
 			*/
-			if (postings_processed + header.segment_frequency > postings_to_process)
+			if (postings_processed + header->segment_frequency > postings_to_process)
 				break;
-			postings_processed += header.segment_frequency;
+			postings_processed += header->segment_frequency;
 
 			/*
 				Process the postings
 			*/
-			JASS::query::ACCUMULATOR_TYPE impact = header.impact;
-			jass_query->decode_and_process(impact, header.segment_frequency, index.postings() + header.offset, header.end - header.offset);
+			JASS::query::ACCUMULATOR_TYPE impact = header->impact;
+			jass_query->decode_and_process(impact, header->segment_frequency, index.postings() + header->offset, header->end - header->offset);
 			}
 
 		jass_query->sort();
