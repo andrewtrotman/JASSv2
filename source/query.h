@@ -245,9 +245,9 @@ namespace JASS
 				@param query [in] The query to parse.
 			*/
 			template <typename STRING_TYPE>
-			void parse(const STRING_TYPE &query)
+			void parse(const STRING_TYPE &query, parser_query::parser_type which_parser = parser_query::parser_type::query)
 				{
-				parser.parse(*parsed_query, query);
+				parser.parse(*parsed_query, query, which_parser);
 				}
 
 			/*

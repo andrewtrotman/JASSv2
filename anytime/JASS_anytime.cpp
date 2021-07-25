@@ -48,6 +48,7 @@ std::string parameter_queryfilename;					///< Name of file containing the querie
 size_t parameter_threads = 1;								///< Number of concurrent queries
 size_t parameter_top_k = 10;								///< Number of results to return
 size_t accumulator_width = 7;								///< The width (2^accumulator_width) of the accumulator 2-D array (if they are being used).
+bool parameter_ascii_query_parser = false;			///< When true use the ASCII pre-casefolded query parser
 bool parameter_help = false;
 
 std::string parameters_errors;							///< Any errors as a result of command line parsing
@@ -55,6 +56,7 @@ auto parameters = std::make_tuple						///< The  command line parameter block
 	(
 	JASS::commandline::parameter("-?", "--help",      "Print this help.", parameter_help),
 	JASS::commandline::parameter("-q", "--queryfile", "<filename>        Name of file containing a list of queries (1 per line, each line prefixed with query-id)", parameter_queryfilename),
+	JASS::commandline::parameter("-a", "--asciiparser ", "use simple query parser (ASCII seperated pre-casefolded tokens)", parameter_ascii_query_parser),
 	JASS::commandline::parameter("-t", "--threads",   "<threadcount>     Number of threads to use (one query per thread) [default = -t1]", parameter_threads),
 	JASS::commandline::parameter("-k", "--top-k",     "<top-k>           Number of results to return to the user (top-k value) [default = -k10]", parameter_top_k),
 	JASS::commandline::parameter("-r", "--rho",       "<integer_percent> Percent of the collection size to use as max number of postings to process [default = -r100] (overrides -RHO)", rho),
@@ -124,7 +126,10 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 		/*
 			Process the query
 		*/
-		jass_query->parse(query);
+		if (parameter_ascii_query_parser)
+			jass_query->parse(query, JASS::parser_query::parser_type::raw);
+		else
+			jass_query->parse(query);
 		auto &terms = jass_query->terms();
 
 		/*

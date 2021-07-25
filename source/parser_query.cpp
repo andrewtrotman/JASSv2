@@ -6,6 +6,7 @@
 */
 #include <sstream>
 
+#include "ascii.h"
 #include "unicode.h"
 #include "parser_query.h"
 #include "allocator_memory.h"
@@ -15,10 +16,6 @@ namespace JASS
 	/*
 		PARSER_QUERY::GET_NEXT_TOKEN()
 		------------------------------
-	*/
-	/*!
-		@brief Return the next parsed token from the source query.
-		@param token [in] a slice of the token.
 	*/
 	parser_query::token_status parser_query::get_next_token(slice &token)
 		{
@@ -108,6 +105,43 @@ namespace JASS
 		}
 
 	/*
+		PARSER_QUERY::GET_NEXT_TOKEN_RAW()
+		----------------------------------
+	*/
+	parser_query::token_status parser_query::get_next_token_raw(slice &token)
+		{
+		/*
+			Skip over whitespace
+		*/
+		while (ascii::isspace(*current))
+			current++;
+
+		/*
+			Check for end of input.
+		*/
+		if (*current == '\0')
+				return eof_token;
+
+		/*
+			Find the token (everything not whitespace)
+		*/
+		uint8_t *start_of_token = current;
+		while (!ascii::isspace(*current) && *current != '\0')
+			current++;
+		uint8_t *end_of_token = current;
+
+		/*
+			'\0' terminate then write to the slice
+		*/
+		memcpy(buffer_pos, start_of_token, end_of_token - start_of_token);
+		token = slice(buffer_pos, end_of_token - start_of_token);
+		buffer_pos += end_of_token - start_of_token;
+		*buffer_pos++ = '\0';
+		
+		return valid_token;
+		}
+
+	/*
 		PARSER_QUERY::UNITTEST_TEST_ONE()
 		---------------------------------
 	*/
@@ -122,7 +156,6 @@ namespace JASS
 
 		return buffer.str();
 		}
-
 
 	/*
 		PARSER_QUERY::UNITTEST()
@@ -147,13 +180,13 @@ namespace JASS
 		JASS_assert(got == "(example,1)");
 
 		got = unittest_test_one(parser, memory, "  Example  QUERY");
-		JASS_assert(got == "(example,1)(query,1)");
+		JASS_assert(got == "(query,1)(example,1)");
 
 		got = unittest_test_one(parser, memory, "Example Query");
-		JASS_assert(got == "(example,1)(query,1)");
+		JASS_assert(got == "(query,1)(example,1)");
 
 		got = unittest_test_one(parser, memory, "   Example Query   ");
-		JASS_assert(got == "(example,1)(query,1)");
+		JASS_assert(got == "(query,1)(example,1)");
 
 		got = unittest_test_one(parser, memory, std::string((char *)sequence_1, 1));
 		JASS_assert(got == "(a,1)");
@@ -182,7 +215,17 @@ namespace JASS
 		got = unittest_test_one(restricted_parser, restricted_memory, "12345");
 		JASS_assert(got == "(12345,1)");
 
+		/*
+			Test the raw parser
+		*/
+		const std::string raw_sequence = " . ; A ";
+		std::ostringstream raw_answer;
+		query_term_list raw_tokens;
+		parser.parse(raw_tokens, raw_sequence, parser_type::raw);
+		for (const auto &term : raw_tokens)
+			raw_answer << term;
+		JASS_assert(raw_answer.str() == "(.,1)(;,1)(A,1)");
+
 		puts("parser_query::PASSED");
 		}
-
 	}
