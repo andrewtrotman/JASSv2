@@ -5,6 +5,7 @@
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 #include <sstream>
+#include <algorithm>
 
 #include "ascii.h"
 #include "unicode.h"
