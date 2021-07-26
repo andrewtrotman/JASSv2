@@ -140,7 +140,7 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 		uint16_t smallest_possible_rsv = (std::numeric_limits<decltype(smallest_possible_rsv)>::max)();
 		for (const auto &term : terms)
 			{
-std::cout << "TERM:" << term << "\n";
+//std::cout << "TERM:" << term << "\n";
 
 			/*
 				Get the metadata for this term (and if this term isn't in the vocab them move on to the next term)
