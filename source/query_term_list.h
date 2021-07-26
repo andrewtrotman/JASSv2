@@ -32,7 +32,7 @@ namespace JASS
 		friend std::ostream &operator<<(std::ostream &stream, const query_term_list &object);
 
 		private:
-			static const size_t max_query_terms = 0xFF;			///< We allow up-to this numnber of (nont necessarily unique) terms in a query.
+			static const size_t max_query_terms = 0xFFF;			///< We allow up-to this numnber of (nont necessarily unique) terms in a query.
 
 		private:
 			size_t terms_in_query;								///< The numner of terms in this query.
