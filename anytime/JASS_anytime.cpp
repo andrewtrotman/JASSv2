@@ -15,6 +15,7 @@
 #include "file.h"
 #include "timer.h"
 #include "threads.h"
+#include "version.h"
 #include "query_heap.h"
 #include "run_export.h"
 #include "commandline.h"
@@ -459,6 +460,7 @@ std::cout << "Maximum number of postings to process:" << postings_to_process << 
 */
 int main(int argc, const char *argv[])
 	{
+	std::cout << JASS::version::build() << '\n';
 	if (argc == 1)
 		exit(usage(argv[0]));
 	try
