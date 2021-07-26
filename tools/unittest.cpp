@@ -106,10 +106,10 @@
 #include "compress_integer_simple_8b_packed.h"
 #include "compress_integer_simple_16_packed.h"
 #include "compress_integer_elias_gamma_simd.h"
-#include "compress_integer_elias_gamma_simd_vb.h"
 #include "compress_integer_bitpack_32_reduced.h"
 #include "compress_integer_elias_gamma_bitwise.h"
 #include "compress_integer_elias_delta_bitwise.h"
+#include "compress_integer_elias_gamma_simd_vb.h"
 
 /*
 	MAIN()
@@ -128,7 +128,7 @@ int main(void)
  	/*
  		Output basic statistics about the machine we're running on.
  	*/
-// 	std::cout << JASS::hardware_support();
+ 	std::cout << JASS::hardware_support();
 
 	/*
 		Test the JASS classes

@@ -764,7 +764,7 @@ namespace JASS
 			*/
 			static void unittest(void)
 				{
-				uint16_t source_8[16];
+				uint8_t source_8[16];
 				uint16_t source_16[16];
 				uint32_t source_32[16];
 				uint8_t destination_8[16];
