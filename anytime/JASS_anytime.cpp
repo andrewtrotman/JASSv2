@@ -29,8 +29,9 @@
 #include "query_maxblock_heap.h"
 #include "deserialised_jass_v1.h"
 #include "compress_integer_all.h"
-#include "compress_integer_qmx_jass_v1.h"
 #include "JASS_anytime_thread_result.h"
+#include "JASS_anytime_segment_header.h"
+#include "compress_integer_qmx_jass_v1.h"
 #include "compress_integer_elias_gamma_simd.h"
 
 constexpr size_t MAX_QUANTUM = 0x0FFF;
@@ -74,7 +75,7 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 	/*
 		Allocate the Score-at-a-Time table
 	*/
-	JASS::deserialised_jass_v1::segment_header *segment_order = new JASS::deserialised_jass_v1::segment_header [MAX_TERMS_PER_QUERY * MAX_QUANTUM];
+	JASS_anytime_segment_header *segment_order = new JASS_anytime_segment_header[MAX_TERMS_PER_QUERY * MAX_QUANTUM];
 
 	/*
 		Allocate a JASS query object
@@ -136,9 +137,9 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 		/*
 			Parse the query and extract the list of impact segments
 		*/
-		JASS::deserialised_jass_v1::segment_header *current_segment = segment_order;
-		uint16_t largest_possible_rsv = (std::numeric_limits<decltype(largest_possible_rsv)>::min)();
-		uint16_t smallest_possible_rsv = (std::numeric_limits<decltype(smallest_possible_rsv)>::max)();
+		JASS_anytime_segment_header *current_segment = segment_order;
+		JASS::query::ACCUMULATOR_TYPE largest_possible_rsv = (std::numeric_limits<decltype(largest_possible_rsv)>::min)();
+		JASS::query::ACCUMULATOR_TYPE smallest_possible_rsv = (std::numeric_limits<decltype(smallest_possible_rsv)>::max)();
 		for (const auto &term : terms)
 			{
 //std::cout << "TERM:" << term << "\n";
@@ -186,7 +187,7 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 			(
 			segment_order,
 			current_segment,
-			[postings = index.postings()](JASS::deserialised_jass_v1::segment_header &lhs, JASS::deserialised_jass_v1::segment_header &rhs)
+			[postings = index.postings()](JASS_anytime_segment_header &lhs, JASS_anytime_segment_header &rhs)
 				{
 
 				/*

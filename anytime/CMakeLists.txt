@@ -18,6 +18,7 @@ include_directories(../source)
 set(COMPILED_INDEX_FILES
 	JASS_anytime.cpp
 	JASS_anytime_query.h
+	JASS_anytime_segment_header.h
 	JASS_anytime_stats.h
 	JASS_anytime_thread_result.h
 	)

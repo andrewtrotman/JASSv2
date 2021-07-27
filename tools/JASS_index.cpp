@@ -300,7 +300,7 @@ int main(int argc, const char *argv[])
 		do
 			{
 			auto &token = const_cast<JASS::parser::token &>(parser->get_next_token());
-
+//std::cout << "[" << token.lexeme << "," << token.count << "]\n";
 			switch (token.type)
 				{
 				case JASS::parser::token::eof:
