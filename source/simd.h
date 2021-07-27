@@ -679,7 +679,7 @@ namespace JASS
 					source is on from: https://stackoverflow.com/questions/51104493/is-it-possible-to-popcount-m256i-and-store-result-in-8-32-bit-words-instead-of
 					see W. Mula, N. Kurz, D. Lemire (2018) Faster Population Counts Using AVX2 Instructions, Computer Journal 61(1):111-120
 
-					It uses a single lookup table of the numner of bits in a nybble, then adds the resul for each nybble to give the result for each word.
+					It uses a single lookup table of the numner of bits in a nybble, then adds the result for each nybble to give the result for each word.
 				*/
 
 				const __m512i lookup = _mm512_setr_epi64
@@ -771,6 +771,7 @@ namespace JASS
 				uint16_t destination_16[16];
 				uint32_t destination_32[16];
 				uint32_t indexes_32[16];
+				uint32_t block[16];
 
 				/*
 					Initialise
@@ -793,8 +794,9 @@ namespace JASS
 					Check 8-bit scatter/gather
 				*/
 				__m256i got = simd::gather(source_8, vindex);
+				_mm256_storeu_si256((__m256i *)block, got);
 				for (size_t pos = 0; pos < 8; pos++)
-					JASS_assert(((uint32_t *)&got)[pos] == pos);
+					JASS_assert(block[pos] == pos);
 
 				simd::scatter(destination_8, vindex, got);
 				for (size_t pos = 0; pos < 8; pos++)
@@ -804,8 +806,9 @@ namespace JASS
 					Check 16-bit scatter/gather
 				*/
 				got = simd::gather(source_16, vindex);
+				_mm256_storeu_si256((__m256i *)block, got);
 				for (size_t pos = 0; pos < 8; pos++)
-					JASS_assert(((uint32_t *)&got)[pos] == pos);
+					JASS_assert(block[pos] == pos);
 
 				simd::scatter(destination_16, vindex, got);
 				for (size_t pos = 0; pos < 8; pos++)
@@ -815,8 +818,9 @@ namespace JASS
 					Check 32-bit scatter/gather
 				*/
 				got = simd::gather(source_32, vindex);
+				_mm256_storeu_si256((__m256i *)block, got);
 				for (size_t pos = 0; pos < 8; pos++)
-					JASS_assert(((uint32_t *)&got)[pos] == pos);
+					JASS_assert(block[pos] == pos);
 
 				simd::scatter(destination_32, vindex, got);
 				for (size_t pos = 0; pos < 8; pos++)
@@ -830,8 +834,9 @@ namespace JASS
 				uint32_t numbers[] = {0, 1, 3, 7, 15, 31, 63, 127, 255, 511, 1023, 2047, 4095, 8191, 16383, 32767};
 				__m512i bit_vector = _mm512_loadu_si512(numbers);
 				auto set_bits = popcount(bit_vector);
+				_mm512_storeu_si512((__m512i *)block, set_bits);
 				for (size_t pos = 0; pos < 16; pos++)
-					JASS_assert(((uint32_t *)&set_bits)[pos] == pos);
+					JASS_assert(block[pos] == pos);
 #endif
 
 				puts("simd::PASSED");
