@@ -177,7 +177,7 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 			size_t highest_term_impact = JASS::maths::maximum(first_segment_in_postings_list->impact, last_segment_in_postings_list->impact);
 			largest_possible_rsv += highest_term_impact;
 
-			smallest_possible_rsv = JASS::maths::minimum(smallest_possible_rsv, first_segment_in_postings_list->impact, last_segment_in_postings_list->impact);
+			smallest_possible_rsv = JASS::maths::minimum(smallest_possible_rsv, decltype(smallest_possible_rsv)(first_segment_in_postings_list->impact), decltype(smallest_possible_rsv)(last_segment_in_postings_list->impact));
 			}
 
 		/*
