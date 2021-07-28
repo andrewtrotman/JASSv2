@@ -33,11 +33,21 @@
 
 	For "Intel(R) Core(TM) SICPU @ 3.80GHz" enable all of these.
 */
-#define USE_AXV512_READS_8 1
-#define USE_AXV512_READS_16 1
-#define USE_AXV512_WRITES_8 1
-#define USE_AXV512_WRITES_16 1
-#define USE_AXV512_WRITES_32 1
+
+#ifdef _MSC_VER								// the optimizer get AVX512 wrong on Visual Studio 2022 (preview 2)
+//	#define USE_AXV512_READS_8 0
+//	#define USE_AXV512_READS_16 0
+//	#define USE_AXV512_WRITES_8 0
+//	#define USE_AXV512_WRITES_16 0
+//	#define USE_AXV512_WRITES_32 0
+#else
+	#define USE_AXV512_READS_8 1
+	#define USE_AXV512_READS_16 1
+	#define USE_AXV512_WRITES_8 1
+	#define USE_AXV512_WRITES_16 1
+	#define USE_AXV512_WRITES_32 1
+#endif
+
 
 namespace JASS
 	{
@@ -327,7 +337,7 @@ namespace JASS
 			forceinline static void scatter(uint32_t *array, __m256i vindex, __m256i a)
 				{
 #if defined(USE_AXV512_WRITES_32) && defined(__AVX512F__)
-			   _mm256_i32scatter_epi32(array, vindex, a, 4);
+			   	_mm256_i32scatter_epi32(array, vindex, a, 4);
 #else
 				scatter(array, _mm256_extracti128_si256(vindex, 0), _mm256_extracti128_si256(a, 0));
 				scatter(array, _mm256_extracti128_si256(vindex, 1), _mm256_extracti128_si256(a, 1));
@@ -345,37 +355,36 @@ namespace JASS
 				@param a [in] The value to split and scatter (16 x 8-bit integers written as 16 x 32-bit integers)
 			*/
 			forceinline static void scatter(uint8_t *array, __m512i vindex, __m512i a)
-			{
+				{
 #if defined(USE_AXV512_WRITES_8) && defined(__AVX512F__)
-			__m512i low_two_bits = _mm512_and_epi32(vindex, _mm512_set1_epi32(3));
+				__m512i low_two_bits = _mm512_and_epi32(vindex, _mm512_set1_epi32(3));
 
-			__mmask16 zero = _mm512_cmp_epi32_mask(low_two_bits, _mm512_setzero_si512(), _MM_CMPINT_EQ);
-			__m512i was = _mm512_mask_i32gather_epi32(_mm512_setzero_si512(), zero, vindex, array, 1);
-			__m512i data = _mm512_mask_blend_epi8(0x1111'1111'1111'1111, was, a);
-			_mm512_mask_i32scatter_epi32(array, zero, vindex, data, 1);
+				__mmask16 zero = _mm512_cmp_epi32_mask(low_two_bits, _mm512_setzero_si512(), _MM_CMPINT_EQ);
+				__m512i was = _mm512_mask_i32gather_epi32(_mm512_setzero_si512(), zero, vindex, array, 1);
+				__m512i data = _mm512_mask_blend_epi8(0x1111'1111'1111'1111, was, a);
+				_mm512_mask_i32scatter_epi32(array, zero, vindex, data, 1);
 
-			__mmask16 one = _mm512_cmp_epi32_mask(low_two_bits, _mm512_set1_epi32(1), _MM_CMPINT_EQ);
-			was = _mm512_mask_i32gather_epi32(_mm512_setzero_si512(), one, vindex, array, 1);
-			data = _mm512_mask_blend_epi8(0x1111'1111'1111'1111, was, a);
-			_mm512_mask_i32scatter_epi32(array, one, vindex, data, 1);
+				__mmask16 one = _mm512_cmp_epi32_mask(low_two_bits, _mm512_set1_epi32(1), _MM_CMPINT_EQ);
+				was = _mm512_mask_i32gather_epi32(_mm512_setzero_si512(), one, vindex, array, 1);
+				data = _mm512_mask_blend_epi8(0x1111'1111'1111'1111, was, a);
+				_mm512_mask_i32scatter_epi32(array, one, vindex, data, 1);
 
-			__mmask16 two = _mm512_cmp_epi32_mask(low_two_bits, _mm512_set1_epi32(2), _MM_CMPINT_EQ);
-			was = _mm512_mask_i32gather_epi32(_mm512_setzero_si512(), two, vindex, array, 1);
-			data = _mm512_mask_blend_epi8(0x1111'1111'1111'1111, was, a);
-			_mm512_mask_i32scatter_epi32(array, two, vindex, data, 1);
+				__mmask16 two = _mm512_cmp_epi32_mask(low_two_bits, _mm512_set1_epi32(2), _MM_CMPINT_EQ);
+				was = _mm512_mask_i32gather_epi32(_mm512_setzero_si512(), two, vindex, array, 1);
+				data = _mm512_mask_blend_epi8(0x1111'1111'1111'1111, was, a);
+				_mm512_mask_i32scatter_epi32(array, two, vindex, data, 1);
 
-			__mmask16 three = _mm512_cmp_epi32_mask(low_two_bits, _mm512_set1_epi32(3), _MM_CMPINT_EQ);
-			was = _mm512_mask_i32gather_epi32(_mm512_setzero_si512(), three, vindex, array, 1);
-			data = _mm512_mask_blend_epi8(0x1111'1111'1111'1111, was, a);
-			_mm512_mask_i32scatter_epi32(array, three, vindex, data, 1);
+				__mmask16 three = _mm512_cmp_epi32_mask(low_two_bits, _mm512_set1_epi32(3), _MM_CMPINT_EQ);
+				was = _mm512_mask_i32gather_epi32(_mm512_setzero_si512(), three, vindex, array, 1);
+				data = _mm512_mask_blend_epi8(0x1111'1111'1111'1111, was, a);
+				_mm512_mask_i32scatter_epi32(array, three, vindex, data, 1);
 #else
-			scatter(array, _mm512_extracti32x4_epi32(vindex, 0), _mm512_extracti32x4_epi32(a, 0));
-			scatter(array, _mm512_extracti32x4_epi32(vindex, 1), _mm512_extracti32x4_epi32(a, 1));
-			scatter(array, _mm512_extracti32x4_epi32(vindex, 2), _mm512_extracti32x4_epi32(a, 2));
-			scatter(array, _mm512_extracti32x4_epi32(vindex, 3), _mm512_extracti32x4_epi32(a, 3));
+				scatter(array, _mm512_extracti32x4_epi32(vindex, 0), _mm512_extracti32x4_epi32(a, 0));
+				scatter(array, _mm512_extracti32x4_epi32(vindex, 1), _mm512_extracti32x4_epi32(a, 1));
+				scatter(array, _mm512_extracti32x4_epi32(vindex, 2), _mm512_extracti32x4_epi32(a, 2));
+				scatter(array, _mm512_extracti32x4_epi32(vindex, 3), _mm512_extracti32x4_epi32(a, 3));
 #endif
-
-			}
+				}
 
 			/*
 				SIMD::SCATTER()
@@ -420,6 +429,7 @@ namespace JASS
 				@param vindex [in] The indexes into the array to write into
 				@param a [in] The value to split and scatter (16 x 32-bit integers written as 16 x 32-bit integers)
 			*/
+
 			forceinline static void scatter(uint32_t *array, __m512i vindex, __m512i a)
 				{
 				/*
@@ -764,14 +774,14 @@ namespace JASS
 			*/
 			static void unittest(void)
 				{
-				uint8_t source_8[16];
+				uint8_t source_8[32];
 				uint16_t source_16[16];
-				uint32_t source_32[16];
-				uint8_t destination_8[16];
+				uint32_t source_32[8];
+				uint8_t destination_8[32];
 				uint16_t destination_16[16];
-				uint32_t destination_32[16];
-				uint32_t indexes_32[16];
-				uint32_t block[16];
+				uint32_t destination_32[8];
+				uint32_t indexes_32[8];
+				uint32_t block[8];
 
 				/*
 					Initialise
@@ -819,6 +829,7 @@ namespace JASS
 				*/
 				got = simd::gather(source_32, vindex);
 				_mm256_storeu_si256((__m256i *)block, got);
+std::cout << got << "\n";
 				for (size_t pos = 0; pos < 8; pos++)
 					JASS_assert(block[pos] == pos);
 
@@ -913,3 +924,4 @@ namespace JASS
 		return stream;
 		}
 	}
+

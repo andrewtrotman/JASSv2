@@ -139,7 +139,7 @@ int main(void)
 		{
 		JASS::hardware_support hardware;
 
-		puts("quert_term_list");
+		puts("query_term_list");
 		JASS::query_term_list::unittest();
 
 		puts("instream_directory_iterator");
