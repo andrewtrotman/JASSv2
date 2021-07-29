@@ -215,6 +215,7 @@ namespace JASS
 				@param top_k [in]	The top-k documents to return from the query once executed.
 			*/
 			query_maxblock_heap() :
+				number_of_blocks(0),
 #ifdef ACCUMULATOR_64s
 				top_results(sorted_accumulators, 0)
 #else
@@ -510,7 +511,7 @@ namespace JASS
 				/*
 					D1-decode inplace with SIMD instructions then process one at a time
 				*/
-				simd::cumulative_sum(buffer, integers);
+				simd::cumulative_sum_256(buffer, integers);
 
 				/*
 					Process the d1-decoded postings list.

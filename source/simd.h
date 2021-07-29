@@ -631,29 +631,6 @@ namespace JASS
 					previous_max = _mm256_permute2x128_si256(current_set, current_set, 3 | (3 << 4));
 					}
 				}
-
-			/*
-				SIMD::CUMULATIVE_SUM()
-				----------------------
-			*/
-			/*!
-				@brief Calculate (inplace) the cumulative sum of the array of integers.
-				@details As this uses AVX2 instrucrtions is can read and write more than length load of integers
-				@param data [in/out] The integers to sum (and result).
-				@param length [in] The number of integrers to sum.
-			*/
-			forceinline static void cumulative_sum(uint32_t *data, size_t length)
-				{
-				#ifdef __AVX512F__
-					/*
-						Its faster to always call the 512-bit version than to check the length and sometimes call the 256 bit version.
-					*/
-					cumulative_sum_512(data, length);
-				#else
-					cumulative_sum_256(data, length);
-				#endif
-				}
-
 			/*
 				SIMD::POPCOUNT()
 				----------------
@@ -829,7 +806,7 @@ namespace JASS
 				*/
 				got = simd::gather(source_32, vindex);
 				_mm256_storeu_si256((__m256i *)block, got);
-std::cout << got << "\n";
+//std::cout << got << "\n";
 				for (size_t pos = 0; pos < 8; pos++)
 					JASS_assert(block[pos] == pos);
 
@@ -837,7 +814,7 @@ std::cout << got << "\n";
 				for (size_t pos = 0; pos < 8; pos++)
 					JASS_assert(destination_32[pos] == pos);
 
-				cumulative_sum(destination_32, 8);
+				cumulative_sum_256(destination_32, 8);
 				uint32_t sum_answer[8] = {0, 1, 3, 6, 10, 15, 21, 28};
 				JASS_assert(::memcmp(destination_32, sum_answer, sizeof(sum_answer)) == 0);
 
