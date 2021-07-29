@@ -781,7 +781,7 @@ namespace JASS
 				uint16_t destination_16[16];
 				uint32_t destination_32[8];
 				uint32_t indexes_32[8];
-				uint32_t block[8];
+				uint32_t block[16];
 
 				/*
 					Initialise
