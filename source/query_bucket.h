@@ -204,7 +204,7 @@ namespace JASS
 
 			static constexpr size_t rounded_top_k_filter = rounded_top_k - 1;
 
-			static constexpr size_t number_of_buckets = (std::numeric_limits<ACCUMULATOR_TYPE>::max)();
+			static constexpr size_t number_of_buckets = (std::numeric_limits<ACCUMULATOR_TYPE>::max)() > 0xFFFF ? 0xFFFF : (std::numeric_limits<ACCUMULATOR_TYPE>::max)();
 			DOCID_TYPE bucket[number_of_buckets][rounded_top_k];						///< The array of buckets to use.
 			ACCUMULATOR_TYPE largest_used_bucket;											///< The largest bucket used (to decrease cost of initialisation and search)
 			ACCUMULATOR_TYPE smallest_used_bucket;											///< The smallest bucket used (to decrease cost of initialisation and search)

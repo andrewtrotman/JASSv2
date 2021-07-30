@@ -58,7 +58,7 @@ message("Build Type:" ${CMAKE_BUILD_TYPE})
 #
 
 if (JASS_EXTERNAL_DEFINE)
-	message("Adding comile parameter:" ${JASS_EXTERNAL_DEFINE})
+	message("Adding compile parameter:" ${JASS_EXTERNAL_DEFINE})
 	add_definitions(${JASS_EXTERNAL_DEFINE})
 endif()
 
