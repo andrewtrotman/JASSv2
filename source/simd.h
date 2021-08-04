@@ -694,7 +694,7 @@ namespace JASS
 			*/
 			/*!
 				@brief zero 64-byte aligned memory in 64-byte chunks
-				@param address[in] The addres to start zeroing from (must be 64-byte aligned)
+				@param address[in] The address to start zeroing from (must be 64-byte aligned)
 				@param sixty_fours The numnber of 64-byte chunks of zero to write
 			*/
 			forceinline static void bzero64(void *address, uint32_t sixty_fours)
@@ -726,7 +726,7 @@ namespace JASS
 			*/
 			/*!
 				@brief zero 64-byte aligned memory in 64-byte chunks
-				@param address[in] The addres to start zeroing from (must be 64-byte aligned)
+				@param address[in] The address to start zeroing from (must be 64-byte aligned)
 				@param sixty_fours The numnber of 64-byte chunks of zero to write
 			*/
 			forceinline static void bzero64(void *address, uint32_t sixty_fours)

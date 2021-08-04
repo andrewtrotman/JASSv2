@@ -19,6 +19,7 @@
 
 #include "asserts.h"
 #include "query_heap.h"
+#include "query_heap_clean.h"
 #include "query_bucket.h"
 #include "query_maxblock.h"
 #include "query_maxblock_heap.h"
@@ -42,7 +43,8 @@ namespace JASS
 #elif defined(QUERY_MAXBLOCK_HEAP)
 	class compress_integer : public query_maxblock_heap
 #elif defined(QUERY_HEAP)
-	class compress_integer : public query_heap
+//	class compress_integer : public query_heap
+	class compress_integer : public query_heap_clean
 #else
 	static_assert(false, "One of the RSV managers must be defined");
 #endif

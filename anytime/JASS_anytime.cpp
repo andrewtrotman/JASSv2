@@ -210,7 +210,7 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 		/*
 			Process the segments
 		*/
-		jass_query->rewind(smallest_possible_rsv, largest_possible_rsv);
+		jass_query->rewind(smallest_possible_rsv, segment_order->impact, largest_possible_rsv);
 //std::cout << "MAXRSV:" << largest_possible_rsv << " MINRSV:" << smallest_possible_rsv << "\n";
 
 		size_t postings_processed = 0;
