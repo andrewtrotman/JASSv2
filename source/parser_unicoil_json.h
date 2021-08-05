@@ -154,7 +154,7 @@ namespace JASS
 					current_token.count = index_postings_impact::largest_impact;
 					}
 
-				return current_token;
+				return current_token.count > 0 ? current_token : get_next_token();
 				}
 
 			/*
