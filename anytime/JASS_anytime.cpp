@@ -140,9 +140,10 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 		JASS_anytime_segment_header *current_segment = segment_order;
 		JASS::query::ACCUMULATOR_TYPE largest_possible_rsv = (std::numeric_limits<decltype(largest_possible_rsv)>::min)();
 		JASS::query::ACCUMULATOR_TYPE smallest_possible_rsv = (std::numeric_limits<decltype(smallest_possible_rsv)>::max)();
+//std::cout << "\n";
 		for (const auto &term : terms)
 			{
-//std::cout << "TERM:" << term << "\n";
+//std::cout << "TERM:" << term << " ";
 
 			/*
 				Get the metadata for this term (and if this term isn't in the vocab them move on to the next term)
@@ -164,9 +165,10 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 				current_segment->end = next_segment_in_postings_list->end;
 				current_segment->segment_frequency = next_segment_in_postings_list->segment_frequency;
 
-//std::cout << current_segment->impact << " ";
+//std::cout << current_segment->impact << "," << current_segment->segment_frequency << " ";
 				current_segment++;
 				}
+//std::cout << "\n";
 
 			/*
 				Normally the highest impact is the first impact, but binary_to_JASS gets it wrong and puts the highest impact last!
