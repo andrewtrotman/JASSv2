@@ -322,7 +322,7 @@ namespace JASS
 				@brief Clear this object after use and ready for re-use
 				@param largest_possible_rsv [in] the largest possible rsv value (or larger that that)
 			*/
-			virtual void rewind(ACCUMULATOR_TYPE smallest_possible_rsv = 0, ACCUMULATOR_TYPE largest_possible_rsv = 0)
+			virtual void rewind(ACCUMULATOR_TYPE smallest_possible_rsv = 0, ACCUMULATOR_TYPE top_k_lower_bound = 0,ACCUMULATOR_TYPE largest_possible_rsv = 0)
 				{
 				smallest_used_bucket = smallest_possible_rsv;
 				largest_used_bucket = largest_possible_rsv;

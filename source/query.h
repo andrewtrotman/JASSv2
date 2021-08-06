@@ -271,7 +271,7 @@ namespace JASS
 			/*!
 				@brief Clear this object after use and ready for re-use
 			*/
-			virtual void rewind(ACCUMULATOR_TYPE smallest_possible_rsv = 0, ACCUMULATOR_TYPE largest_possible_rsv = 0)
+			virtual void rewind(ACCUMULATOR_TYPE smallest_possible_rsv = 0, ACCUMULATOR_TYPE top_k_lower_bound = 0, ACCUMULATOR_TYPE largest_possible_rsv = 0)
 				{
 				delete parsed_query;
 				parsed_query = new query_term_list;
