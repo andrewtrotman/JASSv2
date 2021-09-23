@@ -1,6 +1,6 @@
 /*
-	DUMP_CIFF_LIN.CPP
-	-----------------
+	CIFF_TO_JASS.CPP
+	----------------
 	Copyright (c) 2019 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
@@ -30,10 +30,24 @@
 #include "maths.h"
 #include "ciff_lin.h"
 #include "quantize.h"
-#include "compress_integer_elias_gamma_simd_vb.h"
+#include "quantize_none.h"
 #include "serialise_jass_v1.h"
 #include "index_manager_sequential.h"
 #include "ranking_function_atire_bm25.h"
+#include "compress_integer_elias_gamma_simd_vb.h"
+
+/*
+	USAGE()
+	-------
+*/
+uint8_t usage(const char *exename)
+	{
+	printf("Usage:%s <index.ciff> [-passthrough]\n", exename);
+	printf("The index will be quantized with BM25 unless -passthrough is specified in which case the CIFF is\n");
+	printf("assumed to be already quantized and the JASS quantised values are taken directly from the CIFF.\n");
+
+	return 1;
+	}
 
 /*
 	MAIN()
@@ -42,9 +56,16 @@
 int main(int argc, const char *argv[])
 	{
 	std::string file;
+	bool passthrough = false;
 
-	if (argc != 2)
-		exit(printf("Usage:%s <index.ciff>\n", argv[0]));
+	if (argc != 2 && argc != 3)
+		exit(printf("Usage:%s <index.ciff> [-passthrough]\n", argv[0]));
+	if (argc == 3)
+		{
+		if (strcmp(argv[2], "-passthrough") != 0)
+			exit(printf("Usage:%s <index.ciff> [-passthrough]\n", argv[0]));
+		passthrough = true;
+		}
 
 	/*
 		set up the indexer
@@ -70,7 +91,7 @@ int main(int argc, const char *argv[])
 	size_t term_count = 0;
 	size_t total_terms = source.get_header().num_postings_lists;
 	size_t total_documents = source.get_header().total_docs;
-	size_t percent_threshold = total_terms / 100;
+	size_t percent_threshold = JASS::maths::maximum(total_terms / 100, (size_t)1);
 	for (auto &posting : source.postings())
 		{
 		term_count++;
@@ -110,6 +131,7 @@ int main(int argc, const char *argv[])
 		{
 		document_length_vector.push_back(docid.doclength);
 		key_vector.push_back(docid.collection_docid);
+//std::cout << last_docid << " " << docid.collection_docid << " " << docid.doclength << "\n";
 		if (last_docid != static_cast<JASS::compress_integer::integer>(docid.docid))
 			{
 			std::cout << "Document IDs must be ordered\n";
@@ -129,8 +151,14 @@ int main(int argc, const char *argv[])
 	*/
 	std::cout << "QUANTIZE THE INDEX\n";
 	std::shared_ptr<JASS::ranking_function_atire_bm25> ranker(new JASS::ranking_function_atire_bm25(0.9, 0.4, index.get_document_length_vector()));
-	JASS::quantize<JASS::ranking_function_atire_bm25> quantizer(total_documents, ranker);
-	index.iterate(quantizer);
+	JASS::quantize<JASS::ranking_function_atire_bm25> *quantizer;
+	if (passthrough)
+		quantizer = new JASS::quantize_none<JASS::ranking_function_atire_bm25>(total_documents, ranker);
+	else
+		{
+		quantizer = new JASS::quantize<JASS::ranking_function_atire_bm25>(total_documents, ranker);
+		index.iterate(*quantizer);
+		}
 
 	/*
 		Decode the export formats and encode into a vector before writing the index
@@ -139,7 +167,7 @@ int main(int argc, const char *argv[])
 	std::vector<std::unique_ptr<JASS::index_manager::delegate>> exporters;
 //	exporters.push_back(std::make_unique<JASS::serialise_jass_v1>(total_documents, JASS::serialise_jass_v1::jass_v1_codex::elias_gamma_simd, 1));
 	exporters.push_back(std::make_unique<JASS::serialise_jass_v1>(total_documents, JASS::serialise_jass_v1::jass_v1_codex::elias_gamma_simd_vb, 1));
-	quantizer.serialise_index(index, exporters);
+	quantizer->serialise_index(index, exporters);
 
 	std::cout << "DONE\n";
 	return 0;

@@ -3,6 +3,7 @@
 	#define QUOTEME_1(x) #x
 	#define INCLUDE_FILE(x) QUOTEME(x)
 	#include INCLUDE_FILE(JASS_HAS_EXTERNAL_CONFIGURATION)
+	#error "You should not be doing this"
 #else
 	#define QUERY_HEAP
 	#define ACCUMULATOR_STRATEGY_2D
