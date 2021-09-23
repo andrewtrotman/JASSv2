@@ -223,7 +223,8 @@ namespace JASS
 			*/
 			query_bucket() :
 				query(),
-				largest_used_bucket(0)
+				largest_used_bucket(0),
+				smallest_used_bucket(std::numeric_limits<ACCUMULATOR_TYPE>::max())
 				{
 				std::fill(bucket_depth, bucket_depth + number_of_buckets, char());
 //				memset(bucket_depth, 0, number_of_buckets * sizeof(bucket_depth[0]));
@@ -757,6 +758,7 @@ namespace JASS
 				std::vector<std::string> keys = {"one", "two", "three", "four"};
 				query_bucket *query_object = new query_bucket;
 				query_object->init(keys, 1024, 2);
+				query_object->rewind(0, 100, 100);
 				std::ostringstream string;
 
 				/*
