@@ -29,6 +29,7 @@
 #include "instream_deflate.h"
 #include "compress_integer.h"
 #include "serialise_jass_v1.h"
+#include "serialise_jass_v2.h"
 #include "serialise_integers.h"
 #include "parser_unicoil_json.h"
 #include "instream_document_trec.h"
@@ -43,6 +44,7 @@
 	Declare the command line parameters
 */
 bool parameter_jass_v1_index = false;
+bool parameter_jass_v2_index = false;
 bool parameter_compiled_index = false;
 bool parameter_uint32_index = false;
 bool parameter_forward_index = false;
@@ -84,6 +86,7 @@ auto command_line_parameters = std::make_tuple
 
 	JASS::commandline::note("\nINDEX GENERATION\n----------------"),
 	JASS::commandline::parameter("-I1", "--index_jass_v1", "Generate a JASS version 1 index.", parameter_jass_v1_index),
+	JASS::commandline::parameter("-I2", "--index_jass_v2", "Generate a JASS version 2 index.", parameter_jass_v2_index),
 	JASS::commandline::parameter("-Ib", "--index_binary", "Generate a binary dump of just the postings segments.", parameter_uint32_index),
 	JASS::commandline::parameter("-Ic", "--index_compiled", "Generate a JASS compiled index.", parameter_compiled_index),
 	JASS::commandline::parameter("-If", "--index_forward", "Generate a forward index.", parameter_forward_index),
@@ -177,7 +180,7 @@ int main(int argc, const char *argv[])
 	/*
 		Check to make sure we'll actually be exporting the index
 	*/
-	if (!(parameter_jass_v1_index | parameter_uint32_index | parameter_compiled_index | parameter_forward_index | parameter_fasta_kmer_length))
+	if (!(parameter_jass_v2_index | parameter_jass_v1_index | parameter_uint32_index | parameter_compiled_index | parameter_forward_index | parameter_fasta_kmer_length))
 		{
 		std::cout << "You must specify an index file format or else no index will be generated\n";
 		return 1;
@@ -363,6 +366,8 @@ int main(int argc, const char *argv[])
 		exporters.push_back(std::make_unique<JASS::serialise_ci>(index.get_highest_document_id()));
 	if (parameter_jass_v1_index)
 		exporters.push_back(std::make_unique<JASS::serialise_jass_v1>(index.get_highest_document_id()));
+	if (parameter_jass_v2_index)
+		exporters.push_back(std::make_unique<JASS::serialise_jass_v2>(index.get_highest_document_id()));
 	if (parameter_uint32_index)
 		exporters.push_back(std::make_unique<JASS::serialise_integers>(index.get_highest_document_id()));
 	if (parameter_forward_index)

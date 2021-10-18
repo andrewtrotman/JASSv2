@@ -104,6 +104,8 @@ set(JASSlib_FILES
 	compress_integer_variable_byte.cpp
 	deserialised_jass_v1.h
 	deserialised_jass_v1.cpp
+	deserialised_jass_v2.h
+	deserialised_jass_v2.cpp
 	document.h
 	dynamic_array.h
 	evaluate.h
@@ -196,8 +198,10 @@ set(JASSlib_FILES
 	serialise_ci.h
 	serialise_integers.cpp
 	serialise_integers.h
-	serialise_jass_v1.cpp
 	serialise_jass_v1.h
+	serialise_jass_v1.cpp
+	serialise_jass_v2.h
+	serialise_jass_v2.cpp
 	serialise_forward_index.h
 	serialise_forward_index.cpp
 	simd.h

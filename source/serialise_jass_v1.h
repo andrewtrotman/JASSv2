@@ -69,7 +69,7 @@ namespace JASS
 	*/
 	class serialise_jass_v1 : public index_manager::delegate
 		{
-		private:
+		protected:
 			/*
 				CLASS SERIALISE_JASS_V1::VOCAB_TRIPPLE
 				--------------------------------------
@@ -142,7 +142,7 @@ namespace JASS
 				elias_delta_simd = 'D'			///< Postings are compressed using Elias delta SIMD encoding.
 				};
 
-		private:
+		protected:
 			file vocabulary_strings;							///< The concatination of UTS-8 encoded unique tokens in the collection.
 			file vocabulary;										///< Details about the term (including a pointer to the term, a pointer to the postings, and the quantum count.
 			file postings;											///< The postings lists.
@@ -159,7 +159,7 @@ namespace JASS
 			std::vector<slice, allocator_cpp<slice>> compressed_segments;			///< vector of pointers (and lengths) to the compressed postings.
 			uint8_t alignment;									///< Postings lists are padded to this alignment (used for codexes that require word alignment).
 
-		private:
+		protected:
 			/*
 				SERIALISE_JASS_V1::WRITE_POSTINGS()
 				-----------------------------------
@@ -173,7 +173,7 @@ namespace JASS
 				@param term_frequencies [in] An array (of length document_frequency) of term frequencies (corresponding to document_ids).
 				@return The location (in CIpostings.bin) of the start of the serialised postings list.
 			*/
-			size_t write_postings(const index_postings &postings, size_t &number_of_impacts, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies);
+			virtual size_t write_postings(const index_postings &postings, size_t &number_of_impacts, compress_integer::integer document_frequency, compress_integer::integer *document_ids, index_postings_impact::impact_type *term_frequencies);
 
 		public:
 			/*

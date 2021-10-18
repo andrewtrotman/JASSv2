@@ -147,7 +147,7 @@ namespace JASS
 			Now check that the example in the documentation is correct, and that the encoding is big-endian
 		*/
 		auto pointer = &encoded_buffer[0];
-		compress_into(pointer, 1905);
+		compress_into(pointer, (uint32_t)1905);
 		const uint8_t answer[] = {0x0E, 0xF1};
 		JASS_assert(memcmp(answer, encoded_buffer, 2) == 0);
 		

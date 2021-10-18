@@ -6,7 +6,7 @@
 */
 /*!
 	@file
-	@brief Looad and deserialise a JASS v1 index
+	@brief Load and deserialise a JASS v1 index
 	@author Andrew Trotman
 	@copyright 2017 Andrew Trotman
 */

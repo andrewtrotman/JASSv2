@@ -16,6 +16,7 @@
 #include "file.h"
 #include "commandline.h"
 #include "deserialised_jass_v1.h"
+#include "compress_integer_variable_byte.h"
 
 /*
 	PARAMETERS
@@ -24,13 +25,15 @@
 bool parameter_look_like_atire = false;
 bool parameter_help = false;
 bool parameter_dictionary_only = false;
+bool parameter_v2 = false;
 
 std::string parameters_errors;						///< Any errors as a result of command line parsing
 auto parameters = std::make_tuple					///< The  command line parameter block
 	(
 	JASS::commandline::parameter("-?", "--help", "Print this help.", parameter_help),
 	JASS::commandline::parameter("-A", "--ATIRE", "Make the output look as like 'atire_dictionary -p -q -e \"~\"')", parameter_look_like_atire),
-	JASS::commandline::parameter("-d", "--dictionary", "Only print the dictionary, don't print the postings", parameter_dictionary_only)
+	JASS::commandline::parameter("-d", "--dictionary", "Only print the dictionary, don't print the postings", parameter_dictionary_only),
+	JASS::commandline::parameter("-2", "--index_v2", "The index is a V2 index, not a V1 index", parameter_v2)
 	);
 
 /*
@@ -109,15 +112,15 @@ class printer
 	} ;
 
 /*
-	WALK_INDEX
-	----------
+	WALK_INDEX_V1
+	-------------
 */
 /*!
 	@brief Walk the index, term by term, and print each posting from each postings list.
 	@param index [in] Reference to a JASS v1 deserialised index object.
 	@param decompressor [in] reference to an object that can decompress a postings list segment.
 */
-void walk_index(JASS::deserialised_jass_v1 &index, JASS::compress_integer &decompressor)
+void walk_index_v1(JASS::deserialised_jass_v1 &index, JASS::compress_integer &decompressor)
 	{
 	printer out_stream;
 
@@ -131,6 +134,7 @@ void walk_index(JASS::deserialised_jass_v1 &index, JASS::compress_integer &decom
 		if (!parameter_dictionary_only)
 			{
 			std::cout << ' ';
+
 			/*
 				Walk each segment
 			*/
@@ -141,6 +145,54 @@ void walk_index(JASS::deserialised_jass_v1 &index, JASS::compress_integer &decom
 
 				decompressor.set_impact(header.impact);
 				decompressor.decode_with_writer(out_stream, header.segment_frequency, index.postings() + header.offset, header.end - header.offset);
+				}
+			}
+		std::cout << '\n';
+		}
+	}
+
+/*
+	WALK_INDEX_V2
+	-------------
+*/
+/*!
+	@brief Walk the index, term by term, and print each posting from each postings list.
+	@param index [in] Reference to a JASS v1 deserialised index object.
+	@param decompressor [in] reference to an object that can decompress a postings list segment.
+*/
+void walk_index_v2(JASS::deserialised_jass_v1 &index, JASS::compress_integer &decompressor)
+	{
+	printer out_stream;
+
+	/*
+		Walk each term
+	*/
+	for (const auto &term : index)
+		{
+		std::cout << term.term;
+
+		if (!parameter_dictionary_only)
+			{
+			std::cout << ' ';
+
+			/*
+				Walk each segment
+			*/
+			uint64_t next_offset;
+			uint8_t *segment_header_pointer = term.offset;
+			for (uint64_t current_segment = 0; current_segment < term.impacts; current_segment++)
+				{
+				JASS::compress_integer_variable_byte::decompress_into(&next_offset, segment_header_pointer);
+				uint8_t *current_header_pointer = (uint8_t *)term.offset + next_offset;
+
+				JASS::deserialised_jass_v1::segment_header header;
+				JASS::compress_integer_variable_byte::decompress_into(&header.impact, current_header_pointer);
+				JASS::compress_integer_variable_byte::decompress_into(&header.offset, current_header_pointer);
+				JASS::compress_integer_variable_byte::decompress_into(&header.end, current_header_pointer);
+				JASS::compress_integer_variable_byte::decompress_into(&header.segment_frequency, current_header_pointer);
+
+				decompressor.set_impact(header.impact);
+				decompressor.decode_with_writer(out_stream, header.segment_frequency, index.postings() + header.offset, header.end);
 				}
 			}
 		std::cout << '\n';
@@ -209,7 +261,10 @@ int main(int argc, const char *argv[])
 		/*
 			Print the postings lists
 		*/
-		walk_index(index, *decompressor);
+		if (parameter_v2)
+			walk_index_v2(index, *decompressor);
+		else
+			walk_index_v1(index, *decompressor);
 
 		/*
 			Print the primary key list

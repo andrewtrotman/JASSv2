@@ -73,7 +73,7 @@ namespace JASS
 				return 0;
 
 			/*
-				Find out h0w larget it is
+				Find out how large it is
 			*/
 			struct stat statistics;
 			if (fstat(reader, &statistics) != 0)
