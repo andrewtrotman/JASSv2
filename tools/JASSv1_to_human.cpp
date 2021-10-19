@@ -183,7 +183,8 @@ void walk_index_v2(JASS::deserialised_jass_v1 &index, JASS::compress_integer &de
 			for (uint64_t current_segment = 0; current_segment < term.impacts; current_segment++)
 				{
 				JASS::compress_integer_variable_byte::decompress_into(&next_offset, segment_header_pointer);
-				uint8_t *current_header_pointer = (uint8_t *)term.offset + next_offset;
+//std::cout << "\n\tHEADER OFFSET: " << next_offset << '\n';
+				uint8_t *current_header_pointer = (uint8_t *)segment_header_pointer + next_offset;
 
 				JASS::deserialised_jass_v1::segment_header header;
 				JASS::compress_integer_variable_byte::decompress_into(&header.impact, current_header_pointer);
@@ -191,8 +192,17 @@ void walk_index_v2(JASS::deserialised_jass_v1 &index, JASS::compress_integer &de
 				JASS::compress_integer_variable_byte::decompress_into(&header.end, current_header_pointer);
 				JASS::compress_integer_variable_byte::decompress_into(&header.segment_frequency, current_header_pointer);
 
+//std::cout << "\tHEADER I: " << header.impact << '\n';
+//std::cout << "\tHEADER S: " << header.offset << '\n';
+//std::cout << "\tHEADER L: " << header.end << '\n';
+//std::cout << "\tHEADER N: " << header.segment_frequency << '\n';
+//
+//for (size_t byte = 0; byte < 8; byte++)
+//printf("%02X ", *(current_header_pointer + header.offset + byte));
+//std::cout << "\n";
+
 				decompressor.set_impact(header.impact);
-				decompressor.decode_with_writer(out_stream, header.segment_frequency, index.postings() + header.offset, header.end);
+				decompressor.decode_with_writer(out_stream, header.segment_frequency, current_header_pointer + header.offset, header.end);
 				}
 			}
 		std::cout << '\n';
