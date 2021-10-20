@@ -201,10 +201,27 @@ namespace JASS
 				alignment(alignment)
 				{
 				/*
-					allocate space for storing the compressed postings.  But, allocate too much space as some
-					encoders can't write a sequence smaller than a minimum size,
+					Allocate space for storing the compressed postings.  But, allocate too much space as some
+					encoders can't write a sequence smaller than a minimum size.
+
+					How large does this need to be?
+					We store the:
+						postings, each docid is 8 bytes and there are |documents| of those
+						The impact header consisting of an impact (2 bytes) + start_pointer (8 bytes) + length (8 bytes) + frequency (4 bytes)
+						There are index_postings_impact::largest_impact of those.
+					To make things worse, each of these are stored compressed, and so might be bigger than the
+					raw size by 8/7 (assuming variable byte), so the raw storage is:
+						 8/7 *(documents * 8 + 22 * index_postings_impact::largest_impact)
+					but, each of these two things is stored in a vector as a slice and each slice takes
+					8 bytes for the address and 8 bytes for the size giving an additional 2 * 16 * index_postings_impact::largest_impact
+					giving a total of
+						8/7 *(documents * 8 + (22 + 2 * 16) * index_postings_impact::largest_impact)
+					and now lets add a bit for reasons we can't predict (the std::vector has house-keeping)
+						1 MB
+					and make sure integer rounding doesn't get this wrong:
+						8 * (documents * 8 + (22 + 2 * 16) * index_postings_impact::largest_impact) / 7 + 1024 * 1024
 				*/
-				compressed_buffer.resize((documents + 1024) * sizeof(compress_integer::integer));
+				compressed_buffer.resize(8 * (documents * 8 + (22 + 2 * 16) * index_postings_impact::largest_impact) / 7 + 1024 * 1024);
 				compressed_segments.reserve(index_postings_impact::largest_impact);
 
 // std::cout << compressor_name << "-D" << compressor_d_ness << "\n";
