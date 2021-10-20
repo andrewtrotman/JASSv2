@@ -32,6 +32,7 @@
 #include "quantize.h"
 #include "quantize_none.h"
 #include "serialise_jass_v1.h"
+#include "serialise_jass_v2.h"
 #include "index_manager_sequential.h"
 #include "ranking_function_atire_bm25.h"
 #include "compress_integer_elias_gamma_simd_vb.h"
@@ -42,9 +43,10 @@
 */
 uint8_t usage(const char *exename)
 	{
-	printf("Usage:%s <index.ciff> [-passthrough]\n", exename);
+	printf("Usage:%s <index.ciff> [-passthrough] [-2]\n", exename);
 	printf("The index will be quantized with BM25 unless -passthrough is specified in which case the CIFF is\n");
 	printf("assumed to be already quantized and the JASS quantised values are taken directly from the CIFF.\n");
+	printf("Will generate a JASSv1 index unless -2 is specified for a JASSv2 index.\n");
 
 	return 1;
 	}
@@ -57,14 +59,22 @@ int main(int argc, const char *argv[])
 	{
 	std::string file;
 	bool passthrough = false;
+	bool index_version_2 = false;
 
-	if (argc != 2 && argc != 3)
-		exit(printf("Usage:%s <index.ciff> [-passthrough]\n", argv[0]));
-	if (argc == 3)
+	if (argc != 2 && argc != 3 && argc != 4)
+		exit(usage(argv[0]));
+	if (argc != 2)
 		{
-		if (strcmp(argv[2], "-passthrough") != 0)
-			exit(printf("Usage:%s <index.ciff> [-passthrough]\n", argv[0]));
-		passthrough = true;
+		for (size_t parameter = 2; parameter < argc; parameter++)
+		if (strcmp(argv[parameter], "-passthrough") == 0)
+			passthrough = true;
+		else if (strcmp(argv[parameter], "-2") == 0)
+			index_version_2 = true;
+		else
+			{
+			printf("Unknown parameter:%s\n", argv[parameter]);
+			exit(usage(argv[0]));
+			}
 		}
 
 	/*
@@ -166,7 +176,10 @@ int main(int argc, const char *argv[])
 	std::cout << "WRITE THE INDEX TO DISK\n";
 	std::vector<std::unique_ptr<JASS::index_manager::delegate>> exporters;
 //	exporters.push_back(std::make_unique<JASS::serialise_jass_v1>(total_documents, JASS::serialise_jass_v1::jass_v1_codex::elias_gamma_simd, 1));
-	exporters.push_back(std::make_unique<JASS::serialise_jass_v1>(total_documents, JASS::serialise_jass_v1::jass_v1_codex::elias_gamma_simd_vb, 1));
+	if (index_version_2)
+		exporters.push_back(std::make_unique<JASS::serialise_jass_v2>(total_documents, JASS::serialise_jass_v1::jass_v1_codex::elias_gamma_simd_vb, 1));
+	else		// generate a version 1 index
+		exporters.push_back(std::make_unique<JASS::serialise_jass_v1>(total_documents, JASS::serialise_jass_v1::jass_v1_codex::elias_gamma_simd_vb, 1));
 	quantizer->serialise_index(index, exporters);
 
 	std::cout << "DONE\n";
