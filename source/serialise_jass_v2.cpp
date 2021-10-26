@@ -155,11 +155,48 @@ namespace JASS
 		*/
 		vocabulary_strings.write(term.address(), term.size());
 		vocabulary_strings.write("\0", 1);
-		
+
 		/*
 			Keep a copy of the term and the detals of the postings list for later sorting and writing to CIvocab.bin
 		*/
 		index_key.push_back(vocab_tripple(term, term_offset, postings_location, number_of_impact_scores));
+		}
+
+	/*
+		SERIALISE_JASS_V2::SERIALISE_VOCABULARY_POINTERS()
+		--------------------------------------------------
+	*/
+	void serialise_jass_v2::serialise_vocabulary_pointers()
+		{
+		/*
+			Sort
+		*/
+		std::sort(index_key.begin(), index_key.end());
+
+		/*
+			Serialise the contents of CIvocab.bin
+		*/
+		for (const auto &line : index_key)
+			{
+			uint8_t byte_sequence[12];			// only need 10 of these as a 64-bit integer with variable byte can expand to no more than 10 bytes
+			uint8_t *into;
+			size_t bytes_used;
+
+			into = byte_sequence;
+			bytes_used = compress_integer_variable_byte::bytes_needed_for(line.term);
+			compress_integer_variable_byte::compress_into(into, line.term);
+			vocabulary.write(byte_sequence, bytes_used);
+
+			into = byte_sequence;
+			bytes_used = compress_integer_variable_byte::bytes_needed_for(line.offset);
+			compress_integer_variable_byte::compress_into(into, line.offset);
+			vocabulary.write(byte_sequence, bytes_used);
+
+			into = byte_sequence;
+			bytes_used = compress_integer_variable_byte::bytes_needed_for(line.impacts);
+			compress_integer_variable_byte::compress_into(into, line.impacts);
+			vocabulary.write(byte_sequence, bytes_used);
+			}
 		}
 
 	/*

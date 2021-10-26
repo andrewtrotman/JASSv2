@@ -84,6 +84,18 @@ namespace JASS
 						}
 
 					/*
+						INDEX_MANAGER_SEQUENTIAL::DELEGATE::FINISH()
+						--------------------------------------------
+					*/
+					/*!
+						@brief Any final clean up.
+					*/
+					virtual void finish(void)
+						{
+						/* Nothing */
+						}
+
+					/*
 						INDEX_MANAGER_SEQUENTIAL::DELEGATE::OPERATOR()()
 						------------------------------------------------
 					*/

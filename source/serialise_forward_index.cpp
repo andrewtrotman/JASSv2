@@ -26,10 +26,10 @@ namespace JASS
 		}
 
 	/*
-		SERIALISE_FORWARD_INDEX::~SERIALISE_FORWARD_INDEX()
-		---------------------------------------------------
+		SERIALISE_FORWARD_INDEX::FINISH()
+		---------------------------------
 	*/
-	serialise_forward_index::~serialise_forward_index()
+	void serialise_forward_index::finish(void)
 		{
 		file outfile("JASS_forward.index", "w+b");
 

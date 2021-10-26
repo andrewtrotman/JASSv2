@@ -236,7 +236,28 @@ namespace JASS
 			/*!
 				@brief Destructor
 			*/
-			virtual ~serialise_jass_v1();
+			virtual ~serialise_jass_v1()
+				{
+				/* Nothing */
+				}
+
+			/*
+				SERIALISE_JASS_V1::FINISH()
+				---------------------------
+			*/
+			/*!
+				@brief Finish up any serialising that needs to be done.
+			*/
+			virtual void finish(void);
+
+			/*
+				 SERIALISE_JASS_V1::SERIALISE_VOCABULARY_POINTERS()
+				--------------------------------------------------
+			*/
+			/*!
+				@brief Serialise the ppointers that point between the vocab and the postings (the CIvocab.bin file).
+			*/
+			virtual void serialise_vocabulary_pointers();
 
 			/*
 				SERIALISE_JASS_V1::DELEGATE::OPERATOR()()

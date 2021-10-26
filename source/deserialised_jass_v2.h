@@ -26,6 +26,19 @@ namespace JASS
 	*/
 	class deserialised_jass_v2 : public deserialised_jass_v1
 		{
+		protected:
+			/*
+				DESERIALISED_JASS_V2::READ_VOCABULARY()
+				---------------------------------------
+			*/
+			/*!
+				@brief Read the JASS v2 index vocabulary files
+				@param vocab_filename [in] the name of the file containing the vocabulary pointers ("CIvocab.bin")
+				@param terms_filename [in] the name of the file containing the vocabulary strings ("CIvocab_terms.bin")
+				@return The number of documents in the collection (or 0 on error)
+			*/
+			virtual size_t read_vocabulary(const std::string &vocab_filename = "CIvocab.bin", const std::string &terms_filename = "CIvocab_terms.bin");
+
 		public:
 			/*
 				DESERIALISED_JASS_V2::DESERIALISED_JASS_V2()

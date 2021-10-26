@@ -50,18 +50,18 @@ namespace JASS
 					size_t documents;			///< The number of documents in the collection
 
 				public:
-				/*
-					INDEX_MANAGER::DELEGATE::DELEGATE()
-					------------------------------------
-				*/
-				/*!
-					@brief Destructor.
-				*/
-				delegate(size_t documents) :
-					documents(documents)
-					{
-					/* Nothing */
-					}
+					/*
+						INDEX_MANAGER::DELEGATE::DELEGATE()
+						------------------------------------
+					*/
+					/*!
+						@brief Destructor.
+					*/
+					delegate(size_t documents) :
+						documents(documents)
+						{
+						/* Nothing */
+						}
 
 					/*
 						INDEX_MANAGER::DELEGATE::~DELEGATE()
@@ -99,6 +99,15 @@ namespace JASS
 						@param primary_key [in] This document's primary key (external document identifier).
 					*/
 					virtual void operator()(size_t document_id, const slice &primary_key) = 0;
+
+					/*
+						INDEX_MANAGER::DELEGATE::FINISH()()
+						-----------------------------------
+					*/
+					/*!
+						@brief Finish up any serialising that needs to be done.
+					*/
+					virtual void finish(void) = 0;
 				};
 
 			/*
@@ -385,6 +394,10 @@ namespace JASS
 						/* Nothing */
 						}
 					virtual void operator()(size_t document_id, const slice &primary_key)
+						{
+						/* Nothing */
+						}
+					virtual void finish(void)
 						{
 						/* Nothing */
 						}

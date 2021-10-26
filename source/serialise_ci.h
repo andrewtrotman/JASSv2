@@ -55,7 +55,19 @@ namespace JASS
 			/*!
 				Destructor
 			*/
-			~serialise_ci();
+			~serialise_ci()
+				{
+				/* Nothing */
+				}
+
+			/*
+				SERIALISE_CI::FINISH()
+				----------------------
+			*/
+			/*!
+				@brief Do any final cleaning up
+			*/
+			void finish(void);
 
 			/*
 				SERIALISE_CI::DELEGATE::OPERATOR()()
