@@ -12,14 +12,8 @@
 */
 #pragma once
 
-#include "string.h"
-
-#include <string>
-#include <vector>
-
-#include "slice.h"
-#include "query_term.h"
-#include "compress_integer.h"
+#include "deserialised_jass_v1.h"
+#include "compress_integer_variable_byte.h"
 
 namespace JASS
 	{
@@ -30,142 +24,8 @@ namespace JASS
 	/*!
 		@brief Load and deserialise a JASS v2 index
 	*/
-	class deserialised_jass_v2
+	class deserialised_jass_v2 : public deserialised_jass_v1
 		{
-		public:
-			/*
-				CLASS DESERIALISED_JASS_V2::SEGMENT_HEADER
-				------------------------------------------
-			*/
-			/*!
-				@brief Each impact ordered segment contains a header with the impact score and the pointers to documents.
-				@details Each JASS v1 postings list consists of a list of pointers to segment headers which, in turn, point to lists of document identifiers.  The
-				segment header contains the impact score, a pointer to the (compressed) postings list, and the numner of documents in the list (the segment
-				frequency).
-			*/
-			#pragma pack(push, 1)
-			class segment_header
-				{
-				public:
-					uint16_t impact;					///< The impact score
-					uint64_t offset;					///< Offset (within the postings file) of the start of the compressed postings list
-					uint64_t end;						///< Offset (within the postings file) of the end of the compressed postings list
-					uint32_t segment_frequency;	///< The number of document ids in the segment (not end - offset because the postings are compressed)
-				};
-			#pragma pack(pop)
-
-			/*
-				CLASS DESERIALISED_JASS_V2::METADATA
-				------------------------------------
-			*/
-			/*!
-				@brief metadata for a given term including pointer to postings and number of impacts.
-			*/
-			class metadata
-				{
-				public:
-					slice term;								///< Pointer to a '\0' terminated string that is this term's name
-					uint8_t *offset;						///< Offset to the postings for this term
-					uint64_t impacts;						///< The numner of impact segments this term has
-
-				public:
-					/*
-						DESERIALISED_JASS_V2::METADATA::METADATA()
-						------------------------------------------
-					*/
-					/*!
-						@brief Constructor
-					*/
-					metadata() :
-						term(),
-						offset(nullptr),
-						impacts(0)
-						{
-						/* Nothing */
-						}
-
-					/*
-						DESERIALISED_JASS_V2::METADATA::METADATA()
-						------------------------------------------
-					*/
-					/*!
-						@brief Constructor
-						@param term [in]  The term this object represents
-						@param offset [in] The a ppointer to the postings lists for this term
-						@param impacts [in] The number of impacts for this term
-					*/
-					metadata(const slice &term, const void *offset, uint64_t impacts) :
-						term(term),
-						offset(const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(offset))),
-						impacts(impacts)
-						{
-						/* Nothing */
-						}
-
-					/*
-						DESERIALISED_JASS_V2::METADATA::OPERATOR<()
-						-------------------------------------------
-					*/
-					/*!
-						@brief Less than operator used for sorting terms in the vocabulary.
-						@param with [in] what to compare to.
-						@return true if this is less than with, else false.
-					*/
-					bool operator<(const slice &with) const
-						{
-						return slice::strict_weak_order_less_than(term, with);
-						}
-				};
-
-		private:
-			bool verbose;												///< Should this class produce diagnostics on stdout?
-
-			uint64_t documents;										///< The number of documents in the collection
-			file::file_read_only primary_key_memory;			///< Memory used to store the primary key strings
-			std::vector<std::string> primary_key_list;		///< The array of primary keys
-
-			uint64_t terms;											///< The number of terms in the collection
-			file::file_read_only vocabulary_memory;			///< Memory used to store the vocabulary pointers
-			file::file_read_only vocabulary_terms_memory;	///< Memory used to store the vocabulary strings
-			std::vector<metadata> vocabulary_list;				///< The (sorted in alphabetical order) array of vocbulary terms
-
-			file::file_read_only postings_memory;				///< Memory used to store the postings
-
-		protected:
-			/*
-				DESERIALISED_JASS_V2::READ_PRIMARY_KEYS()
-				-----------------------------------------
-			*/
-			/*!
-				@brief Read the JASS v1 index primary key file
-				@param primary_key_filename [in] the name of the file containing the primary key list ("CIdoclist.bin")
-				@return The number of documents in the collection (or 0 on error)
-			*/
-			size_t read_primary_keys(const std::string &primary_key_filename = "CIdoclist.bin");
-
-			/*
-				DESERIALISED_JASS_V2::READ_VOCABULARY()
-				---------------------------------------
-			*/
-			/*!
-				@brief Read the JASS v1 index vocabulary files
-				@param vocab_filename [in] the name of the file containing the vocabulary pointers ("CIvocab.bin")
-				@param terms_filename [in] the name of the file containing the vocabulary strings ("CIvocab_terms.bin")
-				@return The number of documents in the collection (or 0 on error)
-			*/
-			size_t read_vocabulary(const std::string &vocab_filename = "CIvocab.bin", const std::string &terms_filename = "CIvocab_terms.bin");
-
-			/*
-				DESERIALISED_JASS_V2::READ_POSTINGS()
-				-------------------------------------
-			*/
-			/*!
-				@brief Read the JASS v1 index postings file
-				@param postings_filename [in] the name of the file containing the postings ("CIpostings.bin")
-				@return size of the posings file or 0 on failure
-			*/
-			size_t read_postings(const std::string &postings_filename = "CIpostings.bin");
-
 		public:
 			/*
 				DESERIALISED_JASS_V2::DESERIALISED_JASS_V2()
@@ -176,78 +36,21 @@ namespace JASS
 				@param verbose [in] Should the index reading methods produce messages on stdout?
 			*/
 			explicit deserialised_jass_v2(bool verbose = false) :
-				verbose(verbose),
-				documents(0),
-				terms(0)
+				deserialised_jass_v1(verbose)
 				{
 				/* Nothing */
 				}
 
 			/*
-				DESERIALISED_JASS_V2::READ_INDEX()
-				----------------------------------
+				DESERIALISED_JASS_V2::~DESERIALISED_JASS_V2()
+				--------------------------------------------
 			*/
 			/*!
-				@brief Read a JASS v1 index into memory
-				@param primary_key_filename [in] the name of the file containing the primary key list ("CIdoclist.bin")
-				@param vocab_filename [in] the name of the file containing the vocabulary pointers ("CIvocab.bin")
-				@param terms_filename [in] the name of the file containing the vocabulary strings ("CIvocab_terms.bin")
-				@param postings_filename [in] the name of the file containing the postings ("CIpostings.bin")
-				@return 0 on failure, non-zero on success
+				@brief Destructor
 			*/
-			size_t read_index(const std::string &primary_key_filename = "CIdoclist.bin", const std::string &vocab_filename = "CIvocab.bin", const std::string &terms_filename = "CIvocab_terms.bin", const std::string &postings_filename = "CIpostings.bin");
-
-			/*
-				DESERIALISED_JASS_V2::CODEX()
-				-----------------------------
-			*/
-			/*!
-				@brief Return a reference to a decompressor that can be used with this index
-				@param name [out] The name of the compression codex
-				@param d_ness [out] Whether the codex requires D0, D1, etc decoding (-1 if it supports decode_and_process via decode_none)
-				@return A reference to a compress_integer that can decode the given codex
-			*/
-			std::unique_ptr<compress_integer> codex(std::string &name, int32_t &d_ness) const;
-
-			/*
-				DESERIALISED_JASS_V2::PRIMARY_KEYS()
-				------------------------------------
-			*/
-			/*!
-				@brief Return the list of primary keys as a std::vector<std::string>
-				@return A reference to a vector of primary keys
-			*/
-			const std::vector<std::string> &primary_keys(void) const
+			virtual ~deserialised_jass_v2()
 				{
-				return primary_key_list;
-				}
-
-			/*
-				DESERIALISED_JASS_V2::POSTINGS()
-				--------------------------------
-			*/
-			/*!
-				@brief Return a pointer to the start of the postings "file"
-				@return A pointer to the start of the postings "file"
-			*/
-			const uint8_t *postings(void) const
-				{
-				const uint8_t *buffer = nullptr;
-				postings_memory.read_entire_file(buffer);
-				return buffer;
-				}
-
-			/*
-				DESERIALISED_JASS_V2::DOCUMENT_COUNT()
-				--------------------------------------
-			*/
-			/*!
-				@brief Return the number of documents in the collection
-				@return the number of documents in the collection
-			*/
-			size_t document_count(void) const
-				{
-				return documents;
+				/* Nothing */
 				}
 
 			/*
@@ -286,29 +89,46 @@ namespace JASS
 				}
 
 			/*
-				DESERIALISED_JASS_V2::BEGIN()
-				-----------------------------
+				DESERIALISED_JASS_V2::GET_SEGMENT_LIST()
+				----------------------------------------
 			*/
 			/*!
-				@brief return an iterator over the vocabulary.
-				@return an iterator over the vocabulary.
+				@brief Extract the segment headers and return them in the parameter called segments
+				@param segments [out] The list of segments for the given search term (caller must ensure this ponts to a large enough array)
+				@param metadata [in] The metadata for the given search term
+				@param smallest [out] The largest impact score for this term
+				@param largest [out] The smallest impact score for this term
+				@return The number of segments extracted and added to the list
 			*/
-			auto begin(void)
+			virtual size_t get_segment_list(segment_header *segments, metadata &metadata, size_t term_frequency, query::ACCUMULATOR_TYPE &smallest, query::ACCUMULATOR_TYPE &largest) const
 				{
-				return vocabulary_list.begin();
-				}
+				/*
+					Extract all the segments
+				*/
+				segment_header *current_segment = segments;
+				uint8_t *segment_header_pointer = metadata.offset;
 
-			/*
-				DESERIALISED_JASS_V2::END()
-				---------------------------
-			*/
-			/*!
-				@brief return an iterator to the end of the vocabulary.
-				@return an iterator to the end of the vocabulary.
-			*/
-			auto end(void)
-				{
-				return vocabulary_list.end();
+				for (uint64_t segment = 0; segment < metadata.impacts; segment++)
+					{
+					compress_integer_variable_byte::decompress_into(&current_segment->impact, segment_header_pointer);
+					compress_integer_variable_byte::decompress_into(&current_segment->offset, segment_header_pointer);
+					compress_integer_variable_byte::decompress_into(&current_segment->end , segment_header_pointer);
+					compress_integer_variable_byte::decompress_into(&current_segment->segment_frequency, segment_header_pointer);
+					current_segment->offset += segment_header_pointer - postings();		//v2 index is relative to the segment header
+					current_segment->impact *= term_frequency;
+					current_segment->end += current_segment->offset;					// V2 indexes store length rather than an end pointer
+					current_segment++;
+					}
+
+				/*
+					Compute the smallest and largest impact scores and return them in the right order
+				*/
+				smallest = segments->impact;
+				largest = (current_segment - 1)->impact;
+				if (smallest > largest)
+					std::swap(smallest, largest);
+
+				return metadata.impacts;
 				}
 		};
 	}

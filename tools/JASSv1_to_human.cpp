@@ -141,7 +141,7 @@ void walk_index_v1(JASS::deserialised_jass_v1 &index, JASS::compress_integer &de
 			for (uint64_t current_segment = 0; current_segment < term.impacts; current_segment++)
 				{
 				uint64_t *postings = (uint64_t *)term.offset + current_segment;
-				const JASS::deserialised_jass_v1::segment_header &header = *reinterpret_cast<const JASS::deserialised_jass_v1::segment_header *>(index.postings() + *postings);
+				const JASS::deserialised_jass_v1::segment_header_on_disk &header = *reinterpret_cast<const JASS::deserialised_jass_v1::segment_header_on_disk *>(index.postings() + *postings);
 
 				decompressor.set_impact(header.impact);
 				decompressor.decode_with_writer(out_stream, header.segment_frequency, index.postings() + header.offset, header.end - header.offset);

@@ -38,7 +38,7 @@ namespace JASS
 
 		private:
 			slice term;						///< The term.  Note that the memory is kept elsewhere
-			size_t query_frequency;		///< Number of times the term occurs in the query
+			size_t query_frequency;			///< Number of times the term occurs in the query
 
 		public:
 			/*

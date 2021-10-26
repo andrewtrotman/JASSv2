@@ -17,6 +17,7 @@
 #include <string>
 #include <vector>
 
+#include "file.h"
 #include "slice.h"
 #include "query_term.h"
 #include "compress_integer.h"
@@ -43,14 +44,32 @@ namespace JASS
 				segment header contains the impact score, a pointer to the (compressed) postings list, and the numner of documents in the list (the segment
 				frequency).
 			*/
-			#pragma pack(push, 1)
 			class segment_header
+				{
+				public:
+					query::ACCUMULATOR_TYPE impact;					///< The impact score
+					uint64_t offset;					///< Offset (within the postings file) of the start of the compressed postings list
+					uint64_t end;						///< Offset (within the postings file) of the end of the compressed postings list
+					query::DOCID_TYPE segment_frequency;			///< The number of document ids in the segment (not end - offset because the postings are compressed)
+				};
+			/*
+				CLASS DESERIALISED_JASS_V1::SEGMENT_HEADER_ON_DISK
+				--------------------------------------------------
+			*/
+			/*!
+				@brief Each impact ordered segment contains a header with the impact score and the pointers to documents.
+				@details Each JASS v1 postings list consists of a list of pointers to segment headers which, in turn, point to lists of document identifiers.  The
+				segment header contains the impact score, a pointer to the (compressed) postings list, and the numner of documents in the list (the segment
+				frequency).
+			*/
+			#pragma pack(push, 1)
+			class segment_header_on_disk
 				{
 				public:
 					uint16_t impact;					///< The impact score
 					uint64_t offset;					///< Offset (within the postings file) of the start of the compressed postings list
 					uint64_t end;						///< Offset (within the postings file) of the end of the compressed postings list
-					uint32_t segment_frequency;	///< The number of document ids in the segment (not end - offset because the postings are compressed)
+					uint32_t segment_frequency;			///< The number of document ids in the segment (not end - offset because the postings are compressed)
 				};
 			#pragma pack(pop)
 
@@ -117,7 +136,7 @@ namespace JASS
 						}
 				};
 
-		private:
+		protected:
 			bool verbose;												///< Should this class produce diagnostics on stdout?
 
 			uint64_t documents;										///< The number of documents in the collection
@@ -183,6 +202,18 @@ namespace JASS
 				/* Nothing */
 				}
 
+			/*
+				DESERIALISED_JASS_V1::~DESERIALISED_JASS_V1()
+				--------------------------------------------
+			*/
+			/*!
+				@brief Destructor
+			*/
+			virtual ~deserialised_jass_v1()
+				{
+				/* Nothing */
+				}
+				
 			/*
 				DESERIALISED_JASS_V1::READ_INDEX()
 				----------------------------------
@@ -284,6 +315,46 @@ namespace JASS
 				*/
 				return false;
 				}
+
+			/*
+				DESERIALISED_JASS_V1::GET_SEGMENT_LIST()
+				----------------------------------------
+			*/
+			/*!
+				@brief Extract the segment headers and return them in the parameter called segments
+				@param segments [out] The list of segments for the given search term (caller must ensure this ponts to a large enough array)
+				@param metadata [in] The metadata for the given search term
+				@param smallest [out] The largest impact score for this term
+				@param largest [out] The smallest impact score for this term
+				@return The number of segments extracted and added to the list
+			*/
+			virtual size_t get_segment_list(segment_header *segments, metadata &metadata, size_t term_frequency, query::ACCUMULATOR_TYPE &smallest, query::ACCUMULATOR_TYPE &largest) const
+				{
+				segment_header *current_segment = segments;
+				for (uint64_t segment = 0; segment < metadata.impacts; segment++)
+					{
+					uint64_t *postings_list = (uint64_t *)metadata.offset;
+					segment_header_on_disk *next_segment_in_postings_list = (segment_header_on_disk *)(postings() + postings_list[segment]);
+
+					current_segment->impact = next_segment_in_postings_list->impact * term_frequency;
+					current_segment->offset = next_segment_in_postings_list->offset;
+					current_segment->end = next_segment_in_postings_list->end;
+					current_segment->segment_frequency = next_segment_in_postings_list->segment_frequency;
+
+					current_segment++;
+					}
+
+				/*
+					Compute the smallest and largest impact scores and return them in the right order
+				*/
+				smallest = segments->impact;
+				largest = (current_segment - 1)->impact;
+				if (smallest > largest)
+					std::swap(smallest, largest);
+
+				return metadata.impacts;
+				}
+
 
 			/*
 				DESERIALISED_JASS_V1::BEGIN()

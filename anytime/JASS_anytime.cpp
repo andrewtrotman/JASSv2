@@ -28,9 +28,9 @@
 #include "JASS_anytime_query.h"
 #include "query_maxblock_heap.h"
 #include "deserialised_jass_v1.h"
+#include "deserialised_jass_v2.h"
 #include "compress_integer_all.h"
 #include "JASS_anytime_thread_result.h"
-#include "JASS_anytime_segment_header.h"
 #include "compress_integer_qmx_jass_v1.h"
 #include "compress_integer_elias_gamma_simd.h"
 
@@ -52,18 +52,20 @@ size_t parameter_top_k = 10;								///< Number of results to return
 size_t accumulator_width = 7;								///< The width (2^accumulator_width) of the accumulator 2-D array (if they are being used).
 bool parameter_ascii_query_parser = false;			///< When true use the ASCII pre-casefolded query parser
 bool parameter_help = false;
+bool parameter_index_v2 = false;
 
 std::string parameters_errors;							///< Any errors as a result of command line parsing
 auto parameters = std::make_tuple						///< The  command line parameter block
 	(
-	JASS::commandline::parameter("-?", "--help",      "Print this help.", parameter_help),
-	JASS::commandline::parameter("-q", "--queryfile", "<filename>        Name of file containing a list of queries (1 per line, each line prefixed with query-id)", parameter_queryfilename),
-	JASS::commandline::parameter("-a", "--asciiparser ", "use simple query parser (ASCII seperated pre-casefolded tokens)", parameter_ascii_query_parser),
-	JASS::commandline::parameter("-t", "--threads",   "<threadcount>     Number of threads to use (one query per thread) [default = -t1]", parameter_threads),
-	JASS::commandline::parameter("-k", "--top-k",     "<top-k>           Number of results to return to the user (top-k value) [default = -k10]", parameter_top_k),
-	JASS::commandline::parameter("-r", "--rho",       "<integer_percent> Percent of the collection size to use as max number of postings to process [default = -r100] (overrides -RHO)", rho),
-	JASS::commandline::parameter("-R", "--RHO",       "<integer_max>     Max number of postings to process [default is all] (overridden by -rho)", maximum_number_of_postings_to_process),
-	JASS::commandline::parameter("-w", "--width",     "<2^w>             The width of the 2d accumulator array (2^w is used)", accumulator_width)
+	JASS::commandline::parameter("-?", "--help",         "                  Print this help.", parameter_help),
+	JASS::commandline::parameter("-2", "--v2_index",     "                  The index is a JASS v2 index", parameter_index_v2),
+	JASS::commandline::parameter("-a", "--asciiparser ", "                  Use simple query parser (ASCII seperated pre-casefolded tokens)", parameter_ascii_query_parser),
+	JASS::commandline::parameter("-k", "--top-k",        "<top-k>           Number of results to return to the user (top-k value) [default = -k10]", parameter_top_k),
+	JASS::commandline::parameter("-q", "--queryfile",    "<filename>        Name of file containing a list of queries (1 per line, each line prefixed with query-id)", parameter_queryfilename),
+	JASS::commandline::parameter("-r", "--rho",          "<integer_percent> Percent of the collection size to use as max number of postings to process [default = -r100] (overrides -RHO)", rho),
+	JASS::commandline::parameter("-R", "--RHO",          "<integer_max>     Max number of postings to process [default is all] (overridden by -rho)", maximum_number_of_postings_to_process),
+	JASS::commandline::parameter("-t", "--threads",      "<threadcount>     Number of threads to use (one query per thread) [default = -t1]", parameter_threads),
+	JASS::commandline::parameter("-w", "--width",        "<2^w>             The width of the 2D accumulator array (2^w is used)", accumulator_width)
 	);
 
 /*
@@ -75,7 +77,7 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 	/*
 		Allocate the Score-at-a-Time table
 	*/
-	JASS_anytime_segment_header *segment_order = new JASS_anytime_segment_header[MAX_TERMS_PER_QUERY * MAX_QUANTUM];
+	JASS::deserialised_jass_v1::segment_header *segment_order = new JASS::deserialised_jass_v1::segment_header[MAX_TERMS_PER_QUERY * MAX_QUANTUM];
 
 	/*
 		Allocate a JASS query object
@@ -132,16 +134,15 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 			jass_query->parse(query, JASS::parser_query::parser_type::raw);
 		else
 			jass_query->parse(query);
-		auto &terms = jass_query->terms();
 
 		/*
 			Parse the query and extract the list of impact segments
 		*/
-		JASS_anytime_segment_header *current_segment = segment_order;
+		JASS::deserialised_jass_v1::segment_header *current_segment = segment_order;
 		JASS::query::ACCUMULATOR_TYPE largest_possible_rsv = (std::numeric_limits<decltype(largest_possible_rsv)>::min)();
 		JASS::query::ACCUMULATOR_TYPE smallest_possible_rsv = (std::numeric_limits<decltype(smallest_possible_rsv)>::max)();
 //std::cout << "\n";
-		for (const auto &term : terms)
+		for (const auto &term : jass_query->terms())
 			{
 //std::cout << "TERM:" << term << " ";
 
@@ -153,33 +154,17 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 				continue;
 
 			/*
-				Add to the list of impact segments that need to be processed
+				Add the segments to the list to process
 			*/
-			for (uint64_t segment = 0; segment < metadata.impacts; segment++)
-				{
-				uint64_t *postings_list = (uint64_t *)metadata.offset;
-				JASS::deserialised_jass_v1::segment_header *next_segment_in_postings_list = (JASS::deserialised_jass_v1::segment_header *)(index.postings() + postings_list[segment]);
-
-				current_segment->impact = next_segment_in_postings_list->impact * term.frequency();
-				current_segment->offset = next_segment_in_postings_list->offset;
-				current_segment->end = next_segment_in_postings_list->end;
-				current_segment->segment_frequency = next_segment_in_postings_list->segment_frequency;
-
-//std::cout << current_segment->impact << "," << current_segment->segment_frequency << " ";
-				current_segment++;
-				}
-//std::cout << "\n";
+			JASS::query::ACCUMULATOR_TYPE term_smallest_impact;
+			JASS::query::ACCUMULATOR_TYPE term_largest_impact;
+			current_segment += index.get_segment_list(current_segment, metadata, term.frequency(), term_smallest_impact, term_largest_impact);
 
 			/*
-				Normally the highest impact is the first impact, but binary_to_JASS gets it wrong and puts the highest impact last!
+				Compute the largest and smallest possible rsv values
 			*/
-			auto *first_segment_in_postings_list = (JASS::deserialised_jass_v1::segment_header *)(index.postings() + ((uint64_t *)metadata.offset)[0]);
-			auto *last_segment_in_postings_list = (JASS::deserialised_jass_v1::segment_header *)(index.postings() + ((uint64_t *)metadata.offset)[metadata.impacts - 1]);
-
-			size_t highest_term_impact = JASS::maths::maximum(first_segment_in_postings_list->impact, last_segment_in_postings_list->impact);
-			largest_possible_rsv += highest_term_impact;
-
-			smallest_possible_rsv = JASS::maths::minimum(smallest_possible_rsv, decltype(smallest_possible_rsv)(first_segment_in_postings_list->impact), decltype(smallest_possible_rsv)(last_segment_in_postings_list->impact));
+			largest_possible_rsv += term_largest_impact;
+			smallest_possible_rsv = JASS::maths::minimum(smallest_possible_rsv, term_smallest_impact);
 			}
 
 		/*
@@ -189,7 +174,7 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 			(
 			segment_order,
 			current_segment,
-			[postings = index.postings()](JASS_anytime_segment_header &lhs, JASS_anytime_segment_header &rhs)
+			[postings = index.postings()](JASS::deserialised_jass_v1::segment_header &lhs, JASS::deserialised_jass_v1::segment_header &rhs)
 				{
 
 				/*
@@ -338,15 +323,16 @@ int main_event(int argc, const char *argv[])
 	/*
 		Read the index
 	*/
-	JASS::deserialised_jass_v1 index(true);
-	index.read_index();
+	JASS::deserialised_jass_v1 *index = parameter_index_v2 ? new JASS::deserialised_jass_v2(true) : new JASS::deserialised_jass_v1(true);
 
-	if (index.document_count() > MAX_DOCUMENTS)
+	index->read_index();
+
+	if (index->document_count() > MAX_DOCUMENTS)
 		{
-		std::cout << "There are " << index.document_count() << " documents in this index which is larger than MAX_DOCUMENTS (" << MAX_DOCUMENTS << "), change MAX_DOCUMENTS in " << __FILE__ << " and recompile.\n";
+		std::cout << "There are " << index->document_count() << " documents in this index which is larger than MAX_DOCUMENTS (" << MAX_DOCUMENTS << "), change MAX_DOCUMENTS in " << __FILE__ << " and recompile.\n";
 		exit(1);
 		}
-	stats.number_of_documents = index.document_count();
+	stats.number_of_documents = index->document_count();
 
 	/*
 		Set the Anytime stopping criteria
@@ -357,7 +343,7 @@ int main_event(int argc, const char *argv[])
 		postings_to_process = maximum_number_of_postings_to_process;
 
 	if (rho != 100.0)
-		postings_to_process = static_cast<size_t>(static_cast<double>(index.document_count()) * rho / 100.0);
+		postings_to_process = static_cast<size_t>(static_cast<double>(index->document_count()) * rho / 100.0);
 
 std::cout << "Maximum number of postings to process:" << postings_to_process << "\n";
 
@@ -406,7 +392,7 @@ std::cout << "Maximum number of postings to process:" << postings_to_process << 
 	*/
 	std::string codex_name;
 	int32_t d_ness;
-	index.codex(codex_name, d_ness);
+	index->codex(codex_name, d_ness);
 	std::cout << "Index compressed with " << codex_name << "-D" << d_ness << "\n";
 
 	/*
@@ -415,7 +401,7 @@ std::cout << "Maximum number of postings to process:" << postings_to_process << 
 	auto total_search_time = JASS::timer::start();
 	if (parameter_threads == 1)
 		{
-		anytime(output[0], index, query_list, postings_to_process, parameter_top_k);
+		anytime(output[0], *index, query_list, postings_to_process, parameter_top_k);
 		}
 	else
 		{
@@ -423,7 +409,7 @@ std::cout << "Maximum number of postings to process:" << postings_to_process << 
 			Multiple threads, so start each worker
 		*/
 		for (size_t which = 0; which < parameter_threads ; which++)
-			thread_pool.push_back(JASS::thread(anytime, std::ref(output[which]), std::ref(index), std::ref(query_list), postings_to_process, parameter_top_k));
+			thread_pool.push_back(JASS::thread(anytime, std::ref(output[which]), std::ref(*index), std::ref(query_list), postings_to_process, parameter_top_k));
 		/*
 			Wait until they're all done (blocking on the completion of each thread in turn)
 		*/
@@ -454,6 +440,7 @@ std::cout << "Maximum number of postings to process:" << postings_to_process << 
 	stats.total_run_time_in_ns = JASS::timer::stop(total_run_time).nanoseconds();
 	std::cout << stats;
 
+	delete index;
 	return 0;
 	}
 
