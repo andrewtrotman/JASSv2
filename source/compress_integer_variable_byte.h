@@ -412,11 +412,17 @@ namespace JASS
 								{
 								*decoded = (*decoded << 7) | *source;
 								++source;
+								if (*source & 0x80)
+									{
+									*decoded = (*decoded << 7) | (*source & 0x7F);
+									++source;
+									}
 								}
 							}
 						}
 					}
 				}
+
 
 			/*
 				COMPRESS_INTEGER_VARIABLE_BYTE::DECOMPRESS_INTO()
