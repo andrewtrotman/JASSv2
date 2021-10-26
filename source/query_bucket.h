@@ -224,7 +224,7 @@ namespace JASS
 			query_bucket() :
 				query(),
 				largest_used_bucket(0),
-				smallest_used_bucket(std::numeric_limits<ACCUMULATOR_TYPE>::max())
+				smallest_used_bucket((std::numeric_limits<ACCUMULATOR_TYPE>::max)())
 				{
 				std::fill(bucket_depth, bucket_depth + number_of_buckets, char());
 //				memset(bucket_depth, 0, number_of_buckets * sizeof(bucket_depth[0]));
