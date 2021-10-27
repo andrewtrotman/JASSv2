@@ -124,8 +124,8 @@ namespace JASS
 	class query
 		{
 		public:
-			typedef uint16_t ACCUMULATOR_TYPE;									///< the type of an accumulator (probably a uint16_t)
-//			typedef uint32_t ACCUMULATOR_TYPE;									///< the type of an accumulator (probably a uint16_t)
+//			typedef uint16_t ACCUMULATOR_TYPE;									///< the type of an accumulator (probably a uint16_t)
+			typedef uint32_t ACCUMULATOR_TYPE;									///< the type of an accumulator (probably a uint16_t)
 			typedef uint32_t DOCID_TYPE;											///< the type of a document id (from a compressor)
 			static constexpr size_t MAX_DOCUMENTS = 55'000'000;			///< the maximum number of documents an index can hold
 			static constexpr size_t MAX_TOP_K = 1'000;						///< the maximum top-k value
