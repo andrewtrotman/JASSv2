@@ -160,7 +160,7 @@ namespace JASS
 				@param primary_key_filename [in] the name of the file containing the primary key list ("CIdoclist.bin")
 				@return The number of documents in the collection (or 0 on error)
 			*/
-			size_t read_primary_keys(const std::string &primary_key_filename = "CIdoclist.bin");
+			virtual size_t read_primary_keys(const std::string &primary_key_filename = "CIdoclist.bin");
 
 			/*
 				DESERIALISED_JASS_V1::READ_VOCABULARY()
@@ -183,7 +183,7 @@ namespace JASS
 				@param postings_filename [in] the name of the file containing the postings ("CIpostings.bin")
 				@return size of the posings file or 0 on failure
 			*/
-			size_t read_postings(const std::string &postings_filename = "CIpostings.bin");
+			virtual size_t read_postings(const std::string &postings_filename = "CIpostings.bin");
 
 		public:
 			/*

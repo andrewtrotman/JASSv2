@@ -27,19 +27,16 @@ namespace JASS
 		serialise_vocabulary_pointers();
 
 		/*
-			Serialise the primary key offsets and the number of documents in the collection.  This all goes into the primary key file CIdoclist.bin.
-			As JASS v2 counts from 1 but JASS v1 counts from 0, we have to drop the first (blank) element and subtract 1 from the count
+			Serialise the primary key offsets and the number of documents in the collection.
 		*/
-		uint64_t document_count = primary_key_offsets.size() - 1;
-		primary_keys.write(&primary_key_offsets[1], sizeof(primary_key_offsets[1]) * document_count);
-		primary_keys.write(&document_count, sizeof(document_count));
+		serialise_primary_keys();
 		}
 
 	/*
 		SERIALISE_JASS_V1::SERIALISE_VOCABULARY_POINTERS()
 		--------------------------------------------------
 	*/
-	void serialise_jass_v1::serialise_vocabulary_pointers()
+	void serialise_jass_v1::serialise_vocabulary_pointers(void)
 		{
 		/*
 			Sort
@@ -55,6 +52,21 @@ namespace JASS
 			vocabulary.write(&line.offset, sizeof(line.offset));
 			vocabulary.write(&line.impacts, sizeof(line.impacts));
 			}
+		}
+
+	/*
+		SERIALISE_JASS_V1::SERIALISE_PRIMARY_KEYS()
+		-------------------------------------------
+	*/
+	void serialise_jass_v1::serialise_primary_keys(void)
+		{
+		/*
+			Serialise the primary key offsets and the number of documents in the collection.  This all goes into the primary key file CIdoclist.bin.
+			As JASS v2 counts from 1 but JASS v1 counts from 0, we have to drop the first (blank) element and subtract 1 from the count
+		*/
+		uint64_t document_count = primary_key_offsets.size() - 1;
+		primary_keys.write(&primary_key_offsets[1], sizeof(primary_key_offsets[1]) * document_count);
+		primary_keys.write(&document_count, sizeof(document_count));
 		}
 
 	/*

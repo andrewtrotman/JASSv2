@@ -39,6 +39,17 @@ namespace JASS
 			*/
 			virtual size_t read_vocabulary(const std::string &vocab_filename = "CIvocab.bin", const std::string &terms_filename = "CIvocab_terms.bin");
 
+			/*
+				DESERIALISED_JASS_V2::READ_PRIMARY_KEYS()
+				-----------------------------------------
+			*/
+			/*!
+				@brief Read the JASS v1 index primary key file
+				@param primary_key_filename [in] the name of the file containing the primary key list ("CIdoclist.bin")
+				@return The number of documents in the collection (or 0 on error)
+			*/
+			virtual size_t read_primary_keys(const std::string &primary_key_filename = "CIdoclist.bin");
+
 		public:
 			/*
 				DESERIALISED_JASS_V2::DESERIALISED_JASS_V2()
