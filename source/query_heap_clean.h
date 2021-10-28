@@ -295,7 +295,7 @@ namespace JASS
 					By doing the add first its possible to reduce the "usual" path through the code to a single comparison.  The JASS v1 "usual" path took three comparisons.
 				*/
 				*which.pointer() += score;
-//				if (*which.pointer() >= top_k_lower_bound)
+				if (*which.pointer() >= top_k_lower_bound)
 					{
 					if (which >= accumulator_pointers[0])			// == is the case where we're the current bottom of heap so might need to be promoted
 						{
@@ -307,8 +307,7 @@ namespace JASS
 							/*
 								the heap isn't full yet - so change only happens if we're a new addition (i.e. the old value was a 0)
 							*/
-							if (*which.pointer() == score)
-//							if (*which.pointer() - score < top_k_lower_bound)
+							if (*which.pointer() - score < top_k_lower_bound)
 								{
 								accumulator_pointers[--needed_for_top_k] = which;
 								if (needed_for_top_k == 0)

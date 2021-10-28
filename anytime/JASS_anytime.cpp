@@ -198,12 +198,18 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 		current_segment->impact = 0;
 
 		/*
-			Process the segments
+			Compute the minimum rsv necessary to get into the top k.
+			its not yet clear whether we can set the default to the highest segment score, segment_order->impact
 		*/
-		JASS::query::ACCUMULATOR_TYPE rsv_at_k = precomputed_minimum_rsv_table.empty() ? segment_order->impact : precomputed_minimum_rsv_table[query_id];
+		JASS::query::ACCUMULATOR_TYPE rsv_at_k = precomputed_minimum_rsv_table.empty() ? 1 : precomputed_minimum_rsv_table[query_id];
+		rsv_at_k = rsv_at_k == 0 ? 1 : rsv_at_k;
+//		rsv_at_k = JASS::maths::maximum(rsv_at_k, segment_order->impact);
 		jass_query->rewind(smallest_possible_rsv, rsv_at_k, largest_possible_rsv);
 //std::cout << "MAXRSV:" << largest_possible_rsv << " MINRSV:" << smallest_possible_rsv << "\n";
 
+		/*
+			Process the segments
+		*/
 		size_t postings_processed = 0;
 		for (auto *header = segment_order; header < current_segment; header++)
 			{
