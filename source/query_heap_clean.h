@@ -297,7 +297,7 @@ namespace JASS
 				*which.pointer() += score;
 //				if (*which.pointer() >= top_k_lower_bound)
 					{
-					if (which >= accumulator_pointers[0])			// ==0 is the case where we're the current bottom of heap so might need to be promoted
+					if (which >= accumulator_pointers[0])			// == is the case where we're the current bottom of heap so might need to be promoted
 						{
 						/*
 							We end up in the top-k, now to work out why.  As this is a rare occurence, we've got a little bit of time on our hands

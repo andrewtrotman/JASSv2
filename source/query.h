@@ -271,6 +271,9 @@ namespace JASS
 			*/
 			/*!
 				@brief Clear this object after use and ready for re-use
+				@param smallest_possible_rsv [in] No rsv can be smaller than this (other than documents that are not found
+				@param top_k_lower_bound [in] No rsv smaller than this can enter the top-k results list
+				@param largest_possible_rsv [in] No rsv can be larger than this (but need no one need be this large)
 			*/
 			virtual void rewind(ACCUMULATOR_TYPE smallest_possible_rsv = 0, ACCUMULATOR_TYPE top_k_lower_bound = 0, ACCUMULATOR_TYPE largest_possible_rsv = 0)
 				{

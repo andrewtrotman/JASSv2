@@ -217,6 +217,8 @@ set(JASSlib_FILES
 	threads.cpp
 	timer.h
 	top_k_heap.h
+	top_k_limit.h
+	top_k_limit.cpp
 	top_k_qsort.h
 	top_k_qsort.cpp
 	unicode.h
