@@ -35,12 +35,12 @@ namespace JASS
 	*/
 	class ranking_function_atire_bm25
 		{
-private:
+		private:
 			double idf;												///< the IDF of the term being processed
-			double top_row;										///< the top-row of the ranking function for the term being processed (tf(td) * (k1 + 1))
+			double top_row;											///< the top-row of the ranking function for the term being processed (tf(td) * (k1 + 1))
 			double k1_plus_1;										///< k1 + 1
-			double mean_document_length;						///< the mean of the document lengths
-			std::vector<float> length_correction;			///< most of the bottom row of BM25 (k1 * ((1 - b) + b * length / mean_document_length)) for the current term being processed
+			double mean_document_length;							///< the mean of the document lengths
+			std::vector<float> length_correction;					///< most of the bottom row of BM25 (k1 * ((1 - b) + b * length / mean_document_length)) for the current term being processed
 
 		public:
 			/*

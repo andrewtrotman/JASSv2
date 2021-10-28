@@ -191,6 +191,7 @@ set(JASSlib_FILES
 	query_term_list.h
 	ranking_function.h
 	ranking_function_atire_bm25.h
+	ranking_function_none.h
 	reverse.h
 	run_export.h
 	run_export_trec.h
