@@ -57,7 +57,6 @@ namespace JASS
 			*/
 			~serialise_ci()
 				{
-				/* Nothing */
 				}
 
 			/*

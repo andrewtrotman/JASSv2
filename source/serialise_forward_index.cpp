@@ -96,6 +96,7 @@ namespace JASS
 		{
 		serialise_forward_index serialiser(index.get_highest_document_id());
 		index.iterate(serialiser);
+		serialiser.finish();
 		}
 
 		/*

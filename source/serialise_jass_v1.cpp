@@ -284,6 +284,7 @@ namespace JASS
 		{
 		serialise_jass_v1 serialiser(index.get_highest_document_id(), jass_v1_codex::qmx, 16);
 		index.iterate(serialiser);
+		serialiser.finish();
 		}
 
 		/*

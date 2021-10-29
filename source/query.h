@@ -224,7 +224,7 @@ namespace JASS
 				this->top_k = top_k;
 				this->documents = documents;
 				decompress_buffer.resize(64 + (documents * sizeof(DOCID_TYPE) + sizeof(decompress_buffer[0]) - 1) / sizeof(decompress_buffer[0]));			// we add 64 so that decompressors can overflow
-				rewind();
+				rewind(1, 1, 1);
 				}
 
 			/*

@@ -144,6 +144,7 @@ namespace JASS
 		{
 		serialise_ci serialiser(index.get_highest_document_id());
 		index.iterate(serialiser);
+		serialiser.finish();
 		}
 
 		/*
