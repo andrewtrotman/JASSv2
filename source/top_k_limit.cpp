@@ -51,7 +51,7 @@ namespace JASS
 			/*
 				Then an rsv
 			*/
-			query::ACCUMULATOR_TYPE rsv = strtoul((char *)rsv_position, nullptr, 10);
+			uint32_t rsv = strtoul((char *)rsv_position, nullptr, 10);
 			table[(char *)query_id] = rsv;
 			}
 

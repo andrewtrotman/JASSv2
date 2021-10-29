@@ -130,6 +130,7 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 				query = query.substr(end_of_id + start_of_query, std::string::npos);
 			}
 
+//std::cout << "QUERY:" << query_id << "\n";
 		/*
 			Process the query
 		*/
@@ -142,8 +143,9 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 			Parse the query and extract the list of impact segments
 		*/
 		JASS::deserialised_jass_v1::segment_header *current_segment = segment_order;
-		JASS::query::ACCUMULATOR_TYPE largest_possible_rsv = (std::numeric_limits<decltype(largest_possible_rsv)>::min)();
-		JASS::query::ACCUMULATOR_TYPE smallest_possible_rsv = (std::numeric_limits<decltype(smallest_possible_rsv)>::max)();
+		uint32_t largest_possible_rsv = (std::numeric_limits<decltype(largest_possible_rsv)>::min)();
+		uint32_t largest_possible_rsv_with_overflow;
+		uint32_t smallest_possible_rsv = (std::numeric_limits<decltype(smallest_possible_rsv)>::max)();
 //std::cout << "\n";
 		for (const auto &term : jass_query->terms())
 			{
@@ -159,15 +161,15 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 			/*
 				Add the segments to the list to process
 			*/
-			JASS::query::ACCUMULATOR_TYPE term_smallest_impact;
-			JASS::query::ACCUMULATOR_TYPE term_largest_impact;
+			uint32_t term_smallest_impact;
+			uint32_t term_largest_impact;
 			current_segment += index.get_segment_list(current_segment, metadata, term.frequency(), term_smallest_impact, term_largest_impact);
 
 			/*
 				Compute the largest and smallest possible rsv values
 			*/
 			largest_possible_rsv += term_largest_impact;
-			smallest_possible_rsv = JASS::maths::minimum(smallest_possible_rsv, term_smallest_impact);
+			smallest_possible_rsv = JASS::maths::minimum(smallest_possible_rsv, (decltype(smallest_possible_rsv))term_smallest_impact);
 			}
 
 		/*
@@ -201,9 +203,23 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 			Compute the minimum rsv necessary to get into the top k.
 			its not yet clear whether we can set the default to the highest segment score, segment_order->impact
 		*/
-		JASS::query::ACCUMULATOR_TYPE rsv_at_k = precomputed_minimum_rsv_table.empty() ? 1 : precomputed_minimum_rsv_table[query_id];
-		rsv_at_k = rsv_at_k == 0 ? 1 : rsv_at_k;
-//		rsv_at_k = JASS::maths::maximum(rsv_at_k, segment_order->impact);
+		bool scale_rsv_scores = false;
+		uint32_t rsv_at_k = precomputed_minimum_rsv_table.empty() ? 1 : precomputed_minimum_rsv_table[query_id];
+		largest_possible_rsv_with_overflow = largest_possible_rsv;
+		if (largest_possible_rsv > JASS::query::MAX_RSV)
+			{
+			scale_rsv_scores = true;
+			smallest_possible_rsv = (uint32_t)((double)largest_possible_rsv / (double)largest_possible_rsv * (double)JASS::query::MAX_RSV);
+			rsv_at_k = (JASS::query::ACCUMULATOR_TYPE)((double)rsv_at_k / (double)largest_possible_rsv * (double)JASS::query::MAX_RSV);
+			largest_possible_rsv = (uint32_t)((double)largest_possible_rsv / (double)largest_possible_rsv * (double)JASS::query::MAX_RSV);
+
+			/*
+				Check for zeros
+			*/
+			smallest_possible_rsv = smallest_possible_rsv == 0 ? 1 : smallest_possible_rsv;
+			}
+		rsv_at_k = rsv_at_k == 0 ? 1 : rsv_at_k;			// rsv_at_k cannot be 0 (because at least one search term must be in the document)
+
 		jass_query->rewind(smallest_possible_rsv, rsv_at_k, largest_possible_rsv);
 //std::cout << "MAXRSV:" << largest_possible_rsv << " MINRSV:" << smallest_possible_rsv << "\n";
 
@@ -213,6 +229,9 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 		size_t postings_processed = 0;
 		for (auto *header = segment_order; header < current_segment; header++)
 			{
+			if (scale_rsv_scores)
+				header->impact = (JASS::query::ACCUMULATOR_TYPE)((double)header->impact / (double)largest_possible_rsv_with_overflow * (double)JASS::query::MAX_RSV);
+
 //std::cout << "Process Segment->(" << header->impact << ":" << header->segment_frequency << ")\n";
 			/*
 				The anytime algorithms basically boils down to this... have we processed enough postings yet?  If so then stop

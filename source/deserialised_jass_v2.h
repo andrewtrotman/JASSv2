@@ -124,7 +124,7 @@ namespace JASS
 				@param largest [out] The smallest impact score for this term
 				@return The number of segments extracted and added to the list
 			*/
-			virtual size_t get_segment_list(segment_header *segments, metadata &metadata, size_t term_frequency, query::ACCUMULATOR_TYPE &smallest, query::ACCUMULATOR_TYPE &largest) const
+			virtual size_t get_segment_list(segment_header *segments, metadata &metadata, size_t term_frequency, uint32_t &smallest, uint32_t &largest) const
 				{
 				/*
 					Extract all the segments

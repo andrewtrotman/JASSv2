@@ -47,7 +47,7 @@ namespace JASS
 			class segment_header
 				{
 				public:
-					query::ACCUMULATOR_TYPE impact;					///< The impact score
+					uint32_t impact;					///< The impact score.  Not a query::ACCUMUMLTOR_TYPE as this can overflow
 					uint64_t offset;					///< Offset (within the postings file) of the start of the compressed postings list
 					uint64_t end;						///< Offset (within the postings file) of the end of the compressed postings list
 					query::DOCID_TYPE segment_frequency;			///< The number of document ids in the segment (not end - offset because the postings are compressed)
@@ -328,7 +328,7 @@ namespace JASS
 				@param largest [out] The smallest impact score for this term
 				@return The number of segments extracted and added to the list
 			*/
-			virtual size_t get_segment_list(segment_header *segments, metadata &metadata, size_t term_frequency, query::ACCUMULATOR_TYPE &smallest, query::ACCUMULATOR_TYPE &largest) const
+			virtual size_t get_segment_list(segment_header *segments, metadata &metadata, size_t term_frequency, uint32_t &smallest, uint32_t &largest) const
 				{
 				segment_header *current_segment = segments;
 				for (uint64_t segment = 0; segment < metadata.impacts; segment++)

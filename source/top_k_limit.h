@@ -14,8 +14,6 @@
 #include <string>
 #include <unordered_map>
 
-#include "query.h"
-
 namespace JASS
 	{
 	/*
@@ -28,7 +26,7 @@ namespace JASS
 	class top_k_limit
 		{
 		protected:
-			std::unordered_map<std::string, query::ACCUMULATOR_TYPE> table;			///<  The rsv scores are stored in this lookup table
+			std::unordered_map<std::string, uint32_t> table;			///<  The rsv scores are stored in this lookup table
 
 		public:
 			/*
@@ -60,7 +58,7 @@ namespace JASS
 				TOP_K_LIMIT::OPERATOR[]()
 				-------------------------
 			*/
-			query::ACCUMULATOR_TYPE operator[](std::string query_id)
+			uint32_t operator[](std::string query_id)
 				{
 				return table[query_id];
 				}
