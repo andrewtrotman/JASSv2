@@ -125,6 +125,7 @@ namespace JASS
 		{
 		public:
 			typedef uint16_t ACCUMULATOR_TYPE;									///< the type of an accumulator (probably a uint16_t)
+//			typedef uint8_t ACCUMULATOR_TYPE;									///< the type of an accumulator (probably a uint16_t)
 			typedef uint32_t DOCID_TYPE;										///< the type of a document id (from a compressor)
 
 		public:

@@ -55,13 +55,13 @@ namespace JASS
 					for (const auto document : reverse(result))
 						{
 						current++;
-						stream << topic_id << " Q0 "<< document.primary_key << ' ' << current << ' ' << document.rsv << ' ' << run_name;
+						stream << topic_id << " Q0 "<< document.primary_key << ' ' << current << ' ' << (uint32_t)document.rsv << ' ' << run_name;
 
 						/*
 							Optionally include the internal document id and rsv for debugging purposes.
 						*/
 						if (include_internal_ids)
-							stream << "(ID:" << document.document_id << "->" << document.rsv << ")";
+							stream << "(ID:" << document.document_id << "->" << (uint32_t)document.rsv << ")";
 
 						stream << '\n';
 						}
@@ -69,13 +69,13 @@ namespace JASS
 					for (const auto document : result)
 						{
 						current++;
-						stream << topic_id << " Q0 "<< document.primary_key << ' ' << current << ' ' << document.rsv << ' ' << run_name;
+						stream << topic_id << " Q0 "<< document.primary_key << ' ' << current << ' ' << (uint32_t)document.rsv << ' ' << run_name;
 
 						/*
 							Optionally include the internal document id and rsv for debugging purposes.
 						*/
 						if (include_internal_ids)
-							stream << "(ID:" << document.document_id << "->" << document.rsv << ")";
+							stream << "(ID:" << document.document_id << "->" << (uint32_t)document.rsv << ")";
 
 						stream << '\n';
 						}
