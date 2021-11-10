@@ -313,10 +313,7 @@ namespace JASS
 								if (needed_for_top_k == 0)
 									{
 									top_results.make_heap();
-//#define DYNAMIC_ORACLE
-#ifdef DYNAMIC_ORACLE
-top_k_lower_bound = *accumulator_pointers[0];
-#endif
+									top_k_lower_bound = *accumulator_pointers[0];		// set the new bottom of heap value
 									}
 								}
 							}
@@ -334,9 +331,7 @@ top_k_lower_bound = *accumulator_pointers[0];
 								*which.pointer() += score;
 								top_results.promote(which, at);				// we're already in the heap so promote this document
 								}
-#ifdef DYNAMIC_ORACLE
-top_k_lower_bound = *accumulator_pointers[0];
-#endif
+								top_k_lower_bound = *accumulator_pointers[0];			// set the new bottom of heap value
 							}
 						}
 					}
