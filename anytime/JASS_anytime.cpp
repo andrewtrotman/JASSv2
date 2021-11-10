@@ -245,8 +245,10 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 			/*
 				Process the postings
 			*/
+std::cout << "Remaining:" << jass_query->size() << " : ";
 			JASS::query::ACCUMULATOR_TYPE impact = header->impact;
 			jass_query->decode_and_process(impact, header->segment_frequency, index.postings() + header->offset, header->end - header->offset);
+std::cout << jass_query->size() << "\n";
 			}
 
 		jass_query->sort();

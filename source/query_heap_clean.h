@@ -245,6 +245,15 @@ namespace JASS
 				}
 
 			/*
+				QUERY_HEAP_CLEAN::SIZE()
+				------------------------
+			*/
+			query::DOCID_TYPE size(void)
+				{
+				return top_k - needed_for_top_k;
+				}
+
+			/*
 				QUERY_HEAP_CLEAN::REWIND()
 				--------------------------
 			*/
