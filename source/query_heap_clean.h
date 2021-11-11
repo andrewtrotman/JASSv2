@@ -382,22 +382,13 @@ namespace JASS
 				simd::cumulative_sum_256(buffer, integers);
 
 				/*
-					Process the d1-decoded postings list.
+					Process the d1-decoded postings list.  We ask the compiler to unroll the loop as it
+					appears to be as fast as manually unrolling it.
 				*/
-				DOCID_TYPE *end;
-				DOCID_TYPE *current = buffer;
-				end = buffer + (integers & ~0x03);
-				while (current < end)
-					{
-					add_rsv(*(current + 0), impact);
-					add_rsv(*(current + 1), impact);
-					add_rsv(*(current + 2), impact);
-					add_rsv(*(current + 3), impact);
-					current += 4;
-					}
-				end = buffer + integers;
-				while (current < end)
-					add_rsv(*current++, impact);
+				const DOCID_TYPE *end = buffer + integers;
+				#pragma GCC unroll 8
+				for (DOCID_TYPE *current = buffer; current < end; current++)
+					add_rsv(*current, impact);
 				}
 
 			/*
