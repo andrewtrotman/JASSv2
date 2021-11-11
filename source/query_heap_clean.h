@@ -287,6 +287,10 @@ namespace JASS
 					}
 				}
 
+
+
+
+
 			/*
 				QUERY_HEAP_CLEAN::ADD_RSV()
 				---------------------------
@@ -348,6 +352,11 @@ namespace JASS
 					} \
 				}
 
+
+
+
+
+
 			/*
 				QUERY_HEAP_CLEAN::ADD_RSV()
 				---------------------------
@@ -357,9 +366,9 @@ namespace JASS
 				@param document_id [in] which document to increment
 				@param score [in] the amount of weight to add
 			*/
-			forceinline void add_rsv(DOCID_TYPE document_id, ACCUMULATOR_TYPE score)
-				{
-				for (size_t once = 0; once < 1; once++)			// to prevent the error when break is called
+			forceinline void add_rsv(DOCID_TYPE document_id, ACCUMULATOR_TYPE score) 
+				{ 
+				for (int x = 0; x < 1; x++)
 					ADD_RSV(document_id, score);
 				}
 

@@ -210,7 +210,7 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 			{
 			scale_rsv_scores = true;
 			smallest_possible_rsv = (uint32_t)((double)largest_possible_rsv / (double)largest_possible_rsv * (double)JASS::query::MAX_RSV);
-			rsv_at_k = (JASS::query::ACCUMULATOR_TYPE)((double)rsv_at_k / (double)largest_possible_rsv * (double)JASS::query::MAX_RSV);
+//			rsv_at_k = (JASS::query::ACCUMULATOR_TYPE)((double)rsv_at_k / (double)largest_possible_rsv * (double)JASS::query::MAX_RSV);
 			largest_possible_rsv = (uint32_t)((double)largest_possible_rsv / (double)largest_possible_rsv * (double)JASS::query::MAX_RSV);
 
 			/*
@@ -247,6 +247,7 @@ void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v
 			*/
 			JASS::query::ACCUMULATOR_TYPE impact = header->impact;
 			jass_query->decode_and_process(impact, header->segment_frequency, index.postings() + header->offset, header->end - header->offset);
+#define EARLY_TERMINATE 1
 #ifdef EARLY_TERMINATE
 			if (rsv_at_k > 1 && jass_query->size() >= top_k)
 				break;
