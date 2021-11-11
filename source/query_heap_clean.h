@@ -287,10 +287,6 @@ namespace JASS
 					}
 				}
 
-
-
-
-
 			/*
 				QUERY_HEAP_CLEAN::ADD_RSV()
 				---------------------------
@@ -351,11 +347,6 @@ namespace JASS
 						} \
 					} \
 				}
-
-
-
-
-
 
 			/*
 				QUERY_HEAP_CLEAN::ADD_RSV()
