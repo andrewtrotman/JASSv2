@@ -296,54 +296,71 @@ namespace JASS
 				@param document_id [in] which document to increment
 				@param score [in] the amount of weight to add
 			*/
-			forceinline void add_rsv(DOCID_TYPE document_id, ACCUMULATOR_TYPE score)
-				{
-				accumulator_pointer which = &accumulators[document_id];			// This will create the accumulator if it doesn't already exist.
-
+			#define ADD_RSV(DOCUMENT_ID, SCORE) \
+				{ \
+				ACCUMULATOR_TYPE _score = SCORE;\
+				accumulator_pointer which = &accumulators[(DOCUMENT_ID)];			/* This will create the accumulator if it doesn't already exist. */ \
 				/*
 					By doing the add first its possible to reduce the "usual" path through the code to a single comparison.  The JASS v1 "usual" path took three comparisons.
-				*/
-				*which.pointer() += score;
-				if (*which.pointer() >= top_k_lower_bound)
-					{
-					if (which >= accumulator_pointers[0])			// == is the case where we're the current bottom of heap so might need to be promoted
-						{
+				*/ \
+				*which.pointer() += _score; \
+				if (*which.pointer() >= top_k_lower_bound) \
+					{ \
+					if (which >= accumulator_pointers[0])			/* == is the case where we're the current bottom of heap so might need to be promoted */ \
+						{	\
 						/*
 							We end up in the top-k, now to work out why.  As this is a rare occurence, we've got a little bit of time on our hands
-						*/
-						if (needed_for_top_k > 0)
-							{
+						*/ \
+						if (needed_for_top_k > 0) \
+							{ \
 							/*
 								the heap isn't full yet - so change only happens if we're a new addition (i.e. the old value was a 0)
-							*/
-							if (*which.pointer() - score < top_k_lower_bound)
-								{
-								accumulator_pointers[--needed_for_top_k] = which;
-								if (needed_for_top_k == 0)
-									{
-									top_results.make_heap();
-									top_k_lower_bound = *accumulator_pointers[0];		// set the new bottom of heap value
-									}
-								}
-							}
-						else
-							{
-							*which.pointer() -= score;
-							if (which < accumulator_pointers[0])
-								{
-								*which.pointer() += score;					// we weren't in there before but we are now so replace element 0
-								top_results.push_back(which);				// we're not in the heap so add this accumulator to the heap
-								}
-							else
-								{
-								auto at = top_results.find(which);		// we're already in there so find us and reshuffle the beap.
-								*which.pointer() += score;
-								top_results.promote(which, at);				// we're already in the heap so promote this document
-								}
-								top_k_lower_bound = *accumulator_pointers[0];			// set the new bottom of heap value
-							}
-						}
-					}
+							*/ \
+							if (*which.pointer() - _score < top_k_lower_bound) \
+								{ \
+								accumulator_pointers[--needed_for_top_k] = which; \
+								if (needed_for_top_k == 0) \
+									{ \
+									top_results.make_heap(); \
+									if (top_k_lower_bound != 1) \
+										break; /* We must be using the Oracle, and we must have filled the top-k and so we can stop processing this query. */ \
+									top_k_lower_bound = *accumulator_pointers[0];		/* set the new bottom of heap value */ \
+									} \
+								} \
+							} \
+						else \
+							{ \
+							*which.pointer() -= _score; \
+							if (which < accumulator_pointers[0]) \
+								{ \
+								*which.pointer() += _score;					/* we weren't in there before but we are now so replace element 0 */ \
+								top_results.push_back(which);				/* we're not in the heap so add this accumulator to the heap */ \
+								} \
+							else \
+								{ \
+								auto at = top_results.find(which);		/* we're already in there so find us and reshuffle the beap. */ \
+								*which.pointer() += _score; \
+								top_results.promote(which, at);				/* we're already in the heap so promote this document */ \
+								} \
+							top_k_lower_bound = *accumulator_pointers[0];			/* set the new bottom of heap value */ \
+							} \
+						} \
+					} \
+				}
+
+			/*
+				QUERY_HEAP_CLEAN::ADD_RSV()
+				---------------------------
+			*/
+			/*!
+				@brief Add weight to the rsv for document docuument_id
+				@param document_id [in] which document to increment
+				@param score [in] the amount of weight to add
+			*/
+			forceinline void add_rsv(DOCID_TYPE document_id, ACCUMULATOR_TYPE score)
+				{
+				for (size_t once = 0; once < 1; once++)			// to prevent the error when break is called
+					ADD_RSV(document_id, score);
 				}
 
 			/*
@@ -386,9 +403,13 @@ namespace JASS
 					appears to be as fast as manually unrolling it.
 				*/
 				const DOCID_TYPE *end = buffer + integers;
+#if defined(__clang__)
+				#pragma unroll 8
+#elif defined(__GNUC__) || defined(__GNUG__)
 				#pragma GCC unroll 8
+#endif
 				for (DOCID_TYPE *current = buffer; current < end; current++)
-					add_rsv(*current, impact);
+					ADD_RSV(*current, impact);
 				}
 
 			/*
