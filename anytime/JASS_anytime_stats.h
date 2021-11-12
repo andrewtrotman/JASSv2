@@ -59,7 +59,7 @@ class JASS_anytime_stats
 	@param data [in] The data to write.
 	@return The stream once the data has been written.
 */
-std::ostream &operator<<(std::ostream &output, JASS_anytime_stats &data)
+static inline std::ostream &operator<<(std::ostream &output, JASS_anytime_stats &data)
 	{
 	output << "-------------------\n";
 	output << "Threads                                          : " << data.threads << '\n';
