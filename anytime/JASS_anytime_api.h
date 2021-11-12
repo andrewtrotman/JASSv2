@@ -4,6 +4,7 @@
 	Copyright (c) 2021 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
+#include "threads.h"
 #include "top_k_limit.h"
 #include "parser_query.h"
 #include "JASS_anytime_query.h"
@@ -185,13 +186,44 @@ class JASS_anytime_api
 			return JASS_ERROR_OK;
 			}
 
-		JASS_ERROR search(std::string &query)
+		JASS_ERROR search(JASS_anytime_thread_result &output, std::string &query)
 			{
-			JASS_anytime_thread_result output;
 			std::vector<JASS_anytime_query> query_list;
 
 			query_list.push_back(query);
 			anytime(output, *index, query_list, *precomputed_minimum_rsv_table, postings_to_process, top_k);
+
+			return JASS_ERROR_OK;
+			}
+
+		JASS_ERROR search(std::vector<JASS_anytime_query> &query_list, size_t thread_count)
+			{
+			/*
+				Allocate a thread pool and the place to put the answers
+			*/
+			std::vector<JASS::thread> thread_pool;
+			std::vector<JASS_anytime_thread_result> output;
+			output.resize(thread_count);
+
+			/*
+				Do the work either single or multiple threaded
+			*/
+			if (thread_count == 1)
+				anytime(output[0], *index, query_list, *precomputed_minimum_rsv_table, postings_to_process, top_k);
+			else
+				{
+				/*
+					Multiple threads, so start each worker
+				*/
+				for (size_t which = 0; which < thread_count ; which++)
+					thread_pool.push_back(JASS::thread(&JASS_anytime_api::anytime, std::ref(output[which]), std::ref(*index), std::ref(query_list), std::ref(precomputed_minimum_rsv_table), postings_to_process, top_k));
+
+				/*
+					Wait until they're all done (blocking on the completion of each thread in turn)
+				*/
+				for (auto &thread : thread_pool)
+					thread.join();
+				}
 
 			return JASS_ERROR_OK;
 			}

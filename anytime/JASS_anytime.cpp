@@ -217,10 +217,11 @@ static int main_event(int argc, const char *argv[])
 	/*
 		Load each query one by one and do the search
 	*/
+	JASS_anytime_thread_result output;
 	std::vector<JASS_anytime_query> query_list;
 	load_queries(query_list, parameter_queryfilename);
 	for (size_t which = 0; which < query_list.size(); which++)
-		engine.search(query_list[which].query);
+		engine.search(output, query_list[which].query);
 
 	return 0;
 	}
