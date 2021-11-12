@@ -35,6 +35,19 @@ namespace JASS
 			*/
 			/*!
 				@brief Constructor
+				@details Make an empty object
+			*/
+			top_k_limit()
+				{
+				/* Nothing */
+				}
+
+			/*
+				TOP_K_LIMIT::TOP_K_LIMIT()
+				--------------------------
+			*/
+			/*!
+				@brief Constructor
 				@details The format of the file is one line per query, each line being <id> <rsv>, where <id> is the query id (a string)
 				and <rsv> is the minimum rsv necessary for entering the heap.  Any documents scoring less than rsv will not be
 				allowed to enter the heap and so will not be in the results list for the given query.
