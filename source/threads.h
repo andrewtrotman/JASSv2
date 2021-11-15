@@ -90,7 +90,7 @@ namespace JASS
 				@param parameters [in] the parameters to that function.
 			*/
 			template<typename FUNCTION, typename... PARAMETERS>
-			thread(FUNCTION function, PARAMETERS ... parameters):
+			explicit thread(FUNCTION function, PARAMETERS ... parameters):
 				thread_id()
 				{
 				/*

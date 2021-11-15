@@ -40,6 +40,11 @@ class JASS_anytime_api
 	private:
 		void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v1 &index, std::vector<JASS_anytime_query> &query_list, JASS::top_k_limit &precomputed_minimum_rsv_table, size_t postings_to_process, size_t top_k);
 
+		static void anytime_bootstrap(JASS_anytime_api *thiss, JASS_anytime_thread_result &output, const JASS::deserialised_jass_v1 &index, std::vector<JASS_anytime_query> &query_list, JASS::top_k_limit *precomputed_minimum_rsv_table, size_t postings_to_process, size_t top_k)
+			{
+			thiss->anytime(output, index, query_list, *precomputed_minimum_rsv_table, postings_to_process, top_k);
+			}
+
 	public:
 		JASS_anytime_api()
 			{
@@ -196,13 +201,12 @@ class JASS_anytime_api
 			return JASS_ERROR_OK;
 			}
 
-		JASS_ERROR search(std::vector<JASS_anytime_query> &query_list, size_t thread_count)
+		JASS_ERROR search(std::vector<JASS_anytime_thread_result> &output, std::vector<JASS_anytime_query> &query_list, size_t thread_count)
 			{
 			/*
 				Allocate a thread pool and the place to put the answers
 			*/
 			std::vector<JASS::thread> thread_pool;
-			std::vector<JASS_anytime_thread_result> output;
 			output.resize(thread_count);
 
 			/*
@@ -216,7 +220,7 @@ class JASS_anytime_api
 					Multiple threads, so start each worker
 				*/
 				for (size_t which = 0; which < thread_count ; which++)
-					thread_pool.push_back(JASS::thread(&JASS_anytime_api::anytime, std::ref(output[which]), std::ref(*index), std::ref(query_list), std::ref(precomputed_minimum_rsv_table), postings_to_process, top_k));
+					thread_pool.push_back(JASS::thread(anytime_bootstrap, this, std::ref(output[which]), std::ref(*index), std::ref(query_list), precomputed_minimum_rsv_table, postings_to_process, top_k));
 
 				/*
 					Wait until they're all done (blocking on the completion of each thread in turn)

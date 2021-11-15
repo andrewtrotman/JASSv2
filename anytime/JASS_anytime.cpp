@@ -103,7 +103,7 @@ void load_queries(std::vector<JASS_anytime_query> &query_list, const std::string
 		else
 		  query.clear();            // str is all whitespace
 		}
-
+		
 	delete input;
 	}
 
@@ -124,6 +124,13 @@ static uint8_t usage(const std::string &exename)
 static int main_event(int argc, const char *argv[])
 	{
 	JASS_anytime_api engine;
+
+	/*
+		Start the instrumentation tools
+	*/
+	auto total_run_time = JASS::timer::start();
+	JASS_anytime_stats stats;
+	stats.threads = parameter_threads;
 
 	/*
 		Parse the command line parameters
@@ -163,6 +170,7 @@ static int main_event(int argc, const char *argv[])
 		std::cout << "Cannot load the index\n";
 		return 0;
 		}
+	stats.number_of_documents = engine.get_document_count();
 
 	/*
 		Set the accumulator width
@@ -215,13 +223,50 @@ static int main_event(int argc, const char *argv[])
 	std::cout << "Index compressed with " << codex_name << "-D" << d_ness << "\n";
 
 	/*
-		Load each query one by one and do the search
+		Load the queries
 	*/
-	JASS_anytime_thread_result output;
 	std::vector<JASS_anytime_query> query_list;
 	load_queries(query_list, parameter_queryfilename);
+	stats.number_of_queries = query_list.size();
+	
+	/*
+		Search
+	*/
+	std::vector<JASS_anytime_thread_result> output;
+	output.resize(1);
+
+	auto total_search_time = JASS::timer::start();
+#ifdef ONE_BY_ONE
 	for (size_t which = 0; which < query_list.size(); which++)
-		engine.search(output, query_list[which].query);
+		engine.search(&output[0], query_list[which].query);
+#else
+	engine.search(output, query_list, parameter_threads);
+#endif
+	stats.wall_time_in_ns = JASS::timer::stop(total_search_time).nanoseconds();
+
+	/*
+		Compute and dump the per-query stats.  Output the run in REC format.
+	*/
+	std::ostringstream TREC_file;
+	std::ostringstream stats_file;
+	stats_file << "<JASSv2stats>\n";
+	for (size_t which = 0; which < parameter_threads ; which++)
+		for (const auto &[query_id, result] : output[which])
+			{
+			stats_file << "<id>" << result.query_id << "</id><query>" << result.query << "</query><postings>" << result.postings_processed << "</postings><time_ns>" << result.search_time_in_ns << "</time_ns>\n";
+			stats.sum_of_CPU_time_in_ns += result.search_time_in_ns;
+			TREC_file << result.results_list;
+			}
+	stats_file << "</JASSv2stats>\n";
+
+	JASS::file::write_entire_file("ranking.txt", TREC_file.str());
+	JASS::file::write_entire_file("JASSv2Stats.txt", stats_file.str());
+
+	/*
+		Finally, output how we did.
+	*/
+	stats.total_run_time_in_ns = JASS::timer::stop(total_run_time).nanoseconds();
+	std::cout << stats;
 
 	return 0;
 	}
