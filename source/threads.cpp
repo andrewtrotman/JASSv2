@@ -78,7 +78,6 @@ namespace JASS
 		#endif
 		}
 
-
 	/*
 		THREAD::JOIN()
 		--------------
