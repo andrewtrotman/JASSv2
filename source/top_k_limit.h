@@ -10,6 +10,7 @@
 	@author Andrew Trotman
 	@copyright 2021 Andrew Trotman
 */
+#pragma once
 
 #include <string>
 #include <unordered_map>

@@ -5,9 +5,15 @@
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 #include "timer.h"
+#include "threads.h"
 #include "run_export.h"
+#include "top_k_limit.h"
+#include "parser_query.h"
 #include "JASS_anytime_api.h"
 #include "JASS_anytime_query.h"
+#include "JASS_anytime_stats.h"
+#include "deserialised_jass_v2.h"
+#include "JASS_anytime_thread_result.h"
 
 
 /*

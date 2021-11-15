@@ -11,7 +11,6 @@
 	@copyright 2021 Andrew Trotman
 
 */
-#include "threads.h"
 #include "top_k_limit.h"
 #include "parser_query.h"
 #include "JASS_anytime_query.h"
