@@ -12,10 +12,11 @@
 */
 #pragma once
 
+#include <stdio.h>
+#include <stdint.h>
+
 #include <chrono>
 #include <thread>
-
-#include <stdint.h>
 
 #include "asserts.h"
 
