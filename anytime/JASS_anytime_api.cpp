@@ -9,9 +9,274 @@
 #include "JASS_anytime_api.h"
 #include "JASS_anytime_query.h"
 
+
 /*
-	ANYTIME()
-	---------
+	JASS_ANYTIME_API::ANYTIME_BOOTSTRAP()
+	-------------------------------------
+*/
+
+void JASS_anytime_api::anytime_bootstrap(JASS_anytime_api *thiss, JASS_anytime_thread_result &output, const JASS::deserialised_jass_v1 &index, std::vector<JASS_anytime_query> &query_list, JASS::top_k_limit *precomputed_minimum_rsv_table, size_t postings_to_process, size_t top_k)
+	{
+	thiss->anytime(output, index, query_list, *precomputed_minimum_rsv_table, postings_to_process, top_k);
+	}
+
+/*
+	JASS_ANYTIME_API::JASS_ANYTIME_API()
+	------------------------------------
+*/
+JASS_anytime_api::JASS_anytime_api()
+	{
+	index = nullptr;
+	precomputed_minimum_rsv_table = new JASS::top_k_limit;
+	postings_to_process = (std::numeric_limits<size_t>::max)();
+	top_k = 10;
+	which_query_parser = JASS::parser_query::parser_type::query;
+	accumulator_width = 0;
+	stats.threads = 1;
+	}
+
+/*
+	JASS_ANYTIME_API::~JASS_ANYTIME_API()
+	-------------------------------------
+*/
+JASS_anytime_api::~JASS_anytime_api()
+	{
+	delete index;
+	delete precomputed_minimum_rsv_table;
+	}
+
+/*
+	JASS_ANYTIME_API::LOAD_INDEX()
+	------------------------------
+*/
+JASS_ERROR JASS_anytime_api::load_index(size_t index_version)
+	{
+	try
+		{
+		switch (index_version)
+			{
+			case 1:
+				index = new JASS::deserialised_jass_v2(true);
+				break;
+			case 2:
+				index = new JASS::deserialised_jass_v1(true);
+				break;
+			default:
+				return JASS_ERROR_BAD_INDEX_VERSION;
+			}
+		index->read_index();
+
+		if (index->document_count() > JASS::query::MAX_DOCUMENTS)
+			{
+			delete index;
+			index = nullptr;
+			return JASS_ERROR_TOO_MANY_DOCUMENTS;
+			}
+
+		return JASS_ERROR_OK;
+		}
+	catch (...)
+		{
+		return JASS_ERROR_FAIL;
+		}
+	}
+
+/*
+	JASS_ANYTIME_API::LOAD_ORACLE_SCORES()
+	--------------------------------------
+*/
+JASS_ERROR JASS_anytime_api::load_oracle_scores(std::string filename)
+	{
+	try
+		{
+		delete precomputed_minimum_rsv_table;
+		precomputed_minimum_rsv_table = new JASS::top_k_limit(filename);
+		}
+	catch(...)
+		{
+		return JASS_ERROR_FAIL;
+		}
+
+	return JASS_ERROR_OK;
+	}
+
+/*
+	JASS_ANYTIME_API::SET_POSTINGS_TO_PROCESS_PROPORTION()
+	------------------------------------------------------
+*/
+JASS_ERROR JASS_anytime_api::set_postings_to_process_proportion(double percent)
+	{
+	if (index == nullptr)
+		return JASS_ERROR_NO_INDEX;
+
+	postings_to_process = (size_t)((double)index->document_count() * percent / 100.0);
+
+	return JASS_ERROR_OK;
+	}
+
+/*
+	JASS_ANYTIME_API::SET_POSTINGS_TO_PROCESS()
+	-------------------------------------------
+*/
+JASS_ERROR JASS_anytime_api::set_postings_to_process(size_t count)
+	{
+	postings_to_process = count;
+
+	return JASS_ERROR_OK;
+	}
+
+/*
+	JASS_ANYTIME_API::GET_POSTINGS_TO_PROCESS()
+	-------------------------------------------
+*/
+JASS::query::DOCID_TYPE JASS_anytime_api::get_postings_to_process(void)
+	{
+	return postings_to_process;
+	}
+
+/*
+	JASS_ANYTIME_API::SET_TOP_K()
+	-----------------------------
+*/
+JASS_ERROR JASS_anytime_api::set_top_k(size_t k)
+	{
+	if (k > JASS::query::MAX_TOP_K)
+		return JASS_ERROR_TOO_LARGE;
+
+	top_k = k;
+
+	return JASS_ERROR_OK;
+	}
+
+/*
+	JASS_ANYTIME_API::GET_DOCUMENT_COUNT()
+	--------------------------------------
+*/
+JASS::query::DOCID_TYPE JASS_anytime_api::get_document_count(void)
+	{
+	if (index == nullptr)
+		return JASS_ERROR_NO_INDEX;
+
+	return index->document_count();
+	}
+
+/*
+	JASS_ANYTIME_API::GET_TOP_K()
+	-----------------------------
+*/
+		JASS::query::DOCID_TYPE JASS_anytime_api::get_top_k(void)
+			{
+			return top_k;
+			}
+
+/*
+	JASS_ANYTIME_API::GET_MAX_TOP_K()
+	---------------------------------
+*/
+JASS::query::DOCID_TYPE JASS_anytime_api::get_max_top_k(void)
+	{
+	return JASS::query::MAX_TOP_K;
+	}
+
+/*
+	JASS_ANYTIME_API::GET_ENCODING_SCHEME()
+	---------------------------------------
+*/
+JASS_ERROR JASS_anytime_api::get_encoding_scheme(std::string &codex_name, int32_t &d_ness)
+	{
+	if (index == nullptr)
+		return JASS_ERROR_NO_INDEX;
+
+	index->codex(codex_name, d_ness);
+
+	return JASS_ERROR_OK;
+	}
+
+/*
+	JASS_ANYTIME_API::USE_ASCII_PARSER()
+	------------------------------------
+*/
+JASS_ERROR JASS_anytime_api::use_ascii_parser(void)
+	{
+	which_query_parser = JASS::parser_query::parser_type::raw;
+	return JASS_ERROR_OK;
+	}
+
+/*
+	JASS_ANYTIME_API::USE_QUERY_PARSER()
+	------------------------------------
+*/
+JASS_ERROR JASS_anytime_api::use_query_parser(void)
+	{
+	which_query_parser = JASS::parser_query::parser_type::query;
+	return JASS_ERROR_OK;
+	}
+
+/*
+	JASS_ANYTIME_API::SET_ACCUMULATOR_WIDTH()
+	-----------------------------------------
+*/
+JASS_ERROR JASS_anytime_api::set_accumulator_width(size_t width)
+	{
+	if (width > 32)
+		return JASS_ERROR_TOO_LARGE;
+
+	accumulator_width = width;
+	return JASS_ERROR_OK;
+	}
+
+/*
+	JASS_ANYTIME_API::SEARCH()
+	--------------------------
+*/
+JASS_ERROR JASS_anytime_api::search(JASS_anytime_thread_result &output, std::string &query)
+	{
+	std::vector<JASS_anytime_query> query_list;
+
+	query_list.push_back(query);
+	anytime(output, *index, query_list, *precomputed_minimum_rsv_table, postings_to_process, top_k);
+
+	return JASS_ERROR_OK;
+	}
+
+/*
+	JASS_ANYTIME_API::SEARCH()
+	--------------------------
+*/
+JASS_ERROR JASS_anytime_api::search(std::vector<JASS_anytime_thread_result> &output, std::vector<JASS_anytime_query> &query_list, size_t thread_count)
+	{
+	/*
+		Allocate a thread pool and the place to put the answers
+	*/
+	std::vector<JASS::thread> thread_pool;
+	output.resize(thread_count);
+
+	/*
+		Do the work either single or multiple threaded
+	*/
+	if (thread_count == 1)
+		anytime(output[0], *index, query_list, *precomputed_minimum_rsv_table, postings_to_process, top_k);
+	else
+		{
+		/*
+			Multiple threads, so start each worker
+		*/
+		for (size_t which = 0; which < thread_count ; which++)
+			thread_pool.push_back(JASS::thread(anytime_bootstrap, this, std::ref(output[which]), std::ref(*index), std::ref(query_list), precomputed_minimum_rsv_table, postings_to_process, top_k));
+
+		/*
+			Wait until they're all done (blocking on the completion of each thread in turn)
+		*/
+		for (auto &thread : thread_pool)
+			thread.join();
+		}
+
+	return JASS_ERROR_OK;
+	}
+
+/*
+	JASS_ANYTIME_API::ANYTIME()
+	---------------------------
 */
 void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v1 &index, std::vector<JASS_anytime_query> &query_list, JASS::top_k_limit &precomputed_minimum_rsv_table, size_t postings_to_process, size_t top_k)
 	{
