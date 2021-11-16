@@ -1,7 +1,7 @@
 /*
 	QUERY_HEAP_CLEAN.H
 	------------------
-	Copyright (c) 2032 Andrew Trotman
+	Copyright (c) 2021 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 /*!
