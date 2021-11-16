@@ -105,6 +105,8 @@
 */
 #pragma once
 
+#include <limits>
+
 #include <immintrin.h>
 
 #include "top_k_qsort.h"
@@ -129,9 +131,9 @@ namespace JASS
 			typedef uint32_t DOCID_TYPE;										///< the type of a document id (from a compressor)
 
 		public:
-			static constexpr size_t MAX_DOCUMENTS = 55'000'000;					///< the maximum number of documents an index can hold
-			static constexpr size_t MAX_TOP_K = 1'000;							///< the maximum top-k value
-			static constexpr size_t MAX_RSV = (std::numeric_limits<ACCUMULATOR_TYPE>::max)();
+			static constexpr size_t MAX_DOCUMENTS = 55000000;					///< the maximum number of documents an index can hold
+			static constexpr size_t MAX_TOP_K = 1000;							///< the maximum top-k value
+			static constexpr size_t MAX_RSV = (std::numeric_limits<ACCUMULATOR_TYPE>)::max();
 
 		public:
 			/*

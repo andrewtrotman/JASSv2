@@ -51,16 +51,16 @@ class JASS_anytime_api
 		JASS_anytime_api();
 		virtual ~JASS_anytime_api();
 
-		JASS_ERROR load_index(size_t index_version = 1);
+		JASS_ERROR load_index(size_t index_version);
 		JASS_ERROR load_oracle_scores(std::string filename);
 
 		JASS_ERROR set_postings_to_process_proportion(double percent);
 		JASS_ERROR set_postings_to_process(size_t count);
-		JASS::query::DOCID_TYPE get_postings_to_process(void);
+		uint32_t get_postings_to_process(void);
 		JASS_ERROR set_top_k(size_t k);
-		JASS::query::DOCID_TYPE get_document_count(void);
-		JASS::query::DOCID_TYPE get_top_k(void);
-		JASS::query::DOCID_TYPE get_max_top_k(void);
+		uint32_t get_document_count(void);
+		uint32_t get_top_k(void);
+		uint32_t get_max_top_k(void);
 		JASS_ERROR get_encoding_scheme(std::string &codex_name, int32_t &d_ness);
 
 		JASS_ERROR use_ascii_parser(void);
@@ -69,5 +69,4 @@ class JASS_anytime_api
 
 		JASS_ERROR search(JASS_anytime_thread_result &output, std::string &query);
 		JASS_ERROR search(std::vector<JASS_anytime_thread_result> &output, std::vector<JASS_anytime_query> &query_list, size_t thread_count);
-
 	} ;
