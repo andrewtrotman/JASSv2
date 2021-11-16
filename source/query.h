@@ -133,7 +133,7 @@ namespace JASS
 		public:
 			static constexpr size_t MAX_DOCUMENTS = 55000000;					///< the maximum number of documents an index can hold
 			static constexpr size_t MAX_TOP_K = 1000;							///< the maximum top-k value
-			static constexpr size_t MAX_RSV = (std::numeric_limits<ACCUMULATOR_TYPE>)::max();
+			static constexpr size_t MAX_RSV = (std::numeric_limits<ACCUMULATOR_TYPE>::max)();
 
 		public:
 			/*
