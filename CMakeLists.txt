@@ -20,7 +20,7 @@ project(JASS)
 #CMake verison 3.2 is required to set CMAKE_CXX_STANDARD to C++14.
 #
 
-cmake_minimum_required (VERSION 3.2)
+cmake_minimum_required (VERSION 3.8)
 
 # set(CMAKE_VERBOSE_MAKEFILE on)
 
@@ -69,7 +69,7 @@ endif()
 if(WIN32)
  	add_definitions("/W3 /wd4005 /wd4996 /wd4514 /wd4996 /wd4820 /nologo")
 else()
-	add_definitions("-Wall -D_GLIBCXX_USE_CXX11_ABI=1 -Wno-ignored-attributes -Wno-deprecated-declarations")
+	add_definitions("-Wall -fPIC -D_GLIBCXX_USE_CXX11_ABI=1 -Wno-ignored-attributes -Wno-deprecated-declarations")
 endif()
 
 #
