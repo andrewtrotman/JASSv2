@@ -14,6 +14,8 @@
 
 #include <map>
 
+#include "JASS_anytime_result.h"
+
 /*
 	CLASS JASS_ANYTIME_THREAD_RESULT
 	--------------------------------
@@ -24,57 +26,7 @@
 class JASS_anytime_thread_result
 	{
 	public:
-		/*
-			CLASS JASS_ANYTIME_THREAD_RESULT::QUERY_DETAILS
-			-----------------------------------------------
-		*/
-		class query_details
-			{
-			public:
-				std::string query_id;				///< The query ID
-				std::string query;					///< The query
-				std::string results_list;			///< The results list
-				size_t postings_processed;			///< The number of postings processed for this query
-				size_t search_time_in_ns;			///< The time it took to resolve the query
-
-			/*
-				JASS_ANYTIME_THREAD_RESULT::QUERY_DETAILS::QUERY_DETAILS()
-				----------------------------------------------------------
-			*/
-			query_details() :
-				query_id(),
-				query(),
-				results_list(),
-				postings_processed(0),
-				search_time_in_ns(0)
-				{
-				/* Nothing */
-				}
-
-			/*
-				JASS_ANYTIME_THREAD_RESULT::QUERY_DETAILS::QUERY_DETAILS()
-				----------------------------------------------------------
-			*/
-			/*!
-				@param query_id [in] The query ID
-				@param query [in] The query
-				@param results_list [in] The results list (normally in TREC format)
-				@param postings_processed [in] The numvber of postings processed (that is, <docid, impact> pairs)
-				@param search_time_in_ns [in] The time it took to resolve the query
-			*/
-			query_details(const std::string &query_id, const std::string &query, const std::string &results_list, size_t postings_processed, size_t search_time_in_ns) :
-				query_id(query_id),
-				query(query),
-				results_list(results_list),
-				postings_processed(postings_processed),
-				search_time_in_ns(search_time_in_ns)
-				{
-				/* Nothing */
-				}
-			};
-
-	public:
-		std::map<std::string, query_details> results;		///< The results from each query (keyed on the query id)
+		std::map<std::string, JASS_anytime_result> results;		///< The results from each query (keyed on the query id)
 
 	public:
 		/*
@@ -99,14 +51,14 @@ class JASS_anytime_thread_result
 		*/
 		void push_back(const std::string &query_id, const std::string &query, const std::string &results_list, size_t postings_processed, size_t search_time_in_ns)
 			{
-			results[query_id] = query_details(query_id, query, results_list, postings_processed, search_time_in_ns);
+			results[query_id] = JASS_anytime_result(query_id, query, results_list, postings_processed, search_time_in_ns);
 			}
 
 		/*
 			JASS_ANYTIME_THREAD_RESULT::BEGIN()
 			-----------------------------------
 		*/
-		auto begin()
+		std::map<std::string, JASS_anytime_result>::iterator begin()
 			{
 			return results.begin();
 			}
@@ -115,7 +67,7 @@ class JASS_anytime_thread_result
 			JASS_ANYTIME_THREAD_RESULT::END()
 			---------------------------------
 		*/
-		auto end()
+		std::map<std::string, JASS_anytime_result>::iterator end()
 			{
 			return results.end();
 			}

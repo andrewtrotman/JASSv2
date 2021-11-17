@@ -9,13 +9,13 @@
 	@brief JASS API for calling from C++ and through SWIG
 	@author Andrew Trotman
 	@copyright 2021 Andrew Trotman
-
 */
 #include "top_k_limit.h"
 #include "parser_query.h"
 #include "JASS_anytime_query.h"
 #include "JASS_anytime_stats.h"
 #include "deserialised_jass_v2.h"
+#include "JASS_anytime_result.h"
 #include "JASS_anytime_thread_result.h"
 
 enum JASS_ERROR
@@ -52,6 +52,7 @@ class JASS_anytime_api
 		virtual ~JASS_anytime_api();
 
 		JASS_ERROR load_index(size_t index_version);
+		JASS_ERROR load_index(size_t index_version, bool verbose);		// verbose prints progress as it loads the index
 		JASS_ERROR load_oracle_scores(std::string filename);
 
 		JASS_ERROR set_postings_to_process_proportion(double percent);
@@ -67,6 +68,11 @@ class JASS_anytime_api
 		JASS_ERROR use_query_parser(void);
 		JASS_ERROR set_accumulator_width(size_t width);
 
-		JASS_ERROR search(JASS_anytime_thread_result &output, std::string &query);
+		JASS_anytime_result search(const std::string &query);
 		JASS_ERROR search(std::vector<JASS_anytime_thread_result> &output, std::vector<JASS_anytime_query> &query_list, size_t thread_count);
 	} ;
+
+class anytime : public JASS_anytime_api
+	{
+	/* Nothing */
+	};

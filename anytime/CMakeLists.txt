@@ -20,6 +20,7 @@ set(JASS_ANYTIME_FILES
 	JASS_anytime_api.h
 	JASS_anytime_api.cpp
 	JASS_anytime_query.h
+	JASS_anytime_result.h
 	JASS_anytime_stats.h
 	JASS_anytime_thread_result.h
 	)
@@ -72,6 +73,7 @@ if (SWIG_FOUND)
 	JASS_anytime_api.h
 	JASS_anytime_api.cpp
 	JASS_anytime_query.h
+	JASS_anytime_result.h
 	JASS_anytime_stats.h
 	JASS_anytime_thread_result.h
 	)

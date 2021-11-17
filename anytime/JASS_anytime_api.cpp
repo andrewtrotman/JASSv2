@@ -57,15 +57,24 @@ JASS_anytime_api::~JASS_anytime_api()
 */
 JASS_ERROR JASS_anytime_api::load_index(size_t index_version)
 	{
+	return load_index(index_version, false);
+	}
+	
+/*
+	JASS_ANYTIME_API::LOAD_INDEX()
+	------------------------------
+*/
+JASS_ERROR JASS_anytime_api::load_index(size_t index_version, bool verbose)
+	{
 	try
 		{
 		switch (index_version)
 			{
 			case 1:
-				index = new JASS::deserialised_jass_v2(true);
+				index = new JASS::deserialised_jass_v2(verbose);
 				break;
 			case 2:
-				index = new JASS::deserialised_jass_v1(true);
+				index = new JASS::deserialised_jass_v1(verbose);
 				break;
 			default:
 				return JASS_ERROR_BAD_INDEX_VERSION;
@@ -170,10 +179,10 @@ JASS::query::DOCID_TYPE JASS_anytime_api::get_document_count(void)
 	JASS_ANYTIME_API::GET_TOP_K()
 	-----------------------------
 */
-		JASS::query::DOCID_TYPE JASS_anytime_api::get_top_k(void)
-			{
-			return top_k;
-			}
+JASS::query::DOCID_TYPE JASS_anytime_api::get_top_k(void)
+	{
+	return top_k;
+	}
 
 /*
 	JASS_ANYTIME_API::GET_MAX_TOP_K()
@@ -235,14 +244,15 @@ JASS_ERROR JASS_anytime_api::set_accumulator_width(size_t width)
 	JASS_ANYTIME_API::SEARCH()
 	--------------------------
 */
-JASS_ERROR JASS_anytime_api::search(JASS_anytime_thread_result &output, std::string &query)
+JASS_anytime_result JASS_anytime_api::search(const std::string &query)
 	{
+	JASS_anytime_thread_result output;
 	std::vector<JASS_anytime_query> query_list;
 
 	query_list.push_back(query);
 	anytime(output, *index, query_list, *precomputed_minimum_rsv_table, postings_to_process, top_k);
 
-	return JASS_ERROR_OK;
+	return output.results.begin()->second;
 	}
 
 /*

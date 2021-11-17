@@ -165,7 +165,7 @@ static int main_event(int argc, const char *argv[])
 	/*
 		Read the index into memory
 	*/
-	if (engine.load_index(parameter_index_v2 ? 2 : 1) != JASS_ERROR_OK)
+	if (engine.load_index(parameter_index_v2 ? 2 : 1, true) != JASS_ERROR_OK)
 		{
 		std::cout << "Cannot load the index\n";
 		return 0;
