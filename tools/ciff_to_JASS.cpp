@@ -131,7 +131,7 @@ int main(int argc, const char *argv[])
 		exit(usage(argv[0]));
 	if (argc != 2)
 		{
-		for (size_t parameter = 2; parameter < argc; parameter++)
+		for (int parameter = 2; parameter < argc; parameter++)
 		if (strcmp(argv[parameter], "-passthrough") == 0)
 			passthrough = true;
 		else if (strcmp(argv[parameter], "-scalepassthrough") == 0)
