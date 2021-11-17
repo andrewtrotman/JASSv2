@@ -20,12 +20,12 @@
 
 enum JASS_ERROR
 	{
-	JASS_ERROR_OK = 0,							///< Completed successfully without error
-	JASS_ERROR_BAD_INDEX_VERSION,				///< The index version number specified is not supported
-	JASS_ERROR_FAIL,								///< An exception occurred - probably not caused by JASS (might be a C++ RTL exception)
+	JASS_ERROR_NO_INDEX = -1,				///< The index must be loaded before this operation can occur
+	JASS_ERROR_OK = 0,						///< Completed successfully without error
+	JASS_ERROR_BAD_INDEX_VERSION,			///< The index version number specified is not supported
+	JASS_ERROR_FAIL,						///< An exception occurred - probably not caused by JASS (might be a C++ RTL exception)
 	JASS_ERROR_TOO_MANY_DOCUMENTS,			///< This index cannot be loaded by this instance of the APIs because it contains more documents than the system-wide maximum
-	JASS_ERROR_TOO_LARGE,						///< top-k is larger than the system-wide maximum top-k value (or the accumulator width is too large)
-	JASS_ERROR_NO_INDEX,							///< The index must be loaded before this operation can occur
+	JASS_ERROR_TOO_LARGE,					///< top-k is larger than the system-wide maximum top-k value (or the accumulator width is too large)
 	};
 
 class JASS_anytime_api
@@ -63,6 +63,8 @@ class JASS_anytime_api
 		uint32_t get_top_k(void);
 		uint32_t get_max_top_k(void);
 		JASS_ERROR get_encoding_scheme(std::string &codex_name, int32_t &d_ness);
+		std::string get_encoding_scheme_name(void);
+		int32_t get_encoding_scheme_d(void);
 
 		JASS_ERROR use_ascii_parser(void);
 		JASS_ERROR use_query_parser(void);
@@ -74,5 +76,7 @@ class JASS_anytime_api
 
 class anytime : public JASS_anytime_api
 	{
-	/* Nothing */
+	/*
+		Nothing
+	*/
 	};

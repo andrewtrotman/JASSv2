@@ -20,7 +20,6 @@
 	JASS_ANYTIME_API::ANYTIME_BOOTSTRAP()
 	-------------------------------------
 */
-
 void JASS_anytime_api::anytime_bootstrap(JASS_anytime_api *thiss, JASS_anytime_thread_result &output, const JASS::deserialised_jass_v1 &index, std::vector<JASS_anytime_query> &query_list, JASS::top_k_limit *precomputed_minimum_rsv_table, size_t postings_to_process, size_t top_k)
 	{
 	thiss->anytime(output, index, query_list, *precomputed_minimum_rsv_table, postings_to_process, top_k);
@@ -170,7 +169,7 @@ JASS_ERROR JASS_anytime_api::set_top_k(size_t k)
 JASS::query::DOCID_TYPE JASS_anytime_api::get_document_count(void)
 	{
 	if (index == nullptr)
-		return JASS_ERROR_NO_INDEX;
+		return 0;				// no index has been loaded
 
 	return index->document_count();
 	}
@@ -205,6 +204,36 @@ JASS_ERROR JASS_anytime_api::get_encoding_scheme(std::string &codex_name, int32_
 	index->codex(codex_name, d_ness);
 
 	return JASS_ERROR_OK;
+	}
+
+/*
+	JASS_ANYTIME_API::GET_ENCODING_SCHEME_NAME()
+	--------------------------------------------
+*/
+std::string JASS_anytime_api::get_encoding_scheme_name(void)
+	{
+	std::string codex_name;
+	int32_t d_ness;
+
+	if (get_encoding_scheme(codex_name, d_ness) == JASS_ERROR_OK)
+		return codex_name;
+	else
+		return "";
+	}
+
+/*
+	JASS_ANYTIME_API::GET_ENCODING_SCHEME_D()
+	-----------------------------------------
+*/
+int32_t JASS_anytime_api::get_encoding_scheme_d(void)
+	{
+	std::string codex_name;
+	int32_t d_ness;
+
+	if (get_encoding_scheme(codex_name, d_ness) == JASS_ERROR_OK)
+		return d_ness;
+	else
+		return JASS_ERROR_NO_INDEX;
 	}
 
 /*
@@ -246,6 +275,9 @@ JASS_ERROR JASS_anytime_api::set_accumulator_width(size_t width)
 */
 JASS_anytime_result JASS_anytime_api::search(const std::string &query)
 	{
+	if (index == nullptr)
+		return JASS_anytime_result();
+		
 	JASS_anytime_thread_result output;
 	std::vector<JASS_anytime_query> query_list;
 
@@ -261,6 +293,9 @@ JASS_anytime_result JASS_anytime_api::search(const std::string &query)
 */
 JASS_ERROR JASS_anytime_api::search(std::vector<JASS_anytime_thread_result> &output, std::vector<JASS_anytime_query> &query_list, size_t thread_count)
 	{
+	if (index == nullptr)
+		return JASS_ERROR_NO_INDEX;
+
 	/*
 		Allocate a thread pool and the place to put the answers
 	*/
