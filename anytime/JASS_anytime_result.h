@@ -33,6 +33,9 @@ class JASS_anytime_result
 		JASS_ANYTIME_RESULT::JASS_ANYTIME_RESULT()
 		------------------------------------------
 	*/
+	/*!
+		@brief Constructor
+	*/
 	JASS_anytime_result() :
 		query_id(),
 		query(),
@@ -48,6 +51,7 @@ class JASS_anytime_result
 		------------------------------------------
 	*/
 	/*!
+		@brief Constructor
 		@param query_id [in] The query ID
 		@param query [in] The query
 		@param results_list [in] The results list (normally in TREC format)
