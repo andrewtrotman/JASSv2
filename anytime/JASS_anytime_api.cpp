@@ -15,7 +15,6 @@
 #include "deserialised_jass_v2.h"
 #include "JASS_anytime_thread_result.h"
 
-
 /*
 	JASS_ANYTIME_API::ANYTIME_BOOTSTRAP()
 	-------------------------------------
