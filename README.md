@@ -17,7 +17,10 @@ CodeCov (code coverage): [![codecov](https://codecov.io/gh/andrewtrotman/JASSv2/
 
 CodeDocs.xyz (documentation): [![Documentation Status](https://codedocs.xyz/andrewtrotman/JASSv2.svg)](https://codedocs.xyz/andrewtrotman/JASSv2/)
 
-
+OLD:
 For XCode use:
+cmake -G Xcode -T buildsystem=1 ..
 
+NEW:
+For XCode use:
 cmake -G Xcode -T buildsystem=1 ..
