@@ -55,10 +55,10 @@ if (SWIG_FOUND)
 	find_package(Python REQUIRED COMPONENTS Interpreter Development)
 	if(Python_VERSION VERSION_GREATER_EQUAL 3)
 		message("Building for Python 3")
-		set(CMAKE_SWIG_FLAGS -py3)
+		set(CMAKE_SWIG_FLAGS -py3 -doxygen)
 	else()
 		message("Building for Python 2")
-		set(CMAKE_SWIG_FLAGS -classic)
+		set(CMAKE_SWIG_FLAGS -classic -doxygen)
 	endif()
 
 	#
