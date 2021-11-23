@@ -439,6 +439,68 @@ namespace JASS
 				}
 
 			/*
+				QUERY_HEAP_CLEAN::TOP_UP()
+				--------------------------
+			*/
+			/*!
+				@brief Walk through the remnatns of the search and top-up the top-k
+				@details If the Oracle prediction is to large then the top-k will not be full, but the accuulators will be correct.  This
+				method will walk through the accumulators and add to the top-k
+			*/
+			void  top_up(void)
+				{
+				/*
+					Set the actual lower bound on the top-k to the current lowest score in the heap
+					knowing that it is probably a 0, and therefore any score greater than or equal to 1 is
+					good enough to put into the heap.
+				*/
+				ACCUMULATOR_TYPE heap_entry_point = *accumulator_pointers[0] == 0 ? 1 : *accumulator_pointers[0];
+
+				/*
+					Any score greater than or equal to top_k_lower_bound is already in the heap
+				*/
+				for (size_t page = 0; page < accumulators.number_of_dirty_flags; page++)
+					{
+					/*
+						If the row was used in this query then we want to add any documents that have
+						an score higher then the bottom of the heap
+					*/
+					if (!accumulators.dirty_flag[page])
+						{
+						size_t from = page << accumulators.shift;
+						size_t to = from + (1 << (accumulators.shift - 1));
+						while (from < to)
+							{
+							auto which = &accumulators.accumulator[from];
+							if (*which >= heap_entry_point && *which < top_k_lower_bound)
+								{
+								/*
+									Insert into the heap
+								*/
+								if (needed_for_top_k > 0)
+									{
+									/*
+										The heap isn't full yet - so put this accumulator into the heap
+									*/
+									accumulator_pointers[--needed_for_top_k] = which;
+									if (needed_for_top_k == 0)
+										{
+										top_results.make_heap();							// We've filled the heap so build it
+										heap_entry_point = *accumulator_pointers[0];		// set the new bottom of heap value
+										}
+									}
+								else
+									{
+									top_results.push_back(which);							// we're not in the heap so add this accumulator to the heap
+									heap_entry_point = *accumulator_pointers[0];			// set the new bottom of heap value
+									}
+								}
+							}
+						}
+					}
+				}
+
+			/*
 				QUERY_HEAP_CLEAN::UNITTEST()
 				----------------------------
 			*/
