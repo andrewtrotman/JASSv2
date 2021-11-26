@@ -33,6 +33,8 @@ JASS_anytime_api::JASS_anytime_api()
 	index = nullptr;
 	precomputed_minimum_rsv_table = new JASS::top_k_limit;
 	postings_to_process = (std::numeric_limits<size_t>::max)();
+	postings_to_process_min = 0;
+	relative_postings_to_process = 100;
 	top_k = 10;
 	which_query_parser = JASS::parser_query::parser_type::query;
 	accumulator_width = 0;
@@ -128,6 +130,31 @@ JASS_ERROR JASS_anytime_api::set_postings_to_process_proportion(double percent)
 	}
 
 /*
+	JASS_ANYTIME_API::SET_POSTINGS_TO_PROCESS_PROPORTION_MINIMUM()
+	--------------------------------------------------------------
+*/
+JASS_ERROR JASS_anytime_api::set_postings_to_process_proportion_minimum(double percent)
+	{
+	if (index == nullptr)
+		return JASS_ERROR_NO_INDEX;
+
+	postings_to_process_min = (size_t)((double)index->document_count() * percent / 100.0);
+
+	return JASS_ERROR_OK;
+	}
+
+/*
+	JASS_ANYTIME_API::SET_POSTINGS_TO_PROCESS_RELATIVE()
+	----------------------------------------------------
+*/
+JASS_ERROR JASS_anytime_api::set_postings_to_process_relative(double percent)
+	{
+	relative_postings_to_process = percent / 100.0;
+
+	return JASS_ERROR_OK;
+	}
+
+/*
 	JASS_ANYTIME_API::SET_POSTINGS_TO_PROCESS()
 	-------------------------------------------
 */
@@ -137,6 +164,18 @@ JASS_ERROR JASS_anytime_api::set_postings_to_process(size_t count)
 
 	return JASS_ERROR_OK;
 	}
+
+/*
+	JASS_ANYTIME_API::SET_POSTINGS_TO_PROCESS_MINIMUM()
+	---------------------------------------------------
+*/
+JASS_ERROR JASS_anytime_api::set_postings_to_process_minimum(size_t count)
+	{
+	postings_to_process_min = count;
+
+	return JASS_ERROR_OK;
+	}
+
 
 /*
 	JASS_ANYTIME_API::GET_POSTINGS_TO_PROCESS()
@@ -396,6 +435,7 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, const JASS::d
 		uint32_t largest_possible_rsv = (std::numeric_limits<decltype(largest_possible_rsv)>::min)();
 		uint32_t largest_possible_rsv_with_overflow;
 		uint32_t smallest_possible_rsv = (std::numeric_limits<decltype(smallest_possible_rsv)>::max)();
+		uint64_t total_postings_for_query = 0;
 //std::cout << "\n";
 		for (const auto &term : jass_query->terms())
 			{
@@ -413,7 +453,9 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, const JASS::d
 			*/
 			uint32_t term_smallest_impact;
 			uint32_t term_largest_impact;
-			current_segment += index.get_segment_list(current_segment, metadata, term.frequency(), term_smallest_impact, term_largest_impact);
+			JASS::query::DOCID_TYPE document_frequency;
+			current_segment += index.get_segment_list(current_segment, metadata, term.frequency(), term_smallest_impact, term_largest_impact, document_frequency);
+			total_postings_for_query += document_frequency;
 
 			/*
 				Compute the largest and smallest possible rsv values
@@ -460,8 +502,13 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, const JASS::d
 			{
 			scale_rsv_scores = true;
 			smallest_possible_rsv = (uint32_t)((double)largest_possible_rsv / (double)largest_possible_rsv * (double)JASS::query::MAX_RSV);
-//			rsv_at_k = (JASS::query::ACCUMULATOR_TYPE)((double)rsv_at_k / (double)largest_possible_rsv * (double)JASS::query::MAX_RSV);
 			largest_possible_rsv = (uint32_t)((double)largest_possible_rsv / (double)largest_possible_rsv * (double)JASS::query::MAX_RSV);
+
+			/*
+				This line (commented out) re-scales the rsv_at_k value, which we need to do if that score comes
+				from some other search engine (which is unlikely to occur).
+			*/
+//			rsv_at_k = (JASS::query::ACCUMULATOR_TYPE)((double)rsv_at_k / (double)largest_possible_rsv * (double)JASS::query::MAX_RSV);
 
 			/*
 				Check for zeros
@@ -472,6 +519,12 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, const JASS::d
 
 		jass_query->rewind(smallest_possible_rsv, rsv_at_k, largest_possible_rsv);
 //std::cout << "MAXRSV:" << largest_possible_rsv << " MINRSV:" << smallest_possible_rsv << "\n";
+
+		/*
+			Check to see if we've got a rho stopping conditio relative to the number of postings in this query.
+		*/
+		if (relative_postings_to_process != 1)
+			postings_to_process = total_postings_for_query * relative_postings_to_process;
 
 		/*
 			Process the segments
@@ -501,7 +554,7 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, const JASS::d
 			/*
 				Early terminate if we have filled the heap with documents having rsv scores higher than the rsv_at_k oracle score.
 			*/
-			if (rsv_at_k > 1 && jass_query->size() >= top_k)
+			if (rsv_at_k > 1 && jass_query->size() >= top_k && postings_processed >= postings_to_process_min)
 				break;
 			}
 		/*

@@ -20,30 +20,36 @@
 	PARAMETERS
 	----------
 */
-static double rho = 100.0;											///< In the anytime paper rho is the prcentage of the collection that should be used as a cap to the number of postings processed.
+static double rho = 100.0;											///< In the anytime paper rho is the percentage of the collection that should be used as a cap to the number of postings processed.
+static double rho_min = 0;											///< In the anytime paper rho is the percentage of the collection that should be used as a cap to the number of postings processed, this is the minimum to process.
+static double parameter_relative_rho = 100.0;						///< Percentage of the all the postings for this query that should be processed
 static size_t maximum_number_of_postings_to_process = 0;			///< Computed from rho
-static std::string parameter_queryfilename;						///< Name of file containing the queries
+static size_t minimum_number_of_postings_to_process = 0;			///< The minimum number of postings to process (to prevent "way too early" early termination
+static std::string parameter_queryfilename;							///< Name of file containing the queries
 static size_t parameter_threads = 1;								///< Number of concurrent queries
-static size_t parameter_top_k = 10;								///< Number of results to return
+static size_t parameter_top_k = 10;									///< Number of results to return
 static size_t accumulator_width = 0;								///< The width (2^accumulator_width) of the accumulator 2-D array (if they are being used).
 static bool parameter_ascii_query_parser = false;					///< When true use the ASCII pre-casefolded query parser
-static bool parameter_help = false;								///< Print the usage information
-static bool parameter_index_v2 = false;							///< The index is a JASS version 2 index
+static bool parameter_help = false;									///< Print the usage information
+static bool parameter_index_v2 = false;								///< The index is a JASS version 2 index
 static std::string parameter_rsv_scores_filename;					///< The name of the file containing ordered pairs <query_id> <rsv> for the minimum rsv to be found
 
 static std::string parameters_errors;								///< Any errors as a result of command line parsing
 static auto parameters = std::make_tuple							///< The  command line parameter block
 	(
-	JASS::commandline::parameter("-?", "--help",         "                  Print this help.", parameter_help),
-	JASS::commandline::parameter("-2", "--v2_index",     "                  The index is a JASS v2 index", parameter_index_v2),
-	JASS::commandline::parameter("-a", "--asciiparser ", "                  Use simple query parser (ASCII seperated pre-casefolded tokens)", parameter_ascii_query_parser),
-	JASS::commandline::parameter("-k", "--top-k",        "<top-k>           Number of results to return to the user (top-k value) [default = -k10]", parameter_top_k),
-	JASS::commandline::parameter("-q", "--queryfile",    "<filename>        Name of file containing a list of queries (1 per line, each line prefixed with query-id)", parameter_queryfilename),
-	JASS::commandline::parameter("-Q", "--queryrsvfile", "<filename>        Name of file containing a list of the minimum rsv value for a document to be found (1 per line: <query_id> <rsv>)", parameter_rsv_scores_filename),
-	JASS::commandline::parameter("-r", "--rho",          "<integer_percent> Percent of the collection size to use as max number of postings to process [default = -r100] (overrides -RHO)", rho),
-	JASS::commandline::parameter("-R", "--RHO",          "<integer_max>     Max number of postings to process [default is all] (overridden by -rho)", maximum_number_of_postings_to_process),
-	JASS::commandline::parameter("-t", "--threads",      "<threadcount>     Number of threads to use (one query per thread) [default = -t1]", parameter_threads),
-	JASS::commandline::parameter("-w", "--width",        "<2^w>             The width of the 2D accumulator array (2^w is used)", accumulator_width)
+	JASS::commandline::parameter("-?",   "--help",         "                  Print this help.", parameter_help),
+	JASS::commandline::parameter("-2",   "--v2_index",     "                  The index is a JASS v2 index", parameter_index_v2),
+	JASS::commandline::parameter("-a",   "--asciiparser ", "                  Use simple query parser (ASCII seperated pre-casefolded tokens)", parameter_ascii_query_parser),
+	JASS::commandline::parameter("-k",   "--top-k",        "<top-k>           Number of results to return to the user (top-k value) [default = -k10]", parameter_top_k),
+	JASS::commandline::parameter("-q",   "--queryfile",    "<filename>        Name of file containing a list of queries (1 per line, each line prefixed with query-id)", parameter_queryfilename),
+	JASS::commandline::parameter("-Q",   "--queryrsvfile", "<filename>        Name of file containing a list of the minimum rsv value for a document to be found (1 per line: <query_id> <rsv>)", parameter_rsv_scores_filename),
+	JASS::commandline::parameter("-r",   "--rho",          "<integer_percent> Percent of the collection size to use as max number of postings to process [default = -r100] (overrides -R)", rho),
+	JASS::commandline::parameter("-⌊r⌋", "--rho_min",      "<integer_percent> Percent of the collection size to use as minimum number of postings to process [default is 0] (overrides -R)", rho_min),
+	JASS::commandline::parameter("-R",   "--RHO",          "<integer_max>     Max number of postings to process [default is all]", maximum_number_of_postings_to_process),
+	JASS::commandline::parameter("-⌊R⌋", "--RHO_min",      "<integer_min>     Minimum number of postings to process [default is 0]", minimum_number_of_postings_to_process),
+	JASS::commandline::parameter("-ℝ",   "--Relative_RHO", "<integer_percent> Percent of this queries postings to use as max number of postings to process [default = -ℝ100] (overrides -R and -r)", parameter_relative_rho),
+	JASS::commandline::parameter("-t",   "--threads",      "<threadcount>     Number of threads to use (one query per thread) [default = -t1]", parameter_threads),
+	JASS::commandline::parameter("-w",   "--width",        "<2^w>             The width of the 2D accumulator array (2^w is used)", accumulator_width)
 	);
 
 /*
@@ -199,10 +205,28 @@ static int main_event(int argc, const char *argv[])
 			std::cout << "Failure to set the number of postings to process to " << maximum_number_of_postings_to_process << '\n';
 			return 0;
 			}
+	if (minimum_number_of_postings_to_process != 0)
+		if (engine.set_postings_to_process_minimum(minimum_number_of_postings_to_process) != JASS_ERROR_OK)
+			{
+			std::cout << "Failure to set the minimum number of postings to process to " << minimum_number_of_postings_to_process << '\n';
+			return 0;
+			}
 	if (rho != 100.0)
 		if (engine.set_postings_to_process_proportion(rho) != JASS_ERROR_OK)
 			{
 			std::cout << "Failure to set the proportion of postings to process\n";
+			return 0;
+			}
+	if (rho_min != 0)
+		if (engine.set_postings_to_process_proportion_minimum(rho_min) != JASS_ERROR_OK)
+			{
+			std::cout << "Failure to set the minimum proportion of postings to process\n";
+			return 0;
+			}
+	if (parameter_relative_rho != 100)
+		if (engine.set_postings_to_process_relative(parameter_relative_rho) != JASS_ERROR_OK)
+			{
+			std::cout << "Failure to set the relative postings stopping condition\n";
 			return 0;
 			}
 

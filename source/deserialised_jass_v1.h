@@ -328,18 +328,20 @@ namespace JASS
 				@param largest [out] The smallest impact score for this term
 				@return The number of segments extracted and added to the list
 			*/
-			virtual size_t get_segment_list(segment_header *segments, metadata &metadata, size_t term_frequency, uint32_t &smallest, uint32_t &largest) const
+			virtual size_t get_segment_list(segment_header *segments, metadata &metadata, size_t query_term_frequency, uint32_t &smallest, uint32_t &largest, query::DOCID_TYPE &document_frequency) const
 				{
+				document_frequency = 0;
 				segment_header *current_segment = segments;
 				for (uint64_t segment = 0; segment < metadata.impacts; segment++)
 					{
 					uint64_t *postings_list = (uint64_t *)metadata.offset;
 					segment_header_on_disk *next_segment_in_postings_list = (segment_header_on_disk *)(postings() + postings_list[segment]);
 
-					current_segment->impact = next_segment_in_postings_list->impact * term_frequency;
+					current_segment->impact = next_segment_in_postings_list->impact * query_term_frequency;
 					current_segment->offset = next_segment_in_postings_list->offset;
 					current_segment->end = next_segment_in_postings_list->end;
 					current_segment->segment_frequency = next_segment_in_postings_list->segment_frequency;
+					document_frequency += next_segment_in_postings_list->segment_frequency;
 
 					current_segment++;
 					}

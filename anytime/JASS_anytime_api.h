@@ -55,6 +55,8 @@ class JASS_anytime_api
 		JASS::deserialised_jass_v1 *index;						///< The index
 		JASS::top_k_limit *precomputed_minimum_rsv_table;		///< Oracle scores (estimates of the rsv for the document at k)
 		size_t postings_to_process;								///< The maximunm number of postings to process
+		size_t postings_to_process_min;							///< Process at least this number of postings
+		double relative_postings_to_process;					///< If not 100 then then this is the proportion of this query's postings that should be processed
 		size_t top_k;											///< The number of documents we want in the results list
 		JASS::parser_query::parser_type which_query_parser;		///< Use the simple ASCII parser or the regular query parser
 		size_t accumulator_width;								///< Width of the accumulator array
@@ -205,6 +207,35 @@ class JASS_anytime_api
 		*/
 		JASS_ERROR set_postings_to_process_proportion(double percent);
 
+
+		/*
+			JASS_ANYTIME_API::SET_POSTINGS_TO_PROCESS_PROPORTION_MINIMUM()
+			--------------------------------------------------------------
+		*/
+		/*!
+			@brief Set the minimum number of postings to process as a proportion of the number of documents in the collection.
+			@details An index must be loaded before this method is called, if not it returns JASS_ERROR_NO_INDEX and has no effect
+				By default all postings are processed.
+			@param percent [in] The percent to use (for example, 10 is use 10% of the postings)
+			@return JASS_ERROR_OK or JASS_ERROR_NO_INDEX
+		*/
+		JASS_ERROR set_postings_to_process_proportion_minimum(double percent);
+
+		/*
+			JASS_ANYTIME_API::SET_POSTINGS_TO_PROCESS_RELATIVE()
+			----------------------------------------------------
+		*/
+		/*!
+			@brief Set the number of postings to process as a proportion of the number of postings for this query.
+			@details An index does not need to be loaded first.
+				This method takes precidence over set_postings_to_process() and set_postings_to_process_proportion().
+				By default all postings are processed.
+			@param percent [in] The percent to use (for example, 10 is use 10% of the postings)
+			@return JASS_ERROR_OK or JASS_ERROR_NO_INDEX
+		*/
+		JASS_ERROR set_postings_to_process_relative(double percent);
+
+
 		/*
 			JASS_ANYTIME_API::SET_POSTINGS_TO_PROCESS()
 			-------------------------------------------
@@ -218,6 +249,21 @@ class JASS_anytime_api
 			@return JASS_ERROR_OK
 		*/
 		JASS_ERROR set_postings_to_process(size_t count);
+
+
+		/*
+			JASS_ANYTIME_API::SET_POSTINGS_TO_PROCESS__MINIMUM()
+			----------------------------------------------------
+		*/
+		/*!
+			@brief Set the minimum number of postings to process as an absolute number.
+			@details An index does not need to be loaded first.
+				By default all postings are processed.
+			@param count [in] The minimum number of postings to process
+			@return JASS_ERROR_OK
+		*/
+		JASS_ERROR set_postings_to_process_minimum(size_t count);
+
 
 		/*
 			JASS_ANYTIME_API::GET_POSTINGS_TO_PROCESS()

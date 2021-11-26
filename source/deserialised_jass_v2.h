@@ -124,8 +124,9 @@ namespace JASS
 				@param largest [out] The smallest impact score for this term
 				@return The number of segments extracted and added to the list
 			*/
-			virtual size_t get_segment_list(segment_header *segments, metadata &metadata, size_t term_frequency, uint32_t &smallest, uint32_t &largest) const
+			virtual size_t get_segment_list(segment_header *segments, metadata &metadata, size_t query_term_frequency, uint32_t &smallest, uint32_t &largest, query::DOCID_TYPE &document_frequency) const
 				{
+				document_frequency = 0;
 				/*
 					Extract all the segments
 				*/
@@ -139,8 +140,9 @@ namespace JASS
 					compress_integer_variable_byte::decompress_into(&current_segment->end , segment_header_pointer);
 					compress_integer_variable_byte::decompress_into(&current_segment->segment_frequency, segment_header_pointer);
 					current_segment->offset += segment_header_pointer - postings();		//v2 index is relative to the segment header
-					current_segment->impact *= term_frequency;
+					current_segment->impact *= query_term_frequency;
 					current_segment->end += current_segment->offset;					// V2 indexes store length rather than an end pointer
+					document_frequency += current_segment->segment_frequency;
 					current_segment++;
 					}
 
