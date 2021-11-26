@@ -69,10 +69,10 @@ JASS_ERROR JASS_anytime_api::load_index(size_t index_version, bool verbose)
 		switch (index_version)
 			{
 			case 1:
-				index = new JASS::deserialised_jass_v2(verbose);
+				index = new JASS::deserialised_jass_v1(verbose);
 				break;
 			case 2:
-				index = new JASS::deserialised_jass_v1(verbose);
+				index = new JASS::deserialised_jass_v2(verbose);
 				break;
 			default:
 				return JASS_ERROR_BAD_INDEX_VERSION;
@@ -497,13 +497,24 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, const JASS::d
 			*/
 			JASS::query::ACCUMULATOR_TYPE impact = header->impact;
 			jass_query->decode_and_process(impact, header->segment_frequency, index.postings() + header->offset, header->end - header->offset);
-#define EARLY_TERMINATE 1
-#ifdef EARLY_TERMINATE
+
+			/*
+				Early terminate if we have filled the heap with documents having rsv scores higher than the rsv_at_k oracle score.
+			*/
 			if (rsv_at_k > 1 && jass_query->size() >= top_k)
 				break;
-#endif
 			}
+		/*
+			If were using the oracle rsv_at_k predictions and we have fewer than top_k documents in the top_k list
+			then it might be becasue the oracle prediction was too high.  If this is the case then we need to top-up
+			the top-k
+		*/
+		if (rsv_at_k > 1 && jass_query->size() < top_k)
+			jass_query->top_up();
 
+		/*
+			Finally we have the results list in the heap, no sort it.
+		*/
 		jass_query->sort();
 		
 		/*

@@ -468,8 +468,8 @@ namespace JASS
 					if (!accumulators.dirty_flag[page])
 						{
 						size_t from = page << accumulators.shift;
-						size_t to = from + (1 << (accumulators.shift - 1));
-						while (from < to)
+						size_t to = (page + 1) << accumulators.shift;
+						for (; from < to; from++)
 							{
 							auto which = &accumulators.accumulator[from];
 							if (*which >= heap_entry_point && *which < top_k_lower_bound)
