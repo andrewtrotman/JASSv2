@@ -141,6 +141,7 @@ namespace JASS
 				return _mm256_i32gather_epi32((int const *)array, vindex, 4);
 				}
 
+#ifdef __AVX512F__
 			/*
 				SIMD::GATHER()
 				--------------
@@ -190,6 +191,7 @@ namespace JASS
 				{
 				return _mm512_i32gather_epi32(vindex, array, 4);
 				}
+#endif
 
 			/*
 				SIMD::SCATTER()
@@ -343,7 +345,7 @@ namespace JASS
 				scatter(array, _mm256_extracti128_si256(vindex, 1), _mm256_extracti128_si256(a, 1));
 #endif
 				}
-
+#ifdef __AVX512F__
 			/*
 				SIMD::SCATTER()
 				---------------
@@ -438,6 +440,7 @@ namespace JASS
 				*/
 				_mm512_i32scatter_epi32(array, vindex, a, 4);
 				}
+#endif
 
 			/*
 				SIMD::CUMULATIVE_SUM()
@@ -484,7 +487,7 @@ namespace JASS
 
 				return answer;
 				}
-
+#ifdef __AVX512F__
 			/*
 				SIMD::CUMULATIVE_SUM()
 				----------------------
@@ -581,6 +584,7 @@ namespace JASS
 					}
 				}
 
+#endif
 			/*
 				SIMD::CUMULATIVE_SUM_256()
 				--------------------------
@@ -631,6 +635,7 @@ namespace JASS
 					previous_max = _mm256_permute2x128_si256(current_set, current_set, 3 | (3 << 4));
 					}
 				}
+#ifdef __AVX512F__
 			/*
 				SIMD::POPCOUNT()
 				----------------
@@ -686,6 +691,7 @@ namespace JASS
 				return _mm512_madd_epi16(_mm512_maddubs_epi16(sum8, _mm512_set1_epi8(1)), _mm512_set1_epi16(1));
 #endif
 				}
+#endif
 
 #ifdef __AVX512F__
 			/*
@@ -734,7 +740,7 @@ namespace JASS
 				__m256i zero = _mm256_setzero_si256();
 				__m256i *into = reinterpret_cast<__m256i *>(address);
 
-				for (auto which = 0; which < sixty_fours; which++)
+				for (uint32_t which = 0; which < sixty_fours; which++)
 						{
 						_mm256_store_si256(into++, zero);
 						_mm256_store_si256(into++, zero);

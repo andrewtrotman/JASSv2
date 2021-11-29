@@ -515,6 +515,7 @@ namespace JASS
 				set_bucket(_mm256_extracti128_si256(document_ids, 1), _mm256_extracti128_si256(values, 1));
 				}
 
+#ifdef __AVX512F__
 			/*
 				QUERY_BUCKET::ADD_RSV()
 				-----------------------
@@ -576,6 +577,7 @@ namespace JASS
 #endif
 				}
 #endif
+#endif
 
 			/*
 				QUERY_BUCKET::ADD_RSV_D1()
@@ -625,6 +627,7 @@ namespace JASS
 				add_rsv(document_ids);
 				}
 
+#ifdef __AVX512F__
 			/*
 				QUERY_BUCKET::ADD_RSV_D1()
 				--------------------------
@@ -652,6 +655,7 @@ namespace JASS
 				*/
 				add_rsv(document_ids);
 				}
+#endif
 #endif
 
 			/*

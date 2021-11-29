@@ -96,6 +96,14 @@ else()
 endif()
 
 #
+#	Compatibility with the FileSystem libraries for G++ prior to verison 9
+#
+if(WIN32)
+else()
+	link_libraries(stdc++fs)
+endif()
+
+#
 # If we're in Debug mode then enble the DEBUG macro'
 #
 if(CMAKE_BUILD_TYPE MATCHES Debug)
