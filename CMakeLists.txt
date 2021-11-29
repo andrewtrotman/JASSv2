@@ -96,10 +96,10 @@ else()
 endif()
 
 #
-#	Compatibility with the FileSystem libraries for G++ prior to verison 9
+#	Compatibility with the FileSystem libraries for g++ prior to verison 9
 #
-if(WIN32)
-else()
+if(UNIX AND NOT APPLE)
+	message("Adding stdc++fs library for early g++ compatibility")
 	link_libraries(stdc++fs)
 endif()
 
