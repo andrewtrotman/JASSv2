@@ -49,6 +49,7 @@
 	#define __restrict__ __restrict
 #endif
 
+#ifdef  __AVX512F__
 namespace Sort512_uint64_t {
 
 
@@ -2833,4 +2834,5 @@ static inline void Sort(SortType array[], const IndexType size){
 }
 
 }
+#endif
 
