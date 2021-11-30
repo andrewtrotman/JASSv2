@@ -5,6 +5,7 @@ import sysconfig
 import platform
 import subprocess
 import shutil
+import glob
 
 from pathlib import Path
 
@@ -20,88 +21,67 @@ class CMakeExtension(Extension):
 
 class CMakeBuild(build_ext):
     def run(self):
+        for ext in self.extensions:
+            self.build_cmake(ext)
+        super().run()
+
+    def build_cmake(self, ext):
         try:
-            out = subprocess.check_output(['cmake', '--version'])
+            subprocess.check_output(["cmake", "--version"])
         except OSError:
             raise RuntimeError(
-                "CMake must be installed to build the following extensions: " +
-                ", ".join(e.name for e in self.extensions))
+                "CMake must be installed to build the following extensions: "
+                + ", ".join(e.name for e in self.extensions)
+            )
 
-        build_directory = os.path.abspath(self.build_temp)
-        build_directory2 = os.path.abspath(os.path.dirname(__file__))
-        print("NUILD DIR 2" + build_directory2)
+        cwd = Path().absolute()
 
-        cmake_args = [
-            # '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' + build_directory
-            # '-DPYTHON_EXECUTABLE=' + sys.executable
-        ]
-
-        cfg = 'Debug' if self.debug else 'Release'
-        build_args = ['--config', cfg]
-
-       # cmake_args += ['-DCMAKE_BUILD_TYPE=' + cfg] # include the args to make the build 
-
-        # Assuming Makefiles
-        # build_args += ['--', '-j2']
-
-        self.build_args = build_args
-
-        env = os.environ.copy()
-        env['CXXFLAGS'] = '{} -DVERSION_INFO=\\"{}\\"'.format(
-            env.get('CXXFLAGS', ''),
-            self.distribution.get_version())
+        # these dirs will be created in build_py, so if you don't have
+        # any python sources to bundle, the dirs will be missing
         if not os.path.exists(self.build_temp):
             os.makedirs(self.build_temp)
+        extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
+        print("EXT DIR IS" + extdir)
 
-        # CMakeLists.txt is in the same directory as this setup.py file
-        cmake_list_dir = os.path.abspath(os.path.dirname(__file__))
-       # print(self.build_temp)
-        print('-'*10, 'Running CMake prepare', '-'*40)
-        subprocess.check_call(['./build.sh'])
-        # subprocess.check_call(['make'])
+        cmake_args = [
+            f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={extdir}",
+
+        ]
+
+        build_args = ["--config", "Release", "--", "-j2"]
+
+        env = os.environ.copy()
+
+        self.announce("Running CMake prepare", level=3)
+        subprocess.check_call(["cmake", cwd] + cmake_args, cwd=self.build_temp)
 
 
-        # print('-'*10, 'Building extensions', '-'*40)
-        # cmake_cmd = ['make', '', '.'] + self.build_args
-        # subprocess.check_call(cmake_cmd)
-
-        # Move from build temp to final position
-    #     for ext in self.extensions: 
-    #         print(ext)
-    #         self.move_output(ext)
-
-    # def move_output(self, ext):
-    #     build_temp = Path(os.path.abspath(os.path.dirname(__file__))).resolve()
-    #     print(build_temp)
-    #     print(type(ext))
-    #     dest_path = Path(self.get_ext_fullpath(ext.name)).resolve()
-    #     print(dest_path)
-    #     source_path = build_temp / self.get_ext_filename(ext.name)
-    #     dest_directory = dest_path.parents[0]
-    #     dest_directory.mkdir(parents=True, exist_ok=True)
-    #     self.copy_file(source_path, dest_path)
-        
-        
-ext_modules = [
-  CMakeExtension('_pyjass.so')
-]
+        self.announce("Building extensions")
+        cmake_cmd = ["cmake", "--build", "."] + build_args
+        subprocess.check_call(cmake_cmd, cwd=(self.build_temp))
+        dir1 = self.build_temp + "/anytime/pyjass.py" # copy our swig script into the lib so it gets installed together 
+        dir2 = extdir + "/pyjass.cpython*" # remove the default dummy.so that causes the program not work 
+        shutil.move(dir1,extdir)
+        for f in glob.glob("dir2"):
+            os.remove(f)
 
 setup(
-    name='PACKAGENAME',
-    version='PACKAGEVERSION',  # specified elsewhere
-    author='',
+    name='jassTest',
+    version='0.007',  # specified elsewhere
+    author='Pradeesh Parameswaran',
+    include_dirs =[''],
     author_email='',
     download_url='',
-    packages=['output'],
+  #  packages=[''],
    # package_dir={'': '.'},
-   package_data={'': ['_example.so']}, #replace me with your package data
+ #  package_data={'': ['_example.so']}, #replace me with your package data
    classifiers=[
        'Programming Language :: Python :: 3',
        'Operating System :: MacOS :: MacOS X',
        'Operating System :: POSIX :: Linux', # WSL will be treated as Linux so it's not a problem
    ],
-   python_requires='>=3.6',
-   ext_modules=ext_modules,
+   python_requires='>=3.0',
+   ext_modules=[CMakeExtension("dummy")], # force python to generate a dummy.so/pyc bindings - cmake script takes care of that
    cmdclass=dict(build_ext=CMakeBuild)
 
 )
