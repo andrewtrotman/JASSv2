@@ -1,23 +1,16 @@
 import os
-import re
-import sys
-import sysconfig
-import platform
 import subprocess
 import shutil
 import glob
 
 from pathlib import Path
 
-from distutils.version import LooseVersion
-from setuptools import setup, Extension, find_packages
+from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
-from setuptools.command.test import test as TestCommand
 
 class CMakeExtension(Extension):
     def __init__(self, name):
         Extension.__init__(self, name, sources=[])
-
 
 class CMakeBuild(build_ext):
     def run(self):
@@ -50,31 +43,30 @@ class CMakeBuild(build_ext):
 
         build_args = ["--config", "Release", "--", "-j2"]
 
-        env = os.environ.copy()
+#        env = os.environ.copy()
 
         self.announce("Running CMake prepare", level=3)
         subprocess.check_call(["cmake", cwd] + cmake_args, cwd=self.build_temp)
-
 
         self.announce("Building extensions")
         cmake_cmd = ["cmake", "--build", "."] + build_args
         subprocess.check_call(cmake_cmd, cwd=(self.build_temp))
         dir1 = self.build_temp + "/anytime/pyjass.py" # copy our swig script into the lib so it gets installed together 
         dir2 = extdir + "/pyjass.cpython*" # remove the default dummy.so that causes the program not work 
-        shutil.move(dir1,extdir)
-        for f in glob.glob("dir2"):
+        shutil.move(dir1, extdir)
+        for f in glob.glob(dir2):
             os.remove(f)
 
 setup(
-    name='jassTest',
-    version='0.007',  # specified elsewhere
-    author='Pradeesh Parameswaran',
+    name='pyjass',
+    version='0.1',
+    author='Andrew Trotman',
     include_dirs =[''],
-    author_email='',
+    author_email='andrew@cs.otago.ac.nz',
     download_url='',
-  #  packages=[''],
-   # package_dir={'': '.'},
- #  package_data={'': ['_example.so']}, #replace me with your package data
+#    packages=[''],
+#    package_dir={'': '.'},
+#   package_data={'': ['_example.so']}, #replace me with your package data
    classifiers=[
        'Programming Language :: Python :: 3',
        'Operating System :: MacOS :: MacOS X',
@@ -83,5 +75,4 @@ setup(
    python_requires='>=3.0',
    ext_modules=[CMakeExtension("dummy")], # force python to generate a dummy.so/pyc bindings - cmake script takes care of that
    cmdclass=dict(build_ext=CMakeBuild)
-
 )
