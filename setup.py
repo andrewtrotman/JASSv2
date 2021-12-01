@@ -53,7 +53,7 @@ class CMakeBuild(build_ext):
         subprocess.check_call(cmake_cmd, cwd=(self.build_temp))
         dir1 = self.build_temp + "/anytime/pyjass.py" # copy our swig script into the lib so it gets installed together 
         dir2 = extdir + "/pyjass.cpython*" # remove the default dummy.so that causes the program not work 
-        shutil.move(dir1, extdir)
+        shutil.copy(dir1, extdir)
         for f in glob.glob(dir2):
             os.remove(f)
 
