@@ -24,3 +24,24 @@ cmake -G Xcode -T buildsystem=1 ..
 NEW:
 For XCode use:
 cmake -G Xcode -T buildsystem=1 ..
+
+
+## Python ##
+
+Ensure [anaconda](https://docs.anaconda.com/anaconda/install/index.html) is installed and then simply run with 
+
+	conda env create -f env.yml
+    conda activate pyjass
+
+To import the library simply call
+    import pyjass
+
+
+## Java ##
+The Java version is build in the same way, but run with 
+
+	java JASSjr_index <filename>
+
+and
+
+	java JASSjr_search
