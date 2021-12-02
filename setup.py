@@ -2,13 +2,15 @@ import os
 import subprocess
 import shutil
 import glob
+import platform
+import sys
 
 from pathlib import Path
 
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
 
-version_file = open(os.path.join(mypackage_root_dir, 'VERSION'))
+#version_file = open(os.path.join(mypackage_root_dir, 'VERSION'))
 
 class CMakeExtension(Extension):
     def __init__(self, name):
@@ -43,16 +45,11 @@ class CMakeBuild(build_ext):
         if not os.path.exists(self.build_temp):
             os.makedirs(self.build_temp)
         extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
-        print("EXT DIR IS" + extdir)
-
         cmake_args = [
-            f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={extdir}",
-
+            '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' + extdir
         ]
 
         build_args = ["--config", "Release", "--", "-j2"]
-
-#        env = os.environ.copy()
 
         self.announce("Running CMake prepare", level=3)
         subprocess.check_call(["cmake", cwd] + cmake_args, cwd=self.build_temp)
@@ -60,13 +57,17 @@ class CMakeBuild(build_ext):
         self.announce("Building extensions")
         cmake_cmd = ["cmake", "--build", "."] + build_args
         subprocess.check_call(cmake_cmd, cwd=(self.build_temp))
-        dir1 = self.build_temp + "/anytime/pyjass.py" # copy our swig script into the lib so it gets installed together 
-        dir2 = extdir + "/pyjass.cpython*" # remove the default dummy.so that causes the program not work 
+
+        dir1 = self.build_temp + "/anytime/pyjass.py" # copy our swig script into the lib so it gets installed together
+        # This is a workaround for MacOS X
+        # clang (Xcode) expects some sort of file but in Linux it gets compiled anyway. We just copy the _so file to dummy and install it
+        if platform.system() == "Darwin":
+            fakeLib = extdir + "/dummy.cpython-" + str(sys.version_info[0]) + str(sys.version_info[1]) + "-darwin.so" #create a Darwin Version to handle pythons' cmake
+            shutil.copy((extdir + "/_pyjass.so"), fakeLib)        
         shutil.copy(dir1, extdir)
-        for f in glob.glob(dir2):
-            os.remove(f)
 
 setup(
+    cmdclass=dict(build_ext=CMakeBuild),
     name='pyjass',
     version='0.1.1',
     author='Andrew Trotman',
@@ -88,7 +89,7 @@ setup(
        'Operating System :: MacOS :: MacOS X',
        'Operating System :: POSIX :: Linux', # WSL will be treated as Linux so it's not a problem
    ],
-   python_requires='>=3.0',
-   ext_modules=[CMakeExtension("dummy")], # force python to generate a dummy.so/pyc bindings - cmake script takes care of that
-   cmdclass=dict(build_ext=CMakeBuild)
+   python_requires='>=3.4',
+   ext_modules=[CMakeExtension("dummy")] # force python to generate a dummy.so/pyc bindings - cmake script takes care of that
+   
 )
