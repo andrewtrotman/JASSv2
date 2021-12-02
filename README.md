@@ -28,14 +28,18 @@ cmake -G Xcode -T buildsystem=1 ..
 
 ## Python ##
 
-Ensure [anaconda](https://docs.anaconda.com/anaconda/install/index.html) is installed and then simply run with 
+There are two ways pyjass can be installed
+
+### Conda ####
+
+[Anaconda](https://docs.anaconda.com/anaconda/install/index.html) ensures that all JASS dependencies are installed and creates a virtual envirnoment by the name of pyjass
 
 	conda env create -f env.yml
     conda activate pyjass
 
-To import the library simply call
-    import pyjass
+### pip ####
 
+	pip install pyjass
 
 ## Java ##
 The Java version is build in the same way, but run with 
