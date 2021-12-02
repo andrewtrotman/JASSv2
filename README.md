@@ -17,35 +17,21 @@ CodeCov (code coverage): [![codecov](https://codecov.io/gh/andrewtrotman/JASSv2/
 
 CodeDocs.xyz (documentation): [![Documentation Status](https://codedocs.xyz/andrewtrotman/JASSv2.svg)](https://codedocs.xyz/andrewtrotman/JASSv2/)
 
-OLD:
-For XCode use:
-cmake -G Xcode -T buildsystem=1 ..
-
-NEW:
-For XCode use:
-cmake -G Xcode -T buildsystem=1 ..
-
-
 ## Python ##
 
 There are two ways pyjass can be installed
 
 ### conda ####
 
-[Anaconda](https://docs.anaconda.com/anaconda/install/index.html) ensures that all JASS dependencies are installed and creates a virtual envirnoment by the name of pyjass
+[Anaconda](https://docs.anaconda.com/anaconda/install/index.html) ensures that all JASS dependencies are installed and creates a virtual envirnoment called pyjass
 
-	conda env create -f env.yml
-    conda activate pyjass
+```
+conda env create -f env.yml
+conda activate pyjass
+```
 
 ### pip ####
+```
+pip3 install --user pyjass
+```
 
-	pip3 install --user pyjass
-
-## Java ##
-The Java version is build in the same way, but run with 
-
-	java JASSjr_index <filename>
-
-and
-
-	java JASSjr_search
