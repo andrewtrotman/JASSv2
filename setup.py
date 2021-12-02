@@ -69,10 +69,10 @@ class CMakeBuild(build_ext):
 setup(
     cmdclass=dict(build_ext=CMakeBuild),
     name='pyjass',
-    version='0.1.1',
+    version='0.1.2',
     author='Andrew Trotman',
-    description='Some short description about the stuff goes here',
-    long_description='refer to github for details',
+    description='The JASS experimental Score-at-a-Time search engine.',
+    long_description='Please visit https://github.com/andrewtrotman/JASSv2 ',
     include_dirs =[''],
     author_email='andrew@cs.otago.ac.nz',
     download_url='',
@@ -90,6 +90,7 @@ setup(
        'Operating System :: POSIX :: Linux', # WSL will be treated as Linux so it's not a problem
    ],
    python_requires='>=3.4',
+   install_requires=['wheel>0.35','packaging>20'],
    ext_modules=[CMakeExtension("dummy")] # force python to generate a dummy.so/pyc bindings - cmake script takes care of that
    
 )
