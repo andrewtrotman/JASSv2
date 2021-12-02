@@ -70,7 +70,7 @@ setup(
     name='pyjass',
     version=version_file.read().strip(),
     author='Andrew Trotman',
-    description='Some short description about the stuff goes here'
+    description='Some short description about the stuff goes here',
     include_dirs =[''],
     author_email='andrew@cs.otago.ac.nz',
     download_url='',
