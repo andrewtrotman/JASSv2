@@ -8,6 +8,8 @@ from pathlib import Path
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
 
+version_file = open(os.path.join(mypackage_root_dir, 'VERSION'))
+
 class CMakeExtension(Extension):
     def __init__(self, name):
         Extension.__init__(self, name, sources=[])
@@ -66,11 +68,17 @@ class CMakeBuild(build_ext):
 
 setup(
     name='pyjass',
-    version='0.1',
+    version=version_file.read().strip(),
     author='Andrew Trotman',
+    description='Some short description about the stuff goes here'
     include_dirs =[''],
     author_email='andrew@cs.otago.ac.nz',
     download_url='',
+    keywords='search engine, search tool, jass',
+    project_urls={  # Optional
+    'Bug Reports': 'https://github.com/andrewtrotman/JASSv2/issues',
+    'Source': 'https://github.com/andrewtrotman/JASSv2',
+    },
 #    packages=[''],
 #    package_dir={'': '.'},
 #   package_data={'': ['_example.so']}, #replace me with your package data
