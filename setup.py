@@ -8,6 +8,8 @@ from pathlib import Path
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
 
+version_file = open(os.path.join(mypackage_root_dir, 'VERSION'))
+
 class CMakeExtension(Extension):
     def __init__(self, name):
         Extension.__init__(self, name, sources=[])
@@ -19,6 +21,13 @@ class CMakeBuild(build_ext):
         super().run()
 
     def build_cmake(self, ext):
+        try:
+            subprocess.check_output(["swig", "-version"])
+        except OSError:
+            raise RuntimeError(
+                "Swig must be installed to build the following extensions: "
+                + ", ".join(e.name for e in self.extensions)
+            )        
         try:
             subprocess.check_output(["cmake", "--version"])
         except OSError:
@@ -59,11 +68,18 @@ class CMakeBuild(build_ext):
 
 setup(
     name='pyjass',
-    version='0.1',
+    version='0.1.1',
     author='Andrew Trotman',
+    description='Some short description about the stuff goes here',
+    long_description='refer to github for details',
     include_dirs =[''],
     author_email='andrew@cs.otago.ac.nz',
     download_url='',
+    keywords='search engine, search tool, jass',
+    project_urls={  # Optional
+    'Bug Reports': 'https://github.com/andrewtrotman/JASSv2/issues',
+    'Source': 'https://github.com/andrewtrotman/JASSv2',
+    },
 #    packages=[''],
 #    package_dir={'': '.'},
 #   package_data={'': ['_example.so']}, #replace me with your package data

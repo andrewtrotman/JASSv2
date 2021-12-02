@@ -24,3 +24,28 @@ cmake -G Xcode -T buildsystem=1 ..
 NEW:
 For XCode use:
 cmake -G Xcode -T buildsystem=1 ..
+
+
+## Python ##
+
+There are two ways pyjass can be installed
+
+### conda ####
+
+[Anaconda](https://docs.anaconda.com/anaconda/install/index.html) ensures that all JASS dependencies are installed and creates a virtual envirnoment by the name of pyjass
+
+	conda env create -f env.yml
+    conda activate pyjass
+
+### pip ####
+
+	pip3 install --user pyjass
+
+## Java ##
+The Java version is build in the same way, but run with 
+
+	java JASSjr_index <filename>
+
+and
+
+	java JASSjr_search
