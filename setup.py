@@ -68,9 +68,10 @@ class CMakeBuild(build_ext):
 
 setup(
     name='pyjass',
-    version=version_file.read().strip(),
+    version='0.1.1',
     author='Andrew Trotman',
     description='Some short description about the stuff goes here',
+    long_description='refer to github for details',
     include_dirs =[''],
     author_email='andrew@cs.otago.ac.nz',
     download_url='',
