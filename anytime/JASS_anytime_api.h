@@ -64,6 +64,22 @@ class JASS_anytime_api
 
 	private:
 		/*
+			JASS_ANYTIME_API::JASS_ANYTIME_API()
+			------------------------------------
+			Boilerplate the class to prevent assignment and copying.
+		*/
+		JASS_anytime_api(JASS_anytime_api &from) = delete;
+		JASS_anytime_api(JASS_anytime_api &&from) = delete;
+
+		/*
+			JASS_ANYTIME_API::OPERATOR=()
+			-----------------------------
+			Boilerplate the class to prevent assignment and copying.
+		*/
+		JASS_anytime_api &operator=(JASS_anytime_api &from) = delete;
+		JASS_anytime_api &operator=(JASS_anytime_api &&from) = delete;
+
+		/*
 			JASS_ANYTIME_API::ANYTIME()
 			---------------------------
 		*/
@@ -95,6 +111,7 @@ class JASS_anytime_api
 		static void anytime_bootstrap(JASS_anytime_api *thiss, JASS_anytime_thread_result &output, const JASS::deserialised_jass_v1 &index, std::vector<JASS_anytime_query> &query_list, JASS::top_k_limit *precomputed_minimum_rsv_table, size_t postings_to_process, size_t top_k);
 
 	public:
+
 		/*
 			JASS_ANYTIME_API::JASS_ANYTIME_API()
 			------------------------------------
