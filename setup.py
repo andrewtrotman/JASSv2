@@ -20,6 +20,13 @@ class CMakeBuild(build_ext):
 
     def build_cmake(self, ext):
         try:
+            subprocess.check_output(["swig", "-version"])
+        except OSError:
+            raise RuntimeError(
+                "Swig must be installed to build the following extensions: "
+                + ", ".join(e.name for e in self.extensions)
+            )        
+        try:
             subprocess.check_output(["cmake", "--version"])
         except OSError:
             raise RuntimeError(
