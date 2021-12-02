@@ -33,6 +33,12 @@ namespace JASS
 	*/
 	class deserialised_jass_v1
 		{
+		private:
+			static constexpr const char *PRIMARY_KEY_FILENAME = "CIdoclist.bin";
+			static constexpr const char *VOCAB_FILENAME = "CIvocab.bin";
+			static constexpr const char *TERMS_FILENAME = "CIvocab_terms.bin";
+			static constexpr const char *POSTINGS_FILENAME = "CIpostings.bin";
+
 		public:
 			/*
 				CLASS DESERIALISED_JASS_V1::SEGMENT_HEADER
@@ -160,7 +166,7 @@ namespace JASS
 				@param primary_key_filename [in] the name of the file containing the primary key list ("CIdoclist.bin")
 				@return The number of documents in the collection (or 0 on error)
 			*/
-			virtual size_t read_primary_keys(const std::string &primary_key_filename = "CIdoclist.bin");
+			virtual size_t read_primary_keys(const std::string &primary_key_filename = PRIMARY_KEY_FILENAME);
 
 			/*
 				DESERIALISED_JASS_V1::READ_VOCABULARY()
@@ -172,7 +178,7 @@ namespace JASS
 				@param terms_filename [in] the name of the file containing the vocabulary strings ("CIvocab_terms.bin")
 				@return The number of documents in the collection (or 0 on error)
 			*/
-			virtual size_t read_vocabulary(const std::string &vocab_filename = "CIvocab.bin", const std::string &terms_filename = "CIvocab_terms.bin");
+			virtual size_t read_vocabulary(const std::string &vocab_filename = VOCAB_FILENAME, const std::string &terms_filename = TERMS_FILENAME);
 
 			/*
 				DESERIALISED_JASS_V1::READ_POSTINGS()
@@ -183,7 +189,21 @@ namespace JASS
 				@param postings_filename [in] the name of the file containing the postings ("CIpostings.bin")
 				@return size of the posings file or 0 on failure
 			*/
-			virtual size_t read_postings(const std::string &postings_filename = "CIpostings.bin");
+			virtual size_t read_postings(const std::string &postings_filename = POSTINGS_FILENAME);
+
+			/*
+				DESERIALISED_JASS_V1::READ_INDEX_EXPLICIT()
+				-------------------------------------------
+			*/
+			/*!
+				@brief Read a JASS v1 index into memory
+				@param primary_key_filename [in] the name of the file containing the primary key list ("CIdoclist.bin")
+				@param vocab_filename [in] the name of the file containing the vocabulary pointers ("CIvocab.bin")
+				@param terms_filename [in] the name of the file containing the vocabulary strings ("CIvocab_terms.bin")
+				@param postings_filename [in] the name of the file containing the postings ("CIpostings.bin")
+				@return 0 on failure, non-zero on success
+			*/
+			size_t read_index_explicit(const std::string &primary_key_filename = PRIMARY_KEY_FILENAME, const std::string &vocab_filename = VOCAB_FILENAME, const std::string &terms_filename = TERMS_FILENAME, const std::string &postings_filename = POSTINGS_FILENAME);
 
 		public:
 			/*
@@ -220,13 +240,10 @@ namespace JASS
 			*/
 			/*!
 				@brief Read a JASS v1 index into memory
-				@param primary_key_filename [in] the name of the file containing the primary key list ("CIdoclist.bin")
-				@param vocab_filename [in] the name of the file containing the vocabulary pointers ("CIvocab.bin")
-				@param terms_filename [in] the name of the file containing the vocabulary strings ("CIvocab_terms.bin")
-				@param postings_filename [in] the name of the file containing the postings ("CIpostings.bin")
+				@param directory [in] The directory to search for and index
 				@return 0 on failure, non-zero on success
 			*/
-			size_t read_index(const std::string &primary_key_filename = "CIdoclist.bin", const std::string &vocab_filename = "CIvocab.bin", const std::string &terms_filename = "CIvocab_terms.bin", const std::string &postings_filename = "CIpostings.bin");
+			size_t read_index(const std::string &directory = "");
 
 			/*
 				DESERIALISED_JASS_V1::CODEX()

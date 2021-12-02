@@ -57,14 +57,23 @@ JASS_anytime_api::~JASS_anytime_api()
 */
 JASS_ERROR JASS_anytime_api::load_index(size_t index_version)
 	{
-	return load_index(index_version, false);
+	return load_index(index_version, "", false);
 	}
-	
+
 /*
 	JASS_ANYTIME_API::LOAD_INDEX()
 	------------------------------
 */
-JASS_ERROR JASS_anytime_api::load_index(size_t index_version, bool verbose)
+JASS_ERROR JASS_anytime_api::load_index(size_t index_version, const std::string &directory)
+	{
+	return load_index(index_version, directory, false);
+	}
+
+/*
+	JASS_ANYTIME_API::LOAD_INDEX()
+	------------------------------
+*/
+JASS_ERROR JASS_anytime_api::load_index(size_t index_version, const std::string &directory, bool verbose)
 	{
 	try
 		{
@@ -79,7 +88,8 @@ JASS_ERROR JASS_anytime_api::load_index(size_t index_version, bool verbose)
 			default:
 				return JASS_ERROR_BAD_INDEX_VERSION;
 			}
-		index->read_index();
+
+		index->read_index(directory);
 
 		if (index->document_count() > JASS::query::MAX_DOCUMENTS)
 			{

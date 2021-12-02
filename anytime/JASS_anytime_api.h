@@ -135,8 +135,8 @@ class JASS_anytime_api
 			------------------------------
 		*/
 		/*!
-			@brief Load a JASS index
-			@param index_version [in] What verison of the index is this - noramlly 2
+			@brief Load a JASS index from the current directory
+			@param index_version [in] What verison of the index is this - normally 2
 			@return JASS_ERROR_OK on success, else an error code
 		*/
 		JASS_ERROR load_index(size_t index_version);
@@ -146,12 +146,25 @@ class JASS_anytime_api
 			------------------------------
 		*/
 		/*!
-			@brief Load a JASS index
-			@param index_version [in] What verison of the index is this - noramlly 2
+			@brief Load a JASS index from the given directory
+			@param index_version [in] What verison of the index is this - normally 2
+			@param directory[in] The path to the index
+			@return JASS_ERROR_OK on success, else an error code
+		*/
+		JASS_ERROR load_index(size_t index_version, const std::string &directory);
+
+		/*
+			JASS_ANYTIME_API::LOAD_INDEX()
+			------------------------------
+		*/
+		/*!
+			@brief Load a JASS index from the given directory
+			@param index_version [in] What verison of the index is this - normally 2
+			@param directory[in] The path to the index
 			@param verbose [in] if true, diagnostics are printed while the index is loading
 			@return JASS_ERROR_OK on success, else an error code
 		*/
-		JASS_ERROR load_index(size_t index_version, bool verbose);		// verbose prints progress as it loads the index
+		JASS_ERROR load_index(size_t index_version, const std::string &directory, bool verbose);		// verbose prints progress as it loads the index
 
 		/*
 			JASS_ANYTIME_API::GET_DOCUMENT_COUNT()

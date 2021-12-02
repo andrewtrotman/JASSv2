@@ -5,6 +5,7 @@
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 #include <algorithm>
+#include <filesystem>
 
 #include "file.h"
 #include "slice.h"
@@ -163,10 +164,10 @@ namespace JASS
 		}
 
 	/*
-		DESERIALISED_JASS_V1::READ_INDEX()
-		----------------------------------
+		DESERIALISED_JASS_V1::READ_INDEX_EXPLICIT()
+		-------------------------------------------
 	*/
-	size_t deserialised_jass_v1::read_index(const std::string &primary_key_filename, const std::string &vocab_filename, const std::string &terms_filename, const std::string &postings_filename)
+	size_t deserialised_jass_v1::read_index_explicit(const std::string &primary_key_filename, const std::string &vocab_filename, const std::string &terms_filename, const std::string &postings_filename)
 		{
 		if (read_primary_keys(primary_key_filename) != 0)
 			if (read_postings(postings_filename) != 0)
@@ -174,6 +175,17 @@ namespace JASS
 					return 1;
 
 		return 0;
+		}
+
+	/*
+		DESERIALISED_JASS_V1::READ_INDEX()
+		----------------------------------
+	*/
+	size_t deserialised_jass_v1::read_index(const std::string &directory)
+		{
+		std::filesystem::path path = directory;
+
+		return read_index_explicit(path / PRIMARY_KEY_FILENAME, path / VOCAB_FILENAME, path / TERMS_FILENAME, path / POSTINGS_FILENAME);
 		}
 
 	/*
