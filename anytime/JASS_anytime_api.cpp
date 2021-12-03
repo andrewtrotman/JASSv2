@@ -55,24 +55,6 @@ JASS_anytime_api::~JASS_anytime_api()
 	JASS_ANYTIME_API::LOAD_INDEX()
 	------------------------------
 */
-JASS_ERROR JASS_anytime_api::load_index(size_t index_version)
-	{
-	return load_index(index_version, "", false);
-	}
-
-/*
-	JASS_ANYTIME_API::LOAD_INDEX()
-	------------------------------
-*/
-JASS_ERROR JASS_anytime_api::load_index(size_t index_version, const std::string &directory)
-	{
-	return load_index(index_version, directory, false);
-	}
-
-/*
-	JASS_ANYTIME_API::LOAD_INDEX()
-	------------------------------
-*/
 JASS_ERROR JASS_anytime_api::load_index(size_t index_version, const std::string &directory, bool verbose)
 	{
 	try

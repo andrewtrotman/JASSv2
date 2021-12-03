@@ -51,12 +51,12 @@ class JASS_anytime_result
 		------------------------------------------
 	*/
 	/*!
-		@brief Constructor
-		@param query_id [in] The query ID
-		@param query [in] The query
-		@param results_list [in] The results list (normally in TREC format)
-		@param postings_processed [in] The numvber of postings processed (that is, <docid, impact> pairs)
-		@param search_time_in_ns [in] The time it took to resolve the query
+      @brief Constructor
+      @param query_id [in] The query ID
+      @param query [in] The query
+      @param results_list [in] The results list (normally in TREC format)
+      @param postings_processed [in] The numvber of postings processed (that is, <docid, impact> pairs)
+      @param search_time_in_ns [in] The time it took to resolve the query
 	*/
 	JASS_anytime_result(const std::string &query_id, const std::string &query, const std::string &results_list, size_t postings_processed, size_t search_time_in_ns) :
 		query_id(query_id),
