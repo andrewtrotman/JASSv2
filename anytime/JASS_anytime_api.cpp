@@ -34,7 +34,7 @@ JASS_anytime_api::JASS_anytime_api()
 	precomputed_minimum_rsv_table = new JASS::top_k_limit;
 	postings_to_process = (std::numeric_limits<size_t>::max)();
 	postings_to_process_min = 0;
-	relative_postings_to_process = 100;
+	relative_postings_to_process = 1;
 	top_k = 10;
 	which_query_parser = JASS::parser_query::parser_type::query;
 	accumulator_width = 0;

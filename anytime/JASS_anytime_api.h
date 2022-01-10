@@ -56,7 +56,7 @@ class JASS_anytime_api
 		JASS::top_k_limit *precomputed_minimum_rsv_table;		///< Oracle scores (estimates of the rsv for the document at k)
 		size_t postings_to_process;									///< The maximunm number of postings to process
 		size_t postings_to_process_min;								///< Process at least this number of postings
-		double relative_postings_to_process;						///< If not 100 then then this is the proportion of this query's postings that should be processed
+		double relative_postings_to_process;						///< If not 1 then then this is the proportion of this query's postings that should be processed
 		size_t top_k;														///< The number of documents we want in the results list
 		JASS::parser_query::parser_type which_query_parser;	///< Use the simple ASCII parser or the regular query parser
 		size_t accumulator_width;										///< Width of the accumulator array
