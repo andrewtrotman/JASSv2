@@ -4,6 +4,7 @@ import shutil
 import glob
 import platform
 import sys
+import re
 
 from pathlib import Path
 
@@ -24,14 +25,25 @@ class CMakeBuild(build_ext):
 
     def build_cmake(self, ext):
         try:
-            subprocess.check_output(["swig", "-version"])
+            temp = re.findall("\d+\.\d+", str(subprocess.check_output(["swig", "-version"])))
+            if float(temp[0) <= 4.0:
+              raise RuntimeError(
+                  "Swig 4.0 or higher is required in order to install the following extensions: "
+                  + ", ".join(e.name for e in self.extensions)
+              )                  
         except OSError:
             raise RuntimeError(
                 "Swig must be installed to build the following extensions: "
                 + ", ".join(e.name for e in self.extensions)
             )        
         try:
-            subprocess.check_output(["cmake", "--version"])
+            temp = re.findall("\d+\.\d+", str(subprocess.check_output(["cmake", "--version"])))
+            if float(temp[0) <= 3.:
+              raise RuntimeError(
+                  "Swig 4.0 or higher is required in order to install the following extensions: "
+                  + ", ".join(e.name for e in self.extensions)
+              )  
+                          
         except OSError:
             raise RuntimeError(
                 "CMake must be installed to build the following extensions: "
@@ -90,6 +102,6 @@ setup(
        'Operating System :: POSIX :: Linux', # WSL will be treated as Linux so it's not a problem
    ],
    python_requires='>=3.4',
-   install_requires=['wheel>0.35','packaging>20'],
+   install_requires=['wheel>0.35','packaging>20','cmake>3.7.2],
    ext_modules=[CMakeExtension("dummy")] # force python to generate a dummy.so/pyc bindings - cmake script takes care of that
 )
