@@ -38,9 +38,9 @@ class CMakeBuild(build_ext):
             )        
         try:
             temp = re.findall("\d+\.\d+", str(subprocess.check_output(["cmake", "--version"])))
-            if float(temp[0) <= 3.:
+            if float(temp[0) <= 3.7:
               raise RuntimeError(
-                  "Swig 4.0 or higher is required in order to install the following extensions: "
+                  "CMake 3.8 or higher is required in order to install the following extensions: "
                   + ", ".join(e.name for e in self.extensions)
               )  
                           
