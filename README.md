@@ -21,6 +21,8 @@ CodeDocs.xyz (documentation): [![Documentation Status](https://codedocs.xyz/andr
 
 There are two ways pyjass can be installed
 
+
+
 ### conda ####
 
 [Anaconda](https://docs.anaconda.com/anaconda/install/index.html) ensures that all JASS dependencies are installed and creates a virtual envirnoment called pyjass
@@ -32,9 +34,7 @@ conda activate pyjass
 
 ### pip ####
 
-#### pre-requisite ####
-
-Installation via pip requires cmake >= 3.80 & swig >=4.0 to be installed. This can be installed via apt-get or brew
+Installation via pip requires cmake >= 3.80 & swig >=4.0 to be installed first. This can be installed via your favorite package manager such as apt-get or brew.
 
 
 ##### Debian/Ubuntu #####
@@ -42,10 +42,11 @@ Installation via pip requires cmake >= 3.80 & swig >=4.0 to be installed. This c
 sudo apt-get install cmake swig
 ```
 
-##### Debian/Ubuntu #####
+##### Homebrew #####
 ```
 brew install cmake swig
 ```
+
 
 ```
 pip3 install --user pyjass
