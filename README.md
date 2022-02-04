@@ -25,7 +25,7 @@ There are two ways pyjass can be installed
 
 ### conda ####
 
-[Anaconda](https://docs.anaconda.com/anaconda/install/index.html) ensures that all JASS dependencies are installed and creates a virtual envirnoment called pyjass
+[Conda](https://docs.anaconda.com/anaconda/install/index.html) ensures that all JASS dependencies are installed and creates a virtual envirnoment called pyjass
 
 ```
 conda env create -f env.yml
@@ -47,6 +47,7 @@ sudo apt-get install cmake swig
 brew install cmake swig
 ```
 
+Finally, run pip to install pyjass
 
 ```
 pip3 install --user pyjass
