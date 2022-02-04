@@ -31,6 +31,22 @@ conda activate pyjass
 ```
 
 ### pip ####
+
+#### pre-requisite ####
+
+Installation via pip requires cmake >= 3.80 & swig >=4.0 to be installed. This can be installed via apt-get or brew
+
+
+##### Debian/Ubuntu #####
+```
+sudo apt-get install cmake swig
+```
+
+##### Debian/Ubuntu #####
+```
+brew install cmake swig
+```
+
 ```
 pip3 install --user pyjass
 ```
