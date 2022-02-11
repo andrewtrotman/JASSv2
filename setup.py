@@ -79,7 +79,7 @@ class CMakeBuild(build_ext):
 setup(
     cmdclass=dict(build_ext=CMakeBuild),
     name='pyjass',
-    version='0.2a1',
+    version='0.2a5',
     author='Andrew Trotman',
     description='The JASS experimental Score-at-a-Time search engine.',
     long_description='Please see https://github.com/andrewtrotman/JASSv2 ',
