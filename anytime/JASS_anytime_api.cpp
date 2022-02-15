@@ -330,7 +330,7 @@ std::vector<JASS_anytime_thread_result> JASS_anytime_api::threaded_search(std::v
 	std::vector<JASS_anytime_thread_result> output;
 
 	for (const auto & text : query_list)
-		query_list.push_back(text);
+		queries.push_back(text);
 
 	if (search(output, queries, thread_count) == JASS_ERROR_OK)
 		return output;
