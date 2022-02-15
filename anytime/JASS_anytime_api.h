@@ -359,6 +359,21 @@ class JASS_anytime_api
          @return JASS_ERROR_OK, or JASS_ERROR_NO_INDEX if no index has been loaded.
 		*/
 		JASS_ERROR search(std::vector<JASS_anytime_thread_result> &output, std::vector<JASS_anytime_query> &query_list, size_t thread_count);
+
+		/*
+			JASS_ANYTIME_API::SEARCH()
+			--------------------------
+		*/
+		/*!
+         @brief Search using the current index and the current parameters
+         @details This method might not be exposed to languages (such as Python) that do not support non-const references to objects.  Search one query at a time using search() and do the threading in the calling laguage if need be.
+         @param output [out] a vector of results, one for each thread
+         @param query_list [in] A vector of queries to be spread over all the threads
+         @param thread_count [in] The number of threads to use for searching
+         @return JASS_ERROR_OK, or JASS_ERROR_NO_INDEX if no index has been loaded.
+		*/
+		JASS_ERROR search(std::vector<JASS_anytime_thread_result> &output, std::vector<std::string> &query_list, size_t thread_count);
+
 	} ;
 
 /*

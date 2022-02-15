@@ -321,6 +321,25 @@ JASS_anytime_result JASS_anytime_api::search(const std::string &query)
 	JASS_ANYTIME_API::SEARCH()
 	--------------------------
 */
+JASS_ERROR JASS_anytime_api::search(std::vector<JASS_anytime_thread_result> &output, std::vector<std::string> &query_list, size_t thread_count)
+	{
+	if (index == nullptr)
+		return JASS_ERROR_NO_INDEX;
+
+	std::vector<JASS_anytime_query> queries;
+
+	for (const auto & text : query_list)
+		query_list.push_back(text);
+
+	return search(output, query_list, thread_count);
+	}
+
+
+
+/*
+	JASS_ANYTIME_API::SEARCH()
+	--------------------------
+*/
 JASS_ERROR JASS_anytime_api::search(std::vector<JASS_anytime_thread_result> &output, std::vector<JASS_anytime_query> &query_list, size_t thread_count)
 	{
 	if (index == nullptr)

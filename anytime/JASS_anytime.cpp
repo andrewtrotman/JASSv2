@@ -269,7 +269,7 @@ static int main_event(int argc, const char *argv[])
 	stats.wall_time_in_ns = JASS::timer::stop(total_search_time).nanoseconds();
 
 	/*
-		Compute and dump the per-query stats.  Output the run in REC format.
+		Compute and dump the per-query stats.  Output the run in TREC format.
 	*/
 	std::ostringstream TREC_file;
 	std::ostringstream stats_file;
