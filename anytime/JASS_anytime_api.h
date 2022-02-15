@@ -361,8 +361,8 @@ class JASS_anytime_api
 		JASS_ERROR search(std::vector<JASS_anytime_thread_result> &output, std::vector<JASS_anytime_query> &query_list, size_t thread_count);
 
 		/*
-			JASS_ANYTIME_API::SEARCH()
-			--------------------------
+			JASS_ANYTIME_API::THREADED_SEARCH()
+			-----------------------------------
 		*/
 		/*!
          @brief Search using the current index and the current parameters
@@ -372,7 +372,7 @@ class JASS_anytime_api
          @param thread_count [in] The number of threads to use for searching
          @return JASS_ERROR_OK, or JASS_ERROR_NO_INDEX if no index has been loaded.
 		*/
-		JASS_ERROR search(std::vector<JASS_anytime_thread_result> &output, std::vector<std::string> &query_list, size_t thread_count);
+		JASS_ERROR threaded_search(std::vector<JASS_anytime_thread_result> &output, std::vector<std::string> &query_list, size_t thread_count);
 
 	} ;
 
