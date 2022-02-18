@@ -99,7 +99,7 @@ class JASS_anytime_api
 			-------------------------------------
 		*/
 		/*!
-         @brief Bootstrapping method for a thread to call into anyrime()
+         @brief Bootstrapping method for a thread to call into anytime()
          @param thiss [in] Pointer to the object to call into
          @param output [out] The results for each query
          @param index [in] The indexes to use to search
@@ -320,7 +320,7 @@ class JASS_anytime_api
 			------------------------------------
 		*/
 		/*!
-         @brief Use the query parser that seperates tokens on whitespace along (this metho is not normally needed).
+         @brief Use the query parser that seperates tokens on whitespace along (this method is not normally needed).
          @return Always returns JASS_ERROR_OK
 		*/
 		JASS_ERROR use_ascii_parser(void);
@@ -330,7 +330,7 @@ class JASS_anytime_api
 			------------------------------------
 		*/
 		/*!
-         @brief Use the default query parser that understands alphanumnerics, spaces, unicode, and so on  (this metho is not normally needed).
+         @brief Use the default query parser that understands alphanumnerics, spaces, unicode, and so on  (this method is not normally needed).
          @return Always returns JASS_ERROR_OK
 		*/
 		JASS_ERROR use_query_parser(void);
@@ -366,7 +366,6 @@ class JASS_anytime_api
 		*/
 		/*!
          @brief Search using the current index and the current parameters
-         @details This method might not be exposed to languages (such as Python) that do not support non-const references to objects.  Search one query at a time using search() and do the threading in the calling laguage if need be.
          @param query_list [in] A vector of queries to be spread over all the threads
          @param thread_count [in] The number of threads to use for searching
          @return On success, a vector of results, one for each thread.  On failure, an empty vvector or results
