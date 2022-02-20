@@ -1,0 +1,3 @@
+wheel>0.35
+packaging>20
+cmake>3.7.2

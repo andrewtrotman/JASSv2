@@ -10,9 +10,13 @@ from pathlib import Path
 
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
-from packaging import version # following PEP 440 standards on performing version comparison 
+from packaging import version # following PEP 440 standards on performing version comparison
 
-#version_file = open(os.path.join(mypackage_root_dir, 'VERSION'))
+with open("project-description.md", "r") as fh:
+    long_description = fh.read()
+
+with open('requirements.txt') as f:
+    requirements = f.read().splitlines()
 
 class CMakeExtension(Extension):
     def __init__(self, name):
@@ -82,7 +86,7 @@ setup(
     version='0.2a7',
     author='Andrew Trotman',
     description='The JASS experimental Score-at-a-Time search engine.',
-    long_description='Please see https://github.com/andrewtrotman/JASSv2 ',
+    long_description= long_description,
     include_dirs =[''],
     author_email='andrew@cs.otago.ac.nz',
     download_url='',
@@ -99,7 +103,7 @@ setup(
        'Operating System :: MacOS :: MacOS X',
        'Operating System :: POSIX :: Linux', # WSL will be treated as Linux so it's not a problem
    ],
-   python_requires='>=3.4',
-   install_requires=['wheel>0.35','packaging>20','cmake>3.7.2'],
+   python_requires='>=3.6',
+   install_requires= requirements,
    ext_modules=[CMakeExtension("dummy")] # force python to generate a dummy.so/pyc bindings - cmake script takes care of that
 )
