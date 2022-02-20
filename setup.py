@@ -10,7 +10,10 @@ from pathlib import Path
 
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
-from packaging import version # following PEP 440 standards on performing version comparison 
+from packaging import version # following PEP 440 standards on performing version comparison
+
+with open("project-description.md", "r") as fh:
+    long_description = fh.read()
 
 with open('requirements.txt') as f:
     requirements = f.read().splitlines()
