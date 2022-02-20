@@ -12,7 +12,8 @@ from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
 from packaging import version # following PEP 440 standards on performing version comparison 
 
-#version_file = open(os.path.join(mypackage_root_dir, 'VERSION'))
+with open('requirements.txt') as f:
+    requirements = f.read().splitlines()
 
 class CMakeExtension(Extension):
     def __init__(self, name):
@@ -99,7 +100,7 @@ setup(
        'Operating System :: MacOS :: MacOS X',
        'Operating System :: POSIX :: Linux', # WSL will be treated as Linux so it's not a problem
    ],
-   python_requires='>=3.4',
-   install_requires=['wheel>0.35','packaging>20','cmake>3.7.2'],
+   python_requires='>=3.6',
+   install_requires= requirements
    ext_modules=[CMakeExtension("dummy")] # force python to generate a dummy.so/pyc bindings - cmake script takes care of that
 )
