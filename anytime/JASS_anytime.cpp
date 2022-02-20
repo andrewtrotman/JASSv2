@@ -159,6 +159,16 @@ static int main_event(int argc, const char *argv[])
 		}
 
 	/*
+		Set the accumulator width
+	*/
+	if (accumulator_width != 0)
+		if (engine.set_accumulator_width(accumulator_width) != JASS_ERROR_OK)
+			{
+			std::cout << "Cannot set the accumulator width to " << accumulator_width << '\n';
+			return 0;
+			}
+
+	/*
 		Read the pre-computed rsv score table, if there is one.
 	*/
 	if (!parameter_rsv_scores_filename.empty())
@@ -178,15 +188,6 @@ static int main_event(int argc, const char *argv[])
 		}
 	stats.number_of_documents = engine.get_document_count();
 
-	/*
-		Set the accumulator width
-	*/
-	if (accumulator_width != 0)
-		if (engine.set_accumulator_width(accumulator_width) != JASS_ERROR_OK)
-			{
-			std::cout << "Cannot set the accumulator width to " << accumulator_width << '\n';
-			return 0;
-			}
 
 	/*
 		Set the parser (this will normally be the "regular" query parser, but sometimes the queries contain "weird stuff" and need to be tokenised with spaces as seperators.

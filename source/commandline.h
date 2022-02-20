@@ -137,6 +137,12 @@ namespace JASS
 							 std::is_same<TYPE, long long>::value>::type* = nullptr>
 			static void extract(std::ostringstream &messages, const char *parameter, command<TYPE> element)
 				{
+				if (parameter == nullptr)
+					{
+					messages << " Missing numeric parameter\n";
+					return;
+					}
+
 				long long answer = strtoll(parameter, NULL, 0);
 
 				if (answer > (std::numeric_limits<TYPE>::max)())
@@ -165,6 +171,12 @@ namespace JASS
 							 std::is_same<TYPE, unsigned long long>::value>::type* = nullptr>
 			static void extract(std::ostringstream &messages, const char *parameter, command<TYPE> element)
 				{
+				if (parameter == nullptr)
+					{
+					messages << " Missing numeric parameter\n";
+					return;
+					}
+
 				unsigned long long answer = strtoull(parameter, NULL, 0);
 
 				/*
