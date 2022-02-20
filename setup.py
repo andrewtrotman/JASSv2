@@ -86,7 +86,7 @@ setup(
     version='0.2a7',
     author='Andrew Trotman',
     description='The JASS experimental Score-at-a-Time search engine.',
-    long_description='Please see https://github.com/andrewtrotman/JASSv2 ',
+    long_description= long_description,
     include_dirs =[''],
     author_email='andrew@cs.otago.ac.nz',
     download_url='',
@@ -104,6 +104,6 @@ setup(
        'Operating System :: POSIX :: Linux', # WSL will be treated as Linux so it's not a problem
    ],
    python_requires='>=3.6',
-   install_requires= requirements
+   install_requires= requirements,
    ext_modules=[CMakeExtension("dummy")] # force python to generate a dummy.so/pyc bindings - cmake script takes care of that
 )
