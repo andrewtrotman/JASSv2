@@ -105,6 +105,6 @@ setup(
    ],
    python_requires='>=3.6',
    install_requires= requirements,
-   long_description_content_type="text/markdown", #added the type markdown 
+   long_description_content_type="text/markdown", #added the type markdown
    ext_modules=[CMakeExtension("dummy")] # force python to generate a dummy.so/pyc bindings - cmake script takes care of that
 )
