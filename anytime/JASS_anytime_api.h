@@ -35,7 +35,8 @@ enum JASS_ERROR
 	JASS_ERROR_FAIL,							///< An exception occurred - probably not caused by JASS (might be a C++ RTL exception)
 	JASS_ERROR_TOO_MANY_DOCUMENTS,		///< This index cannot be loaded by this instance of the APIs because it contains more documents than the system-wide maximum
 	JASS_ERROR_TOO_LARGE,					///< top-k is larger than the system-wide maximum top-k value (or the accumulator width is too large)
-	};
+	JASS_ERROR_INDEX_ALREADY_LOADED,		///< Attempt to load an index when an index has alrady been loaded
+};
 
 /*
 	CLASS JASS_ANYTIME_API
@@ -52,6 +53,18 @@ class JASS_anytime_api
 		static constexpr size_t MAX_TERMS_PER_QUERY = 1024;	///< The maximum number of terms in a query
 
 	private:
+		/*
+			@class thread_data
+			@brief thread local data - one of these is needed per thread
+		*/
+		class thread_data
+			{
+			public:
+				std::unique_ptr<JASS::deserialised_jass_v1::segment_header[]> segment_order;
+				std::unique_ptr<JASS::compress_integer> jass_query;
+			};
+
+	private:
 		JASS::deserialised_jass_v1 *index;							///< The index
 		JASS::top_k_limit *precomputed_minimum_rsv_table;		///< Oracle scores (estimates of the rsv for the document at k)
 		size_t postings_to_process;									///< The maximunm number of postings to process
@@ -61,6 +74,7 @@ class JASS_anytime_api
 		JASS::parser_query::parser_type which_query_parser;	///< Use the simple ASCII parser or the regular query parser
 		size_t accumulator_width;										///< Width of the accumulator array
 		JASS_anytime_stats stats;										///< Stats for this "session"
+		std::map<size_t, thread_data> thread_local_data;		///< Data needed by each thread (the accumulators array, etc)
 
 	private:
 		/*
@@ -86,13 +100,9 @@ class JASS_anytime_api
 		/*!
          @brief This method calls into the search engine with a set of queries and retrieves a set of results for each
          @param output [out] The results for each query
-         @param index [in] The indexes to use to search
-         @param query_ist [in] The list of queries to perform
-         @param precomputed_minimum_rsv_table [in] The list of rsv@k scores for each query, keyed on the query id
-         @param postings_to_process [in] The maximum number of postings to process
-         @param top_k [in] The number of results that should be in the results list
+         @param query_list [in] The list of queries to perform
 		*/
-		void anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v1 &index, std::vector<JASS_anytime_query> &query_list, JASS::top_k_limit &precomputed_minimum_rsv_table, size_t postings_to_process, size_t top_k);
+		void anytime(JASS_anytime_thread_result &output, std::vector<JASS_anytime_query> &query_list, size_t thread_number = 0);
 
 		/*
 			JASS_ANYTIME_API::ANYTIME_BOOTSTRAP()
@@ -108,10 +118,20 @@ class JASS_anytime_api
          @param postings_to_process [in] The maximum number of postings to process
          @param top_k [in] The number of results that should be in the results list
 		*/
-		static void anytime_bootstrap(JASS_anytime_api *thiss, JASS_anytime_thread_result &output, const JASS::deserialised_jass_v1 &index, std::vector<JASS_anytime_query> &query_list, JASS::top_k_limit *precomputed_minimum_rsv_table, size_t postings_to_process, size_t top_k);
+		static void anytime_bootstrap(JASS_anytime_api *thiss, JASS_anytime_thread_result &output, std::vector<JASS_anytime_query> &query_list, size_t thread_number);
+
+		/*
+			JASS_ANYTIME_API::GET_THREAD_LOCAL_DATA()
+			-----------------------------------------
+		*/
+		/*!
+			@brief Return the expensive-to-initialise thread local data that has already been allocated on index load
+			@param thread_number [in] The therad number (counts from 0)
+			@return Thread local data
+		*/
+		thread_data &get_thread_local_data(size_t thread_number);
 
 	public:
-
 		/*
 			JASS_ANYTIME_API::JASS_ANYTIME_API()
 			------------------------------------
