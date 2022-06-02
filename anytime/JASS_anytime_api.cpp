@@ -462,7 +462,7 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<J
 			query_id = query.substr(0, end_of_id);
 			auto start_of_query = query.substr(end_of_id, std::string::npos).find_first_not_of(seperators_between_id_and_query);
 			if (start_of_query == std::string::npos)
-				query = query.substr(end_of_id, std::string::npos);
+				query = query.substr(end_of_id + 1, std::string::npos);
 			else
 				query = query.substr(end_of_id + start_of_query, std::string::npos);
 			}
