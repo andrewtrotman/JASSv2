@@ -19,9 +19,9 @@
 	JASS_ANYTIME_API::ANYTIME_BOOTSTRAP()
 	-------------------------------------
 */
-void JASS_anytime_api::anytime_bootstrap(JASS_anytime_api *thiss, JASS_anytime_thread_result &output, const JASS::deserialised_jass_v1 &index, std::vector<JASS_anytime_query> &query_list, JASS::top_k_limit *precomputed_minimum_rsv_table, size_t postings_to_process, size_t top_k)
+void JASS_anytime_api::anytime_bootstrap(JASS_anytime_api *thiss, JASS_anytime_thread_result &output, std::vector<JASS_anytime_query> &query_list, size_t thread_number)
 	{
-	thiss->anytime(output, index, query_list, *precomputed_minimum_rsv_table, postings_to_process, top_k);
+	thiss->anytime(output, query_list, thread_number);
 	}
 
 /*
@@ -52,11 +52,51 @@ JASS_anytime_api::~JASS_anytime_api()
 	}
 
 /*
+	JASS_ANYTIME_API::GET_THREAD_LOCAL_DATA()
+	-----------------------------------------
+*/
+JASS_anytime_api::thread_data &JASS_anytime_api::get_thread_local_data(size_t thread_number)
+	{
+	auto &initial = thread_local_data[thread_number];
+
+	/*
+		If this is the first time we've seen this thread number then initialise the object before returning it.
+	*/
+	if (initial.segment_order == nullptr)
+		{
+		std::string codex_name;
+		int32_t d_ness;
+
+		/*
+			Allocate the Score-at-a-Time table
+		*/
+		initial.segment_order = std::unique_ptr<JASS::deserialised_jass_v1::segment_header[]>{new JASS::deserialised_jass_v1::segment_header[MAX_TERMS_PER_QUERY * MAX_QUANTUM]};
+
+		/*
+			Allocate a JASS query object
+		*/
+		initial.jass_query = index->codex(codex_name, d_ness);
+		initial.jass_query->init(index->primary_keys(), index->document_count(), top_k, accumulator_width);
+		}
+
+	return initial;
+	}
+
+/*
 	JASS_ANYTIME_API::LOAD_INDEX()
 	------------------------------
 */
 JASS_ERROR JASS_anytime_api::load_index(size_t index_version, const std::string &directory, bool verbose)
 	{
+	/*
+		Can't load an index if one has already been loaded
+	*/
+	if (index != nullptr)
+		return JASS_ERROR_INDEX_ALREADY_LOADED;
+
+	/*
+		Load the index
+	*/
 	try
 		{
 		switch (index_version)
@@ -79,6 +119,11 @@ JASS_ERROR JASS_anytime_api::load_index(size_t index_version, const std::string 
 			index = nullptr;
 			return JASS_ERROR_TOO_MANY_DOCUMENTS;
 			}
+
+		/*
+			Set up the accumulators array (and other thread-local data). First the Score-at-a-Time table
+		*/
+		get_thread_local_data(0);
 
 		return JASS_ERROR_OK;
 		}
@@ -184,6 +229,9 @@ JASS::query::DOCID_TYPE JASS_anytime_api::get_postings_to_process(void)
 */
 JASS_ERROR JASS_anytime_api::set_top_k(size_t k)
 	{
+	if (index != nullptr)
+		return JASS_ERROR_INDEX_ALREADY_LOADED;
+
 	if (k > JASS::query::MAX_TOP_K)
 		return JASS_ERROR_TOO_LARGE;
 
@@ -292,6 +340,9 @@ JASS_ERROR JASS_anytime_api::use_query_parser(void)
 */
 JASS_ERROR JASS_anytime_api::set_accumulator_width(size_t width)
 	{
+	if (index != nullptr)
+		return JASS_ERROR_INDEX_ALREADY_LOADED;
+
 	if (width > 32)
 		return JASS_ERROR_TOO_LARGE;
 
@@ -312,7 +363,7 @@ JASS_anytime_result JASS_anytime_api::search(const std::string &query)
 	std::vector<JASS_anytime_query> query_list;
 
 	query_list.push_back(query);
-	anytime(output, *index, query_list, *precomputed_minimum_rsv_table, postings_to_process, top_k);
+	anytime(output, query_list, 0);
 
 	return output.results.begin()->second;
 	}
@@ -357,14 +408,14 @@ JASS_ERROR JASS_anytime_api::search(std::vector<JASS_anytime_thread_result> &out
 		Do the work either single or multiple threaded
 	*/
 	if (thread_count == 1)
-		anytime(output[0], *index, query_list, *precomputed_minimum_rsv_table, postings_to_process, top_k);
+		anytime(output[0], query_list, 0);
 	else
 		{
 		/*
 			Multiple threads, so start each worker
 		*/
 		for (size_t which = 0; which < thread_count ; which++)
-			thread_pool.push_back(JASS::thread(anytime_bootstrap, this, std::ref(output[which]), std::ref(*index), std::ref(query_list), precomputed_minimum_rsv_table, postings_to_process, top_k));
+			thread_pool.push_back(JASS::thread(anytime_bootstrap, this, std::ref(output[which]), std::ref(query_list), which));
 
 		/*
 			Wait until they're all done (blocking on the completion of each thread in turn)
@@ -380,28 +431,9 @@ JASS_ERROR JASS_anytime_api::search(std::vector<JASS_anytime_thread_result> &out
 	JASS_ANYTIME_API::ANYTIME()
 	---------------------------
 */
-void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, const JASS::deserialised_jass_v1 &index, std::vector<JASS_anytime_query> &query_list, JASS::top_k_limit &precomputed_minimum_rsv_table, size_t postings_to_process, size_t top_k)
+void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<JASS_anytime_query> &query_list, size_t thread_number)
 	{
-	/*
-		Allocate the Score-at-a-Time table
-	*/
-	JASS::deserialised_jass_v1::segment_header *segment_order = new JASS::deserialised_jass_v1::segment_header[MAX_TERMS_PER_QUERY * MAX_QUANTUM];
-
-	/*
-		Allocate a JASS query object
-	*/
-	std::string codex_name;
-	int32_t d_ness;
-	std::unique_ptr<JASS::compress_integer> jass_query = index.codex(codex_name, d_ness);
-
-	try
-		{
-		jass_query->init(index.primary_keys(), index.document_count(), top_k, accumulator_width);
-		}
-	catch (std::bad_array_new_length &ers)
-		{
-		exit(printf("Can't load index as the number of documents is too large - change MAX_DOCUMENTS in query.h\n"));
-		}
+	thread_data &local = get_thread_local_data(thread_number);
 
 	/*
 		Start the timer
@@ -430,7 +462,7 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, const JASS::d
 			query_id = query.substr(0, end_of_id);
 			auto start_of_query = query.substr(end_of_id, std::string::npos).find_first_not_of(seperators_between_id_and_query);
 			if (start_of_query == std::string::npos)
-				query = query.substr(end_of_id, std::string::npos);
+				query = query.substr(end_of_id + 1, std::string::npos);
 			else
 				query = query.substr(end_of_id + start_of_query, std::string::npos);
 			}
@@ -439,18 +471,18 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, const JASS::d
 		/*
 			Process the query
 		*/
-		jass_query->parse(query, which_query_parser);
+		local.jass_query->parse(query, which_query_parser);
 
 		/*
 			Parse the query and extract the list of impact segments
 		*/
-		JASS::deserialised_jass_v1::segment_header *current_segment = segment_order;
+		JASS::deserialised_jass_v1::segment_header *current_segment = local.segment_order.get();
 		uint32_t largest_possible_rsv = (std::numeric_limits<decltype(largest_possible_rsv)>::min)();
 		uint32_t largest_possible_rsv_with_overflow;
 		uint32_t smallest_possible_rsv = (std::numeric_limits<decltype(smallest_possible_rsv)>::max)();
 		uint64_t total_postings_for_query = 0;
 //std::cout << "\n";
-		for (const auto &term : jass_query->terms())
+		for (const auto &term : local.jass_query->terms())
 			{
 //std::cout << "TERM:" << term << " ";
 
@@ -458,7 +490,7 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, const JASS::d
 				Get the metadata for this term (and if this term isn't in the vocab them move on to the next term)
 			*/
 			JASS::deserialised_jass_v1::metadata metadata;
-			if (!index.postings_details(metadata, term))
+			if (!index->postings_details(metadata, term))
 				continue;
 
 			/*
@@ -467,7 +499,7 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, const JASS::d
 			uint32_t term_smallest_impact;
 			uint32_t term_largest_impact;
 			JASS::query::DOCID_TYPE document_frequency;
-			current_segment += index.get_segment_list(current_segment, metadata, term.frequency(), term_smallest_impact, term_largest_impact, document_frequency);
+			current_segment += index->get_segment_list(current_segment, metadata, term.frequency(), term_smallest_impact, term_largest_impact, document_frequency);
 			total_postings_for_query += document_frequency;
 
 			/*
@@ -482,9 +514,9 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, const JASS::d
 		*/
 		std::sort
 			(
-			segment_order,
+			local.segment_order.get(),
 			current_segment,
-			[postings = index.postings()](JASS::deserialised_jass_v1::segment_header &lhs, JASS::deserialised_jass_v1::segment_header &rhs)
+			[postings = index->postings()](JASS::deserialised_jass_v1::segment_header &lhs, JASS::deserialised_jass_v1::segment_header &rhs)
 				{
 
 				/*
@@ -509,7 +541,7 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, const JASS::d
 			its not yet clear whether we can set the default to the highest segment score, segment_order->impact
 		*/
 		bool scale_rsv_scores = false;
-		uint32_t rsv_at_k = precomputed_minimum_rsv_table.empty() ? 1 : precomputed_minimum_rsv_table[query_id];
+		uint32_t rsv_at_k = precomputed_minimum_rsv_table->empty() ? 1 : (*precomputed_minimum_rsv_table)[query_id];
 		largest_possible_rsv_with_overflow = largest_possible_rsv;
 		if (largest_possible_rsv > JASS::query::MAX_RSV)
 			{
@@ -530,11 +562,11 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, const JASS::d
 			}
 		rsv_at_k = rsv_at_k == 0 ? 1 : rsv_at_k;			// rsv_at_k cannot be 0 (because at least one search term must be in the document)
 
-		jass_query->rewind(smallest_possible_rsv, rsv_at_k, largest_possible_rsv);
+		local.jass_query->rewind(smallest_possible_rsv, rsv_at_k, largest_possible_rsv);
 //std::cout << "MAXRSV:" << largest_possible_rsv << " MINRSV:" << smallest_possible_rsv << "\n";
 
 		/*
-			Check to see if we've got a rho stopping conditio relative to the number of postings in this query.
+			Check to see if we've got a rho stopping condition relative to the number of postings in this query.
 		*/
 		if (relative_postings_to_process != 1)
 			postings_to_process = total_postings_for_query * relative_postings_to_process;
@@ -543,7 +575,7 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, const JASS::d
 			Process the segments
 		*/
 		size_t postings_processed = 0;
-		for (auto *header = segment_order; header < current_segment; header++)
+		for (auto *header = local.segment_order.get(); header < current_segment; header++)
 			{
 			if (scale_rsv_scores)
 				header->impact = (JASS::query::ACCUMULATOR_TYPE)((double)header->impact / (double)largest_possible_rsv_with_overflow * (double)JASS::query::MAX_RSV);
@@ -562,12 +594,12 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, const JASS::d
 				Process the postings
 			*/
 			JASS::query::ACCUMULATOR_TYPE impact = header->impact;
-			jass_query->decode_and_process(impact, header->segment_frequency, index.postings() + header->offset, header->end - header->offset);
+			local.jass_query->decode_and_process(impact, header->segment_frequency, index->postings() + header->offset, header->end - header->offset);
 
 			/*
 				Early terminate if we have filled the heap with documents having rsv scores higher than the rsv_at_k oracle score.
 			*/
-			if (rsv_at_k > 1 && jass_query->size() >= top_k && postings_processed >= postings_to_process_min)
+			if (rsv_at_k > 1 && local.jass_query->size() >= top_k && postings_processed >= postings_to_process_min)
 				break;
 			}
 		/*
@@ -575,13 +607,13 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, const JASS::d
 			then it might be becasue the oracle prediction was too high.  If this is the case then we need to top-up
 			the top-k
 		*/
-		if (rsv_at_k > 1 && jass_query->size() < top_k)
-			jass_query->top_up();
+		if (rsv_at_k > 1 && local.jass_query->size() < top_k)
+			local.jass_query->top_up();
 
 		/*
 			Finally we have the results list in the heap, no sort it.
 		*/
-		jass_query->sort();
+		local.jass_query->sort();
 		
 		/*
 			stop the timer
@@ -593,9 +625,9 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, const JASS::d
 		*/
 		std::ostringstream results_list;
 #if defined(ACCUMULATOR_64s) || defined(QUERY_HEAP) || defined(QUERY_MAXBLOCK_HEAP)
-		JASS::run_export(JASS::run_export::TREC, results_list, query_id.c_str(), *jass_query, "JASSv2", true, true);
+		JASS::run_export(JASS::run_export::TREC, results_list, query_id.c_str(), *local.jass_query, "JASSv2", true, true);
 #else
-		JASS::run_export(JASS::run_export::TREC, results_list, query_id.c_str(), *jass_query, "JASSv2", true, false);
+		JASS::run_export(JASS::run_export::TREC, results_list, query_id.c_str(), *local.jass_query, "JASSv2", true, false);
 #endif
 		/*
 			Store the results (and the time it took)
@@ -612,10 +644,5 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, const JASS::d
 		*/
 		query = JASS_anytime_query::get_next_query(query_list, next_query);
 		}
-
-	/*
-		clean up
-	*/
-	delete [] segment_order;
 	}
 
