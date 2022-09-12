@@ -49,6 +49,7 @@
 	#define __restrict__ __restrict
 #endif
 
+#ifdef  __AVX512F__
 namespace Sort512_uint64_t {
 
 
@@ -2679,7 +2680,11 @@ inline int popcount(__mmask16 mask){
 #ifdef __INTEL_COMPILER
     return _mm_countbits_32(mask);
 #else
-    return __builtin_popcount(mask);
+	#ifdef _MSC_VER
+		return __popcnt(mask);
+	#else
+    		return __builtin_popcount(mask);
+	#endif
 #endif
 }
 
@@ -2829,4 +2834,5 @@ static inline void Sort(SortType array[], const IndexType size){
 }
 
 }
+#endif
 

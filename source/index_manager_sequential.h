@@ -84,6 +84,18 @@ namespace JASS
 						}
 
 					/*
+						INDEX_MANAGER_SEQUENTIAL::DELEGATE::FINISH()
+						--------------------------------------------
+					*/
+					/*!
+						@brief Any final clean up.
+					*/
+					virtual void finish(void)
+						{
+						/* Nothing */
+						}
+
+					/*
 						INDEX_MANAGER_SEQUENTIAL::DELEGATE::OPERATOR()()
 						------------------------------------------------
 					*/
@@ -230,7 +242,7 @@ namespace JASS
 			*/
 			virtual void term(const parser::token &term)
 				{
-				index[term.lexeme].push_back(get_highest_document_id());
+				index[term.lexeme].push_back(get_highest_document_id(), term.count);
 				}
 
 			/*

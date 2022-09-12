@@ -53,10 +53,10 @@ namespace JASS
 		}
 
 	/*
-		SERIALISE_CI::~SERIALISE_CI()
-		-----------------------------
+		SERIALISE_CI::FINISH()
+		----------------------
 	*/
-	serialise_ci::~serialise_ci()
+	void serialise_ci::finish(void)
 		{
 		/*
 			Terminate each file so that they are syntacticly correct
@@ -144,6 +144,7 @@ namespace JASS
 		{
 		serialise_ci serialiser(index.get_highest_document_id());
 		index.iterate(serialiser);
+		serialiser.finish();
 		}
 
 		/*

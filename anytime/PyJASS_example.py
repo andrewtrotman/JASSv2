@@ -1,0 +1,15 @@
+import pyjass
+index = pyjass.anytime()
+ok = index.load_index(2)
+print("Compressed using:", index.get_encoding_scheme_name())
+print("D-ness:", index.get_encoding_scheme_d())
+print("Documents:", index.get_document_count())
+print("")
+results = index.search("one")
+print("ID:", results.query_id)
+print("query:", results.query)
+print("Postings Processed:", results.postings_processed)
+print("Time (ns):", results.search_time_in_ns)
+print("Results:")
+print(results.results_list)
+

@@ -154,7 +154,7 @@ namespace JASS
 				@param value [in] The value whose encoded size is being computed
 				@return the numner of bytes needed to store the enoding of value.
 			*/
-			static inline size_t bytes_needed_for(integer value)
+			static inline size_t bytes_needed_for(uint32_t value)
 				{
 				/*
 					The size can be computed by compairing to a bunch of constants.
@@ -167,10 +167,32 @@ namespace JASS
 					return 3;
 				else if (value < ((uint64_t)1 << 28))
 					return 4;
-#if JASS_COMPRESS_INTEGER_BITS_PER_INTEGER == 32
 				else
 					return 5;
-#else
+				}
+
+			/*
+				COMPRESS_INTEGER_VARIABLE_BYTE::BYTES_NEEDED_FOR()
+				--------------------------------------------------
+			*/
+			/*!
+				@brief Return the number of bytes necessary to encode the integer value.
+				@param value [in] The value whose encoded size is being computed
+				@return the numner of bytes needed to store the enoding of value.
+			*/
+			static inline size_t bytes_needed_for(uint64_t value)
+				{
+				/*
+					The size can be computed by compairing to a bunch of constants.
+				*/
+				if (value < ((uint64_t)1 << 7))
+					return 1;
+				else if (value < ((uint64_t)1 << 14))
+					return 2;
+				else if (value < ((uint64_t)1 << 21))
+					return 3;
+				else if (value < ((uint64_t)1 << 28))
+					return 4;
 				else if (value < ((uint64_t)1 << 35))
 					return 5;
 				else if (value < ((uint64_t)1 << 42))
@@ -183,7 +205,6 @@ namespace JASS
 					return 9;
 				else
 					return 10;
-#endif
 				}
 
 			/*
@@ -196,7 +217,7 @@ namespace JASS
 				@param value [in] The value to encode.
 			*/
 			template <typename DESTINATION>
-			static forceinline void compress_into(DESTINATION &destination, integer value)
+			static forceinline void compress_into(DESTINATION &destination, uint32_t value)
 				{
 				/*
 					Work out how many bytes it'll take to encode
@@ -209,43 +230,11 @@ namespace JASS
 					goto three;
 				else if (value < ((uint64_t)1 << 28))
 					goto four;
-#if JASS_COMPRESS_INTEGER_BITS_PER_INTEGER == 32
 				goto five;
-#else
-				else if (value < ((uint64_t)1 << 35))
-					goto five;
-				else if (value < ((uint64_t)1 << 42))
-					goto six;
-				else if (value < ((uint64_t)1 << 49))
-					goto seven;
-				else if (value < ((uint64_t)1 << 56))
-					goto eight;
-				else if (value < ((uint64_t)1 << 63))
-					goto nine;
-				else
-					goto ten;
-#endif
 
 				/*
 					Now encode byte at a time with fall-through
 				*/
-#if JASS_COMPRESS_INTEGER_BITS_PER_INTEGER == 64
-				ten:
-					*destination = (value >> 63) & 0x7F;
-					++destination;
-				nine:
-					*destination = (value >> 56) & 0x7F;
-					++destination;
-				eight:
-					*destination = (value >> 49) & 0x7F;
-					++destination;
-				seven:
-					*destination = (value >> 42) & 0x7F;
-					++destination;
-				six:
-					*destination = (value >> 35) & 0x7F;
-					++destination;
-#endif
 				five:
 					*destination = (value >> 28) & 0x7F;
 					++destination;
@@ -265,6 +254,77 @@ namespace JASS
 
 
 			/*
+				COMPRESS_INTEGER_VARIABLE_BYTE::COMPRESS_INTO()
+				-----------------------------------------------
+			*/
+			/*!
+				@brief Encode the given integer placing the encoding into destination (whose size is not validated).
+				@param destination [out] The buffer to write into.
+				@param value [in] The value to encode.
+			*/
+			template <typename DESTINATION>
+			static forceinline void compress_into(DESTINATION &destination, uint64_t value)
+				{
+				/*
+					Work out how many bytes it'll take to encode
+				*/
+				if (value < ((uint64_t)1 << 7))
+					goto one;
+				else if (value < ((uint64_t)1 << 14))
+					goto two;
+				else if (value < ((uint64_t)1 << 21))
+					goto three;
+				else if (value < ((uint64_t)1 << 28))
+					goto four;
+				else if (value < ((uint64_t)1 << 35))
+					goto five;
+				else if (value < ((uint64_t)1 << 42))
+					goto six;
+				else if (value < ((uint64_t)1 << 49))
+					goto seven;
+				else if (value < ((uint64_t)1 << 56))
+					goto eight;
+				else if (value < ((uint64_t)1 << 63))
+					goto nine;
+				else
+					goto ten;
+
+				/*
+					Now encode byte at a time with fall-through
+				*/
+				ten:
+					*destination = (value >> 63) & 0x7F;
+					++destination;
+				nine:
+					*destination = (value >> 56) & 0x7F;
+					++destination;
+				eight:
+					*destination = (value >> 49) & 0x7F;
+					++destination;
+				seven:
+					*destination = (value >> 42) & 0x7F;
+					++destination;
+				six:
+					*destination = (value >> 35) & 0x7F;
+					++destination;
+				five:
+					*destination = (value >> 28) & 0x7F;
+					++destination;
+				four:
+					*destination = (value >> 21) & 0x7F;
+					++destination;
+				three:
+					*destination = (value >> 14) & 0x7F;
+					++destination;
+				two:
+					*destination = (value >> 7) & 0x7F;
+					++destination;
+				one:
+					*destination = (value & 0x7F) | 0x80;
+					++destination;
+				}
+
+			/*
 				COMPRESS_INTEGER_VARIABLE_BYTE::DECOMPRESS_INTO()
 				-------------------------------------------------
 			*/
@@ -274,7 +334,107 @@ namespace JASS
 				@param source [in] The buffer to decode from.
 			*/
 			template <typename SOURCE>
-			static forceinline void decompress_into(integer *decoded, SOURCE &source)
+			static forceinline void decompress_into(uint16_t *decoded, SOURCE &source)
+				{
+				/*
+					If the high bit is set the sequence is over, otherwise, in an unwound loop, decode the integers one at a time.
+				*/
+				if (*source & 0x80)
+					{
+					*decoded = *source & 0x7F;
+					++source;
+					}
+				else
+					{
+					*decoded = *source;
+					++source;
+					if (*source & 0x80)
+						{
+						*decoded = (*decoded << 7) | (*source & 0x7F);
+						++source;
+						}
+					else
+						{
+						*decoded = (*decoded << 7) | *source;
+						++source;
+						}
+					}
+				}
+
+			/*
+				COMPRESS_INTEGER_VARIABLE_BYTE::DECOMPRESS_INTO()
+				-------------------------------------------------
+			*/
+			/*!
+				@brief Decode the given integer placing the encoding into destination (whose size is not validated).
+				@param decoded [out] The decoded integer.
+				@param source [in] The buffer to decode from.
+			*/
+			template <typename SOURCE>
+			static forceinline void decompress_into(uint32_t *decoded, SOURCE &source)
+				{
+				/*
+					If the high bit is set the sequence is over, otherwise, in an unwound loop, decode the integers one at a time.
+				*/
+				if (*source & 0x80)
+					{
+					*decoded = *source & 0x7F;
+					++source;
+					}
+				else
+					{
+					*decoded = *source;
+					++source;
+					if (*source & 0x80)
+						{
+						*decoded = (*decoded << 7) | (*source & 0x7F);
+						++source;
+						}
+					else
+						{
+						*decoded = (*decoded << 7) | *source;
+						++source;
+						if (*source & 0x80)
+							{
+							*decoded = (*decoded << 7) | (*source & 0x7F);
+							++source;
+							}
+						else
+							{
+							*decoded = (*decoded << 7) | *source;
+							++source;
+							if (*source & 0x80)
+								{
+								*decoded = (*decoded << 7) | (*source & 0x7F);
+								++source;
+								}
+							else
+								{
+								*decoded = (*decoded << 7) | *source;
+								++source;
+								if (*source & 0x80)
+									{
+									*decoded = (*decoded << 7) | (*source & 0x7F);
+									++source;
+									}
+								}
+							}
+						}
+					}
+				}
+
+
+			/*
+				COMPRESS_INTEGER_VARIABLE_BYTE::DECOMPRESS_INTO()
+				-------------------------------------------------
+			*/
+			/*!
+				@brief Decode the given integer placing the encoding into destination (whose size is not validated).
+				@param decoded [out] The decoded integer.
+				@param source [in] The buffer to decode from.
+			*/
+			template <typename SOURCE>
+			static forceinline void decompress_into(uint64_t *decoded, SOURCE &source)
 				{
 				/*
 					If the high bit is set the sequence is over, otherwise, in an unwound loop, decode the integers one at a time.
@@ -322,7 +482,6 @@ namespace JASS
 									}
 								else
 									{
-	#if JASS_COMPRESS_INTEGER_BITS_PER_INTEGER == 64
 									*decoded = (*decoded << 7) | *source;
 									++source;
 									if (*source & 0x80)
@@ -375,7 +534,6 @@ namespace JASS
 												}
 											}
 										}
-	#endif
 									}
 								}
 							}

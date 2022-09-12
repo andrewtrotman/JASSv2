@@ -20,7 +20,7 @@ project(JASS)
 #CMake verison 3.2 is required to set CMAKE_CXX_STANDARD to C++14.
 #
 
-cmake_minimum_required (VERSION 3.2)
+cmake_minimum_required (VERSION 3.8)
 
 # set(CMAKE_VERBOSE_MAKEFILE on)
 
@@ -58,7 +58,7 @@ message("Build Type:" ${CMAKE_BUILD_TYPE})
 #
 
 if (JASS_EXTERNAL_DEFINE)
-	message("Adding comile parameter:" ${JASS_EXTERNAL_DEFINE})
+	message("Adding compile parameter:" ${JASS_EXTERNAL_DEFINE})
 	add_definitions(${JASS_EXTERNAL_DEFINE})
 endif()
 
@@ -69,9 +69,7 @@ endif()
 if(WIN32)
  	add_definitions("/W3 /wd4005 /wd4996 /wd4514 /wd4996 /wd4820 /nologo")
 else()
-	add_definitions("-Wall -D_GLIBCXX_USE_CXX11_ABI=1 -Wno-ignored-attributes")
-#	add_definitions("-Wall -D_GLIBCXX_USE_CXX11_ABI=1 -Wno-ignored-attributes -mcmodel=medium")
-#	SET(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -no_pie")
+	add_definitions("-Wall -fPIC -D_GLIBCXX_USE_CXX11_ABI=1 -Wno-ignored-attributes -Wno-deprecated-declarations")
 endif()
 
 #
@@ -95,6 +93,14 @@ if(WIN32)
 	endif()
 else()
 	add_definitions(-march=native -mbmi -mavx2)
+endif()
+
+#
+#	Compatibility with the FileSystem libraries for g++ prior to verison 9
+#
+if(UNIX AND NOT APPLE)
+	message("Adding stdc++fs library for early g++ compatibility")
+	link_libraries(stdc++fs)
 endif()
 
 #
@@ -140,7 +146,7 @@ target_link_libraries(unittest JASSlib ${ZLIB_STATIC_LIB} ${ZSTD_STATIC_LIB} ${C
 # build the indexer
 #
 add_executable(JASS_index tools/JASS_index.cpp)
-target_link_libraries(JASS_index JASSlib ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(JASS_index JASSlib ${ZLIB_STATIC_LIB} ${CMAKE_THREAD_LIBS_INIT})
 
 #
 # build the compiled_indexes stubs
@@ -168,7 +174,7 @@ target_link_libraries(hash JASSlib ${CMAKE_THREAD_LIBS_INIT})
 #
 find_package(Doxygen)
 if(DOXYGEN_FOUND)
-	configure_file(${CMAKE_CURRENT_SOURCE_DIR}/build/Doxyfile.in ${CMAKE_CURRENT_SOURCE_DIR}/build/Doxyfile  @ONLY)
+	configure_file(${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile.in ${CMAKE_CURRENT_SOURCE_DIR}/build/Doxyfile  @ONLY)
 	add_custom_target(
 		docs ${DOXYGEN_EXECUTABLE}
 		${CMAKE_CURRENT_BINARY_DIR}/Doxyfile

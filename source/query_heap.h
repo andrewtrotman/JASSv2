@@ -296,7 +296,7 @@ namespace JASS
 			/*!
 				@brief Clear this object after use and ready for re-use
 			*/
-			virtual void rewind(ACCUMULATOR_TYPE smallest_possible_rsv = 0, ACCUMULATOR_TYPE largest_possible_rsv = 0)
+			virtual void rewind(ACCUMULATOR_TYPE smallest_possible_rsv = 0, ACCUMULATOR_TYPE top_k_lower_bound = 0, ACCUMULATOR_TYPE largest_possible_rsv = 0)
 				{
 				sorted = false;
 #ifdef ACCUMULATOR_64s
@@ -702,7 +702,7 @@ namespace JASS
 				--------------------------------
 			*/
 			/*!
-				@brief Given the integer decoder, the number of integes to decode, and the compressed sequence, decompress (but do not process).
+				@brief Given the integer decoder, the number of integes to decode, and the compressed sequence, decompress (but do not process).
 				@param integers [in] The number of integers that are compressed.
 				@param compressed [in] The compressed sequence.
 				@param compressed_size [in] The length of the compressed sequence.
@@ -724,7 +724,7 @@ namespace JASS
 				/*
 					D1-decode inplace with SIMD instructions then process one at a time
 				*/
-				simd::cumulative_sum(buffer, integers);
+				simd::cumulative_sum_256(buffer, integers);
 
 				/*
 					Process the d1-decoded postings list.
@@ -751,7 +751,7 @@ namespace JASS
 				--------------------------------
 			*/
 			/*!
-				@brief Given the integer decoder, the number of integes to decode, and the compressed sequence, decompress (but do not process).
+				@brief Given the integer decoder, the number of integes to decode, and the compressed sequence, decompress (but do not process).
 				@details Typically used to export an index, not used to process queries.
 				@param integers [in] The number of integers that are compressed.
 				@param compressed [in] The compressed sequence.

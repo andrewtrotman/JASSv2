@@ -41,6 +41,18 @@ namespace JASS
 				valid_token								///< The token is a valid token
 				};
 
+		public:
+			/*!
+				@enum parser_type
+				@brief Which parser to use.
+			*/
+			enum parser_type
+				{
+				query,									///< Unicode parsing with case folding and alphanumeric seperation
+				raw										///< ASCII parsing asuming only whitespace seperates tokens
+				};
+
+
 		private:
 			allocator &memory;						///< All memory associated with the query.
 			uint8_t *current;							///< Currtne locaton (in the input query string) of the parser during parsing.
@@ -54,10 +66,20 @@ namespace JASS
 				------------------------------
 			*/
 			/*!
-				@brief Return the next parsed token from the source query.
+				@brief Return the next parsed token from the source query, this parser does case folding and sp on
 				@param token [in] a slice of the token.
 			*/
 			token_status get_next_token(slice &token);
+
+			/*
+				PARSER_QUERY::GET_NEXT_TOKEN_RAW()
+				----------------------------------
+			*/
+			/*!
+				@brief Return the next parsed token from the source query, this parser assumes the tokens are already normalised (case folded, puncutation removed, and so on).  Seperators are whitespace.
+				@param token [in] a slice of the token.
+			*/
+			token_status get_next_token_raw(slice &token);
 
 			/*
 				PARSER_QUERY::UNITTEST_TEST_ONE()
@@ -99,7 +121,7 @@ namespace JASS
 				@param query [in] The query to be parsed.
 			*/
 			template <typename STRING_TYPE>
-			void parse(query_term_list &parsed_query, const STRING_TYPE &query)
+			void parse(query_term_list &parsed_query, const STRING_TYPE &query, parser_type which_parser = parser_type::query)
 				{
 				current = (uint8_t *)(const_cast<char *>(query.c_str()));							// get a pointer to the start of the query string
 				end_of_query = current + query.size();			// get a pointer to the end of the query string
@@ -113,12 +135,28 @@ namespace JASS
 					return;				// LCOV_EXCL_LINE			// At time of writing this can't happen because either malloc will assert or delatyed allocation will not return nullptr!
 				buffer_end = buffer_pos + worse_case_normalised_query_length;
 
+				/*
+					Parse the query to get all of the search terms
+				*/
 				slice term;												// Each term as returned by the parser.
-
 				token_status status;
-				while ((status = get_next_token(term)) != eof_token)		// get the next token
-					if (status == valid_token)
-						parsed_query.push_back(query_term(term));
+				if (which_parser == parser_type::query)
+					{
+					while ((status = get_next_token(term)) != eof_token)		// get the next token
+						if (status == valid_token)
+							parsed_query.push_back(term);
+					}
+				else	// (which_parser == parser_type::raw)
+					{
+					while ((status = get_next_token_raw(term)) != eof_token)		// get the next token
+						if (status == valid_token)
+							parsed_query.push_back(term);
+					}
+
+				/*
+					Now unique the terms in the query and increment the occurence accounts appropriately.
+				*/
+				parsed_query.sort_unique();
 				}
 
 			/*

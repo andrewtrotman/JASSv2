@@ -204,7 +204,7 @@ namespace JASS
 
 			static constexpr size_t rounded_top_k_filter = rounded_top_k - 1;
 
-			static constexpr size_t number_of_buckets = (std::numeric_limits<ACCUMULATOR_TYPE>::max)();
+			static constexpr size_t number_of_buckets = (std::numeric_limits<ACCUMULATOR_TYPE>::max)() > 0xFFFF ? 0xFFFF : (std::numeric_limits<ACCUMULATOR_TYPE>::max)();
 			DOCID_TYPE bucket[number_of_buckets][rounded_top_k];						///< The array of buckets to use.
 			ACCUMULATOR_TYPE largest_used_bucket;											///< The largest bucket used (to decrease cost of initialisation and search)
 			ACCUMULATOR_TYPE smallest_used_bucket;											///< The smallest bucket used (to decrease cost of initialisation and search)
@@ -223,7 +223,8 @@ namespace JASS
 			*/
 			query_bucket() :
 				query(),
-				largest_used_bucket(0)
+				largest_used_bucket(0),
+				smallest_used_bucket((std::numeric_limits<ACCUMULATOR_TYPE>::max)())
 				{
 				std::fill(bucket_depth, bucket_depth + number_of_buckets, char());
 //				memset(bucket_depth, 0, number_of_buckets * sizeof(bucket_depth[0]));
@@ -322,7 +323,7 @@ namespace JASS
 				@brief Clear this object after use and ready for re-use
 				@param largest_possible_rsv [in] the largest possible rsv value (or larger that that)
 			*/
-			virtual void rewind(ACCUMULATOR_TYPE smallest_possible_rsv = 0, ACCUMULATOR_TYPE largest_possible_rsv = 0)
+			virtual void rewind(ACCUMULATOR_TYPE smallest_possible_rsv = 0, ACCUMULATOR_TYPE top_k_lower_bound = 0,ACCUMULATOR_TYPE largest_possible_rsv = 0)
 				{
 				smallest_used_bucket = smallest_possible_rsv;
 				largest_used_bucket = largest_possible_rsv;
@@ -514,6 +515,7 @@ namespace JASS
 				set_bucket(_mm256_extracti128_si256(document_ids, 1), _mm256_extracti128_si256(values, 1));
 				}
 
+#ifdef __AVX512F__
 			/*
 				QUERY_BUCKET::ADD_RSV()
 				-----------------------
@@ -575,6 +577,7 @@ namespace JASS
 #endif
 				}
 #endif
+#endif
 
 			/*
 				QUERY_BUCKET::ADD_RSV_D1()
@@ -624,6 +627,7 @@ namespace JASS
 				add_rsv(document_ids);
 				}
 
+#ifdef __AVX512F__
 			/*
 				QUERY_BUCKET::ADD_RSV_D1()
 				--------------------------
@@ -652,6 +656,7 @@ namespace JASS
 				add_rsv(document_ids);
 				}
 #endif
+#endif
 
 			/*
 				QUERY_BUCKET::DECODE_WITH_WRITER()
@@ -671,7 +676,7 @@ namespace JASS
 				/*
 					D1-decode inplace with SIMD instructions then process one at a time
 				*/
-				simd::cumulative_sum(buffer, integers);
+				simd::cumulative_sum_256(buffer, integers);
 
 				/*
 					Process the d1-decoded postings list.
@@ -757,6 +762,7 @@ namespace JASS
 				std::vector<std::string> keys = {"one", "two", "three", "four"};
 				query_bucket *query_object = new query_bucket;
 				query_object->init(keys, 1024, 2);
+				query_object->rewind(0, 100, 100);
 				std::ostringstream string;
 
 				/*

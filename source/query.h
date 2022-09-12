@@ -3,6 +3,7 @@
 	#define QUOTEME_1(x) #x
 	#define INCLUDE_FILE(x) QUOTEME(x)
 	#include INCLUDE_FILE(JASS_HAS_EXTERNAL_CONFIGURATION)
+	#error "You should not be doing this"
 #else
 	#define QUERY_HEAP
 	#define ACCUMULATOR_STRATEGY_2D
@@ -104,6 +105,8 @@
 */
 #pragma once
 
+#include <limits>
+
 #include <immintrin.h>
 
 #include "top_k_qsort.h"
@@ -124,9 +127,13 @@ namespace JASS
 		{
 		public:
 			typedef uint16_t ACCUMULATOR_TYPE;									///< the type of an accumulator (probably a uint16_t)
-			typedef uint32_t DOCID_TYPE;											///< the type of a document id (from a compressor)
-			static constexpr size_t MAX_DOCUMENTS = 55'000'000;			///< the maximum number of documents an index can hold
-			static constexpr size_t MAX_TOP_K = 1'000;						///< the maximum top-k value
+//			typedef uint8_t ACCUMULATOR_TYPE;									///< the type of an accumulator (probably a uint16_t)
+			typedef uint32_t DOCID_TYPE;										///< the type of a document id (from a compressor)
+
+		public:
+			static constexpr size_t MAX_DOCUMENTS = 55000000;					///< the maximum number of documents an index can hold
+			static constexpr size_t MAX_TOP_K = 1000;							///< the maximum top-k value
+			static constexpr size_t MAX_RSV = (std::numeric_limits<ACCUMULATOR_TYPE>::max)();
 
 		public:
 			/*
@@ -220,7 +227,7 @@ namespace JASS
 				this->top_k = top_k;
 				this->documents = documents;
 				decompress_buffer.resize(64 + (documents * sizeof(DOCID_TYPE) + sizeof(decompress_buffer[0]) - 1) / sizeof(decompress_buffer[0]));			// we add 64 so that decompressors can overflow
-				rewind();
+				rewind(1, 1, 1);
 				}
 
 			/*
@@ -245,9 +252,9 @@ namespace JASS
 				@param query [in] The query to parse.
 			*/
 			template <typename STRING_TYPE>
-			void parse(const STRING_TYPE &query)
+			void parse(const STRING_TYPE &query, parser_query::parser_type which_parser = parser_query::parser_type::query)
 				{
-				parser.parse(*parsed_query, query);
+				parser.parse(*parsed_query, query, which_parser);
 				}
 
 			/*
@@ -269,11 +276,14 @@ namespace JASS
 			*/
 			/*!
 				@brief Clear this object after use and ready for re-use
+				@param smallest_possible_rsv [in] No rsv can be smaller than this (other than documents that are not found
+				@param top_k_lower_bound [in] No rsv smaller than this can enter the top-k results list
+				@param largest_possible_rsv [in] No rsv can be larger than this (but need no one need be this large)
 			*/
-			virtual void rewind(ACCUMULATOR_TYPE smallest_possible_rsv = 0, ACCUMULATOR_TYPE largest_possible_rsv = 0)
+			virtual void rewind(ACCUMULATOR_TYPE smallest_possible_rsv = 0, ACCUMULATOR_TYPE top_k_lower_bound = 0, ACCUMULATOR_TYPE largest_possible_rsv = 0)
 				{
 				delete parsed_query;
-				parsed_query = new query_term_list(memory);
+				parsed_query = new query_term_list;
 				d1_cumulative_sum = 0;
 				impact = 0;
 				}

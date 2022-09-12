@@ -13,6 +13,7 @@
 #include <string.h>
 
 #include <vector>
+#include <filesystem>
 
 #include "timer.h"
 #include "parser.h"
@@ -22,21 +23,28 @@
 #include "stem_porter.h"
 #include "parser_fasta.h"
 #include "serialise_ci.h"
+#include "quantize_none.h"
 #include "instream_file.h"
 #include "instream_memory.h"
+#include "instream_deflate.h"
 #include "compress_integer.h"
 #include "serialise_jass_v1.h"
+#include "serialise_jass_v2.h"
 #include "serialise_integers.h"
+#include "parser_unicoil_json.h"
 #include "instream_document_trec.h"
 #include "instream_document_fasta.h"
 #include "serialise_forward_index.h"
 #include "index_manager_sequential.h"
 #include "ranking_function_atire_bm25.h"
+#include "instream_directory_iterator.h"
+#include "instream_document_unicoil_json.h"
 
 /*
 	Declare the command line parameters
 */
 bool parameter_jass_v1_index = false;
+bool parameter_jass_v2_index = false;
 bool parameter_compiled_index = false;
 bool parameter_uint32_index = false;
 bool parameter_forward_index = false;
@@ -48,6 +56,9 @@ bool parameter_atire_similar = false;
 size_t parameter_fasta_kmer_length = 0;
 
 bool parameter_stem_porter = false;
+
+bool parameter_document_format_trec = true;
+bool parameter_document_format_JSON_uniCOIL = false;
 
 auto command_line_parameters = std::make_tuple
 	(
@@ -63,20 +74,37 @@ auto command_line_parameters = std::make_tuple
 	JASS::commandline::note("\nFILE HANDLING\n-------------"),
 	JASS::commandline::parameter("-f", "--filename", "<filename> Filename to index.", parameter_filename),
 
+	JASS::commandline::note("\nDOCUMENT FORMATS\n-------------"),
+	JASS::commandline::parameter("-dt",  "--document_TREC", "TREC format: <DOC><DOCNO></DOCNO></DOC> formatted documents (default)", parameter_document_format_trec),
+	JASS::commandline::parameter("-djc", "--document_JSON_uniCOIL", "JSON uniCOIL forward index format: {\"id\": \"0\", \"vector\": {\"term\": 94 }}", parameter_document_format_JSON_uniCOIL),
+
 	JASS::commandline::note("\nCOMPATIBILITY\n-------------"),
 	JASS::commandline::parameter("-A", "--atire", "ATIRE-like parsing (errors and all)", parameter_atire_similar),
 
 	JASS::commandline::note("\nTERM PROCESSING\n---------------"),
 	JASS::commandline::parameter("-tp", "--term_steming_porter", "Term stemming with Porter v1 (JASS implementation)", parameter_stem_porter),
 
-
 	JASS::commandline::note("\nINDEX GENERATION\n----------------"),
 	JASS::commandline::parameter("-I1", "--index_jass_v1", "Generate a JASS version 1 index.", parameter_jass_v1_index),
+	JASS::commandline::parameter("-I2", "--index_jass_v2", "Generate a JASS version 2 index.", parameter_jass_v2_index),
 	JASS::commandline::parameter("-Ib", "--index_binary", "Generate a binary dump of just the postings segments.", parameter_uint32_index),
 	JASS::commandline::parameter("-Ic", "--index_compiled", "Generate a JASS compiled index.", parameter_compiled_index),
 	JASS::commandline::parameter("-If", "--index_forward", "Generate a forward index.", parameter_forward_index),
 	JASS::commandline::parameter("-IF", "--index_FASTA", "<k> Generate a k-mer index from FASTA documents.", parameter_fasta_kmer_length)
 	);
+
+
+/*
+	ENUM DOCUMENT_FORMAT
+	--------------------
+*/
+enum document_format
+	{
+	NONE,
+	TREC,
+	K_MER,
+	JSON_uniCOIL
+	};
 
 /*
 	USAGE()
@@ -86,6 +114,28 @@ uint8_t usage(const std::string &exename)
 	{
 	std::cout << JASS::commandline::usage(exename, command_line_parameters) << "\n";
 	return 1;
+	}
+
+/*
+	GET_DOCUMENT_FORMAT()
+	---------------------
+*/
+document_format get_document_format()
+	{
+	if
+		(
+		parameter_fasta_kmer_length != 0 &&
+		parameter_document_format_JSON_uniCOIL
+		)
+		return document_format::NONE;
+
+
+	if (parameter_fasta_kmer_length != 0)
+		return document_format::K_MER;
+	else if (parameter_document_format_JSON_uniCOIL)
+		return document_format::JSON_uniCOIL;
+	else
+		return document_format::TREC;
 	}
 
 /*
@@ -107,6 +157,13 @@ int main(int argc, const char *argv[])
 		exit(1);
 		}
 
+	document_format format = get_document_format();
+	if (format == NONE)
+		{
+		std::cout << argv[0] << "only one input format at a time";
+		exit(1);
+		}
+
 	/*
 		Provide help if needed.
 	*/
@@ -123,7 +180,7 @@ int main(int argc, const char *argv[])
 	/*
 		Check to make sure we'll actually be exporting the index
 	*/
-	if (!(parameter_jass_v1_index | parameter_uint32_index | parameter_compiled_index | parameter_forward_index | parameter_fasta_kmer_length))
+	if (!(parameter_jass_v2_index | parameter_jass_v1_index | parameter_uint32_index | parameter_compiled_index | parameter_forward_index | parameter_fasta_kmer_length))
 		{
 		std::cout << "You must specify an index file format or else no index will be generated\n";
 		return 1;
@@ -136,28 +193,63 @@ int main(int argc, const char *argv[])
 		std::cout << "filename needed";
 
 	/*
-		Either we're a regular text parser of a FASTA k-mer parser
+		Set up the parser
 	*/
-	std::shared_ptr<JASS::parser> parser_ptr(
-		parameter_fasta_kmer_length == 0 ?
-			(JASS::parser *)new JASS::parser()
-		:
-			(JASS::parser *)new JASS::parser_fasta(parameter_fasta_kmer_length));
-	JASS::parser &parser = *parser_ptr;
+	JASS::parser *parser;
+	switch (format)
+		{
+		case TREC:
+			parser = new JASS::parser();
+			break;
+		case K_MER:
+			parser = new JASS::parser_fasta(parameter_fasta_kmer_length);
+			break;
+		case JSON_uniCOIL:
+			parser = new JASS::parser_unicoil_json();
+			break;
+		default:
+			std::cout << "Unknown parser type";
+			exit(1);
+			break;
+		}
 
 	/*
 		Set up the input pipeline
 	*/
 	std::shared_ptr<JASS::instream> file(new JASS::instream_file(parameter_filename));
-	std::shared_ptr<JASS::instream> source(
-		parameter_fasta_kmer_length == 0 ?
-			(JASS::instream *)new JASS::instream_document_trec(file)
-		:
-			(JASS::instream *)new JASS::instream_document_fasta(file)
-			);
+	JASS::instream *data_source;
+	switch (format)
+		{
+		case TREC:
+			data_source = new JASS::instream_document_trec(file);
+			break;
+		case K_MER:
+			data_source = new JASS::instream_document_fasta(file);
+			break;
+		case JSON_uniCOIL:
+			{
+			if (std::filesystem::is_directory(std::filesystem::path(parameter_filename)))
+				{
+				std::shared_ptr<JASS::instream> source(new JASS::instream_directory_iterator(parameter_filename));
+				data_source = new JASS::instream_document_unicoil_json(source);
+				}
+			else
+				{
+				std::shared_ptr<JASS::instream> deflater(new JASS::instream_deflate(file));
+				data_source = new JASS::instream_document_unicoil_json(deflater);
+				}
+			break;
+			}
+		default:
+			std::cout << "Unknown parser type";
+			exit(1);
+			break;
+		}
+
+	std::shared_ptr<JASS::instream> source(data_source);
 
 	/*
-		set up the stemmer
+		Set up the stemmer
 	*/
 	JASS::stem *stem = nullptr;
 	if (parameter_stem_porter)
@@ -189,6 +281,7 @@ int main(int argc, const char *argv[])
 		source->read(document);
 		if (document.isempty())
 			break;
+
 		total_documents++;
 		if (total_documents % parameter_report_every_n == 0)
 			{
@@ -199,7 +292,7 @@ int main(int argc, const char *argv[])
 		/*
 			parse the current document
 		*/
-		parser.set_document(document);
+		parser->set_document(document);
 		index.begin_document(document.primary_key);
 
 		/*
@@ -209,8 +302,8 @@ int main(int argc, const char *argv[])
 		JASS::compress_integer::integer document_length = 0;				// measured in terms
 		do
 			{
-			auto &token = const_cast<JASS::parser::token &>(parser.get_next_token());
-			
+			auto &token = const_cast<JASS::parser::token &>(parser->get_next_token());
+//std::cout << "[" << token.lexeme << "," << token.count << "]\n";
 			switch (token.type)
 				{
 				case JASS::parser::token::eof:
@@ -253,8 +346,16 @@ int main(int argc, const char *argv[])
 		quantize the index
 	*/
 	std::shared_ptr<JASS::ranking_function_atire_bm25> ranker(new JASS::ranking_function_atire_bm25(0.9, 0.4, index.get_document_length_vector()));
-	JASS::quantize<JASS::ranking_function_atire_bm25> quantizer(total_documents, ranker);
-	index.iterate(quantizer);
+
+	JASS::quantize<JASS::ranking_function_atire_bm25> *quantizer;
+	if (format == JSON_uniCOIL)
+		quantizer = new JASS::quantize_none<JASS::ranking_function_atire_bm25>(total_documents, ranker);
+	else
+		{
+		quantizer = new JASS::quantize<JASS::ranking_function_atire_bm25>(total_documents, ranker);
+		index.iterate(*quantizer);
+		}
+
 	auto time_to_end_quantization = JASS::timer::stop(timer).nanoseconds();
 
 	/*
@@ -265,6 +366,8 @@ int main(int argc, const char *argv[])
 		exporters.push_back(std::make_unique<JASS::serialise_ci>(index.get_highest_document_id()));
 	if (parameter_jass_v1_index)
 		exporters.push_back(std::make_unique<JASS::serialise_jass_v1>(index.get_highest_document_id()));
+	if (parameter_jass_v2_index)
+		exporters.push_back(std::make_unique<JASS::serialise_jass_v2>(index.get_highest_document_id()));
 	if (parameter_uint32_index)
 		exporters.push_back(std::make_unique<JASS::serialise_integers>(index.get_highest_document_id()));
 	if (parameter_forward_index)
@@ -274,7 +377,7 @@ int main(int argc, const char *argv[])
 		Write out the index in the desired formats.
 	*/
 	if (exporters.size() != 0)
-		quantizer.serialise_index(index, exporters);
+		quantizer->serialise_index(index, exporters);
 
 	/*
 		Dump the statistics to the console.
@@ -290,6 +393,9 @@ int main(int argc, const char *argv[])
 	std::cout << "Serialise time   :" << serialise_time << "ns (" << serialise_time / 1000000000 << " seconds)\n";
 	std::cout << "=================\n";
 	std::cout << "Total time       :" << time_to_end << "ns (" << time_to_end / 1000000000 << " seconds)\n";
+
+	delete parser;
+	delete quantizer;
 
 	/*
 		Done.

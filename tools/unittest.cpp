@@ -60,6 +60,7 @@
 #include "serialise_integers.h"
 #include "evaluate_precision.h"
 #include "instream_file_star.h"
+#include "parser_unicoil_json.h"
 #include "query_maxblock_heap.h"
 #include "accumulator_counter.h"
 #include "compress_integer_all.h"
@@ -82,6 +83,7 @@
 #include "evaluate_cheapest_precision.h"
 #include "compress_integer_bitpack_64.h"
 #include "ranking_function_atire_bm25.h"
+#include "instream_directory_iterator.h"
 #include "compress_integer_elias_gamma.h"
 #include "compress_integer_elias_delta.h"
 #include "compress_integer_bitpack_128.h"
@@ -95,6 +97,7 @@
 #include "compress_integer_carryover_12.h"
 #include "evaluate_rank_biased_precision.h"
 #include "compress_integer_variable_byte.h"
+#include "instream_document_unicoil_json.h"
 #include "accumulator_counter_interleaved.h"
 #include "evaluate_mean_reciprocal_rank4k.h"
 #include "evaluate_expected_search_length.h"
@@ -103,10 +106,10 @@
 #include "compress_integer_simple_8b_packed.h"
 #include "compress_integer_simple_16_packed.h"
 #include "compress_integer_elias_gamma_simd.h"
-#include "compress_integer_elias_gamma_simd_vb.h"
 #include "compress_integer_bitpack_32_reduced.h"
 #include "compress_integer_elias_gamma_bitwise.h"
 #include "compress_integer_elias_delta_bitwise.h"
+#include "compress_integer_elias_gamma_simd_vb.h"
 #include "evaluate_price_based_normalized_discounted_cumulative_gain.h"
 #include "evaluate_buying_power_normalized_discounted_cumulative_gain.h"
 
@@ -137,6 +140,18 @@ int main(void)
 	try
 		{
 		JASS::hardware_support hardware;
+
+		puts("query_term_list");
+		JASS::query_term_list::unittest();
+
+		puts("instream_directory_iterator");
+		JASS::instream_directory_iterator::unittest();
+
+		puts("parser_unicoil_json::unittest");
+		JASS::parser_unicoil_json::unittest();
+
+		puts("instream_document_unicoil_json");
+		JASS::instream_document_unicoil_json::unittest();
 
 		puts("compress_integer_elias_gamma_simd_vb");
 		JASS::compress_integer_elias_gamma_simd_vb::unittest();

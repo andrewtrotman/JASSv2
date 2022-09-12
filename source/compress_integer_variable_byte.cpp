@@ -61,7 +61,7 @@ namespace JASS
 		size_t bytes_used;														// the number of bytes used to encode the integer sequence
 		uint8_t encoded_buffer[2048];											// sequences are encoded into this buffer
 		integer decoded_buffer[2048];											// sequences are decoded into this buffer
-		
+
 		/*
 			Check what happens if it won't fit
 		*/
@@ -123,8 +123,24 @@ namespace JASS
 		codex->decode(decoded_buffer, sizeof(five_byte) / sizeof(*five_byte), encoded_buffer, bytes_used);
 		JASS_assert(bytes_used == 10);
 		JASS_assert(memcmp(decoded_buffer, five_byte, sizeof(five_byte)) == 0);
-		
-		
+
+		/*
+			Check the top range of the 64-bit encodings
+		*/
+		uint64_t ten_byte[] = {(uint64_t)1 << (uint64_t)63,  0xFFFFFFFFFFFFFFFF};
+		uint64_t answer_64 = 0;
+		uint8_t *into_64 = encoded_buffer;
+		compress_integer_variable_byte::compress_into(into_64, ten_byte[0]);
+		into_64 = encoded_buffer;
+		compress_integer_variable_byte::decompress_into(&answer_64, into_64);
+		JASS_assert(answer_64 == ten_byte[0]);
+		answer_64 = 0;
+		into_64 = encoded_buffer;
+		compress_integer_variable_byte::compress_into(into_64, ten_byte[1]);
+		into_64 = encoded_buffer;
+		compress_integer_variable_byte::decompress_into(&answer_64, into_64);
+		JASS_assert(answer_64 == ten_byte[1]);
+
 		/*
 			Generate a sequence of random integers and check they encode and decode correctly.  Yes, this is favouring large integers
 			because the probability of the high bit being set is 50%.
@@ -147,7 +163,7 @@ namespace JASS
 			Now check that the example in the documentation is correct, and that the encoding is big-endian
 		*/
 		auto pointer = &encoded_buffer[0];
-		compress_into(pointer, 1905);
+		compress_into(pointer, (uint32_t)1905);
 		const uint8_t answer[] = {0x0E, 0xF1};
 		JASS_assert(memcmp(answer, encoded_buffer, 2) == 0);
 		

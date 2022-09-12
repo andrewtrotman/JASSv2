@@ -104,6 +104,8 @@ set(JASSlib_FILES
 	compress_integer_variable_byte.cpp
 	deserialised_jass_v1.h
 	deserialised_jass_v1.cpp
+	deserialised_jass_v2.h
+	deserialised_jass_v2.cpp
 	document.h
 	dynamic_array.h
 	evaluate.h
@@ -152,12 +154,18 @@ set(JASSlib_FILES
 	index_postings.h
 	index_postings_impact.h
 	instream.h
+	instream_directory_iterator.h
+	instream_directory_iterator.cpp
 	instream_document_fasta.h
 	instream_document_fasta.cpp
 	instream_document_trec.h
 	instream_document_trec.cpp
+	instream_document_unicoil_json.h
+	instream_document_unicoil_json.cpp
 	instream_document_warc.h
 	instream_document_warc.cpp
+	instream_deflate.h
+	instream_deflate.cpp
 	instream_file.h
 	instream_file.cpp
 	instream_file_star.h
@@ -171,18 +179,23 @@ set(JASSlib_FILES
 	parser_fasta.cpp
 	parser_query.h
 	parser_query.cpp
+	parser_unicoil_json.h
+	parser_unicoil_json.cpp
 	pointer_box.h
 	posting.h
 	quantize.h
+	quantize_none.h
 	query.h
 	query_bucket.h
 	query_heap.h
+	query_heap_clean.h
 	query_maxblock_heap.h
 	query_maxblock.h
 	query_term.h
 	query_term_list.h
 	ranking_function.h
 	ranking_function_atire_bm25.h
+	ranking_function_none.h
 	reverse.h
 	run_export.h
 	run_export_trec.h
@@ -190,8 +203,10 @@ set(JASSlib_FILES
 	serialise_ci.h
 	serialise_integers.cpp
 	serialise_integers.h
-	serialise_jass_v1.cpp
 	serialise_jass_v1.h
+	serialise_jass_v1.cpp
+	serialise_jass_v2.h
+	serialise_jass_v2.cpp
 	serialise_forward_index.h
 	serialise_forward_index.cpp
 	simd.h
@@ -207,6 +222,8 @@ set(JASSlib_FILES
 	threads.cpp
 	timer.h
 	top_k_heap.h
+	top_k_limit.h
+	top_k_limit.cpp
 	top_k_qsort.h
 	top_k_qsort.cpp
 	unicode.h

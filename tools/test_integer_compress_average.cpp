@@ -30,12 +30,13 @@
 	so the columns are not individual runs.
 */
 #include <stdio.h>
-#include <inttypes.h>
+#include <stdint.h>
 
 #include <map>
 #include <vector>
 #include <iostream>
 #include <algorithm>
+#include <cinttypes>
 
 #include "file.h"
 

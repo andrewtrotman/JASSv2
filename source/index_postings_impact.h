@@ -16,6 +16,7 @@
 #include <limits>
 
 #include "allocator.h"
+#include "compress_integer.h"
 
 namespace JASS
 	{

@@ -444,18 +444,6 @@ namespace JASS
 					*/
 					postings_list_iterator &operator++()
 						{
-						int64_t postings_list_length = protobuf::get_uint64_t(stream);
-
-						postings.clear();
-						if (postings_list::get_next_postings(postings, stream, stream + postings_list_length) == FAIL)
-							{
-							/*
-								On error move to the end of the stream and mark the stream as bad
-							*/
-							which = (std::numeric_limits<decltype(which)>::max)();
-							source.status = FAIL;
-							}
-
 						which++;
 						return *this;
 						}
@@ -470,6 +458,18 @@ namespace JASS
 					*/
 					postings_list &operator*()
 						{
+						int64_t postings_list_length = protobuf::get_uint64_t(stream);
+
+						postings.clear();
+						if (postings_list::get_next_postings(postings, stream, stream + postings_list_length) == FAIL)
+							{
+							/*
+								On error move to the end of the stream and mark the stream as bad
+							*/
+							which = (std::numeric_limits<decltype(which)>::max)();
+							source.status = FAIL;
+							}
+
 						return postings;
 						}
 
@@ -483,7 +483,7 @@ namespace JASS
 					*/
 					bool operator!=(postings_list_iterator &with)
 						{
-						bool answer = which < with.which;
+						bool answer = which <= with.which;
 						source.stream = stream;
 						return answer;
 						}
