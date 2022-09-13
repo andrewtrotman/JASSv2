@@ -185,7 +185,7 @@ namespace JASS
 		{
 		std::filesystem::path path = directory;
 
-		return read_index_explicit(path / PRIMARY_KEY_FILENAME, path / VOCAB_FILENAME, path / TERMS_FILENAME, path / POSTINGS_FILENAME);
+		return read_index_explicit((path / PRIMARY_KEY_FILENAME).string(), (path / VOCAB_FILENAME).string(), (path / TERMS_FILENAME).string(), (path / POSTINGS_FILENAME).string());
 		}
 
 	/*
