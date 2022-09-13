@@ -15,6 +15,8 @@
 #include <stdint.h>
 
 #include <atomic>
+#include <string>
+#include <vector>
 
 /*
 	CLASS JASS_ANYTIME_QUERY

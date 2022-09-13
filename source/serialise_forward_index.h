@@ -48,7 +48,19 @@ namespace JASS
 			/*!
 				Destructor
 			*/
-			~serialise_forward_index();
+			~serialise_forward_index()
+				{
+				/* Nothing */
+				}
+
+			/*
+				SERIALISE_FORWARD_INDEX::FINISH()
+				---------------------------------
+			*/
+			/*!
+				Do any final cleaning up
+			*/
+			void finish(void);
 
 			/*
 				SERIALISE_FORWARD_INDEX::DELEGATE::OPERATOR()()

@@ -155,12 +155,64 @@ namespace JASS
 		*/
 		vocabulary_strings.write(term.address(), term.size());
 		vocabulary_strings.write("\0", 1);
-		
+
 		/*
 			Keep a copy of the term and the detals of the postings list for later sorting and writing to CIvocab.bin
 		*/
 		index_key.push_back(vocab_tripple(term, term_offset, postings_location, number_of_impact_scores));
 		}
+
+	/*
+		SERIALISE_JASS_V2::SERIALISE_VOCABULARY_POINTERS()
+		--------------------------------------------------
+	*/
+	void serialise_jass_v2::serialise_vocabulary_pointers(void)
+		{
+		/*
+			Sort
+		*/
+		std::sort(index_key.begin(), index_key.end());
+
+		/*
+			Serialise the contents of CIvocab.bin
+		*/
+		for (const auto &line : index_key)
+			{
+			uint8_t byte_sequence[12];			// only need 10 of these as a 64-bit integer with variable byte can expand to no more than 10 bytes
+			uint8_t *into;
+			size_t bytes_used;
+
+			into = byte_sequence;
+			bytes_used = compress_integer_variable_byte::bytes_needed_for(line.term);
+			compress_integer_variable_byte::compress_into(into, line.term);
+			vocabulary.write(byte_sequence, bytes_used);
+
+			into = byte_sequence;
+			bytes_used = compress_integer_variable_byte::bytes_needed_for(line.offset);
+			compress_integer_variable_byte::compress_into(into, line.offset);
+			vocabulary.write(byte_sequence, bytes_used);
+
+			into = byte_sequence;
+			bytes_used = compress_integer_variable_byte::bytes_needed_for(line.impacts);
+			compress_integer_variable_byte::compress_into(into, line.impacts);
+			vocabulary.write(byte_sequence, bytes_used);
+			}
+		}
+
+	/*
+		SERIALISE_JASS_V2::SERIALISE_PRIMARY_KEYS()
+		-------------------------------------------
+	*/
+	void serialise_jass_v2::serialise_primary_keys(void)
+		{
+		/*
+			Serialise the number of documents in the collection.  This goes into the primary key file CIdoclist.bin.
+			As JASS v2 counts from 1 but JASS v1 counts from 0, we have to drop the first (blank) element and subtract 1 from the count
+		*/
+		uint64_t document_count = primary_key_offsets.size() - 1;
+		primary_keys.write(&document_count, sizeof(document_count));
+		}
+
 
 	/*
 		SERIALISE_JASS_V2::UNITTEST()
@@ -178,8 +230,9 @@ namespace JASS
 			Serialise the index.
 		*/
 		{
-		serialise_jass_v1 serialiser(index.get_highest_document_id(), jass_v1_codex::qmx, 16);
+		serialise_jass_v2 serialiser(index.get_highest_document_id(), jass_v1_codex::qmx, 16);
 		index.iterate(serialiser);
+		serialiser.finish();
 		}
 
 		/*

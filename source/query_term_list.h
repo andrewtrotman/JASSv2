@@ -13,6 +13,7 @@
 #pragma once
 
 #include <array>
+#include <algorithm>
 
 #include "query_term.h"
 #include "dynamic_array.h"

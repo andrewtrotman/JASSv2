@@ -136,6 +136,10 @@ set(JASSlib_FILES
 	evaluate_relevant_returned.cpp
 	evaluate_selling_power.h
 	evaluate_selling_power.cpp
+	evaluate_price_based_normalized_discounted_cumulative_gain.h
+	evaluate_price_based_normalized_discounted_cumulative_gain.cpp
+	evaluate_buying_power_normalized_discounted_cumulative_gain.h
+	evaluate_buying_power_normalized_discounted_cumulative_gain.cpp
 	file.h
 	file.cpp
 	forceinline.h
@@ -191,6 +195,7 @@ set(JASSlib_FILES
 	query_term_list.h
 	ranking_function.h
 	ranking_function_atire_bm25.h
+	ranking_function_none.h
 	reverse.h
 	run_export.h
 	run_export_trec.h
@@ -217,6 +222,8 @@ set(JASSlib_FILES
 	threads.cpp
 	timer.h
 	top_k_heap.h
+	top_k_limit.h
+	top_k_limit.cpp
 	top_k_qsort.h
 	top_k_qsort.cpp
 	unicode.h

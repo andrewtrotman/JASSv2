@@ -150,7 +150,7 @@ namespace JASS
 			*/
 			bool operator<(const pointer_box<TYPE> to) const
 				{
-				return less_than(element, to.element);
+				return *element < *to.element || (*element == *to.element && element < to.element);
 				}
 
 			/*

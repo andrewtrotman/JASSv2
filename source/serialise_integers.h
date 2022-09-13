@@ -57,6 +57,18 @@ namespace JASS
 				}
 
 			/*
+				SERIALISE_INTEGERS::FINISH()
+				----------------------------
+			*/
+			/*!
+				Do any final cleaning up
+			*/
+			void finish(void)
+				{
+				/* Nothing */
+				}
+				
+			/*
 				SERIALISE_INTEGERS::OPERATOR()()
 				--------------------------------
 			*/

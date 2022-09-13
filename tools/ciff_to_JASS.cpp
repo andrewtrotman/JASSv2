@@ -33,9 +33,72 @@
 #include "quantize_none.h"
 #include "serialise_jass_v1.h"
 #include "serialise_jass_v2.h"
+#include "ranking_function_none.h"
 #include "index_manager_sequential.h"
 #include "ranking_function_atire_bm25.h"
 #include "compress_integer_elias_gamma_simd_vb.h"
+
+static const double bm25_k1 = 0.9;
+static const double bm25_b = 0.4;
+
+/*
+	RAW_PASSTHROUGH()
+	-----------------
+*/
+void raw_passthrough(std::vector<std::unique_ptr<JASS::index_manager::delegate>> &exporters, JASS::index_manager_sequential &index, size_t total_documents)
+	{
+	/*
+		quantize the index
+	*/
+	std::shared_ptr<JASS::ranking_function_atire_bm25> ranker(new JASS::ranking_function_atire_bm25(bm25_k1, bm25_b, index.get_document_length_vector()));
+	JASS::quantize_none<JASS::ranking_function_atire_bm25> quantizer(total_documents, ranker);
+
+	/*
+		Write to disk
+	*/
+	std::cout << "WRITE THE INDEX TO DISK\n";
+	quantizer.serialise_index(index, exporters);
+	}
+
+/*
+	SCALE_PASSTHROUGH()
+	-------------------
+*/
+void scale_passthrough(std::vector<std::unique_ptr<JASS::index_manager::delegate>> &exporters, JASS::index_manager_sequential &index, size_t total_documents)
+	{
+	/*
+		Scale the index
+	*/
+	std::shared_ptr<JASS::ranking_function_none> ranker(new JASS::ranking_function_none());
+	JASS::quantize<JASS::ranking_function_none> quantizer(total_documents, ranker);
+	index.iterate(quantizer);
+
+	/*
+		Write to disk
+	*/
+	std::cout << "WRITE THE INDEX TO DISK\n";
+	quantizer.serialise_index(index, exporters);
+	}
+
+/*
+	BM25()
+	------
+*/
+void bm25(std::vector<std::unique_ptr<JASS::index_manager::delegate>> &exporters, JASS::index_manager_sequential &index, size_t total_documents)
+	{
+	/*
+		quantize the index
+	*/
+	std::shared_ptr<JASS::ranking_function_atire_bm25> ranker(new JASS::ranking_function_atire_bm25(bm25_k1, bm25_b, index.get_document_length_vector()));
+	JASS::quantize<JASS::ranking_function_atire_bm25> quantizer(total_documents, ranker);
+	index.iterate(quantizer);
+
+	/*
+		Write to disk
+	*/
+	std::cout << "WRITE THE INDEX TO DISK\n";
+	quantizer.serialise_index(index, exporters);
+	}
 
 /*
 	USAGE()
@@ -43,9 +106,11 @@
 */
 uint8_t usage(const char *exename)
 	{
-	printf("Usage:%s <index.ciff> [-passthrough] [-2]\n", exename);
+	printf("Usage:%s <index.ciff> [-passthrough] [-2] [-scalepassthrough]\n", exename);
 	printf("The index will be quantized with BM25 unless -passthrough is specified in which case the CIFF is\n");
 	printf("assumed to be already quantized and the JASS quantised values are taken directly from the CIFF.\n");
+	printf("if -scalepassthrough is specified then the tf scores will be scaled into the impact range and\n");
+	printf("Then passed through.\n");
 	printf("Will generate a JASSv1 index unless -2 is specified for a JASSv2 index.\n");
 
 	return 1;
@@ -58,16 +123,19 @@ uint8_t usage(const char *exename)
 int main(int argc, const char *argv[])
 	{
 	std::string file;
-	bool passthrough = false;
-	bool index_version_2 = false;
+	bool passthrough = false;		// pass the TF scores through unchanges
+	bool tf_scaling = false;		// scale the TF scores into the impact range then pass them through
+	bool index_version_2 = false;	// use a version 2 index
 
-	if (argc != 2 && argc != 3 && argc != 4)
+	if (argc < 2 || argc > 4)
 		exit(usage(argv[0]));
 	if (argc != 2)
 		{
-		for (size_t parameter = 2; parameter < argc; parameter++)
+		for (int parameter = 2; parameter < argc; parameter++)
 		if (strcmp(argv[parameter], "-passthrough") == 0)
 			passthrough = true;
+		else if (strcmp(argv[parameter], "-scalepassthrough") == 0)
+			tf_scaling = true;
 		else if (strcmp(argv[parameter], "-2") == 0)
 			index_version_2 = true;
 		else
@@ -75,6 +143,12 @@ int main(int argc, const char *argv[])
 			printf("Unknown parameter:%s\n", argv[parameter]);
 			exit(usage(argv[0]));
 			}
+		}
+
+	if (passthrough && tf_scaling)
+		{
+		printf("Specify either -passthrough or -scalepassthrough, not both\n");
+		exit(usage(argv[0]));
 		}
 
 	/*
@@ -157,30 +231,25 @@ int main(int argc, const char *argv[])
 	index.set_document_length_vector(document_length_vector);
 
 	/*
-		quantize the index
+		Generate the list of exporters
 	*/
-	std::cout << "QUANTIZE THE INDEX\n";
-	std::shared_ptr<JASS::ranking_function_atire_bm25> ranker(new JASS::ranking_function_atire_bm25(0.9, 0.4, index.get_document_length_vector()));
-	JASS::quantize<JASS::ranking_function_atire_bm25> *quantizer;
-	if (passthrough)
-		quantizer = new JASS::quantize_none<JASS::ranking_function_atire_bm25>(total_documents, ranker);
-	else
-		{
-		quantizer = new JASS::quantize<JASS::ranking_function_atire_bm25>(total_documents, ranker);
-		index.iterate(*quantizer);
-		}
-
-	/*
-		Decode the export formats and encode into a vector before writing the index
-	*/
-	std::cout << "WRITE THE INDEX TO DISK\n";
 	std::vector<std::unique_ptr<JASS::index_manager::delegate>> exporters;
-//	exporters.push_back(std::make_unique<JASS::serialise_jass_v1>(total_documents, JASS::serialise_jass_v1::jass_v1_codex::elias_gamma_simd, 1));
 	if (index_version_2)
 		exporters.push_back(std::make_unique<JASS::serialise_jass_v2>(total_documents, JASS::serialise_jass_v1::jass_v1_codex::elias_gamma_simd_vb, 1));
 	else		// generate a version 1 index
 		exporters.push_back(std::make_unique<JASS::serialise_jass_v1>(total_documents, JASS::serialise_jass_v1::jass_v1_codex::elias_gamma_simd_vb, 1));
-	quantizer->serialise_index(index, exporters);
+
+	/*
+		quantize the index
+	*/
+	std::cout << "QUANTIZE THE INDEX\n";
+
+	if (passthrough)
+		raw_passthrough(exporters, index, total_documents);
+	else if (tf_scaling)
+		scale_passthrough(exporters, index, total_documents);
+	else
+		bm25(exporters, index, total_documents);
 
 	std::cout << "DONE\n";
 	return 0;

@@ -33,6 +33,12 @@ namespace JASS
 	*/
 	class deserialised_jass_v1
 		{
+		private:
+			static constexpr const char *PRIMARY_KEY_FILENAME = "CIdoclist.bin";
+			static constexpr const char *VOCAB_FILENAME = "CIvocab.bin";
+			static constexpr const char *TERMS_FILENAME = "CIvocab_terms.bin";
+			static constexpr const char *POSTINGS_FILENAME = "CIpostings.bin";
+
 		public:
 			/*
 				CLASS DESERIALISED_JASS_V1::SEGMENT_HEADER
@@ -47,7 +53,7 @@ namespace JASS
 			class segment_header
 				{
 				public:
-					query::ACCUMULATOR_TYPE impact;					///< The impact score
+					uint32_t impact;					///< The impact score.  Not a query::ACCUMUMLTOR_TYPE as this can overflow
 					uint64_t offset;					///< Offset (within the postings file) of the start of the compressed postings list
 					uint64_t end;						///< Offset (within the postings file) of the end of the compressed postings list
 					query::DOCID_TYPE segment_frequency;			///< The number of document ids in the segment (not end - offset because the postings are compressed)
@@ -160,7 +166,7 @@ namespace JASS
 				@param primary_key_filename [in] the name of the file containing the primary key list ("CIdoclist.bin")
 				@return The number of documents in the collection (or 0 on error)
 			*/
-			size_t read_primary_keys(const std::string &primary_key_filename = "CIdoclist.bin");
+			virtual size_t read_primary_keys(const std::string &primary_key_filename = PRIMARY_KEY_FILENAME);
 
 			/*
 				DESERIALISED_JASS_V1::READ_VOCABULARY()
@@ -172,7 +178,7 @@ namespace JASS
 				@param terms_filename [in] the name of the file containing the vocabulary strings ("CIvocab_terms.bin")
 				@return The number of documents in the collection (or 0 on error)
 			*/
-			size_t read_vocabulary(const std::string &vocab_filename = "CIvocab.bin", const std::string &terms_filename = "CIvocab_terms.bin");
+			virtual size_t read_vocabulary(const std::string &vocab_filename = VOCAB_FILENAME, const std::string &terms_filename = TERMS_FILENAME);
 
 			/*
 				DESERIALISED_JASS_V1::READ_POSTINGS()
@@ -183,7 +189,21 @@ namespace JASS
 				@param postings_filename [in] the name of the file containing the postings ("CIpostings.bin")
 				@return size of the posings file or 0 on failure
 			*/
-			size_t read_postings(const std::string &postings_filename = "CIpostings.bin");
+			virtual size_t read_postings(const std::string &postings_filename = POSTINGS_FILENAME);
+
+			/*
+				DESERIALISED_JASS_V1::READ_INDEX_EXPLICIT()
+				-------------------------------------------
+			*/
+			/*!
+				@brief Read a JASS v1 index into memory
+				@param primary_key_filename [in] the name of the file containing the primary key list ("CIdoclist.bin")
+				@param vocab_filename [in] the name of the file containing the vocabulary pointers ("CIvocab.bin")
+				@param terms_filename [in] the name of the file containing the vocabulary strings ("CIvocab_terms.bin")
+				@param postings_filename [in] the name of the file containing the postings ("CIpostings.bin")
+				@return 0 on failure, non-zero on success
+			*/
+			size_t read_index_explicit(const std::string &primary_key_filename = PRIMARY_KEY_FILENAME, const std::string &vocab_filename = VOCAB_FILENAME, const std::string &terms_filename = TERMS_FILENAME, const std::string &postings_filename = POSTINGS_FILENAME);
 
 		public:
 			/*
@@ -220,13 +240,10 @@ namespace JASS
 			*/
 			/*!
 				@brief Read a JASS v1 index into memory
-				@param primary_key_filename [in] the name of the file containing the primary key list ("CIdoclist.bin")
-				@param vocab_filename [in] the name of the file containing the vocabulary pointers ("CIvocab.bin")
-				@param terms_filename [in] the name of the file containing the vocabulary strings ("CIvocab_terms.bin")
-				@param postings_filename [in] the name of the file containing the postings ("CIpostings.bin")
+				@param directory [in] The directory to search for and index
 				@return 0 on failure, non-zero on success
 			*/
-			size_t read_index(const std::string &primary_key_filename = "CIdoclist.bin", const std::string &vocab_filename = "CIvocab.bin", const std::string &terms_filename = "CIvocab_terms.bin", const std::string &postings_filename = "CIpostings.bin");
+			size_t read_index(const std::string &directory = "");
 
 			/*
 				DESERIALISED_JASS_V1::CODEX()
@@ -328,18 +345,20 @@ namespace JASS
 				@param largest [out] The smallest impact score for this term
 				@return The number of segments extracted and added to the list
 			*/
-			virtual size_t get_segment_list(segment_header *segments, metadata &metadata, size_t term_frequency, query::ACCUMULATOR_TYPE &smallest, query::ACCUMULATOR_TYPE &largest) const
+			virtual size_t get_segment_list(segment_header *segments, metadata &metadata, size_t query_term_frequency, uint32_t &smallest, uint32_t &largest, query::DOCID_TYPE &document_frequency) const
 				{
+				document_frequency = 0;
 				segment_header *current_segment = segments;
 				for (uint64_t segment = 0; segment < metadata.impacts; segment++)
 					{
 					uint64_t *postings_list = (uint64_t *)metadata.offset;
 					segment_header_on_disk *next_segment_in_postings_list = (segment_header_on_disk *)(postings() + postings_list[segment]);
 
-					current_segment->impact = next_segment_in_postings_list->impact * term_frequency;
+					current_segment->impact = next_segment_in_postings_list->impact * query_term_frequency;
 					current_segment->offset = next_segment_in_postings_list->offset;
 					current_segment->end = next_segment_in_postings_list->end;
 					current_segment->segment_frequency = next_segment_in_postings_list->segment_frequency;
+					document_frequency += next_segment_in_postings_list->segment_frequency;
 
 					current_segment++;
 					}

@@ -76,6 +76,24 @@ namespace JASS
 				}
 
 			/*
+				 SERIALISE_JASS_V2::SERIALISE_VOCABULARY_POINTERS()
+				--------------------------------------------------
+			*/
+			/*!
+				@brief Serialise the ppointers that point between the vocab and the postings (the CIvocab.bin file).
+			*/
+			virtual void serialise_vocabulary_pointers(void);
+
+			/*
+				 SERIALISE_JASS_V1::SERIALISE_PRIMARY_KEYS()
+				--------------------------------------------
+			*/
+			/*!
+				@brief Serialise the primary keys (or any extra stuff at the end of the primary key file).
+			*/
+			virtual void serialise_primary_keys(void);
+
+			/*
 				SERIALISE_JASS_V2::DELEGATE::OPERATOR()()
 				-----------------------------------------
 			*/

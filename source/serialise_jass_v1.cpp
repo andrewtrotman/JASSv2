@@ -16,16 +16,33 @@
 namespace JASS
 	{
 	/*
-		SERIALISE_JASS_V1::~SERIALISE_JASS_V1()
-		---------------------------------------
+		SERIALISE_JASS_V1::FINISH()
+		---------------------------
 	*/
-	serialise_jass_v1::~serialise_jass_v1()
+	void serialise_jass_v1::finish(void)
 		{
 		/*
-			Sort then serialise the contents of the CIvocab.bin file.
+			Serialise the pointers into the vacabulary (the CIvocab.bin file)
+		*/
+		serialise_vocabulary_pointers();
+
+		/*
+			Serialise the primary key offsets and the number of documents in the collection.
+		*/
+		serialise_primary_keys();
+		}
+
+	/*
+		SERIALISE_JASS_V1::SERIALISE_VOCABULARY_POINTERS()
+		--------------------------------------------------
+	*/
+	void serialise_jass_v1::serialise_vocabulary_pointers(void)
+		{
+		/*
+			Sort
 		*/
 		std::sort(index_key.begin(), index_key.end());
-		
+
 		/*
 			Serialise the contents of CIvocab.bin
 		*/
@@ -35,9 +52,16 @@ namespace JASS
 			vocabulary.write(&line.offset, sizeof(line.offset));
 			vocabulary.write(&line.impacts, sizeof(line.impacts));
 			}
+		}
 
+	/*
+		SERIALISE_JASS_V1::SERIALISE_PRIMARY_KEYS()
+		-------------------------------------------
+	*/
+	void serialise_jass_v1::serialise_primary_keys(void)
+		{
 		/*
-			Serialise the primary key offsets and the numnber of documents in the collection.  This all goes into the primary key file CIdoclist.bin.
+			Serialise the primary key offsets and the number of documents in the collection.  This all goes into the primary key file CIdoclist.bin.
 			As JASS v2 counts from 1 but JASS v1 counts from 0, we have to drop the first (blank) element and subtract 1 from the count
 		*/
 		uint64_t document_count = primary_key_offsets.size() - 1;
@@ -260,6 +284,7 @@ namespace JASS
 		{
 		serialise_jass_v1 serialiser(index.get_highest_document_id(), jass_v1_codex::qmx, 16);
 		index.iterate(serialiser);
+		serialiser.finish();
 		}
 
 		/*

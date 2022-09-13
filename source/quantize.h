@@ -82,6 +82,18 @@ namespace JASS
 				}
 
 			/*
+				QUANTIZE::FINISH()
+				------------------
+			*/
+			/*!
+				@brief Do any final cleaning up
+			*/
+			virtual void finish(void)
+				{
+				/* Nothing */
+				}
+
+			/*
 				QUANTIZE::OPERATOR()()
 				----------------------
 			*/
@@ -227,7 +239,10 @@ namespace JASS
 			void serialise_index(index_manager &index, std::vector<std::unique_ptr<index_manager::delegate>> &serialisers)
 				{
 				for (auto &outputter : serialisers)
+					{
 					index.iterate(*this, *outputter);
+					outputter->finish();
+					}
 				}
 
 			/*

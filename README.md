@@ -17,7 +17,39 @@ CodeCov (code coverage): [![codecov](https://codecov.io/gh/andrewtrotman/JASSv2/
 
 CodeDocs.xyz (documentation): [![Documentation Status](https://codedocs.xyz/andrewtrotman/JASSv2.svg)](https://codedocs.xyz/andrewtrotman/JASSv2/)
 
+## Python ##
 
-For XCode use:
+There are two ways pyjass can be installed
 
-cmake -G Xcode -T buildsystem=1 ..
+
+
+### conda ####
+
+[Conda](https://docs.anaconda.com/anaconda/install/index.html) ensures that all JASS dependencies are installed and creates a virtual envirnoment called pyjass
+
+```
+conda env create -f env.yml
+conda activate pyjass
+```
+
+### pip ####
+
+Installation via pip requires cmake >= 3.80 & swig >=4.0 to be installed first. This can be installed via your favorite package manager such as apt-get or brew.
+
+
+##### Debian/Ubuntu #####
+```
+sudo apt-get install cmake swig
+```
+
+##### Homebrew #####
+```
+brew install cmake swig
+```
+
+Finally, run pip to install pyjass
+
+```
+pip3 install --user pyjass
+```
+
