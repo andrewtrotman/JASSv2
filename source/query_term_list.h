@@ -167,92 +167,98 @@ namespace JASS
 					Empty list
 				*/
 				{
-				query_term_list terms;
+				query_term_list *terms = new query_term_list;
 
-				terms.sort_unique();
+				terms->sort_unique();
 				std::ostringstream into;
-				into << terms;
+				into << *terms;
 				JASS_assert(into.str() == "");
+				delete terms;
 				}
 
 				/*
 					Single member list
 				*/
 				{
-				query_term_list terms;
+				query_term_list *terms = new query_term_list;
 
-				terms.push_back("a");
+				terms->push_back("a");
 
-				terms.sort_unique();
+				terms->sort_unique();
 				std::ostringstream into;
-				into << terms;
+				into << *terms;
 				JASS_assert(into.str() == "(a,1)");
+				delete terms;
 				}
 
 				/*
 					Single unique value list
 				*/
 				{
-				query_term_list terms;
+				query_term_list *terms = new query_term_list;
 
-				terms.push_back("a");
-				terms.push_back("a");
-				terms.push_back("a");
+				terms->push_back("a");
+				terms->push_back("a");
+				terms->push_back("a");
 
-				terms.sort_unique();
+				terms->sort_unique();
 				std::ostringstream into;
-				into << terms;
+				into << *terms;
 				JASS_assert(into.str() == "(a,3)");
+				delete terms;
 				}
 
 				/*
 					Multiple value list ending with a single element
 				*/
 				{
-				query_term_list terms;
+				query_term_list *terms = new query_term_list;
 
-				terms.push_back("b");
-				terms.push_back("b");
-				terms.push_back("a");
+				terms->push_back("b");
+				terms->push_back("b");
+				terms->push_back("a");
 
-				terms.sort_unique();
+				terms->sort_unique();
 				std::ostringstream into;
-				into << terms;
+				into << *terms;
 				JASS_assert(into.str() == "(a,1)(b,2)");
+				delete terms;
 				}
 
 				/*
 					Multiple value list ending with a duplicate element
 				*/
 				{
-				query_term_list terms;
+				query_term_list *terms = new query_term_list;
 
-				terms.push_back("b");
-				terms.push_back("b");
-				terms.push_back("a");
-				terms.push_back("a");
+				terms->push_back("b");
+				terms->push_back("b");
+				terms->push_back("a");
+				terms->push_back("a");
 
-				terms.sort_unique();
+				terms->sort_unique();
 				std::ostringstream into;
-				into << terms;
+				into << *terms;
 				JASS_assert(into.str() == "(a,2)(b,2)");
+				delete terms;
 				}
 
 				/*
 					Multiple value list shuffled
 				*/
 				{
-				query_term_list terms;
+				query_term_list *terms = new query_term_list;
 
-				terms.push_back("a");
-				terms.push_back("b");
-				terms.push_back("a");
-				terms.push_back("b");
+				terms->push_back("a");
+				terms->push_back("b");
+				terms->push_back("a");
+				terms->push_back("b");
 
-				terms.sort_unique();
+				terms->sort_unique();
 				std::ostringstream into;
-				into << terms;
+				into << *terms;
 				JASS_assert(into.str() == "(a,2)(b,2)");
+				delete terms;
 				}
 				
 				puts("query_term_list::PASSED");
