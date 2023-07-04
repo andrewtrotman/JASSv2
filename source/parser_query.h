@@ -88,7 +88,7 @@ namespace JASS
 			/*!
 				@brief Unit test this class
 			*/
-			static std::string unittest_test_one(parser_query &parser, allocator &memory, const std::string &query);
+			static std::string unittest_test_one(parser_query *parser, allocator &memory, const std::string &query);
 
 
 		public:

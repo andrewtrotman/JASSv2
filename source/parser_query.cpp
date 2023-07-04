@@ -146,14 +146,16 @@ namespace JASS
 		PARSER_QUERY::UNITTEST_TEST_ONE()
 		---------------------------------
 	*/
-	std::string parser_query::unittest_test_one(parser_query &parser, allocator &memory, const std::string &query)
+	std::string parser_query::unittest_test_one(parser_query *parser, allocator &memory, const std::string &query)
 		{
 		std::ostringstream buffer;
-		query_term_list tokens;
+		query_term_list *tokens = new query_term_list;
 
-		parser.parse(tokens, query);
-		for (const auto &term : tokens)
+		parser->parse(*tokens, query);
+		for (const auto &term : *tokens)
 			buffer << term;
+
+		delete tokens;
 
 		return buffer.str();
 		}
@@ -165,7 +167,7 @@ namespace JASS
 	void parser_query::unittest(void)
 		{
 		allocator_pool memory;
-		parser_query parser(memory);
+		parser_query *parser = new parser_query(memory);
 		std::string got;
 
 		const uint8_t sequence_1[] = {0x41, 0x00, 0x00, 0x00};
@@ -212,20 +214,23 @@ namespace JASS
 		*/
 		uint8_t buffer[1024];
 		allocator_memory restricted_memory(buffer, sizeof(buffer));
-		parser_query restricted_parser(restricted_memory);
+		parser_query *restricted_parser = new parser_query(restricted_memory);
 		got = unittest_test_one(restricted_parser, restricted_memory, "12345");
 		JASS_assert(got == "(12345,1)");
+		delete restricted_parser;
 
 		/*
 			Test the raw parser
 		*/
 		const std::string raw_sequence = " . ; A ";
 		std::ostringstream raw_answer;
-		query_term_list raw_tokens;
-		parser.parse(raw_tokens, raw_sequence, parser_type::raw);
-		for (const auto &term : raw_tokens)
+		query_term_list *raw_tokens = new query_term_list;
+		parser->parse(*raw_tokens, raw_sequence, parser_type::raw);
+		for (const auto &term : *raw_tokens)
 			raw_answer << term;
 		JASS_assert(raw_answer.str() == "(.,1)(;,1)(A,1)");
+
+		delete parser;
 
 		puts("parser_query::PASSED");
 		}

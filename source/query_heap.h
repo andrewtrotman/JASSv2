@@ -796,7 +796,7 @@ namespace JASS
 				query_object->add_rsv(1, 14);
 
 				for (const auto rsv : *query_object)
-					string << "<" << rsv.document_id << "," << rsv.rsv << ">";
+					string << "<" << (uint64_t)rsv.document_id << "," << (uint64_t)rsv.rsv << ">";
 				JASS_assert(string.str() == "<1,15><3,20>");
 
 				/*
