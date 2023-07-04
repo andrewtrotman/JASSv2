@@ -1066,6 +1066,8 @@ int main(int argc, const char *argv[])
 		std::cout << '\n';
 		metric_set::t_test(F1, all_the_runs);
 		std::cout << '\n';
+		metric_set::t_test(F1_AT_30, all_the_runs);
+		std::cout << '\n';
 		metric_set::t_test(MEAN_AVERAGE_PRECISION, all_the_runs);
 		std::cout << '\n';
 
