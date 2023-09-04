@@ -1,4 +1,4 @@
-ATIRE_DIR = ../../atire
+ATIRE_DIR = ../../ATIRE
 
 ATIRE_OBJ = \
 	$(ATIRE_DIR)/obj/stats.o			\
