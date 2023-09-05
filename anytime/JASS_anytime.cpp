@@ -136,7 +136,6 @@ static int main_event(int argc, const char *argv[])
 	*/
 	auto total_run_time = JASS::timer::start();
 	JASS_anytime_stats stats;
-	stats.threads = parameter_threads;
 
 	/*
 		Parse the command line parameters
@@ -148,6 +147,8 @@ static int main_event(int argc, const char *argv[])
 		}
 	if (parameter_help)
 		exit(usage(argv[0]));
+
+	stats.threads = parameter_threads;
 
 	/*
 		Set the top-k value
