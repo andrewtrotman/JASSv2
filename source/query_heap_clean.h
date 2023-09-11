@@ -409,7 +409,52 @@ namespace JASS
 				#pragma GCC unroll 8
 #endif
 				for (DOCID_TYPE *current = buffer; current < end; current++)
-					ADD_RSV(*current, impact);
+					{
+					ACCUMULATOR_TYPE _score = impact;
+					accumulator_pointer which = &accumulators[*current];
+
+					*which.pointer() += _score;
+
+					if (*which.pointer() < top_k_lower_bound)
+						continue;
+					if (needed_for_top_k > 0)
+						{
+						if (*which.pointer() - _score < top_k_lower_bound)
+							{
+							accumulator_pointers[--needed_for_top_k] = which;
+							if (needed_for_top_k == 0)
+								{
+								top_results.make_heap();
+								if (top_k_lower_bound != 1)
+									break;
+								top_k_lower_bound = *accumulator_pointers[0];
+								}
+							}
+						continue;
+						}
+					if (*which.pointer() == top_k_lower_bound)
+						{
+						if (which.pointer() < accumulator_pointers[0].pointer())
+							continue;
+						top_results.push_back(which);
+						top_k_lower_bound = *accumulator_pointers[0];
+						continue;
+						}
+					if (*which.pointer() - _score < top_k_lower_bound)
+						{
+						top_results.push_back(which);
+						}
+					else if (*which.pointer() - _score == top_k_lower_bound && which.pointer() < accumulator_pointers[0].pointer())
+						{
+						top_results.push_back(which);
+						}
+					else
+						{
+						auto at = top_results.find(which);
+						top_results.promote(which, at);
+						}
+					top_k_lower_bound = *accumulator_pointers[0];
+					}
 				}
 
 			/*
