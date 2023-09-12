@@ -140,6 +140,7 @@ set(JASSlib_FILES
 	evaluate_price_based_normalized_discounted_cumulative_gain.cpp
 	evaluate_buying_power_normalized_discounted_cumulative_gain.h
 	evaluate_buying_power_normalized_discounted_cumulative_gain.cpp
+	exception_done.h
 	file.h
 	file.cpp
 	forceinline.h
