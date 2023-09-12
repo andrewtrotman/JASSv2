@@ -102,6 +102,18 @@ namespace JASS
 				}
 
 			/*
+				QUERY_TERM_LIST::SIZE()
+				-----------------------
+			*/
+			/*!
+				@brief return the number of terms
+			*/
+			auto size(void)
+				{
+				return terms_in_query;
+				}
+
+			/*
 				QUERY_TERM_LIST::PUSH_BACK()
 				----------------------------
 			*/

@@ -480,6 +480,7 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<J
 		uint32_t largest_possible_rsv = (std::numeric_limits<decltype(largest_possible_rsv)>::min)();
 		uint32_t largest_possible_rsv_with_overflow;
 		uint32_t smallest_possible_rsv = (std::numeric_limits<decltype(smallest_possible_rsv)>::max)();
+		uint32_t query_terms_count = local.jass_query->terms().size();
 		uint64_t total_postings_for_query = 0;
 //std::cout << "\n";
 		for (const auto &term : local.jass_query->terms())
@@ -578,7 +579,7 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<J
 		for (auto *header = local.segment_order.get(); header < current_segment; header++)
 			{
 			if (scale_rsv_scores)
-				header->impact = (JASS::query::ACCUMULATOR_TYPE)((double)header->impact / (double)largest_possible_rsv_with_overflow * (double)JASS::query::MAX_RSV);
+				header->impact = (JASS::query::ACCUMULATOR_TYPE)((double)header->impact / (double)largest_possible_rsv_with_overflow * ((double)JASS::query::MAX_RSV - query_terms_count) + 1);
 
 //std::cout << "Process Segment->(" << header->impact << ":" << header->segment_frequency << ")\n";
 			/*
