@@ -18,6 +18,7 @@
 #include "query.h"
 #include "pointer_box.h"
 #include "accumulator_2d.h"
+#include "exception_done.h"
 #include "sort512_uint64_t.h"
 #include "accumulator_counter.h"
 #include "accumulator_counter_interleaved.h"
@@ -292,80 +293,64 @@ namespace JASS
 				---------------------------
 			*/
 			/*!
-				@brief Add weight to the rsv for document docuument_id
+				@brief Add weight to the rsv for document document_id
 				@param document_id [in] which document to increment
 				@param score [in] the amount of weight to add
 			*/
-			#define ADD_RSV(DOCUMENT_ID, SCORE) \
-				{ \
-				ACCUMULATOR_TYPE _score = SCORE;\
-				accumulator_pointer which = &accumulators[(DOCUMENT_ID)];			/* This will create the accumulator if it doesn't already exist. */ \
-				*which.pointer() += _score; \
+			forceinline void add_rsv(DOCID_TYPE document_id, ACCUMULATOR_TYPE score)
+				{
+				accumulator_pointer which = &accumulators[document_id];			/* This will create the accumulator if it doesn't already exist. */
+				*which.pointer() += score;
 				/*
 					accumulator is less than the heap entry value
-				*/ \
-				if (*which.pointer() < top_k_lower_bound) \
-					continue; \
+				*/
+				if (*which.pointer() < top_k_lower_bound)
+					return;
 				/*
 					the heap isn't full yet - so change only happens if we're a new addition (i.e. the old value was a 0)
-				*/ \
-				if (needed_for_top_k > 0) \
-					{ \
+				*/
+				if (needed_for_top_k > 0)
+					{
 					/*
 						we weren't already in the heap
-					*/ \
-					if (*which.pointer() - _score < top_k_lower_bound) \
-						{ \
-						accumulator_pointers[--needed_for_top_k] = which; \
-						if (needed_for_top_k == 0) \
-							{ \
-							top_results.make_heap(); \
-							if (top_k_lower_bound != 1) \
-								break; /* We must be using the Oracle, and we must have filled the top-k and so we can stop processing this query. */ \
-							top_k_lower_bound = *accumulator_pointers[0]; /* set the new bottom of heap value */ \
-							} \
-						} \
-					continue; \
-					} \
+					*/
+					if (*which.pointer() - score < top_k_lower_bound)
+						{
+						accumulator_pointers[--needed_for_top_k] = which;
+						if (needed_for_top_k == 0)
+							{
+							top_results.make_heap();
+							if (top_k_lower_bound != 1)
+								throw Done(); /* We must be using the Oracle, and we must have filled the top-k and so we can stop processing this query. */
+							top_k_lower_bound = *accumulator_pointers[0]; /* set the new bottom of heap value */
+							}
+						}
+					return;
+					}
 				/*
 					accumulator is equal to the heap entry value, now we need to tie break
-				*/ \
-				if (*which.pointer() == top_k_lower_bound) \
-					{ \
-					if (which.pointer() < accumulator_pointers[0].pointer()) \
-						continue; \
-					top_results.push_back(which); /* we're not in the heap so add this accumulator to the heap */ \
-					top_k_lower_bound = *accumulator_pointers[0]; \
-					continue; \
-					} \
+				*/
+				if (*which.pointer() == top_k_lower_bound)
+					{
+					if (which.pointer() < accumulator_pointers[0].pointer())
+						return;
+					top_results.push_back(which); /* we're not in the heap so add this accumulator to the heap */
+					top_k_lower_bound = *accumulator_pointers[0];
+					return;
+					}
 				/*
 					accumulator exceeds the heap entry value, we now need to figure out if the accumulator was already in the heap
 					if the old value didn't exceed the heap entry, or it was equal and we failed the tie-break then we weren't in it
 					otherwise we were and need to be promoted
-				*/ \
-				if (*which.pointer() - _score < top_k_lower_bound || (*which.pointer() - _score == top_k_lower_bound && which.pointer() < accumulator_pointers[0].pointer())) \
-					top_results.push_back(which); \
-				else \
-					{ \
-					auto at = top_results.find(which); /* we're already in there so find us and reshuffle the heap. */ \
-					top_results.promote(which, at); /* we're already in the heap so promote this document */ \
-					} \
-				top_k_lower_bound = *accumulator_pointers[0]; /* set the new bottom of heap value */ \
-				}
-
-			/*
-				QUERY_HEAP_CLEAN::ADD_RSV()
-				---------------------------
-			*/
-			/*!
-				@brief Add weight to the rsv for document docuument_id
-				@param document_id [in] which document to increment
-				@param score [in] the amount of weight to add
-			*/
-			forceinline void add_rsv(DOCID_TYPE document_id, ACCUMULATOR_TYPE score) 
-				{ 
-				for (int x = 0; x < 1; x++)
-					ADD_RSV(document_id, score);
+				*/
+				if (*which.pointer() - score < top_k_lower_bound || (*which.pointer() - score == top_k_lower_bound && which.pointer() < accumulator_pointers[0].pointer()))
+					top_results.push_back(which);
+				else
+					{
+					auto at = top_results.find(which); /* we're already in there so find us and reshuffle the heap. */
+					top_results.promote(which, at); /* we're already in the heap so promote this document */
+					}
+				top_k_lower_bound = *accumulator_pointers[0]; /* set the new bottom of heap value */
 				}
 
 			/*
@@ -414,7 +399,14 @@ namespace JASS
 				#pragma GCC unroll 8
 #endif
 				for (DOCID_TYPE *current = buffer; current < end; current++)
-					ADD_RSV(*current, impact);
+					try
+						{
+						add_rsv(*current, impact);
+						}
+					catch (Done&)
+						{
+						break;
+						}
 				}
 
 			/*
