@@ -546,8 +546,8 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<J
 		if (largest_possible_rsv > JASS::query::MAX_RSV)
 			{
 			scale_rsv_scores = true;
-			smallest_possible_rsv = (uint32_t)((double)largest_possible_rsv / (double)largest_possible_rsv * (double)JASS::query::MAX_RSV);
-			largest_possible_rsv = (uint32_t)((double)largest_possible_rsv / (double)largest_possible_rsv * (double)JASS::query::MAX_RSV);
+			smallest_possible_rsv = (uint32_t)((double)smallest_possible_rsv / (double)largest_possible_rsv * (double)JASS::query::MAX_RSV);
+			largest_possible_rsv = JASS::query::MAX_RSV;
 
 			/*
 				This line (commented out) re-scales the rsv_at_k value, which we need to do if that score comes
