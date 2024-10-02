@@ -39,7 +39,7 @@ static auto parameters = std::make_tuple							///< The  command line parameter 
 	(
 	JASS::commandline::parameter("-?",   "--help",         "                  Print this help.", parameter_help),
 	JASS::commandline::parameter("-2",   "--v2_index",     "                  The index is a JASS v2 index", parameter_index_v2),
-	JASS::commandline::parameter("-a",   "--asciiparser ", "                  Use simple query parser (ASCII seperated pre-casefolded tokens)", parameter_ascii_query_parser),
+	JASS::commandline::parameter("-a",   "--asciiparser",  "                  Use simple query parser (ASCII seperated pre-casefolded tokens)", parameter_ascii_query_parser),
 	JASS::commandline::parameter("-k",   "--top-k",        "<top-k>           Number of results to return to the user (top-k value) [default = -k10]", parameter_top_k),
 	JASS::commandline::parameter("-q",   "--queryfile",    "<filename>        Name of file containing a list of queries (1 per line, each line prefixed with query-id)", parameter_queryfilename),
 	JASS::commandline::parameter("-Q",   "--queryrsvfile", "<filename>        Name of file containing a list of the minimum rsv value for a document to be found (1 per line: <query_id> <rsv>)", parameter_rsv_scores_filename),
